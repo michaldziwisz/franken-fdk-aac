@@ -9,7 +9,7 @@ name: Build Franken FDK AAC (Windows x64 + x86)
 # the resulting encoder you are responsible for any patent licensing that may
 # apply in your jurisdiction and use case. See README / NOTICE.
 
-on:
+"on":
   workflow_dispatch:
     inputs:
       arch:
