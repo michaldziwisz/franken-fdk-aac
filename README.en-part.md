@@ -9,6 +9,18 @@ Binaries (static, no external DLLs):
 - `fdkaac-franken-x64.exe` — Windows 64-bit (PE32+)
 - `fdkaac-franken-x86.exe` — Windows 32-bit (PE32)
 
+## Download
+
+Prebuilt Windows binaries are published as GitHub Releases, built and hosted by
+GitHub (no login needed to download):
+
+**→ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest**
+
+Grab `franken-fdk-aac-x64-vX.Y.Z.zip` (64-bit) or the `x86` one; each zip holds
+the `.exe` plus the full documentation. There are no binaries committed to the
+repo — see "Build" at the bottom for building it yourself.
+
+
 All original nu774 frontend options (`-p/--profile`, `-b/--bitrate`,
 `-m/--bitrate-mode`, `-w/--bandwidth`, `-a/--afterburner`, `-s/--sbr-ratio`,
 `-f/--transport-format`, tagging, etc.) work as before. Below are only the

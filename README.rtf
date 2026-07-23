@@ -7,6 +7,13 @@
 {\pard \ql \f0 \sa180 \li0 \fi0 Binaries (static, no external DLLs):\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\f1 fdkaac-franken-x64.exe} \u8212- Windows 64-bit (PE32+)\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\f1 fdkaac-franken-x86.exe} \u8212- Windows 32-bit (PE32)\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 Download\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Prebuilt Windows binaries are published as GitHub Releases, built and hosted by GitHub (no login needed to download):\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\b \u8594 ? {\field{\*\fldinst{HYPERLINK "https://github.com/michaldziwisz/franken-fdk-aac/releases/latest"}}{\fldrslt{\ul
+https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
+}}}
+}\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Grab {\f1 franken-fdk-aac-x64-vX.Y.Z.zip} (64-bit) or the {\f1 x86} one; each zip holds the {\f1 .exe} plus the full documentation. There are no binaries committed to the repo \u8212- see "Build" at the bottom for building it yourself.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 All original nu774 frontend options ({\f1 -p/--profile}, {\f1 -b/--bitrate}, {\f1 -m/--bitrate-mode}, {\f1 -w/--bandwidth}, {\f1 -a/--afterburner}, {\f1 -s/--sbr-ratio}, {\f1 -f/--transport-format}, tagging, etc.) work as before. Below are only the NEW switches. See also {\f1 fdkaac-franken-x64.exe --help}.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 NOTE: this is an "I-know-what-I'm-doing" tool. Most of these parameters deliberately let you go beyond what the FDK automation does \u8212- you can knowingly wreck the stereo image, the bandwidth, or the quality with them. The sentinel {\f1 -1} (or {\f1 0} for {\f1 --core-cutoff}) = "leave FDK's default behavior".\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Author: Micha\u322 ? Dziwisz. Subject-matter consultant: Patryk Faliszewski. Built on open source: libfdk-aac (Fraunhofer IIS) + the nu774/fdkaac frontend.\par}
@@ -1975,6 +1982,13 @@ make -j     # -> fdkaac.exe\line
 {\pard \ql \f0 \sa180 \li0 \fi0 Binarki (statyczne, bez zewn\u281 ?trznych DLL):\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\f1 fdkaac-franken-x64.exe} \u8212- Windows 64-bit (PE32+)\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\f1 fdkaac-franken-x86.exe} \u8212- Windows 32-bit (PE32)\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 Pobieranie\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Gotowe binarki Windows s\u261 ? publikowane jako GitHub Releases \u8212- budowane i hostowane przez GitHub (do pobrania bez logowania):\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\b \u8594 ? {\field{\*\fldinst{HYPERLINK "https://github.com/michaldziwisz/franken-fdk-aac/releases/latest"}}{\fldrslt{\ul
+https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
+}}}
+}\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Pobierz {\f1 franken-fdk-aac-x64-vX.Y.Z.zip} (64-bit) albo wersj\u281 ? {\f1 x86}; ka\u380 ?dy zip zawiera {\f1 .exe} oraz komplet dokumentacji. W repozytorium nie ma \u380 ?adnych binarek \u8212- jak zbudowa\u263 ? samodzielnie, patrz sekcja \u8222 ?Budowanie" na dole.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Wszystkie oryginalne opcje frontendu nu774 ({\f1 -p/--profile}, {\f1 -b/--bitrate}, {\f1 -m/--bitrate-mode}, {\f1 -w/--bandwidth}, {\f1 -a/--afterburner}, {\f1 -s/--sbr-ratio}, {\f1 -f/--transport-format}, tagowanie itd.) dzia\u322 ?aj\u261 ? jak wczesniej. Poni\u380 ?ej tylko NOWE prze\u322 ?\u261 ?czniki. Zobacz tez {\f1 fdkaac-franken-x64.exe --help}.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 UWAGA: to jest narz\u281 ?dzie "wiem-co-robi\u281 ?". Wi\u281 ?kszo\u347 ?\u263 ? tych parametr\u243 ?w celowo pozwala wyj\u347 ?\u263 ? poza to, co robi automatyka FDK \u8212- mo\u380 ?na nimi \u347 ?wiadomie zepsu\u263 ? obraz stereo, pasmo albo jako\u347 ?\u263 ?. Sentinel {\f1 -1} (lub {\f1 0} dla {\f1 --core-cutoff}) = "zostaw domy\u347 ?lne zachowanie FDK".\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Autor: Micha\u322 ? Dziwisz. Konsultant merytoryczny: Patryk Faliszewski. Zbudowane na oprogramowaniu open source: libfdk-aac (Fraunhofer IIS) oraz frontend nu774/fdkaac.\par}

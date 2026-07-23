@@ -19,19 +19,30 @@ more) as human-readable command-line switches.
 - `MANUAL.en.md` / `MANUAL.pl.md` — the audio-engineer's manual (EN and PL),
   each also as `.html` / `.pdf` / `.rtf`. The PDFs are tagged/accessible (PDF/UA).
 
-## Getting the binaries — build on demand (no binaries shipped)
+## Download (easiest — no account needed)
 
-This repository ships **source only**. No `.exe` files are committed. To get a
-Windows build, let GitHub build it for you on its own runners:
+Prebuilt Windows binaries are published as **GitHub Releases**, built and hosted
+by GitHub:
+
+**→ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest**
+
+Download `franken-fdk-aac-x64-vX.Y.Z.zip` (64-bit) or the `x86` one (32-bit).
+Each zip contains the encoder `.exe` plus the full documentation (README +
+manuals in EN/PL, NOTICE, CHANGES). Release assets download **without logging in**.
+
+## Building it yourself — on demand (no binaries in the repo)
+
+The repository ships **source only**; no `.exe` is committed. Besides the
+Releases above, a logged-in user with repo access can trigger a build:
 
 1. Open the **Actions** tab of this repository.
 2. In the left list pick the workflow **"Build Franken FDK AAC (Windows x64 + x86)"**.
 3. Click **"Run workflow"** (top right). Optionally choose `both` / `x64` / `x86`
    (default `both`).
 4. Wait for the run to finish (green check), open it, and download the
-   **Artifacts**: `fdkaac-franken-x64` and/or `fdkaac-franken-x86`
-   (each contains the `.exe`). Artifacts are kept for 90 days; just run the
-   workflow again if they expire.
+   **Artifacts**: `franken-fdk-aac-x64` and/or `franken-fdk-aac-x86`
+   (each contains the `.exe` + docs). Artifacts are kept for 90 days; just run the
+   workflow again if they expire. (Artifacts, unlike Release assets, require login.)
 
 You can also build locally with mingw-w64 — see the build section in `README.md`.
 
