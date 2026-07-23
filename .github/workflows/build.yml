@@ -1,13 +1,17 @@
 name: Build Franken FDK AAC (Windows x64 + x86)
 
-# Build is triggered MANUALLY by the user (Actions tab -> "Run workflow").
-# Nothing is prebuilt or shipped in the repo: the user requests a build on
-# GitHub's runners and downloads the resulting .exe as an artifact.
+# Two ways to run:
+#  1. Manually (Actions tab -> "Run workflow") -> binaries as downloadable
+#     artifacts (login required to download).
+#  2. Push a version tag (e.g. v1.0.0) -> GitHub builds AND publishes a public
+#     Release. Release assets are hosted and served by GitHub and can be
+#     downloaded by ANYONE, no login required. It is GitHub, not the author,
+#     that distributes the built binary; the user obtains it from GitHub.
 #
 # PATENT NOTICE: AAC is covered by patents (baseline/AAC-LC through 2028,
-# HE-AAC/HE-AAC v2 extensions through 2031). By running this build and using
-# the resulting encoder you are responsible for any patent licensing that may
-# apply in your jurisdiction and use case. See README / NOTICE.
+# HE-AAC/HE-AAC v2 extensions through 2031). By building/using the resulting
+# encoder you are responsible for any patent licensing that may apply in your
+# jurisdiction and use case. See README / NOTICE.fdk-aac.
 
 "on":
   workflow_dispatch:
@@ -18,6 +22,12 @@ name: Build Franken FDK AAC (Windows x64 + x86)
         default: "both"
         type: choice
         options: [both, x64, x86]
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write   # needed for the release job to create a Release
 
 jobs:
   build:
@@ -37,7 +47,9 @@ jobs:
       - name: Skip arch not requested
         id: gate
         run: |
+          # On a tag push there is no input -> build everything.
           want='${{ github.event.inputs.arch }}'
+          [ -z "$want" ] && want=both
           if [ "$want" != "both" ] && [ "$want" != "${{ matrix.arch }}" ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
             echo "Skipping ${{ matrix.arch }} (user chose $want)."
@@ -86,7 +98,7 @@ jobs:
           mkdir -p "$PKGDIR"
           cp fdkaac.exe "$PKGDIR/fdkaac-franken-${{ matrix.arch }}.exe"
           "$HOST-strip" "$PKGDIR/fdkaac-franken-${{ matrix.arch }}.exe" || true
-          # Bundle the documentation so the downloaded zip is a complete package.
+          # Bundle the documentation so the downloaded package is complete.
           for f in README.md README.html README.pdf \
                    MANUAL.en.md MANUAL.en.html MANUAL.en.pdf \
                    MANUAL.pl.md MANUAL.pl.html MANUAL.pl.pdf \
@@ -110,3 +122,43 @@ jobs:
           path: out/franken-fdk-aac-${{ matrix.arch }}/
           if-no-files-found: error
           retention-days: 90
+
+  # Runs only for tag pushes: gathers the built packages and publishes a public
+  # GitHub Release. Release assets are downloadable by anyone without a login.
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download built packages
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Zip each package
+        run: |
+          set -e
+          TAG="${GITHUB_REF_NAME}"
+          mkdir -p assets
+          for d in dist/*/; do
+            name="$(basename "$d")"        # e.g. franken-fdk-aac-x64
+            (cd "$d" && zip -r "$OLDPWD/assets/${name}-${TAG}.zip" .)
+          done
+          ls -la assets
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Franken FDK AAC ${{ github.ref_name }}
+          body: |
+            Windows binaries of Franken FDK AAC, built by GitHub Actions.
+
+            Each zip contains the encoder `.exe` plus the full documentation
+            (README + manuals in EN/PL, NOTICE, CHANGES).
+
+            PATENT NOTICE: AAC is patent-encumbered (AAC-LC through 2028,
+            HE-AAC/HE-AAC v2 through 2031). By downloading and using these
+            binaries you are responsible for any patent licensing that applies
+            to you. These files are built and hosted by GitHub. See NOTICE.fdk-aac.
+          files: assets/*.zip
+          fail_on_unmatched_files: true
