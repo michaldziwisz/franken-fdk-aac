@@ -1,0 +1,31 @@
+Prerequiste
+-----------
+
+To build fdkaac, you need the followings:
+- libfdk-aac (https://github.com/mstorsjo/fdk-aac)
+- GNU autoconf, GNU automake
+
+libfdk-aac is always required, and probably you have to build it yourself.
+Others are required only when you build by configure and make on Unix-like
+enviromnent (including Cygwin or MinGW), and usually you can install them
+through package manager of your system if they are not already present.
+
+Unix-like environment
+---------------------
+
+You can build and install libfdkaac and fdkaac in the following step.
+
+1) extract the source, and cd to the source directory
+2) autoreconf -i
+3) ./configure
+4) make
+5) sudo make install
+
+Depending on your requirements, you might want to add some extra arguments to
+configure script.
+You have to install libfdk-aac first, and do the same for fdkaac.
+
+Windows, MSVC
+-------------
+
+Extract libfdk-aac under fdkaac directory, and open MSVC/fdkaac.sln.

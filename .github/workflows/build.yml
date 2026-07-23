@@ -1,0 +1,112 @@
+name: Build Franken FDK AAC (Windows x64 + x86)
+
+# Build is triggered MANUALLY by the user (Actions tab -> "Run workflow").
+# Nothing is prebuilt or shipped in the repo: the user requests a build on
+# GitHub's runners and downloads the resulting .exe as an artifact.
+#
+# PATENT NOTICE: AAC is covered by patents (baseline/AAC-LC through 2028,
+# HE-AAC/HE-AAC v2 extensions through 2031). By running this build and using
+# the resulting encoder you are responsible for any patent licensing that may
+# apply in your jurisdiction and use case. See README / NOTICE.
+
+on:
+  workflow_dispatch:
+    inputs:
+      arch:
+        description: "Which binaries to build"
+        required: true
+        default: "both"
+        type: choice
+        options: [both, x64, x86]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            host: x86_64-w64-mingw32
+          - arch: x86
+            host: i686-w64-mingw32
+    steps:
+      - name: Check out sources
+        uses: actions/checkout@v4
+
+      - name: Skip arch not requested
+        id: gate
+        run: |
+          want='${{ github.event.inputs.arch }}'
+          if [ "$want" != "both" ] && [ "$want" != "${{ matrix.arch }}" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Skipping ${{ matrix.arch }} (user chose $want)."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install mingw-w64 toolchain
+        if: steps.gate.outputs.skip == 'false'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mingw-w64 autoconf automake libtool pkg-config make
+
+      - name: Build libfdk-aac (static) + frontend for ${{ matrix.arch }}
+        if: steps.gate.outputs.skip == 'false'
+        run: |
+          set -euo pipefail
+          HOST='${{ matrix.host }}'
+          ROOT="$PWD"
+          BUILD="$HOME/build-${{ matrix.arch }}"
+          PREFIX="$BUILD/inst"
+          rm -rf "$BUILD"; mkdir -p "$BUILD"
+          # Fresh trees per arch (avoids cross-arch leftovers).
+          cp -r "$ROOT/src-fdk-aac" "$BUILD/fdk-aac"
+          cp -r "$ROOT/src-fdkaac"  "$BUILD/fdkaac"
+
+          # --- libfdk-aac ---
+          cd "$BUILD/fdk-aac"
+          # Makefile.am carries the added franken.cpp, so regenerate the build system.
+          autoreconf -fi
+          ./configure --host="$HOST" --prefix="$PREFIX" \
+            --enable-static --disable-shared CFLAGS=-O2 CXXFLAGS=-O2
+          make -j"$(nproc)"
+          make install
+
+          # --- frontend (nu774 fdkaac) ---
+          cd "$BUILD/fdkaac"
+          autoreconf -fi || ./bootstrap || true
+          PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig" ./configure \
+            --host="$HOST" CFLAGS="-O2 -I$PREFIX/include" \
+            LDFLAGS="-static -static-libgcc -L$PREFIX/lib"
+          make -j"$(nproc)"
+
+          mkdir -p "$ROOT/out"
+          PKGDIR="$ROOT/out/franken-fdk-aac-${{ matrix.arch }}"
+          mkdir -p "$PKGDIR"
+          cp fdkaac.exe "$PKGDIR/fdkaac-franken-${{ matrix.arch }}.exe"
+          "$HOST-strip" "$PKGDIR/fdkaac-franken-${{ matrix.arch }}.exe" || true
+          # Bundle the documentation so the downloaded zip is a complete package.
+          for f in README.md README.html README.pdf \
+                   MANUAL.en.md MANUAL.en.html MANUAL.en.pdf \
+                   MANUAL.pl.md MANUAL.pl.html MANUAL.pl.pdf \
+                   NOTICE.fdk-aac CHANGES.md; do
+            [ -f "$ROOT/$f" ] && cp "$ROOT/$f" "$PKGDIR/" || true
+          done
+          ls -la "$PKGDIR"
+
+      - name: Sanity check (--help runs under wine, non-fatal)
+        if: steps.gate.outputs.skip == 'false'
+        run: |
+          sudo apt-get install -y wine || true
+          wine "out/franken-fdk-aac-${{ matrix.arch }}/fdkaac-franken-${{ matrix.arch }}.exe" --help 2>/dev/null | head -5 || \
+            echo "wine smoke check skipped/failed (non-fatal; binary is for Windows)"
+
+      - name: Upload ${{ matrix.arch }} package (binary + docs)
+        if: steps.gate.outputs.skip == 'false'
+        uses: actions/upload-artifact@v4
+        with:
+          name: franken-fdk-aac-${{ matrix.arch }}
+          path: out/franken-fdk-aac-${{ matrix.arch }}/
+          if-no-files-found: error
+          retention-days: 90

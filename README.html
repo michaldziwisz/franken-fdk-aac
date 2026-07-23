@@ -1,0 +1,3236 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="pl-PL" xml:lang="pl-PL">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Franken FDK AAC - README (EN/PL)</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+    /* CSS for syntax highlighting */
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    .sourceCode { overflow: visible; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {   }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+    code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #7d9029; } /* Attribute */
+    code span.bn { color: #40a070; } /* BaseN */
+    code span.bu { color: #008000; } /* BuiltIn */
+    code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4070a0; } /* Char */
+    code span.cn { color: #880000; } /* Constant */
+    code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+    code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+    code span.dt { color: #902000; } /* DataType */
+    code span.dv { color: #40a070; } /* DecVal */
+    code span.er { color: #ff0000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #40a070; } /* Float */
+    code span.fu { color: #06287e; } /* Function */
+    code span.im { color: #008000; font-weight: bold; } /* Import */
+    code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+    code span.op { color: #666666; } /* Operator */
+    code span.ot { color: #007020; } /* Other */
+    code span.pp { color: #bc7a00; } /* Preprocessor */
+    code span.sc { color: #4070a0; } /* SpecialChar */
+    code span.ss { color: #bb6688; } /* SpecialString */
+    code span.st { color: #4070a0; } /* String */
+    code span.va { color: #19177c; } /* Variable */
+    code span.vs { color: #4070a0; } /* VerbatimString */
+    code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">Franken FDK AAC - README (EN/PL)</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#franken-fdk-aac--a-laboratorygeek-aac-encoder-fdk"
+id="toc-franken-fdk-aac--a-laboratorygeek-aac-encoder-fdk">Franken FDK
+AAC — a laboratory/"geek" AAC encoder (FDK)</a>
+<ul>
+<li><a href="#option-groups-overview-grouped-the-same-way-in---help"
+id="toc-option-groups-overview-grouped-the-same-way-in---help">Option
+groups overview (grouped the same way in <code>--help</code>)</a></li>
+<li><a href="#0-diagnostics" id="toc-0-diagnostics">0.
+Diagnostics</a></li>
+<li><a href="#1-joint-stereo--ms--is--independent-stereo"
+id="toc-1-joint-stereo--ms--is--independent-stereo">1. Joint stereo — MS
+/ IS / independent stereo</a></li>
+<li><a href="#2-cutoff-of-the-aac-core-when-sbr-is-active"
+id="toc-2-cutoff-of-the-aac-core-when-sbr-is-active">2. Cutoff of the
+AAC core when SBR is active</a></li>
+<li><a href="#3-density--precision-of-sbr-data"
+id="toc-3-density--precision-of-sbr-data">3. Density / precision of SBR
+data</a></li>
+<li><a href="#4-parametric-stereo-he-aac-v2"
+id="toc-4-parametric-stereo-he-aac-v2">4. Parametric Stereo (HE-AAC
+v2)</a></li>
+<li><a href="#5-noise-substitutionshaping--tns--pns--afterburner"
+id="toc-5-noise-substitutionshaping--tns--pns--afterburner">5. Noise
+substitution/shaping — TNS / PNS / afterburner</a></li>
+<li><a href="#6-masking--ath" id="toc-6-masking--ath">6. Masking /
+ATH</a></li>
+<li><a href="#7-bias-of-shortlong-block-switching-any-profile"
+id="toc-7-bias-of-shortlong-block-switching-any-profile">7. Bias of
+short/long block switching (any profile)</a></li>
+<li><a href="#8-ms-decision-bias-honestly-a-tool-with-a-weak-effect"
+id="toc-8-ms-decision-bias-honestly-a-tool-with-a-weak-effect">8. MS
+decision bias (honestly: a tool with a WEAK effect)</a></li>
+<li><a href="#9-quasi-constrained-vbr-cbr-engine--wider-breathing"
+id="toc-9-quasi-constrained-vbr-cbr-engine--wider-breathing">9.
+Quasi-constrained VBR (CBR engine + wider breathing)</a></li>
+<li><a href="#10-audiophile--extreme-opt-in-beyond-the-typical-range"
+id="toc-10-audiophile--extreme-opt-in-beyond-the-typical-range">10.
+Audiophile / extreme (opt-in, beyond the typical range)</a></li>
+<li><a
+href="#11-mp4m4a-container--which-boxes-are-necessary-and-what-can-be-cut"
+id="toc-11-mp4m4a-container--which-boxes-are-necessary-and-what-can-be-cut">11.
+MP4/M4A container — which boxes are necessary, and what can be
+cut</a></li>
+<li><a href="#12-legend-for-reading---verbose"
+id="toc-12-legend-for-reading---verbose">12. Legend for reading
+<code>--verbose</code></a></li>
+<li><a href="#13-reference-tables-from-the-fdk-tuning-tables"
+id="toc-13-reference-tables-from-the-fdk-tuning-tables">13. Reference
+tables (from the FDK tuning tables)</a></li>
+<li><a href="#examples" id="toc-examples">Examples</a></li>
+<li><a href="#default-quality-vs-the-original-binary-fdkaac2exe"
+id="toc-default-quality-vs-the-original-binary-fdkaac2exe">Default
+quality vs the original binary (fdkaac2.exe)</a></li>
+<li><a href="#tests-make-check" id="toc-tests-make-check">Tests (make
+check)</a></li>
+<li><a href="#list-of-changed-fdk-files-mapped-to-points"
+id="toc-list-of-changed-fdk-files-mapped-to-points">List of changed FDK
+files (mapped to points)</a></li>
+</ul></li>
+<li><a href="#-wersja-polska-polish-version-below"
+id="toc--wersja-polska-polish-version-below">🇵🇱 Wersja polska (Polish
+version below)</a></li>
+<li><a href="#franken-fdk-aac--laboratoryjnygeekowski-enkoder-aac-fdk"
+id="toc-franken-fdk-aac--laboratoryjnygeekowski-enkoder-aac-fdk">Franken
+FDK AAC — laboratoryjny/"geekowski" enkoder AAC (FDK)</a>
+<ul>
+<li><a href="#spis-grup-opcji-tak-samo-pogrupowane-w---help"
+id="toc-spis-grup-opcji-tak-samo-pogrupowane-w---help">Spis grup opcji
+(tak samo pogrupowane w <code>--help</code>)</a></li>
+<li><a href="#0-diagnostyka" id="toc-0-diagnostyka">0.
+Diagnostyka</a></li>
+<li><a href="#1-joint-stereo--ms--is--niezależne-stereo"
+id="toc-1-joint-stereo--ms--is--niezależne-stereo">1. Joint stereo — MS
+/ IS / niezależne stereo</a></li>
+<li><a href="#2-cutoff-odcięcie-rdzenia-aac-gdy-działa-sbr"
+id="toc-2-cutoff-odcięcie-rdzenia-aac-gdy-działa-sbr">2. Cutoff
+(odcięcie) rdzenia AAC gdy działa SBR</a></li>
+<li><a href="#3-gęstość--dokładność-danych-sbr"
+id="toc-3-gęstość--dokładność-danych-sbr">3. Gęstość / dokładność danych
+SBR</a></li>
+<li><a href="#4-parametric-stereo-he-aac-v2-1"
+id="toc-4-parametric-stereo-he-aac-v2-1">4. Parametric Stereo (HE-AAC
+v2)</a></li>
+<li><a href="#5-substytucjaksztaltowanie-szumu--tns--pns--afterburner"
+id="toc-5-substytucjaksztaltowanie-szumu--tns--pns--afterburner">5.
+Substytucja/ksztaltowanie szumu — TNS / PNS / afterburner</a></li>
+<li><a href="#6-maskowanie--ath" id="toc-6-maskowanie--ath">6.
+Maskowanie / ATH</a></li>
+<li><a href="#7-bias-przełączania-blokow-shortlong-dowolny-profil"
+id="toc-7-bias-przełączania-blokow-shortlong-dowolny-profil">7. Bias
+przełączania blokow short/long (dowolny profil)</a></li>
+<li><a href="#8-bias-decyzji-ms-uczciwie-narzędzie-o-słabym-efekcie"
+id="toc-8-bias-decyzji-ms-uczciwie-narzędzie-o-słabym-efekcie">8. Bias
+decyzji MS (uczciwie: narzędzie o SŁABYM efekcie)</a></li>
+<li><a href="#9-quasi-constrained-vbr-silnik-cbr--szersze-oddychanie"
+id="toc-9-quasi-constrained-vbr-silnik-cbr--szersze-oddychanie">9.
+Quasi-constrained VBR (silnik CBR + szersze oddychanie)</a></li>
+<li><a href="#10-audiofilskie--ekstremalne-opt-in-poza-typowym-zakresem"
+id="toc-10-audiofilskie--ekstremalne-opt-in-poza-typowym-zakresem">10.
+Audiofilskie / ekstremalne (opt-in, poza typowym zakresem)</a></li>
+<li><a
+href="#11-kontener-mp4m4a--które-boxy-są-konieczne-a-co-można-wyciąć"
+id="toc-11-kontener-mp4m4a--które-boxy-są-konieczne-a-co-można-wyciąć">11.
+Kontener MP4/M4A — które boxy są konieczne, a co można wyciąć</a></li>
+<li><a href="#12-legenda-odczytu---verbose"
+id="toc-12-legenda-odczytu---verbose">12. Legenda odczytu
+<code>--verbose</code></a></li>
+<li><a href="#13-tabele-referencyjne-z-tablic-strojenia-fdk"
+id="toc-13-tabele-referencyjne-z-tablic-strojenia-fdk">13. Tabele
+referencyjne (z tablic strojenia FDK)</a></li>
+<li><a href="#przykłady" id="toc-przykłady">Przykłady</a></li>
+<li><a href="#jakość-domyślna-vs-oryginalna-binarka-fdkaac2exe"
+id="toc-jakość-domyślna-vs-oryginalna-binarka-fdkaac2exe">Jakość
+domyślna vs oryginalna binarka (fdkaac2.exe)</a></li>
+<li><a href="#testy-make-check" id="toc-testy-make-check">Testy (make
+check)</a></li>
+<li><a href="#lista-zmienionych-plikow-fdk-mapa-na-punkty"
+id="toc-lista-zmienionych-plikow-fdk-mapa-na-punkty">Lista zmienionych
+plikow FDK (mapa na punkty)</a></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="franken-fdk-aac--a-laboratorygeek-aac-encoder-fdk">Franken FDK
+AAC — a laboratory/"geek" AAC encoder (FDK)</h1>
+<p>Built on top of <strong>libfdk-aac 2.0.3</strong> (mstorsjo/fdk-aac)
++ the <strong>nu774/fdkaac 1.0.2</strong> frontend, with bolted-on CLI
+switches that expose the normally hardcoded, internal decisions of the
+FDK encoder. It serves extreme debugging and experimentation with
+AAC/HE-AAC/HE-AAC v2.</p>
+<p>Binaries (static, no external DLLs):</p>
+<ul>
+<li><code>fdkaac-franken-x64.exe</code> — Windows 64-bit (PE32+)</li>
+<li><code>fdkaac-franken-x86.exe</code> — Windows 32-bit (PE32)</li>
+</ul>
+<p>All original nu774 frontend options (<code>-p/--profile</code>,
+<code>-b/--bitrate</code>, <code>-m/--bitrate-mode</code>,
+<code>-w/--bandwidth</code>, <code>-a/--afterburner</code>,
+<code>-s/--sbr-ratio</code>, <code>-f/--transport-format</code>,
+tagging, etc.) work as before. Below are only the NEW switches. See also
+<code>fdkaac-franken-x64.exe --help</code>.</p>
+<p>NOTE: this is an "I-know-what-I'm-doing" tool. Most of these
+parameters deliberately let you go beyond what the FDK automation does —
+you can knowingly wreck the stereo image, the bandwidth, or the quality
+with them. The sentinel <code>-1</code> (or <code>0</code> for
+<code>--core-cutoff</code>) = "leave FDK's default behavior".</p>
+<p>Author: Michał Dziwisz. Subject-matter consultant: Patryk
+Faliszewski. Built on open source: libfdk-aac (Fraunhofer IIS) + the
+nu774/fdkaac frontend.</p>
+<hr />
+<h2 id="option-groups-overview-grouped-the-same-way-in---help">Option
+groups overview (grouped the same way in <code>--help</code>)</h2>
+<p>The options are ordered by topic, roughly from easiest to most geeky.
+The same order applies in <code>--help</code> (groups A–E) and in the
+sections below:</p>
+<ul>
+<li><strong>A. Start here (consumer):</strong> <code>--verbose</code>,
+<code>--is-aggression</code>, <code>--speech</code>,
+<code>--uncap-bandwidth</code>, <code>--unlock-bitrate</code> — sections
+0, 1, 2, 10.</li>
+<li><strong>B. Stereo:</strong> MS (<code>--msmask</code>,
+<code>--msbands</code>, <code>--msbands-lo/-hi</code>,
+<code>--ms-bias</code>, <code>--ms-precision</code>), IS
+(<code>--is</code>, <code>--isbands</code>, <code>--is-*</code>), PS
+(<code>--ps</code>, <code>--ps-iid-quant</code>, <code>--ps-icc</code>,
+<code>--ps-icc-mode</code>) — sections 1, 4, 8.</li>
+<li><strong>C. Bandwidth and SBR:</strong> <code>--core-cutoff</code>,
+<code>--sbr-*</code> — sections 2, 3.</li>
+<li><strong>D. Masking / noise / detail:</strong>
+<code>--ath-scale</code>, <code>--spread-mask</code>,
+<code>--tns-*</code>, <code>--pns</code>, <code>--pns-start</code>,
+<code>--force-pns</code> — sections 5, 6.</li>
+<li><strong>E. Blocks and bitrate:</strong> <code>--block-bias</code>,
+<code>--vbr-reservoir</code>, <code>--peak-bitrate</code>,
+<code>--max-bits-frame</code>, <code>--min-bits-frame</code>,
+<code>--bitres-mode</code> — sections 7, 9.</li>
+</ul>
+<p>Tip: at the end, <code>--verbose</code> prints a "franken overrides
+applied" section — exactly those switches which, in a given run, deviate
+from pure FDK.</p>
+<hr />
+<h2 id="0-diagnostics">0. Diagnostics</h2>
+<h3 id="--verbose"><code>--verbose</code></h3>
+<p>Before encoding, it dumps to stderr the REAL parameters chosen by the
+encoder (not just your overrides): AOT, bitrate/mode, samplerate,
+channel-mode, the EFFECTIVE core cutoff in Hz, afterburner, transport,
+signaling, plus the state of the coding tools chosen by the encoder (TNS
+on/off, PNS on/off, Intensity stereo on/off, MS stereo on/off). When SBR
+is active: sbr-ratio + effective start/stop freq index, freq scale,
+noise bands, amp res. At the end, a list of your overrides (-1/0 = not
+set, left to the encoder). Perfect for learning the starting point (e.g.
+the default HE-AAC v2 48k cutoff = 8613 Hz).</p>
+<hr />
+<h2 id="1-joint-stereo--ms--is--independent-stereo">1. Joint stereo — MS
+/ IS / independent stereo</h2>
+<p>By default FDK itself decides per-band about MS (mid/side) and IS
+(intensity). Here you can override these decisions and force extreme
+configurations.</p>
+<table>
+<thead>
+<tr class="header">
+<th>Switch</th>
+<th>Values</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>--msmask &lt;n&gt;</code></td>
+<td>-1 auto, 0 off, 1 on</td>
+<td>-1</td>
+<td>Force MS: <code>0</code> = all bands L/R (completely independent
+stereo), <code>1</code> = MS on all bands.</td>
+</tr>
+<tr class="even">
+<td><code>--msbands &lt;n&gt;</code></td>
+<td>-1 no limit, 0..N</td>
+<td>-1</td>
+<td>Maximum SFB number that may use MS (takes the N LOWEST bands). Above
+that — MS disabled.</td>
+</tr>
+<tr class="odd">
+<td><code>--msbands-lo &lt;n&gt;</code></td>
+<td>-1 off, 0..N</td>
+<td>-1</td>
+<td>START (lowest SFB band number) of the range in which MS is
+allowed.</td>
+</tr>
+<tr class="even">
+<td><code>--msbands-hi &lt;n&gt;</code></td>
+<td>-1 off, 0..N</td>
+<td>-1</td>
+<td>END (highest SFB band number) of the MS range. Used together with
+<code>--msbands-lo</code> as a FROM–TO pair. Bands outside this range go
+pure L/R.</td>
+</tr>
+<tr class="odd">
+<td><code>--ms-precision &lt;n&gt;</code></td>
+<td>256..no limit (Q8)</td>
+<td>-1 (off)</td>
+<td>Precision of MS bands. <code>&gt;256</code> = shallower holes in the
+MS spectrum (the coder allocates more bits to describe them, LAME -q
+style). 256=no change, 384~1.5x, 512~2x. Useful AUDIBLE effect up to
+~600-800; above that the threshold hits FDK's hard floor (ld64
+-0.515625) and, under CBR, bits are only SHIFTED between bands (fixed
+budget), so the sound stops changing. Works best when you have spare
+bits (&gt;=128k) or in VBR.</td>
+</tr>
+<tr class="even">
+<td><code>--is &lt;n&gt;</code></td>
+<td>-1 auto, 0 off, 1 on</td>
+<td>-1</td>
+<td>Intensity stereo globally on/off.</td>
+</tr>
+<tr class="odd">
+<td><code>--isbands &lt;n&gt;</code></td>
+<td>-1 no limit, 0..N</td>
+<td>-1</td>
+<td>Maximum number of SFBs that may use intensity. Above that — coded
+normally.</td>
+</tr>
+<tr class="even">
+<td><code>--is-aggression &lt;0..100&gt;</code></td>
+<td>0..100</td>
+<td>-1 (off)</td>
+<td>CONSUMER slider: how hard the encoder should push intensity stereo.
+Start here, leave the advanced <code>--is-*</code> alone.</td>
+</tr>
+<tr class="odd">
+<td><code>--is-min-sfbs &lt;n&gt;</code></td>
+<td>-1 def(6), 0..N</td>
+<td>-1</td>
+<td>(advanced) Min. number of contiguous SFBs before IS turns on.</td>
+</tr>
+<tr class="even">
+<td><code>--is-corr-thresh &lt;n&gt;</code></td>
+<td>-1 def(243), Q8</td>
+<td>-1</td>
+<td>(advanced) L/R correlation threshold for IS in Q8 (256=1.0).</td>
+</tr>
+<tr class="odd">
+<td><code>--is-lr-ratio &lt;n&gt;</code></td>
+<td>-1 def(179), Q8</td>
+<td>-1</td>
+<td>(advanced) L/R energy balance threshold for IS in Q8 (256=1.0).</td>
+</tr>
+</tbody>
+</table>
+<h3
+id="intensity-stereo-in-practice-how-to-use-it-not-the-formulas">Intensity
+stereo in practice (how to use it, not the formulas)</h3>
+<p>What it is: intensity stereo (IS) in the upper bands drops separate
+L/R and sends ONE energy envelope + direction (panning) information. The
+ear localizes high tones poorly, so this saves quite a few bits — but at
+the cost of stereo separation (the width of the scene at the top of the
+band narrows). You pay for it especially on material with a real L/R
+difference in the highs (cymbals on one side, spatial effects).</p>
+<p>By default FDK is very CAUTIOUS with IS (hence your observation "you
+can barely hear the difference"). There are three reasons, and that is
+what these knobs are for:</p>
+<ol type="1">
+<li>IS admission gate: FDK considers IS at all only when
+<code>bitrate/band &lt; 5</code>. At higher bitrates IS is disallowed
+entirely. <code>--is-aggression &gt;=1</code> removes this gate.</li>
+<li>Correlation threshold (<code>--is-corr-thresh</code>, Q8, 256=1.0,
+default 243 ~= 0.95): both channels must be at least ~95% similar to
+each other in a given band for IS to turn on. That is very high. Lower
+it -&gt; IS catches more often, even when the channels are less similar.
+E.g. 180 (~0.70) = much more aggressive. Too low = audible direction
+errors.</li>
+<li>Min. region length (<code>--is-min-sfbs</code>, default 6): IS turns
+on only on a band of at least 6 consecutive SFBs. Lower it to 1-2 -&gt;
+IS also catches short fragments.</li>
+</ol>
+<p>The relationship between them: for a given SFB to go into IS, ALL
+conditions MUST be met at once — the admission gate AND correlation
+above the threshold AND a sufficiently long region AND a stable
+direction. That is why lowering just one threshold often does nothing
+(another still blocks it) — and that is why you usually see no
+difference by manipulating correlation alone.
+<code>--is-aggression</code> moves ALL of them at once, coherently.</p>
+<p>How to set it:</p>
+<ul>
+<li>Simplest: <code>--is 1 --is-aggression 40</code> and listen. Too
+little IS -&gt; raise to 70, 100. Too much (the scene "glues together"
+at the top, direction artifacts) -&gt; go down.</li>
+<li>0 = FDK default (practically IS is barely active at typical
+bitrates).</li>
+<li>100 = maximum: gate removed, correlation loose (~0.475), region from
+1 SFB, wide direction tolerance. Many bands in IS, strongly audible,
+saves bits.</li>
+<li>Manual tuning only when you want precision: set
+<code>--is-aggression 0</code> and turn <code>--is-corr-thresh</code>
+(the main one), then <code>--is-min-sfbs</code>, finally
+<code>--is-lr-ratio</code>. The --is-* values OVERRIDE what the
+aggression slider set.</li>
+<li>Diagnostics: <code>--verbose</code> shows the effective thresholds
+(IS corr threshold Q8, min SFBs), so you see what actually went into the
+encoder.</li>
+</ul>
+<p>MS/IS bias (point 2): the above <code>--is-*</code> control WHEN the
+encoder chooses intensity stereo (decision thresholds from the FDK
+tuning table), independently of the hard on/off. <code>--msbands</code>
+limits MS to the lower bands (correctly — the mask and the L/R-&gt;M/S
+butterfly are synchronized, no "left=center, right=rest" artifact).</p>
+<ul>
+<li>Completely independent stereo: <code>--msmask 0 --is 0</code>.</li>
+<li>"Laboratory" restriction of MS to the lower bands: e.g.
+<code>--msbands 6</code>.</li>
+<li>Forced full MS: <code>--msmask 1</code>.</li>
+<li>More eager IS: lower <code>--is-corr-thresh</code> (e.g. 150) and/or
+<code>--is-min-sfbs</code>.</li>
+</ul>
+<h3
+id="ms-band-range---msbands---msbands-lo---msbands-hi-important-often-confused">MS
+band range: --msbands, --msbands-lo, --msbands-hi (IMPORTANT, often
+confused)</h3>
+<p>The spectrum bands are numbered FROM THE BOTTOM: band 0 = lowest
+frequencies (bass), the higher the number, the higher in the spectrum.
+In a typical LC stereo there are about 49 of them.</p>
+<p>There are TWO independent ways to limit where MS is applied:</p>
+<ol type="1">
+<li><p><code>--msbands &lt;n&gt;</code> — "the lower N bands". MS
+allowed ONLY in bands 0..(n-1), i.e. from the bass upward to number n.
+This is always counted FROM THE BOTTOM. Example:
+<code>--msbands 6</code> = MS only on the 6 lowest bands, the rest pure
+L/R.</p></li>
+<li><p><code>--msbands-lo &lt;lo&gt;</code> +
+<code>--msbands-hi &lt;hi&gt;</code> — "FROM-TO range". MS allowed ONLY
+in bands numbered from <code>lo</code> to <code>hi</code> inclusive.
+Outside that range, pure L/R. It is a pair — you provide both. It lets
+you place MS ANYWHERE, including at the very top.</p></li>
+</ol>
+<p>A concrete example (assuming ~49 bands in LC):</p>
+<ul>
+<li>You want MS ONLY on the 5 HIGHEST bands (e.g. to merge noise at the
+top and leave the bottom in full independent stereo)? The highest bands
+are numbers 44..48: <code>--msbands-lo 44 --msbands-hi 48</code>.</li>
+<li>You want MS only in the MIDDLE of the band (e.g. 10..30)?
+<code>--msbands-lo 10 --msbands-hi 30</code>.</li>
+<li>You want MS on the 6 LOWEST? Simpler <code>--msbands 6</code> (or
+<code>--msbands-lo 0 --msbands-hi 5</code> — the same).</li>
+</ul>
+<p>Mnemonic: <code>--msbands</code> = "from the bottom up to",
+<code>--msbands-lo/-hi</code> = "from..to". How many bands you actually
+have for a given mode/samplerate is shown by <code>--verbose</code> (the
+"active SFBs" field).</p>
+<h2 id="2-cutoff-of-the-aac-core-when-sbr-is-active">2. Cutoff of the
+AAC core when SBR is active</h2>
+<p>The standard <code>-w/--bandwidth</code> in FDK is IGNORED when SBR
+is active (HE-AAC v1/v2) — because <code>sbrEncoder_Init()</code>
+overrides the bandwidth with a value from the SBR table.</p>
+<table>
+<thead>
+<tr class="header">
+<th>Switch</th>
+<th>Values</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>--core-cutoff &lt;hz&gt;</code></td>
+<td>0 = default, &gt;0 = Hz</td>
+<td>0</td>
+<td>Forces the AAC core bandwidth IN Hz even under SBR. Resistant to
+being overridden by SBR.</td>
+</tr>
+</tbody>
+</table>
+<p>Example (your case — 7.5 kHz of core at HE-AAC v2 48 kbps, where the
+table gives less):</p>
+<pre><code>fdkaac-franken-x64.exe -p 29 -b 48000 --core-cutoff 7500 -o out.m4a in.wav</code></pre>
+<p>Verified: <code>--core-cutoff 7500</code> -&gt; effective bandwidth
+7500 Hz; stock <code>-w 7500</code> under SBR stays 8613 Hz
+(ignored).</p>
+<p>NOTE: you police the core limits yourself. The max is the core
+Nyquist (<code>sr/2</code>), and with <strong>dual-rate SBR the target
+samplerate is divided by 2</strong> — keep that in mind when choosing
+values.</p>
+<h2 id="3-density--precision-of-sbr-data">3. Density / precision of SBR
+data</h2>
+<p>Overrides the settings from the SBR tuning table (after it is
+loaded).</p>
+<table>
+<thead>
+<tr class="header">
+<th>Switch</th>
+<th>Values</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>--sbr-start &lt;n&gt;</code></td>
+<td>-1 def, 0..15</td>
+<td>-1</td>
+<td><code>bs_start_freq</code> index (start of the SBR band).</td>
+</tr>
+<tr class="even">
+<td><code>--sbr-stop &lt;n&gt;</code></td>
+<td>-1 def, 0..13</td>
+<td>-1</td>
+<td><code>bs_stop_freq</code> index (end of the SBR band).</td>
+</tr>
+<tr class="odd">
+<td><code>--sbr-freqscale &lt;n&gt;</code></td>
+<td>-1 def, 0..3</td>
+<td>-1</td>
+<td>Frequency grouping (0 = linear, higher = finer log).</td>
+</tr>
+<tr class="even">
+<td><code>--sbr-alterscale &lt;n&gt;</code></td>
+<td>-1 def, 0/1</td>
+<td>-1</td>
+<td>Alternative scale resolution.</td>
+</tr>
+<tr class="odd">
+<td><code>--sbr-noise-bands &lt;n&gt;</code></td>
+<td>-1 def, 1..5</td>
+<td>-1</td>
+<td>Number of SBR noise bands (density of the noise description).</td>
+</tr>
+<tr class="even">
+<td><code>--sbr-amp-res &lt;n&gt;</code></td>
+<td>-1 def, 0/1</td>
+<td>-1</td>
+<td>Envelope amplitude resolution: 0 = 1.5 dB, 1 = 3.0 dB.</td>
+</tr>
+<tr class="odd">
+<td><code>--sbr-data-extra &lt;n&gt;</code></td>
+<td>-1 def, 0/1</td>
+<td>-1</td>
+<td>Write extra SBR header data.</td>
+</tr>
+<tr class="even">
+<td><code>--sbr-num-env &lt;1|2|4&gt;</code></td>
+<td>-1 off</td>
+<td>-1</td>
+<td>Number of envelopes per frame. FORCES a static time grid (ignores
+the transient detector). More = better temporal resolution of the upper
+band, worse on attacks. (8 exceeds the standard grid — rejected.)</td>
+</tr>
+<tr class="odd">
+<td><code>--sbr-freqres-fixfix &lt;0|1&gt;</code></td>
+<td>-1 off</td>
+<td>-1</td>
+<td>Frequency resolution of the FIXFIX envelope (0 low, 1 high).</td>
+</tr>
+<tr class="even">
+<td><code>--sbr-stereo-mode &lt;0..3&gt;</code></td>
+<td>-1 off</td>
+<td>-1</td>
+<td>SBR stereo mode: 0 mono, 1 LR (full separation of the upper band), 2
+coupling (economical, shared envelope + level), 3 switch-LRC (by default
+the coder chooses per-frame). Force 1 for max separation, 2 for
+economy.</td>
+</tr>
+<tr class="odd">
+<td><code>--sbr-invf &lt;0..3&gt;</code></td>
+<td>-1 auto</td>
+<td>-1</td>
+<td>Force SBR inverse filtering: 0 off, 1 low, 2 mid, 3 high. Normally
+driven by the tonality estimator. Higher = stronger "whitening" of tonal
+SBR (less metallicness at the cost of detail).</td>
+</tr>
+<tr class="even">
+<td><code>--sbr-noise-floor-offset &lt;n&gt;</code></td>
+<td>-128 off</td>
+<td>-128</td>
+<td>SBR noise floor offset (small integer). Larger = more filling noise
+in the SBR reconstruction.</td>
+</tr>
+</tbody>
+</table>
+<p>NOTE: <code>--sbr-start</code>/<code>--sbr-stop</code> are validated
+BY FDK — an incorrect start/stop COMBINATION (wrong number of master
+bands) will give "encoder initialization failed". This is a limitation
+of SBR itself, not a bug. Choose pairs (e.g. for 64k stereo start=5
+stop=9, start=8 stop=14 work).</p>
+<h2 id="4-parametric-stereo-he-aac-v2">4. Parametric Stereo (HE-AAC
+v2)</h2>
+<p>PS describes stereo with a few parameters (IID/ICC...). Here you can
+control them, even at the cost of the stereo image.</p>
+<table>
+<thead>
+<tr class="header">
+<th>Switch</th>
+<th>Values</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>--ps &lt;n&gt;</code></td>
+<td>-1 auto, 0 off, 1 on</td>
+<td>-1</td>
+<td>Force sending the PS IID parameter. <code>0</code> = never (flattens
+the stereo image), <code>1</code> = always. Overrides the
+loudness-difference heuristic.</td>
+</tr>
+<tr class="even">
+<td><code>--ps-iid-quant &lt;n&gt;</code></td>
+<td>-1 def, 0 coarse, 1 fine</td>
+<td>-1</td>
+<td>IID quantization grid: coarse vs. fine.</td>
+</tr>
+<tr class="odd">
+<td><code>--ps-icc &lt;n&gt;</code></td>
+<td>-1 auto, 0 off, 1 on</td>
+<td>-1</td>
+<td>Force ICC (Interchannel Coherence — channel similarity/coherence)
+on/off.</td>
+</tr>
+<tr class="even">
+<td><code>--ps-icc-mode &lt;n&gt;</code></td>
+<td>-1 def, 0/1</td>
+<td>-1</td>
+<td>ICC rotation mode: 0 = ROT_A, 1 = ROT_B.</td>
+</tr>
+</tbody>
+</table>
+<p>NOTE about PS: FDK codes IID (loudness differences) and ICC
+(coherence). IPD/OPD (phase differences) are NOT supported in the FDK
+encoder — the code literally writes zeros
+(<code>ps_encode.cpp: "IPD OPD not supported right now"</code>). You
+cannot expose them without writing interchannel phase analysis from
+scratch.</p>
+<h2 id="5-noise-substitutionshaping--tns--pns--afterburner">5. Noise
+substitution/shaping — TNS / PNS / afterburner</h2>
+<p>What, at medium bitrates, is replaced by noise or resynthesized.</p>
+<table>
+<thead>
+<tr class="header">
+<th>Switch</th>
+<th>Values</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>--tns-mask &lt;n&gt;</code></td>
+<td>-1 def (0xF), 0..15</td>
+<td>-1</td>
+<td>TNS enable mask (bitwise, per block type).</td>
+</tr>
+<tr class="even">
+<td><code>--tns-order &lt;n&gt;</code></td>
+<td>-1 def, 1..12</td>
+<td>-1</td>
+<td>Max. TNS filter order (short blocks additionally capped to 5).</td>
+</tr>
+<tr class="odd">
+<td><code>--pns &lt;n&gt;</code></td>
+<td>-1 def, 0/1</td>
+<td>-1</td>
+<td>Perceptual Noise Substitution on/off. NOTE: FDK forces PNS=off when
+SBR or VBR is active.</td>
+</tr>
+<tr class="even">
+<td><code>--pns-start &lt;hz&gt;</code></td>
+<td>-1 def, Hz</td>
+<td>-1</td>
+<td>PNS start frequency. Lower = more of the spectrum replaced by
+noise.</td>
+</tr>
+<tr class="odd">
+<td><code>--force-pns</code></td>
+<td>flag</td>
+<td>off</td>
+<td>Bypass the low-bitrate gate for PNS.</td>
+</tr>
+<tr class="even">
+<td><code>--afterburner &lt;n&gt;</code></td>
+<td>0/1 (also stock <code>-a</code>)</td>
+<td>1</td>
+<td>Afterburner (more precise quantization).</td>
+</tr>
+</tbody>
+</table>
+<p>IMPORTANT about PNS at low bitrate: FDK has a tuning table
+(<code>levelTable</code>) that COMPLETELY disables PNS below ~28 kbps
+(the bitrate row 0-27999 = all zeros for every samplerate). That is why
+at 24 kbps <code>--pns</code>/<code>--pns-start</code> do NOTHING (the
+audio sounds "like MP3/MDCT"), while at 64 kbps the difference is large.
+<code>--force-pns</code> bypasses this gate (uses the first active row
+of the table), so PNS also works at 24k. FDK limitation: PNS still
+requires TNS enabled and a non-VBR mode — otherwise it is zeroed higher
+up in the chain (we can't do anything about it without a deeper
+rebuild).</p>
+<h2 id="6-masking--ath">6. Masking / ATH</h2>
+<table>
+<thead>
+<tr class="header">
+<th>Switch</th>
+<th>Values</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>--ath-scale &lt;n&gt;</code></td>
+<td>1..~4096 (Q8)</td>
+<td>256</td>
+<td>Masking threshold scale in Q8 (256 = x1.0). <code>&gt;256</code>
+raises the thresholds (more noise, fewer bits per band),
+<code>&lt;256</code> lowers them (cleaner, more bits). Works in FDK's
+ld64 domain as an additive log2 offset.</td>
+</tr>
+<tr class="even">
+<td><code>--spread-mask &lt;n&gt;</code></td>
+<td>Q8, &gt;=0</td>
+<td>-1 (off)</td>
+<td>Scales the spreading of masking between bands. <code>&lt;256</code>
+= less masking = more detail. Biggest effect where bits are limited
+(96-192k).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="what-really-helps-at-low-and-medium-bitrate-10-144-kbps">What
+really helps at low and medium bitrate (10-144 kbps)</h3>
+<p>A common question: can you still squeeze something out of coding
+accuracy/efficiency (Huffman, quantization iterations, etc.)? The honest
+answer after reviewing the FDK code:</p>
+<ul>
+<li>Huffman coding (section merging, codebook selection in
+<code>dyn_bits.cpp</code>) is already optimal (greedy section merging
+giving min. bits). There is no meaningful knob there — and exposing it
+would only worsen the result.</li>
+<li>The quantization iteration loop (<code>maxIterations</code>) is a
+RESCUE mechanism for bit shortage; increasing it does nothing (details
+in the manual, chapter 9a).</li>
+<li>Internal thresholds (minSnr adaptation, <code>bits2PeFactor</code>)
+are fixed-point arithmetic with hard ranges — moving them risks
+instability, not improvement.</li>
+</ul>
+<p>The REAL set of quality levers for 10-144 kbps is ALREADY
+exposed:</p>
+<ul>
+<li><code>--ath-scale &lt;256</code> — globally lower the masking
+threshold (more detail for bits).</li>
+<li><code>--spread-mask &lt;256</code> — less inter-band masking (more
+bands coded).</li>
+<li><code>--ms-precision &gt;256</code> — shallower holes in the MS
+bands.</li>
+<li><code>--is-aggression</code> — control intensity stereo (crucial at
+low bitrate).</li>
+<li><code>--force-pns</code> + <code>--pns-start</code> — noise control
+at very low bitrate.</li>
+<li>under HE-AAC: <code>--sbr-invf</code>,
+<code>--sbr-noise-floor-offset</code>, <code>--speech</code>
+(speech).</li>
+</ul>
+<p>This is not missing functionality — these are the same levers that
+professional tuning uses, just manually. Start with
+<code>--ath-scale</code> and <code>--spread-mask</code>, one at a
+time.</p>
+<h2 id="7-bias-of-shortlong-block-switching-any-profile">7. Bias of
+short/long block switching (any profile)</h2>
+<table>
+<thead>
+<tr class="header">
+<th>Switch</th>
+<th>Values</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>--block-bias &lt;n&gt;</code></td>
+<td>0..255</td>
+<td>-1 (off)</td>
+<td>Shifts the short/long decision threshold. 128 = encoder default (no
+change), &gt;128 favors short blocks (more "transient"), &lt;128 favors
+long ones, 0 = practically only long.</td>
+</tr>
+</tbody>
+</table>
+<p>IMPORTANT: <code>--block-bias</code> always produces a
+standard-compliant stream (it shifts the attack-detection threshold, it
+doesn't forcibly impose a block type). It replaced the old
+<code>--allshort</code>/<code>--alllong</code>, which created an ILLEGAL
+stream (hard forcing of the short window without recomputing
+SFB/grouping -&gt; decoders rejected it, Winamp "skipped like on a
+scratched disc"). If you want maximum long blocks:
+<code>--block-bias 0</code>; maximum short:
+<code>--block-bias 255</code>.</p>
+<h2 id="8-ms-decision-bias-honestly-a-tool-with-a-weak-effect">8. MS
+decision bias (honestly: a tool with a WEAK effect)</h2>
+<table>
+<thead>
+<tr class="header">
+<th>Switch</th>
+<th>Values</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>--ms-bias &lt;n&gt;</code></td>
+<td>0..255 (Q8)</td>
+<td>-1 (off)</td>
+<td>Shifts the L/R vs MS decision threshold. Q8, 128 = +0.5 in FDK's
+ld64 units. &gt;0 = MS more eager. Reacts already from ~32 (after scale
+recalibration).</td>
+</tr>
+</tbody>
+</table>
+<p>HONESTLY about <code>--ms-bias</code> — this is the weakest tool in
+the whole set, and now we know why "it does little". MS (mid/side) is a
+LOSSLESS transform: mid=L+R, side=L-R reconstructs exactly back to L/R.
+Enabling/disabling MS on a given band does NOT change the sound — it
+only changes HOW MANY BITS the encoding takes. The encoder chooses a
+near-optimal decision per band anyway; <code>--ms-bias</code> only
+shifts a few BORDERLINE bands. Measurement (L/R correlation after
+decoding, ADTS size): effect on the order of &lt;0.1% of the size and
+correlation changes in the 4th decimal place.</p>
+<p>Technical note: in the previous version the bias scale was ~256x too
+weak (multiplier &lt;&lt;15 instead of &lt;&lt;23) — hence "128 did
+nothing, only 2048 moved something". Now 128 = a real +0.5 ld64 as in
+the description, so it reacts from ~32. But even a correctly scaled bias
+inherently has a small impact (see above).</p>
+<p>Want to REALLY control MS? Use the hard switches, not the bias:</p>
+<ul>
+<li><code>--msmask 0</code> — DISABLE MS entirely (pure, independent
+L/R). This is the right choice for center-cancel / vocal removal (zero
+channel mixing by the coder).</li>
+<li><code>--msmask 1</code> — force MS on all bands (max bit
+economy).</li>
+<li><code>--msbands</code> / <code>--msbands-lo/-hi</code> — restrict MS
+to selected bands. Measurement: msmask 0 vs 1 gives ~900 B difference on
+a 2s sample; ms-bias only ~2 B.</li>
+</ul>
+<h2 id="9-quasi-constrained-vbr-cbr-engine--wider-breathing">9.
+Quasi-constrained VBR (CBR engine + wider breathing)</h2>
+<p>IMPORTANT: without these switches, CBR is 100% UNCHANGED (verified:
+bit-identical to the original binary). You enable them deliberately.</p>
+<p>How AAC breathes: even in CBR, frames borrow from the bit-reservoir,
+so one frame can be ~122 kbps and the next ~141, as long as the average
+= target. These knobs widen/narrow that breathing.</p>
+<p>HARD CEILING for everything: an AAC frame holds MAX 6144 bits per
+channel (=768 bytes/channel); stereo =&gt; 12288 bits/frame. At 44100 Hz
+one frame = 1024 samples = ~23.2 ms, so bits/frame = kbps * 23.22. (E.g.
+128k stereo: average ~2972 bits/frame; ceiling 12288.)</p>
+<table>
+<thead>
+<tr class="header">
+<th>Switch</th>
+<th>Values</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>--vbr-reservoir &lt;bits&gt;</code></td>
+<td>0..(6144*channels - average)</td>
+<td>-1 (off)</td>
+<td>Bit-reservoir size. More = wider frame spread around the average.
+min 0 (stick to the target tightly). Auto-clamped to the ceiling - you
+can't overdo it. Safe start: 2-3x default.</td>
+</tr>
+<tr class="even">
+<td><code>--peak-bitrate &lt;bps&gt;</code></td>
+<td>&gt; target</td>
+<td>-1 (off)</td>
+<td>Allows short peaks up to this value while keeping the average. Set
+ABOVE <code>-b</code> (e.g. -b 128000 --peak-bitrate 160000). Below the
+target it is ignored.</td>
+</tr>
+<tr class="odd">
+<td><code>--max-bits-frame &lt;bits&gt;</code></td>
+<td>average..12288(st.)</td>
+<td>-1 (off)</td>
+<td>Hard ceiling of bits in ONE frame. Must be &gt;= average and &lt;=
+6144*channels (otherwise clamped). Reasonable cap ~1.5x average (~4500
+for 128k st.). Too low = starves loud frames (audible).</td>
+</tr>
+<tr class="even">
+<td><code>--min-bits-frame &lt;bits&gt;</code></td>
+<td>0..average</td>
+<td>-1 (off)</td>
+<td>Hard floor of bits/frame. A higher floor wastes bits on silence.
+Leave at 0 unless experimenting.</td>
+</tr>
+<tr class="odd">
+<td><code>--bitres-mode &lt;n&gt;</code></td>
+<td>0/1/2</td>
+<td>-1 (def)</td>
+<td>Reservoir mode: 0 full (like default), 1 reduced, 2 disabled (rigid,
+closest to hard per-frame CBR).</td>
+</tr>
+</tbody>
+</table>
+<p>HOW TO SET IT OPTIMALLY (for the less experienced - so you don't
+overdo it):</p>
+<ul>
+<li>Safe quasi-CVBR ~128k stereo:
+<code>-b 128000 --peak-bitrate 160000 --vbr-reservoir 6000</code>.</li>
+<li>Do NOT set <code>--max-bits-frame</code> BELOW the average or
+<code>--min-bits-frame</code> ABOVE the average - that fights the target
+and ruins quality.</li>
+<li><code>--vbr-reservoir</code> is auto-clamped to the ceiling, so it's
+safe to experiment.</li>
+<li>Measured for real (4s variable signal, 128k stereo): CBR default
+spread 95-167 kbps; with
+<code>--vbr-reservoir 8000 --peak-bitrate 192000</code> spread 36-158
+kbps (breathes harder, average held); <code>--bitres-mode 2</code>
+spread 127.8-128.2 (rigid). All fully decodable.</li>
+<li>Limitation: this is a CBR+reservoir engine, not true ABR like LAME.
+Swings are moderate (6144 bits/channel limit), but this is that "light
+flight" of AAC.</li>
+</ul>
+<h2 id="10-audiophile--extreme-opt-in-beyond-the-typical-range">10.
+Audiophile / extreme (opt-in, beyond the typical range)</h2>
+<table>
+<thead>
+<tr class="header">
+<th>Switch</th>
+<th>Values</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>--uncap-bandwidth</code></td>
+<td>flag</td>
+<td>off</td>
+<td>Remove the hard 20 kHz core cap. <code>--core-cutoff</code> can then
+reach all the way to Nyquist.</td>
+</tr>
+<tr class="even">
+<td><code>--is-aggression &lt;0..100&gt;</code></td>
+<td>0..100</td>
+<td>-1 (off)</td>
+<td>IS aggression slider (see section 1).</td>
+</tr>
+<tr class="odd">
+<td><code>--force-pns</code></td>
+<td>flag</td>
+<td>off</td>
+<td>PNS below the ~28 kbps gate (see section 5).</td>
+</tr>
+<tr class="even">
+<td><code>--unlock-bitrate</code></td>
+<td>flag</td>
+<td>off</td>
+<td>Remove the LOWER bitrate threshold. Allows extremely low: 8k HE-AAC
+stereo, 6k LC. IMPORTANT: in this mode <code>-b</code> is taken
+LITERALLY as bps (without the nu774 x1000 convention), so
+<code>-b 6000</code> = 6000 bps. The upper ceiling 6144*channels stays
+(hard AAC limit). Residual floor ~10 kbps = the minimum of AAC
+headers.</td>
+</tr>
+<tr class="odd">
+<td><code>--speech</code></td>
+<td>flag</td>
+<td>off</td>
+<td>SBR tuning mode for human SPEECH (different inverse-filtering
+thresholds, noise level, no parametric coding). Applies to HE-AAC (SBR);
+LC has no separate speech mode. For pure speech at low bitrate.</td>
+</tr>
+<tr class="even">
+<td><code>--spread-mask &lt;n&gt;</code></td>
+<td>Q8, &gt;=0</td>
+<td>-1 (off)</td>
+<td>Scales the spreading of masking between bands. <code>&lt;256</code>
+= LESS masking = more detail (equivalent to loosening tone-masks-noise).
+Biggest effect where bits are limited (96-192k). 256=no change. Combine
+with <code>--ath-scale &lt;256</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>BANDWIDTH ABOVE 20 kHz (audiophile): FDK has a hardcoded cap
+<code>min(20000, sr/2)</code> on the core bandwidth — even with a 96 kHz
+input and high bitrate, nothing above 20 kHz is actually coded (your
+suspicion was correct). <code>--uncap-bandwidth</code> lifts this cap;
+then <code>--core-cutoff</code> controls the bandwidth all the way up to
+sr/2.</p>
+<p>Measured (96 kHz input, LC 400k, broadband noise):</p>
+<ul>
+<li>without uncap, <code>--core-cutoff 40000</code>: verbose 20000 Hz,
+energy &gt;20 kHz ~= 0%.</li>
+<li><code>--core-cutoff 40000 --uncap-bandwidth</code>: verbose 40000
+Hz, energy 20-24 kHz ~10%, 24-32 kHz ~20%, 32-44 kHz ~20% — full band up
+to 40 kHz actually coded.</li>
+</ul>
+<p>Audiophile preset (full bandwidth + manual masking, for 190+
+kbps):</p>
+<pre><code>fdkaac-franken-x64.exe -p 2 -b 320000 --uncap-bandwidth --core-cutoff 40000 \
+    --ath-scale 200 -o out.m4a in96k.wav</code></pre>
+<p><code>--ath-scale &lt;256</code> lowers the masking thresholds
+(cleaner, more bits for detail) — sensible when you have a large bitrate
+margin. Note: bandwidth &gt;20 kHz and extreme settings may be rejected
+by some decoders (outside the typical spec) — a conscious opt-in.</p>
+<hr />
+<h2
+id="11-mp4m4a-container--which-boxes-are-necessary-and-what-can-be-cut">11.
+MP4/M4A container — which boxes are necessary, and what can be cut</h2>
+<p>An .m4a file is a set of nested "boxes" (atoms). Verified what is
+what:</p>
+<p>MANDATORY (without them the file is UNPLAYABLE — there are no
+switches for them): <code>ftyp</code>, <code>mdat</code> (raw audio
+data), and the skeleton <code>moov</code> → <code>mvhd</code> +
+<code>trak</code> → <code>tkhd</code> → <code>mdia</code>
+(<code>mdhd</code>/<code>hdlr</code>/<code>minf</code> →
+<code>smhd</code>/<code>dinf</code>/<code>stbl</code> with the tables
+<code>stsd</code>/<code>stts</code>/<code>stsc</code>/<code>stsz</code>/<code>stco</code>).
+This is the minimal file map required by the ISO standard — every
+decoder needs it to even find and play the sound. Cutting them makes no
+sense (result: a corrupt file).</p>
+<p>OPTIONAL (can be disabled) — the entire block <code>udta</code> →
+<code>meta</code> → <code>ilst</code>, i.e.:</p>
+<ul>
+<li>the encoder identification tag (<code>©too</code>, now "PompAAC
+based on …"),</li>
+<li><code>iTunSMPB</code> — encoder delay data for seamless (gapless)
+playback,</li>
+<li>all tags (title, artist, album, etc.).</li>
+</ul>
+<table>
+<thead>
+<tr class="header">
+<th>Switch</th>
+<th>Works on</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>--no-tool-tag</code></td>
+<td>.m4a</td>
+<td>Do not write the encoder identification tag (<code>©too</code>). The
+rest of the tags and gapless stay.</td>
+</tr>
+<tr class="even">
+<td><code>--minimal-moov</code></td>
+<td>.m4a</td>
+<td>The smallest legal .m4a: omits the ENTIRE <code>udta</code>/metadata
+block (encoder tag + gapless iTunSMPB + all tags). The playback skeleton
+stays intact.</td>
+</tr>
+</tbody>
+</table>
+<p>How much it saves (2 s, 128k stereo, measured): default ~34381 B →
+<code>--no-tool-tag</code> ~34297 B (−84) → <code>--minimal-moov</code>
+~34048 B (−333). These are small numbers — the MP4 overhead is mostly
+the mandatory skeleton, which can't be removed. Want truly zero
+container overhead? Use raw ADTS: <code>-f 2 -o out.aac</code> (a stream
+without any boxes, but also without tags and gapless).</p>
+<p>NOTE on gapless: <code>--minimal-moov</code> removes iTunSMPB, so
+when joining tracks micro-gaps may appear (the encoder delay won't be
+signaled). For ordinary listening this doesn't matter; for "gapless"
+albums leave the defaults.</p>
+<hr />
+<h2 id="12-legend-for-reading---verbose">12. Legend for reading
+<code>--verbose</code></h2>
+<p><code>--verbose</code> prints RAW values (without hints in
+parentheses, so as not to clutter). Below is what the non-obvious ones
+mean:</p>
+<table>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>How to read it</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>AOT (profile)</code></td>
+<td>2=AAC-LC, 5=HE-AAC, 29=HE-AAC v2, 23=AAC-LD, 39=AAC-ELD.</td>
+</tr>
+<tr class="even">
+<td><code>bitrate-mode</code></td>
+<td>0=CBR, 1..5=VBR (higher=better).</td>
+</tr>
+<tr class="odd">
+<td><code>channel-mode</code></td>
+<td>1=mono, 2=stereo (for HE-AAC v2 the core is mono, stereo is done by
+PS).</td>
+</tr>
+<tr class="even">
+<td><code>core bandwidth</code></td>
+<td>Upper frequency of the AAC core. In parentheses the SOURCE:
+<code>from -w</code>, <code>from --core-cutoff</code>, or
+<code>auto</code>. Under SBR this is only the core — SBR plays
+higher.</td>
+</tr>
+<tr class="odd">
+<td><code>final BW (AAC+SBR)</code></td>
+<td>Shown only when SBR is active: approximate UPPER frequency of the
+whole signal (core + SBR), computed from the
+<code>sbr stop freq index</code>. This is the equivalent of
+<code>core bandwidth</code>, but for the full HE-AAC band.</td>
+</tr>
+<tr class="even">
+<td><code>signaling-mode</code></td>
+<td>Way of signaling SBR/PS: 0=implicit, 1=explicit backward-compat,
+2=explicit hierarchical, auto=the library chooses.</td>
+</tr>
+<tr class="odd">
+<td><code>SBR mode</code></td>
+<td>Internal SBR mode (-1/0 when unused).</td>
+</tr>
+<tr class="even">
+<td><code>sbr-ratio</code></td>
+<td>1=downsampled (single-rate), 2=dual-rate (core at half the
+frequency).</td>
+</tr>
+<tr class="odd">
+<td><code>sbr amp res</code></td>
+<td>0=1.5 dB, 1=3.0 dB (envelope amplitude resolution).</td>
+</tr>
+<tr class="even">
+<td><code>granule/frame length</code></td>
+<td>Frame length in samples (1024 for LC, 512/480 for LD/ELD).</td>
+</tr>
+<tr class="odd">
+<td><code>codec delay</code></td>
+<td>Codec delay in samples/channel (total and the core alone). For
+gapless.</td>
+</tr>
+<tr class="even">
+<td><code>IS corr threshold</code> / <code>IS L/R ratio</code></td>
+<td>Thresholds on the Q8 scale: 256 = 1.0. A lower correlation threshold
+= intensity stereo MORE eager (counterintuitively).</td>
+</tr>
+<tr class="odd">
+<td><code>IS min contiguous SFBs</code></td>
+<td>How many adjacent bands must "agree" before IS turns on.</td>
+</tr>
+<tr class="even">
+<td><code>TNS mask</code></td>
+<td>Bitmask 0x0..0xF of which TNS filters are active.</td>
+</tr>
+<tr class="odd">
+<td><code>MS/IS bands: auto up to N</code></td>
+<td>Upper band index up to which the tool may operate.</td>
+</tr>
+<tr class="even">
+<td><code>franken overrides applied</code></td>
+<td>List of switches that in THIS run deviate from pure FDK (or
+"none").</td>
+</tr>
+</tbody>
+</table>
+<p>Q8 values (like <code>IS corr threshold</code>,
+<code>--ms-precision</code>, <code>--ms-bias</code>,
+<code>--ath-scale</code>, <code>--spread-mask</code>) are fixed-point
+numbers where 256 = 1.0; e.g. 243 means 243/256 ≈ 0.95.</p>
+<hr />
+<h2 id="13-reference-tables-from-the-fdk-tuning-tables">13. Reference
+tables (from the FDK tuning tables)</h2>
+<p>Three orientation tables, so you can consciously choose
+<code>--msbands</code>, <code>--sbr-start/stop</code> and
+<code>-w</code>. The values are computed from the tables in the FDK
+code; they are APPROXIMATE (the SFB grid is stepped), but they show the
+right order of magnitude.</p>
+<h3 id="table-1--approximate-upper-band-frequency-sfb-hz">Table 1 —
+approximate upper band frequency (SFB) [Hz]</h3>
+<p>Bands numbered from the bottom (0=bass). Shown every 4th band; the
+last row = the number of bands and the Nyquist frequency. Useful for
+<code>--msbands</code>/<code>--isbands</code>/<code>--msbands-lo/-hi</code>.</p>
+<table>
+<thead>
+<tr class="header">
+<th style="text-align: right;">SFB</th>
+<th style="text-align: right;">16 kHz</th>
+<th style="text-align: right;">22.05 kHz</th>
+<th style="text-align: right;">32 kHz</th>
+<th style="text-align: right;">44.1 kHz</th>
+<th style="text-align: right;">48 kHz</th>
+<th style="text-align: right;">96 kHz</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">62</td>
+<td style="text-align: right;">43</td>
+<td style="text-align: right;">62</td>
+<td style="text-align: right;">86</td>
+<td style="text-align: right;">94</td>
+<td style="text-align: right;">188</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">312</td>
+<td style="text-align: right;">215</td>
+<td style="text-align: right;">312</td>
+<td style="text-align: right;">431</td>
+<td style="text-align: right;">469</td>
+<td style="text-align: right;">938</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">8</td>
+<td style="text-align: right;">562</td>
+<td style="text-align: right;">388</td>
+<td style="text-align: right;">562</td>
+<td style="text-align: right;">775</td>
+<td style="text-align: right;">844</td>
+<td style="text-align: right;">1688</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">12</td>
+<td style="text-align: right;">875</td>
+<td style="text-align: right;">646</td>
+<td style="text-align: right;">1000</td>
+<td style="text-align: right;">1378</td>
+<td style="text-align: right;">1500</td>
+<td style="text-align: right;">2438</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">16</td>
+<td style="text-align: right;">1250</td>
+<td style="text-align: right;">991</td>
+<td style="text-align: right;">1500</td>
+<td style="text-align: right;">2067</td>
+<td style="text-align: right;">2250</td>
+<td style="text-align: right;">3750</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">20</td>
+<td style="text-align: right;">1656</td>
+<td style="text-align: right;">1335</td>
+<td style="text-align: right;">2250</td>
+<td style="text-align: right;">3101</td>
+<td style="text-align: right;">3375</td>
+<td style="text-align: right;">5625</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">24</td>
+<td style="text-align: right;">2188</td>
+<td style="text-align: right;">1852</td>
+<td style="text-align: right;">3375</td>
+<td style="text-align: right;">4651</td>
+<td style="text-align: right;">5062</td>
+<td style="text-align: right;">8062</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">28</td>
+<td style="text-align: right;">2875</td>
+<td style="text-align: right;">2584</td>
+<td style="text-align: right;">5000</td>
+<td style="text-align: right;">6891</td>
+<td style="text-align: right;">7500</td>
+<td style="text-align: right;">12938</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">32</td>
+<td style="text-align: right;">3844</td>
+<td style="text-align: right;">3618</td>
+<td style="text-align: right;">7000</td>
+<td style="text-align: right;">9647</td>
+<td style="text-align: right;">10500</td>
+<td style="text-align: right;">24000</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">36</td>
+<td style="text-align: right;">5188</td>
+<td style="text-align: right;">5039</td>
+<td style="text-align: right;">9000</td>
+<td style="text-align: right;">12403</td>
+<td style="text-align: right;">13500</td>
+<td style="text-align: right;">36000</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">40</td>
+<td style="text-align: right;">7000</td>
+<td style="text-align: right;">7020</td>
+<td style="text-align: right;">11000</td>
+<td style="text-align: right;">15159</td>
+<td style="text-align: right;">16500</td>
+<td style="text-align: right;">48000</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">44</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">9647</td>
+<td style="text-align: right;">13000</td>
+<td style="text-align: right;">17916</td>
+<td style="text-align: right;">19500</td>
+<td style="text-align: right;">—</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">48</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">15000</td>
+<td style="text-align: right;">22050</td>
+<td style="text-align: right;">24000</td>
+<td style="text-align: right;">—</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;"><strong>number of bands /
+Nyquist</strong></td>
+<td style="text-align: right;">43 / 8000</td>
+<td style="text-align: right;">47 / 11025</td>
+<td style="text-align: right;">51 / 16000</td>
+<td style="text-align: right;">49 / 22050</td>
+<td style="text-align: right;">49 / 24000</td>
+<td style="text-align: right;">41 / 48000</td>
+</tr>
+</tbody>
+</table>
+<h3
+id="table-2--sbr-start-freq-index--approximate-crossover-frequency-hz">Table
+2 — SBR: start freq index → approximate crossover frequency [Hz]</h3>
+<p>This is the frequency from which SBR takes over the band above the
+AAC core (<code>--sbr-start</code>, index 0..15; lower = SBR starts
+lower = narrower core). "core" is the core frequency; with dual-rate the
+output is twice as high (e.g. core 24k → output 48k).</p>
+<table>
+<thead>
+<tr class="header">
+<th style="text-align: right;">start index</th>
+<th style="text-align: right;">core 16 kHz</th>
+<th style="text-align: right;">core 24 kHz</th>
+<th style="text-align: right;">core 32 kHz</th>
+<th style="text-align: right;">core 44.1 kHz</th>
+<th style="text-align: right;">core 48 kHz</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">2750</td>
+<td style="text-align: right;">2250</td>
+<td style="text-align: right;">2500</td>
+<td style="text-align: right;">1378</td>
+<td style="text-align: right;">1500</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">3000</td>
+<td style="text-align: right;">2625</td>
+<td style="text-align: right;">3000</td>
+<td style="text-align: right;">2067</td>
+<td style="text-align: right;">2250</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">3250</td>
+<td style="text-align: right;">3000</td>
+<td style="text-align: right;">3500</td>
+<td style="text-align: right;">2756</td>
+<td style="text-align: right;">3000</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">3500</td>
+<td style="text-align: right;">3375</td>
+<td style="text-align: right;">4000</td>
+<td style="text-align: right;">3445</td>
+<td style="text-align: right;">3750</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">3750</td>
+<td style="text-align: right;">3750</td>
+<td style="text-align: right;">4500</td>
+<td style="text-align: right;">4134</td>
+<td style="text-align: right;">4500</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">4000</td>
+<td style="text-align: right;">4125</td>
+<td style="text-align: right;">5000</td>
+<td style="text-align: right;">4823</td>
+<td style="text-align: right;">5250</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">4250</td>
+<td style="text-align: right;">4500</td>
+<td style="text-align: right;">5500</td>
+<td style="text-align: right;">5512</td>
+<td style="text-align: right;">6000</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">7</td>
+<td style="text-align: right;">4500</td>
+<td style="text-align: right;">4875</td>
+<td style="text-align: right;">6000</td>
+<td style="text-align: right;">6202</td>
+<td style="text-align: right;">6750</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">8</td>
+<td style="text-align: right;">4750</td>
+<td style="text-align: right;">5250</td>
+<td style="text-align: right;">6500</td>
+<td style="text-align: right;">6891</td>
+<td style="text-align: right;">7500</td>
+</tr>
+</tbody>
+</table>
+<p>Stop freq (<code>--sbr-stop</code>, 0..13) works analogously on the
+upper SBR boundary — a higher index = SBR reaches higher (closer to the
+output Nyquist). By default the library chooses both according to
+bitrate.</p>
+<h3
+id="table-3--aac-lc-approximate-cutoff--wauto-by-bitrate-per-channel-hz">Table
+3 — AAC-LC: approximate cutoff (<code>-w</code>/auto) by bitrate per
+channel [Hz]</h3>
+<p>When you don't provide <code>-w</code>, FDK picks the bandwidth from
+this table according to bitrate PER CHANNEL (stereo 128k = 64k/channel).
+The values are interpolated; the mono and stereo columns differ. Helps
+assess whether <code>-w</code> makes sense (providing a higher value
+than auto has an effect only if there are spare bits).</p>
+<table>
+<thead>
+<tr class="header">
+<th style="text-align: right;">bitrate/channel</th>
+<th style="text-align: right;">bandwidth (mono)</th>
+<th style="text-align: right;">bandwidth (stereo+)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">0–12 kbps</td>
+<td style="text-align: right;">3700</td>
+<td style="text-align: right;">5000</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">20 kbps</td>
+<td style="text-align: right;">6900</td>
+<td style="text-align: right;">9640</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">28 kbps</td>
+<td style="text-align: right;">9600</td>
+<td style="text-align: right;">13050</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">40 kbps</td>
+<td style="text-align: right;">12060</td>
+<td style="text-align: right;">14260</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">56 kbps</td>
+<td style="text-align: right;">13950</td>
+<td style="text-align: right;">15500</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">72 kbps</td>
+<td style="text-align: right;">14200</td>
+<td style="text-align: right;">16120</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">≥96 kbps</td>
+<td style="text-align: right;">17000</td>
+<td style="text-align: right;">17000</td>
+</tr>
+</tbody>
+</table>
+<p>Note: this table is SHARED for 32/44.1/48 kHz and higher — FDK
+indexes it by bitrate per channel, not samplerate (samplerate only
+affects the upper limit = Nyquist). For LC without SBR the real ceiling
+is ~17 kHz with auto; higher only via <code>-w</code> (with spare bits)
+or <code>--uncap-bandwidth</code> at sr≥96k.</p>
+<hr />
+<h2 id="examples">Examples</h2>
+<pre><code># Starting point — what the encoder set:
+fdkaac-franken-x64.exe -p 29 -b 48000 --verbose -o out.m4a in.wav
+
+# Quasi-constrained VBR ~128k (safe preset):
+fdkaac-franken-x64.exe -p 2 -b 128000 --peak-bitrate 160000 --vbr-reservoir 6000 -o out.m4a in.wav
+
+# Aggressive intensity stereo at 64k:
+fdkaac-franken-x64.exe -p 2 -b 64000 --is 1 --is-aggression 70 -o out.m4a in.wav
+
+# Force PNS at 24k (otherwise the FDK gate disables it):
+fdkaac-franken-x64.exe -p 2 -b 24000 --pns 1 --force-pns -o out.m4a in.wav
+
+# Audiophile full 40 kHz band from a 96 kHz input:
+fdkaac-franken-x64.exe -p 2 -b 320000 --uncap-bandwidth --core-cutoff 40000 -o out.m4a in96k.wav
+
+# MS on the 5 highest bands + shallower holes (not the lowest):
+fdkaac-franken-x64.exe -p 2 -b 128000 --msbands-lo 44 --msbands-hi 48 --ms-precision 448 -o out.m4a in.wav
+
+# Extremely low HE-AAC v2: 8000 bps stereo 48 kHz:
+fdkaac-franken-x64.exe -p 29 -b 8000 --unlock-bitrate -o out.m4a in48k.wav
+
+# SBR: full stereo separation LR + forced inverse filtering:
+fdkaac-franken-x64.exe -p 5 -b 96000 --sbr-stereo-mode 1 --sbr-invf 2 -o out.m4a in.wav
+
+# Your case: 7.5 kHz of core under HE-AAC v2 48k:
+fdkaac-franken-x64.exe -p 29 -b 48000 --core-cutoff 7500 -o out.m4a in.wav
+
+# Completely independent stereo (no MS/IS) on LC 128k:
+fdkaac-franken-x64.exe -p 2 -b 128000 --msmask 0 --is 0 -o out.m4a in.wav
+
+# MS only on the 6 lower bands:
+fdkaac-franken-x64.exe -p 2 -b 96000 --msmask 1 --msbands 6 -o out.m4a in.wav
+
+# Only short blocks + limited TNS:
+# Only long blocks (bias) + limited TNS:
+fdkaac-franken-x64.exe -p 2 -b 96000 --block-bias 0 --tns-order 2 -o out.m4a in.wav
+
+# More aggressive masking (thresholds x2) + earlier PNS:
+fdkaac-franken-x64.exe -p 2 -b 80000 --ath-scale 512 --pns 1 --pns-start 4000 -o out.m4a in.wav
+
+# Denser SBR noise description + more precise amplitude:
+fdkaac-franken-x64.exe -p 5 -b 64000 --sbr-noise-bands 5 --sbr-amp-res 0 -o out.m4a in.wav
+
+# HE-AAC v2 with PS disabled (flattened stereo):
+fdkaac-franken-x64.exe -p 29 -b 32000 --ps 0 -o out.m4a in.wav</code></pre>
+<hr />
+<h2 id="default-quality-vs-the-original-binary-fdkaac2exe">Default
+quality vs the original binary (fdkaac2.exe)</h2>
+<p>Verification (2026-07-21) whether franken's default settings = the
+original supplied binary (dBpoweramp R17, the same libfdk-aac version
+4.0.1 / package 2.0.3):</p>
+<ul>
+<li>AAC-LC: <strong>bit-identical</strong> (the same md5) — zero
+regressions.</li>
+<li>HE-AAC v1/v2: the bytes differ, BUT: the HE-AAC v2 spectrum is
+identical to 0.000 dB, and the HE-AAC v1 error relative to the original
+is practically the same as in the original (7.05e11 vs 7.05e11). The
+byte difference stems from a different compiler (mingw/gcc vs MSVC) and
+fixed-point rounding, NOT from worse quality. The audible SBR
+"otherness" is a different, equally correct implementation, not a
+quality loss.</li>
+</ul>
+<hr />
+<h2 id="tests-make-check">Tests (make check)</h2>
+<p>Upstream fdk-aac/nu774 have no unit tests (<code>make check</code> in
+them = a no-op). This project has its OWN functional test suite in
+<code>tests/check.sh</code>, run with:</p>
+<pre><code>make check</code></pre>
+<p>It checks (on the x64 + x86 binaries if present): completeness of the
+switches in --help, decodability of the stream for each switch (ffmpeg,
+0 errors), real operation of quasi-CVBR (CVBR breathes wider than the
+rigid bitres-mode2), verbose without -1 values, and NO REGRESSION
+(default CBR without franken flags = ADTS bit-identical to the original
+fdkaac2.exe). Requires ffmpeg + python3 (present in WSL). Exit 0 = OK, 1
+= errors, 77 = missing dependencies. Last result: 27/27 PASS.</p>
+<hr />
+<p>The sources with the applied patches live in
+<code>src-fdk-aac/</code> and <code>src-fdkaac/</code>. All changes in
+libfdk are wired through a single module
+<code>libAACenc/src/franken.{h,cpp}</code> (the global
+<code>g_franken</code> block, sentinels = FDK defaults), and the new
+<code>AACENC_PARAM</code>s (range <code>0xF0xx</code>) are exposed in
+<code>aacenc_lib.h</code>.</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> apt-get install <span class="at">-y</span> mingw-w64          <span class="co"># + autotools (autoconf/automake/libtool)</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="co"># --- libfdk-aac (x64) ---</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> src-fdk-aac <span class="kw">&amp;&amp;</span> <span class="ex">autoreconf</span> <span class="at">-i</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="ex">./configure</span> <span class="at">--host</span><span class="op">=</span>x86_64-w64-mingw32 <span class="at">--prefix</span><span class="op">=</span><span class="va">$PWD</span>/../inst-x64 <span class="dt">\</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">--enable-static</span> <span class="at">--disable-shared</span> CFLAGS=-O2 CXXFLAGS=-O2</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> <span class="at">-j</span> <span class="kw">&amp;&amp;</span> <span class="fu">make</span> install</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="co"># --- frontend (x64) ---</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> ../src-fdkaac <span class="kw">&amp;&amp;</span> <span class="ex">autoreconf</span> <span class="at">-i</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a><span class="va">PKG_CONFIG_PATH</span><span class="op">=</span><span class="va">$PWD</span>/../inst-x64/lib/pkgconfig <span class="ex">./configure</span> <span class="dt">\</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">--host</span><span class="op">=</span>x86_64-w64-mingw32 CFLAGS=<span class="st">&quot;-O2 -I</span><span class="va">$PWD</span><span class="st">/../inst-x64/include&quot;</span> <span class="dt">\</span></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>    LDFLAGS=<span class="st">&quot;-static -static-libgcc -L</span><span class="va">$PWD</span><span class="st">/../inst-x64/lib&quot;</span></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> <span class="at">-j</span>     <span class="co"># -&gt; fdkaac.exe</span></span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a><span class="co"># x86: the same with --host=i686-w64-mingw32 and a separate inst-x86 prefix.</span></span></code></pre></div>
+<h2 id="list-of-changed-fdk-files-mapped-to-points">List of changed FDK
+files (mapped to points)</h2>
+<ul>
+<li><code>libAACenc/src/franken.{h,cpp}</code> — new control
+module.</li>
+<li><code>libAACenc/include/aacenc_lib.h</code> — new
+<code>AACENC_PARAM</code> 0xF0xx.</li>
+<li><code>libAACenc/src/aacenc_lib.cpp</code> — SetParam dispatch +
+override of useMS/IS/PNS/ afterburner/cutoff + cutoff guard under SBR
+(after <code>sbrEncoder_Init</code>) + read-only GetParam mirrors for
+verbose (useTns/Pns/IS/MS, effective SBR).</li>
+<li><code>libAACenc/src/ms_stereo.cpp</code> — per-band MS control IN
+THE DECISION LOOP (mask
+<ul>
+<li>L/R-&gt;M/S butterfly synchronized; fixed the "left=center"
+artifact) + MS bias</li>
+<li>MS band range (--msbands-lo/-hi) + MS precision (--ms-precision,
+ld64 threshold).</li>
+</ul></li>
+<li><code>libAACenc/src/intensity.cpp</code> — IS band cap (consistent
+with the mask) + IS threshold bias (initIsParams: min_is_sfbs,
+corr_thresh, left_right_ratio) + --is-aggression.</li>
+<li><code>libAACenc/src/psy_configuration.cpp</code> — read-back of the
+SFB count + removal of the IS gate.</li>
+<li><code>libAACenc/src/bandwidth.cpp</code> — --uncap-bandwidth
+(removing the 20kHz cap).</li>
+<li><code>libAACenc/src/pnsparam.cpp</code> — PNS start override +
+--force-pns (bypass the table gate).</li>
+<li><code>libAACenc/src/aacenc.cpp</code> — TNS mask override +
+quasi-CVBR + --unlock-bitrate (removal of the lower bitrate floor in
+FDKaacEnc_LimitBitrate).</li>
+<li><code>libSBRenc/src/sbr_encoder.cpp</code> — SBR density override +
+--sbr-num-env (static framing) + --sbr-freqres-fixfix +
+--sbr-stereo-mode + --sbr-noise-floor-offset.</li>
+<li><code>libSBRenc/src/invf_est.cpp</code> — --sbr-invf (forced inverse
+filtering level).</li>
+<li><code>libSBRenc/src/ps_encode.cpp</code> — PS IID override +
+--ps-icc/--ps-icc-mode.</li>
+<li><code>libAACenc/src/aacenc_tns.cpp</code> — TNS order cap.</li>
+<li><code>libAACenc/src/pnsparam.cpp</code> — PNS start frequency
+override.</li>
+<li><code>libSBRenc/src/sbr_encoder.cpp</code> — SBR density/precision
+override + writing the effective SBR values to g_franken (for
+verbose).</li>
+<li><code>libSBRenc/src/ps_encode.cpp</code> — PS override (forcing IID
++ quantization mode).</li>
+<li><code>libAACenc/src/main.c</code>, <code>aacenc.c</code>,
+<code>aacenc.h</code> (frontend) — CLI switches, parsing, passing to
+SetParam, <code>--verbose</code> dump, help.</li>
+</ul>
+<hr />
+<hr />
+<h1 id="-wersja-polska-polish-version-below">🇵🇱 Wersja polska (Polish
+version below)</h1>
+<hr />
+<h1 id="franken-fdk-aac--laboratoryjnygeekowski-enkoder-aac-fdk">Franken
+FDK AAC — laboratoryjny/"geekowski" enkoder AAC (FDK)</h1>
+<p>Zbudowany na bazie <strong>libfdk-aac 2.0.3</strong>
+(mstorsjo/fdk-aac) + frontendu <strong>nu774/fdkaac 1.0.2</strong>, z
+doklejonymi przełącznikami CLI, które odslaniaja normalnie
+zahardkodowane, wewnętrzne decyzję enkodera FDK. Sluzy do ekstremalnego
+debugowania i eksperymentów z AAC/HE-AAC/HE-AAC v2.</p>
+<p>Binarki (statyczne, bez zewnętrznych DLL):</p>
+<ul>
+<li><code>fdkaac-franken-x64.exe</code> — Windows 64-bit (PE32+)</li>
+<li><code>fdkaac-franken-x86.exe</code> — Windows 32-bit (PE32)</li>
+</ul>
+<p>Wszystkie oryginalne opcje frontendu nu774
+(<code>-p/--profile</code>, <code>-b/--bitrate</code>,
+<code>-m/--bitrate-mode</code>, <code>-w/--bandwidth</code>,
+<code>-a/--afterburner</code>, <code>-s/--sbr-ratio</code>,
+<code>-f/--transport-format</code>, tagowanie itd.) działają jak
+wczesniej. Poniżej tylko NOWE przełączniki. Zobacz tez
+<code>fdkaac-franken-x64.exe --help</code>.</p>
+<p>UWAGA: to jest narzędzie "wiem-co-robię". Większość tych parametrów
+celowo pozwala wyjść poza to, co robi automatyka FDK — można nimi
+świadomie zepsuć obraz stereo, pasmo albo jakość. Sentinel
+<code>-1</code> (lub <code>0</code> dla <code>--core-cutoff</code>) =
+"zostaw domyślne zachowanie FDK".</p>
+<p>Autor: Michał Dziwisz. Konsultant merytoryczny: Patryk Faliszewski.
+Zbudowane na oprogramowaniu open source: libfdk-aac (Fraunhofer IIS)
+oraz frontend nu774/fdkaac.</p>
+<hr />
+<h2 id="spis-grup-opcji-tak-samo-pogrupowane-w---help">Spis grup opcji
+(tak samo pogrupowane w <code>--help</code>)</h2>
+<p>Opcje są uporządkowane tematycznie, z grubsza od najlatwiejszych do
+najbardziej geekowskich. Ta sama kolejność obowiazuje w
+<code>--help</code> (grupy A–E) i w sekcjach poniżej:</p>
+<ul>
+<li><strong>A. Zacznij tutaj (konsumenckie):</strong>
+<code>--verbose</code>, <code>--is-aggression</code>,
+<code>--speech</code>, <code>--uncap-bandwidth</code>,
+<code>--unlock-bitrate</code> — sekcje 0, 1, 2, 10.</li>
+<li><strong>B. Stereo:</strong> MS (<code>--msmask</code>,
+<code>--msbands</code>, <code>--msbands-lo/-hi</code>,
+<code>--ms-bias</code>, <code>--ms-precision</code>), IS
+(<code>--is</code>, <code>--isbands</code>, <code>--is-*</code>), PS
+(<code>--ps</code>, <code>--ps-iid-quant</code>, <code>--ps-icc</code>,
+<code>--ps-icc-mode</code>) — sekcje 1, 4, 8.</li>
+<li><strong>C. Pasmo i SBR:</strong> <code>--core-cutoff</code>,
+<code>--sbr-*</code> — sekcje 2, 3.</li>
+<li><strong>D. Maskowanie / szum / detal:</strong>
+<code>--ath-scale</code>, <code>--spread-mask</code>,
+<code>--tns-*</code>, <code>--pns</code>, <code>--pns-start</code>,
+<code>--force-pns</code> — sekcje 5, 6.</li>
+<li><strong>E. Bloki i bitrate:</strong> <code>--block-bias</code>,
+<code>--vbr-reservoir</code>, <code>--peak-bitrate</code>,
+<code>--max-bits-frame</code>, <code>--min-bits-frame</code>,
+<code>--bitres-mode</code> — sekcje 7, 9.</li>
+</ul>
+<p>Wskazowka: <code>--verbose</code> na koncu wypisuje sekcje "franken
+overrides applied" — dokładnie te przełączniki, które w danym
+uruchomieniu odbiegają od czystego FDK.</p>
+<hr />
+<h2 id="0-diagnostyka">0. Diagnostyka</h2>
+<h3 id="--verbose-1"><code>--verbose</code></h3>
+<p>Przed enkodowaniem wypluwa na stderr REALNE, wybrane przez enkoder
+parametry (nie tylko Twoje nadpisania): AOT, bitrate/tryb, samplerate,
+channel-mode, EFEKTYWNY cutoff rdzenia w Hz, afterburner, transport,
+signaling, oraz stan narzędzi kodujacych wybrany przez enkoder (TNS
+on/off, PNS on/off, Intensity stereo on/off, MS stereo on/off). Gdy SBR
+aktywny: sbr-ratio + efektywne start/stop freq index, freq scale, noise
+bands, amp res. Na koncu lista Twoich override'ow (-1/0 = nie ustawione,
+zostawione enkoderowi). Idealne, by poznać punkt wyjścia (np. domyślny
+cutoff HE-AAC v2 48k = 8613 Hz).</p>
+<hr />
+<h2 id="1-joint-stereo--ms--is--niezależne-stereo">1. Joint stereo — MS
+/ IS / niezależne stereo</h2>
+<p>FDK domyślnie sam decyduje per-pasmo o MS (mid/side) i IS
+(intensity). Tu można te decyzję nadpisac i wymusic ekstremalne
+konfiguracje.</p>
+<table>
+<thead>
+<tr class="header">
+<th>Switch</th>
+<th>Wartości</th>
+<th>Domyślnie</th>
+<th>Opis</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>--msmask &lt;n&gt;</code></td>
+<td>-1 auto, 0 off, 1 on</td>
+<td>-1</td>
+<td>Wymuś MS: <code>0</code> = wszystkie pasma L/R (kompletnie
+niezależne stereo), <code>1</code> = MS na wszystkich pasmach.</td>
+</tr>
+<tr class="even">
+<td><code>--msbands &lt;n&gt;</code></td>
+<td>-1 brak limitu, 0..N</td>
+<td>-1</td>
+<td>Maksymalny numer SFB, który może użyć MS (bierze N NAJNIŻSZYCH
+pasm). Powyżej — MS wyłączone.</td>
+</tr>
+<tr class="odd">
+<td><code>--msbands-lo &lt;n&gt;</code></td>
+<td>-1 off, 0..N</td>
+<td>-1</td>
+<td>POCZATEK (najniższy numer pasma SFB) zakresu, w którym dozwolone
+jest MS.</td>
+</tr>
+<tr class="even">
+<td><code>--msbands-hi &lt;n&gt;</code></td>
+<td>-1 off, 0..N</td>
+<td>-1</td>
+<td>KONIEC (najwyższy numer pasma SFB) zakresu MS. Używane razem z
+<code>--msbands-lo</code> jako para OD–DO. Pasma poza tym zakresem ida
+czystym L/R.</td>
+</tr>
+<tr class="odd">
+<td><code>--ms-precision &lt;n&gt;</code></td>
+<td>256..bez limitu (Q8)</td>
+<td>-1 (off)</td>
+<td>Precyzja pasm MS. <code>&gt;256</code> = płytsze dziury w spektrum
+MS (koder alokuje więcej bitow na ich opis, styl LAME -q). 256=bez
+zmian, 384~1.5x, 512~2x. Użyteczny efekt SLYSZALNY do ~600-800; wyżej
+prog uderza w twarda podłogę FDK (ld64 -0.515625) i przy CBR bity są
+tylko PRZESUWANE między pasmami (stały budzet), więc brzmienie przestaje
+sie zmieniac. Działa najlepiej gdy masz zapas bitow (&gt;=128k) lub w
+VBR.</td>
+</tr>
+<tr class="even">
+<td><code>--is &lt;n&gt;</code></td>
+<td>-1 auto, 0 off, 1 on</td>
+<td>-1</td>
+<td>Intensity stereo globalnie wł/wył.</td>
+</tr>
+<tr class="odd">
+<td><code>--isbands &lt;n&gt;</code></td>
+<td>-1 brak limitu, 0..N</td>
+<td>-1</td>
+<td>Maksymalna liczba SFB, które mogą użyć intensity. Powyżej — kodowane
+normalnie.</td>
+</tr>
+<tr class="even">
+<td><code>--is-aggression &lt;0..100&gt;</code></td>
+<td>0..100</td>
+<td>-1 (off)</td>
+<td>KONSUMENCKI suwak: jak bardzo enkoder ma isc w intensity stereo.
+Zaczynaj tu, zaawansowane <code>--is-*</code> zostaw.</td>
+</tr>
+<tr class="odd">
+<td><code>--is-min-sfbs &lt;n&gt;</code></td>
+<td>-1 def(6), 0..N</td>
+<td>-1</td>
+<td>(zaawansowane) Min. liczba ciaglych SFB, zanim IS sie włączy.</td>
+</tr>
+<tr class="even">
+<td><code>--is-corr-thresh &lt;n&gt;</code></td>
+<td>-1 def(243), Q8</td>
+<td>-1</td>
+<td>(zaawansowane) Prog korelacji L/R dla IS w Q8 (256=1.0).</td>
+</tr>
+<tr class="odd">
+<td><code>--is-lr-ratio &lt;n&gt;</code></td>
+<td>-1 def(179), Q8</td>
+<td>-1</td>
+<td>(zaawansowane) Prog balansu energii L/R dla IS w Q8 (256=1.0).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="intensity-stereo-w-praktyce-jak-tego-używać-nie-wzory">Intensity
+stereo w praktyce (jak tego używać, nie wzory)</h3>
+<p>Co to jest: intensity stereo (IS) w górnych pasmach porzuca osobne
+L/R i wysyla JEDNA obwiednię energii + informację o kierunku
+(panoramie). Ucho słabo lokalizuje wysokie tony, więc to oszczędza sporo
+bitow — ale za cena separacji stereo (szerokość sceny w górze pasma sie
+zwęża). Płaci sie za to zwłaszcza na materiale z realna różnica L/R w
+wysokich (blachy z jednej strony, efekty przestrzenne).</p>
+<p>FDK domyślnie jest bardzo OSTROŻNY z IS (stąd Twoja obserwacja "ledwo
+słychać różnice"). Powody są trzy i po to są te pokretla:</p>
+<ol type="1">
+<li>Bramka wpuszczenia IS: FDK w ogole rozważa IS tylko gdy
+<code>bitrate/pasmo &lt; 5</code>. Przy wyższych bitrate'ach IS jest w
+ogole niedopuszczone. <code>--is-aggression &gt;=1</code> zdejmuje te
+bramkę.</li>
+<li>Prog korelacji (<code>--is-corr-thresh</code>, Q8, 256=1.0, default
+243 ~= 0.95): oba kanały muszą byc do siebie podobne w danym pasmie w co
+najmniej ~95%, żeby IS sie włączył. To bardzo wysoko. Obniżasz -&gt; IS
+lapie czesciej, nawet gdy kanały mniej podobne. Np. 180 (~0.70) = dużo
+agresywniej. Za nisko = słyszalne przekłamania kierunku.</li>
+<li>Min. długość regionu (<code>--is-min-sfbs</code>, default 6): IS
+włącza sie dopiero na pasmie co najmniej 6 kolejnych SFB. Obniżasz do
+1-2 -&gt; IS lapie tez krótkie fragmenty.</li>
+</ol>
+<p>Zależność między nimi: żeby dany SFB poszedł w IS, MUSZA byc
+spełnione WSZYSTKIE naraz — bramka wpuszczenia ORAZ korelacja powyżej
+progu ORAZ region odpowiednio długi ORAZ kierunek stabilny. Dlatego samo
+obniżenie jednego progu często nic nie daje (inny nadal blokuje) — i
+dlatego zwykle nie widac różnicy manipulując tylko korelacja.
+<code>--is-aggression</code> rusza WSZYSTKIE naraz, spójnie.</p>
+<p>Jak ustawiac:</p>
+<ul>
+<li>Najprościej: <code>--is 1 --is-aggression 40</code> i słuchaj. Za
+malo IS -&gt; podnos do 70, 100. Za dużo (scena sie "skleja" w górze,
+artefakty kierunku) -&gt; zejdź.</li>
+<li>0 = domyślne FDK (praktycznie IS ledwo aktywne przy typowym
+bitrate).</li>
+<li>100 = maksimum: bramka zdjeta, korelacja luzna (~0.475), region od 1
+SFB, szeroka tolerancja kierunku. Duzo pasm w IS, mocno słyszalne,
+oszczędza bity.</li>
+<li>Ręczny tuning tylko gdy chcesz precyzji: ustaw
+<code>--is-aggression 0</code> i kreç <code>--is-corr-thresh</code>
+(glowny), potem <code>--is-min-sfbs</code>, na koncu
+<code>--is-lr-ratio</code>. Wartości --is-* NADPISUJA to co ustawil
+suwak agresywności.</li>
+<li>Diagnoza: <code>--verbose</code> pokazuje efektywne progi (IS corr
+threshold Q8, min SFBs), więc widzisz co realnie poszło do
+enkodera.</li>
+</ul>
+<p>Bias MS/IS (punkt 2): powyższe <code>--is-*</code> sterują tym KIEDY
+enkoder wybiera intensity stereo (progi decyzji z tabeli strojenia FDK),
+niezależnie od twardego wł/wył. <code>--msbands</code> ogranicza MS do
+dolnych pasm (poprawnie — maska i motylek L/R-&gt;M/S są
+zsynchronizowane, brak artefaktu "lewy=center, prawy=reszta").</p>
+<ul>
+<li>Kompletnie niezależne stereo: <code>--msmask 0 --is 0</code>.</li>
+<li>"Laboratoryjne" ograniczenie MS do dolnych pasm: np.
+<code>--msbands 6</code>.</li>
+<li>Wymuszony pelny MS: <code>--msmask 1</code>.</li>
+<li>IS chętniejsze: obniż <code>--is-corr-thresh</code> (np. 150) i/lub
+<code>--is-min-sfbs</code>.</li>
+</ul>
+<h3
+id="zakres-pasm-ms---msbands---msbands-lo---msbands-hi-wazne-często-mylone">Zakres
+pasm MS: --msbands, --msbands-lo, --msbands-hi (WAZNE, często
+mylone)</h3>
+<p>Pasma widma są numerowane OD DOŁU: pasmo 0 = najniższe częstotliwości
+(basy), im wyższy numer, tym wyżej w widmie. W typowym LC stereo jest
+ich okolo 49.</p>
+<p>Są DWA niezależne sposoby ograniczenia, gdzie stosowane jest MS:</p>
+<ol type="1">
+<li><p><code>--msbands &lt;n&gt;</code> — "dolne N pasm". MS dozwolone
+TYLKO w pasmach 0..(n-1), czyli od basu w górę do numeru n. To jest
+zawsze liczone OD DOŁU. Przykład: <code>--msbands 6</code> = MS tylko na
+6 najniższych pasmach, reszta czyste L/R.</p></li>
+<li><p><code>--msbands-lo &lt;lo&gt;</code> +
+<code>--msbands-hi &lt;hi&gt;</code> — "zakres OD-DO". MS dozwolone
+TYLKO w pasmach o numerach od <code>lo</code> do <code>hi</code>
+włącznie. Poza tym zakresem czyste L/R. To para — podajesz oba. Pozwala
+umiescic MS GDZIEKOLWIEK, w tym na samej górze.</p></li>
+</ol>
+<p>Konkretny przykład (zakladajac ~49 pasm w LC):</p>
+<ul>
+<li>Chcesz MS TYLKO na 5 najWYŻSZYCH pasmach (np. scalic szum w górze, a
+dół zostawić w pelnym niezaleznym stereo)? Najwyższe pasma to numery
+44..48: <code>--msbands-lo 44 --msbands-hi 48</code>.</li>
+<li>Chcesz MS tylko w SRODKU pasma (np. 10..30)?
+<code>--msbands-lo 10 --msbands-hi 30</code>.</li>
+<li>Chcesz MS na 6 najNIŻSZYCH? Prościej <code>--msbands 6</code> (albo
+<code>--msbands-lo 0 --msbands-hi 5</code> — to samo).</li>
+</ul>
+<p>Zasada pamięciowa: <code>--msbands</code> = "od dołu do",
+<code>--msbands-lo/-hi</code> = "od..do". Ile masz realnie pasm dla
+danego trybu/samplerate pokazuje <code>--verbose</code> (pole "active
+SFBs").</p>
+<h2 id="2-cutoff-odcięcie-rdzenia-aac-gdy-działa-sbr">2. Cutoff
+(odcięcie) rdzenia AAC gdy działa SBR</h2>
+<p>Standardowe <code>-w/--bandwidth</code> w FDK jest IGNOROWANE gdy
+aktywny jest SBR (HE-AAC v1/v2) — bo <code>sbrEncoder_Init()</code>
+nadpisuje pasmo wartością z tabeli SBR.</p>
+<table>
+<thead>
+<tr class="header">
+<th>Switch</th>
+<th>Wartości</th>
+<th>Domyślnie</th>
+<th>Opis</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>--core-cutoff &lt;hz&gt;</code></td>
+<td>0 = default, &gt;0 = Hz</td>
+<td>0</td>
+<td>Wymusza pasmo rdzenia AAC W Hz nawet pod SBR. Odporny na nadpisanie
+przez SBR.</td>
+</tr>
+</tbody>
+</table>
+<p>Przykład (Twoj przypadek — 7.5 kHz rdzenia przy HE-AAC v2 48 kbps,
+gdzie tabela daje mniej):</p>
+<pre><code>fdkaac-franken-x64.exe -p 29 -b 48000 --core-cutoff 7500 -o out.m4a in.wav</code></pre>
+<p>Zweryfikowane: <code>--core-cutoff 7500</code> -&gt; efektywne pasmo
+7500 Hz; stock <code>-w 7500</code> pod SBR pozostaje 8613 Hz
+(ignorowane).</p>
+<p>UWAGA: sam pilnujesz limitow rdzenia. Maks. to Nyquist rdzenia
+(<code>sr/2</code>), a przy <strong>dual-rate SBR docelowy samplerate
+jest dzielony przez 2</strong> — miej to na uwadze przy doborze
+wartości.</p>
+<h2 id="3-gęstość--dokładność-danych-sbr">3. Gęstość / dokładność danych
+SBR</h2>
+<p>Nadpisuje ustawienia z tabeli tuningowej SBR (po jej
+załadowaniu).</p>
+<table>
+<thead>
+<tr class="header">
+<th>Switch</th>
+<th>Wartości</th>
+<th>Domyślnie</th>
+<th>Opis</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>--sbr-start &lt;n&gt;</code></td>
+<td>-1 def, 0..15</td>
+<td>-1</td>
+<td>Indeks <code>bs_start_freq</code> (start pasma SBR).</td>
+</tr>
+<tr class="even">
+<td><code>--sbr-stop &lt;n&gt;</code></td>
+<td>-1 def, 0..13</td>
+<td>-1</td>
+<td>Indeks <code>bs_stop_freq</code> (koniec pasma SBR).</td>
+</tr>
+<tr class="odd">
+<td><code>--sbr-freqscale &lt;n&gt;</code></td>
+<td>-1 def, 0..3</td>
+<td>-1</td>
+<td>Grupowanie częstotliwości (0 = liniowe, wyżej = drobniejsze
+log).</td>
+</tr>
+<tr class="even">
+<td><code>--sbr-alterscale &lt;n&gt;</code></td>
+<td>-1 def, 0/1</td>
+<td>-1</td>
+<td>Alternatywna rozdzielczość skali.</td>
+</tr>
+<tr class="odd">
+<td><code>--sbr-noise-bands &lt;n&gt;</code></td>
+<td>-1 def, 1..5</td>
+<td>-1</td>
+<td>Liczba pasm szumu SBR (gęstość opisu szumu).</td>
+</tr>
+<tr class="even">
+<td><code>--sbr-amp-res &lt;n&gt;</code></td>
+<td>-1 def, 0/1</td>
+<td>-1</td>
+<td>Rozdzielczość amplitudy obwiedni: 0 = 1.5 dB, 1 = 3.0 dB.</td>
+</tr>
+<tr class="odd">
+<td><code>--sbr-data-extra &lt;n&gt;</code></td>
+<td>-1 def, 0/1</td>
+<td>-1</td>
+<td>Zapis dodatkowych danych nagłówka SBR.</td>
+</tr>
+<tr class="even">
+<td><code>--sbr-num-env &lt;1|2|4&gt;</code></td>
+<td>-1 off</td>
+<td>-1</td>
+<td>Liczba obwiedni na ramke. WYMUSZA statyczna siatke czasowa (ignoruje
+detektor transientów). Więcej = lepsza rozdzielczość czasowa górnego
+pasma, gorzej na atakach. (8 przekracza standardowy grid —
+odrzucone.)</td>
+</tr>
+<tr class="odd">
+<td><code>--sbr-freqres-fixfix &lt;0|1&gt;</code></td>
+<td>-1 off</td>
+<td>-1</td>
+<td>Rozdzielczość częstotliwości obwiedni FIXFIX (0 low, 1 high).</td>
+</tr>
+<tr class="even">
+<td><code>--sbr-stereo-mode &lt;0..3&gt;</code></td>
+<td>-1 off</td>
+<td>-1</td>
+<td>Tryb stereo SBR: 0 mono, 1 LR (pelna separacja górnego pasma), 2
+coupling (oszczędny, wspolna obwiednia + poziom), 3 switch-LRC
+(domyślnie koder wybiera per-ramke). Wymuś 1 dla max separacji, 2 dla
+oszczędności.</td>
+</tr>
+<tr class="odd">
+<td><code>--sbr-invf &lt;0..3&gt;</code></td>
+<td>-1 auto</td>
+<td>-1</td>
+<td>Wymuś inverse filtering SBR: 0 off, 1 low, 2 mid, 3 high. Sterowane
+normalnie estymatorem tonalności. Wyżej = mocniejsze "wybielanie"
+tonalnego SBR (mniej metaliczności kosztem detalu).</td>
+</tr>
+<tr class="even">
+<td><code>--sbr-noise-floor-offset &lt;n&gt;</code></td>
+<td>-128 off</td>
+<td>-128</td>
+<td>Offset poziomu szumu SBR (mala l. calkowita). Wieksze = więcej szumu
+wypełniającego w rekonstrukcji SBR.</td>
+</tr>
+</tbody>
+</table>
+<p>UWAGA: <code>--sbr-start</code>/<code>--sbr-stop</code> są walidowane
+PRZEZ FDK — niepoprawna KOMBINACJA start/stop (zła liczba pasm master)
+da "encoder initialization failed". To ograniczenie samego SBR, nie
+buga. Dobieraj pary (np. dla 64k stereo działa start=5 stop=9, start=8
+stop=14).</p>
+<h2 id="4-parametric-stereo-he-aac-v2-1">4. Parametric Stereo (HE-AAC
+v2)</h2>
+<p>PS opisuje stereo kilkoma parametrami (IID/ICC...). Tu można nimi
+sterować, nawet kosztem obrazu stereo.</p>
+<table>
+<thead>
+<tr class="header">
+<th>Switch</th>
+<th>Wartości</th>
+<th>Domyślnie</th>
+<th>Opis</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>--ps &lt;n&gt;</code></td>
+<td>-1 auto, 0 off, 1 on</td>
+<td>-1</td>
+<td>Wymuś wysylanie parametru IID PS. <code>0</code> = nigdy (spłaszcza
+obraz stereo), <code>1</code> = zawsze. Nadpisuje heurystykę różnicy
+głośności.</td>
+</tr>
+<tr class="even">
+<td><code>--ps-iid-quant &lt;n&gt;</code></td>
+<td>-1 def, 0 coarse, 1 fine</td>
+<td>-1</td>
+<td>Siatka kwantyzacji IID: gruba vs. dokładna.</td>
+</tr>
+<tr class="odd">
+<td><code>--ps-icc &lt;n&gt;</code></td>
+<td>-1 auto, 0 off, 1 on</td>
+<td>-1</td>
+<td>Wymuś ICC (Interchannel Coherence — podobieństwo/spójność kanałów)
+on/off.</td>
+</tr>
+<tr class="even">
+<td><code>--ps-icc-mode &lt;n&gt;</code></td>
+<td>-1 def, 0/1</td>
+<td>-1</td>
+<td>Tryb rotacji ICC: 0 = ROT_A, 1 = ROT_B.</td>
+</tr>
+</tbody>
+</table>
+<p>UWAGA o PS: FDK koduje IID (różnice głośności) i ICC (koherencja).
+IPD/OPD (różnice fazy) NIE są wspierane w enkoderze FDK — kod dosłownie
+wpisuje zera
+(<code>ps_encode.cpp: "IPD OPD not supported right now"</code>). Nie da
+sie ich wystawić bez napisania od zera analizy fazy międzykanałowej.</p>
+<h2 id="5-substytucjaksztaltowanie-szumu--tns--pns--afterburner">5.
+Substytucja/ksztaltowanie szumu — TNS / PNS / afterburner</h2>
+<p>To, co w średnich bitrate'ach jest zastępowane szumem lub
+resyntezowane.</p>
+<table>
+<thead>
+<tr class="header">
+<th>Switch</th>
+<th>Wartości</th>
+<th>Domyślnie</th>
+<th>Opis</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>--tns-mask &lt;n&gt;</code></td>
+<td>-1 def (0xF), 0..15</td>
+<td>-1</td>
+<td>Maska włączenia TNS (bitowa, per typ bloku).</td>
+</tr>
+<tr class="even">
+<td><code>--tns-order &lt;n&gt;</code></td>
+<td>-1 def, 1..12</td>
+<td>-1</td>
+<td>Maks. rząd filtra TNS (bloki short dodatkowo kapowane do 5).</td>
+</tr>
+<tr class="odd">
+<td><code>--pns &lt;n&gt;</code></td>
+<td>-1 def, 0/1</td>
+<td>-1</td>
+<td>Perceptual Noise Substitution wł/wył. UWAGA: FDK wymusza PNS=off gdy
+aktywne SBR albo VBR.</td>
+</tr>
+<tr class="even">
+<td><code>--pns-start &lt;hz&gt;</code></td>
+<td>-1 def, Hz</td>
+<td>-1</td>
+<td>Częstotliwość startowa PNS. Niżej = więcej widma zastępowane
+szumem.</td>
+</tr>
+<tr class="odd">
+<td><code>--force-pns</code></td>
+<td>flaga</td>
+<td>off</td>
+<td>Obejdz bramkę niskiego bitrate dla PNS.</td>
+</tr>
+<tr class="even">
+<td><code>--afterburner &lt;n&gt;</code></td>
+<td>0/1 (tez stock <code>-a</code>)</td>
+<td>1</td>
+<td>Afterburner (dokładniejsza kwantyzacja).</td>
+</tr>
+</tbody>
+</table>
+<p>WAZNE o PNS przy niskim bitrate: FDK ma tabele tuningowa
+(<code>levelTable</code>), która CALKOWICIE wyłącza PNS poniżej ~28 kbps
+(wiersz bitrate 0-27999 = same zera dla kazdego samplerate). Dlatego
+przy 24 kbps <code>--pns</code>/<code>--pns-start</code> nie robia NIC
+(audio brzmi "jak MP3/MDCT"), a przy 64 kbps różnica jest duza.
+<code>--force-pns</code> omija te bramkę (używa pierwszego aktywnego
+wiersza tabeli), więc PNS działa tez przy 24k. Ograniczenie FDK: PNS i
+tak wymaga włączonego TNS i trybu nie-VBR — inaczej jest zerowane wyżej
+w łańcuchu (nic na to nie poradzimy bez głębszej przebudowy).</p>
+<h2 id="6-maskowanie--ath">6. Maskowanie / ATH</h2>
+<table>
+<thead>
+<tr class="header">
+<th>Switch</th>
+<th>Wartości</th>
+<th>Domyślnie</th>
+<th>Opis</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>--ath-scale &lt;n&gt;</code></td>
+<td>1..~4096 (Q8)</td>
+<td>256</td>
+<td>Skala progu maskowania w Q8 (256 = x1.0). <code>&gt;256</code>
+podnosi progi (więcej szumu, mniej bitow na pasmo), <code>&lt;256</code>
+obniża (czysciej, więcej bitow). Działa w domenie ld64 FDK jako
+addytywny offset log2.</td>
+</tr>
+<tr class="even">
+<td><code>--spread-mask &lt;n&gt;</code></td>
+<td>Q8, &gt;=0</td>
+<td>-1 (off)</td>
+<td>Skaluje rozlewanie maskowania między pasmami. <code>&lt;256</code> =
+mniej maskowania = więcej detalu. Największy efekt gdzie bity
+ograniczone (96-192k).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="co-realnie-pomaga-w-niskim-i-średnim-bitrate-10-144-kbps">Co
+realnie pomaga w niskim i średnim bitrate (10-144 kbps)</h3>
+<p>Częste pytanie: czy da sie jeszcze cos wycisnac na
+dokładności/efektywności kodowania (Huffman, iteracje kwantyzacji itp.)?
+Uczciwa odpowiedz po przejrzeniu kodu FDK:</p>
+<ul>
+<li>Kodowanie Huffmana (łączenie sekcji, wybór codebookow w
+<code>dyn_bits.cpp</code>) jest juz optymalne (zachlanne łączenie sekcji
+dajace min. bitow). Nie ma tam sensownego pokretla — a wystawienie tego
+tylko by pogarszalo wynik.</li>
+<li>Pętla iteracji kwantyzacji (<code>maxIterations</code>) to mechanizm
+RATUNKOWY przy niedoborze bitow; zwiekszanie jej nic nie daje (szczegóły
+w manualu, rozdz. 9a).</li>
+<li>Wewnętrzne progi (adaptacja minSnr, <code>bits2PeFactor</code>) to
+arytmetyka staloprzecinkowa z twardymi zakresami — ruszanie ich grozi
+niestabilnością, nie poprawa.</li>
+</ul>
+<p>REALNY zestaw dźwigni jakości dla 10-144 kbps jest JUZ
+wystawiony:</p>
+<ul>
+<li><code>--ath-scale &lt;256</code> — globalnie obniż prog maskowania
+(więcej detalu za bity).</li>
+<li><code>--spread-mask &lt;256</code> — mniej maskowania
+międzypasmowego (więcej pasm kodowanych).</li>
+<li><code>--ms-precision &gt;256</code> — płytsze dziury w pasmach
+MS.</li>
+<li><code>--is-aggression</code> — steruj intensity stereo (kluczowe
+przy niskim bitrate).</li>
+<li><code>--force-pns</code> + <code>--pns-start</code> — kontrola szumu
+przy bardzo niskim bitrate.</li>
+<li>pod HE-AAC: <code>--sbr-invf</code>,
+<code>--sbr-noise-floor-offset</code>, <code>--speech</code>
+(mowa).</li>
+</ul>
+<p>To nie brak funkcji — to te same dźwignie, których używa
+profesjonalny tuning, tyle ze ręcznie. Zacznij od
+<code>--ath-scale</code> i <code>--spread-mask</code>, po jednej
+naraz.</p>
+<h2 id="7-bias-przełączania-blokow-shortlong-dowolny-profil">7. Bias
+przełączania blokow short/long (dowolny profil)</h2>
+<table>
+<thead>
+<tr class="header">
+<th>Switch</th>
+<th>Wartości</th>
+<th>Domyślnie</th>
+<th>Opis</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>--block-bias &lt;n&gt;</code></td>
+<td>0..255</td>
+<td>-1 (off)</td>
+<td>Przesuwa prog decyzji short/long. 128 = domyślne enkodera (bez
+zmian), &gt;128 faworyzuje bloki krótkie (bardziej "transient"), &lt;128
+faworyzuje długie, 0 = praktycznie tylko długie.</td>
+</tr>
+</tbody>
+</table>
+<p>WAZNE: <code>--block-bias</code> zawsze produkuje strumien zgodny ze
+standardem (przesuwa prog detekcji ataku, nie wymusza na sile typu
+bloku). Zastąpił dawne <code>--allshort</code>/<code>--alllong</code>,
+które tworzyły NIELEGALNY strumien (twarde wymuszenie short window bez
+przeliczenia SFB/grupowania -&gt; dekoder odrzucał, Winamp "skakał jak
+po porysowanej płycie"). Jesli chcesz maksimum długich:
+<code>--block-bias 0</code>; maksimum krótkich:
+<code>--block-bias 255</code>.</p>
+<h2 id="8-bias-decyzji-ms-uczciwie-narzędzie-o-słabym-efekcie">8. Bias
+decyzji MS (uczciwie: narzędzie o SŁABYM efekcie)</h2>
+<table>
+<thead>
+<tr class="header">
+<th>Switch</th>
+<th>Wartości</th>
+<th>Domyślnie</th>
+<th>Opis</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>--ms-bias &lt;n&gt;</code></td>
+<td>0..255 (Q8)</td>
+<td>-1 (off)</td>
+<td>Przesuwa prog decyzji L/R vs MS. Q8, 128 = +0.5 w jednostkach ld64
+FDK. &gt;0 = MS chętniejsze. Reaguje juz od ~32 (po rekalibracji
+skali).</td>
+</tr>
+</tbody>
+</table>
+<p>UCZCIWIE o <code>--ms-bias</code> — to najsłabsze narzędzie z całego
+zestawu i teraz wiadomo dlaczego "niewiele robi". MS (mid/side) to
+transformacja BEZSTRATNA: mid=L+R, side=L-R odtwarza sie dokładnie z
+powrotem na L/R. Włączenie/wyłączenie MS na danym pasmie NIE zmienia
+brzmienia — zmienia tylko ILE BITOW zajmie zapis. Enkoder i tak wybiera
+bliska optymalnej decyzję per pasmo; <code>--ms-bias</code> tylko
+przesuwa kilka GRANICZNYCH pasm. Pomiar (korelacja L/R po dekodowaniu,
+rozmiar ADTS): efekt rzędu &lt;0.1% rozmiaru i zmian korelacji w 4.
+miejscu po przecinku.</p>
+<p>Uwaga techniczna: w poprzedniej wersji skala biasu byla ~256x za
+słaba (mnożnik &lt;&lt;15 zamiast &lt;&lt;23) — stąd "128 nic nie
+robilo, dopiero 2048 cos ruszalo". Teraz 128 = realne +0.5 ld64 jak w
+opisie, więc reaguje od ~32. Ale nawet poprawnie wyskalowany bias ma z
+natury maly wpływ (patrz wyżej).</p>
+<p>Chcesz REALNIE sterować MS? Użyj twardych przełączników, nie
+biasu:</p>
+<ul>
+<li><code>--msmask 0</code> — WYŁĄCZ MS całkowicie (czyste, niezależne
+L/R). To właściwy wybór do center-cancel / usuwania wokalu (zero
+mieszania kanałów przez koder).</li>
+<li><code>--msmask 1</code> — wymuś MS na wszystkich pasmach (maks.
+oszczędność bitow).</li>
+<li><code>--msbands</code> / <code>--msbands-lo/-hi</code> — ogranicz MS
+do wybranych pasm. Pomiar: msmask 0 vs 1 daje ~900 B różnicy na 2s
+probce; ms-bias tylko ~2 B.</li>
+</ul>
+<h2 id="9-quasi-constrained-vbr-silnik-cbr--szersze-oddychanie">9.
+Quasi-constrained VBR (silnik CBR + szersze oddychanie)</h2>
+<p>WAZNE: bez tych switchy CBR jest 100% NIEZMIENIONY (zweryfikowane:
+bit-identyczny z oryginalna binarka). Włączasz je świadomie.</p>
+<p>Jak AAC oddycha: nawet w CBR ramki pożyczają z bit-reservoir, więc
+jedna ramka może miec ~122 kbps a następna ~141, byle średnia = target.
+Te pokretla poszerzają/ograniczaja to oddychanie.</p>
+<p>TWARDY SUFIT dla wszystkiego: ramka AAC miesci MAX 6144 bitow na
+kanał (=768 bajtow/kanał); stereo =&gt; 12288 bitow/ramke. Przy 44100 Hz
+jedna ramka = 1024 probki = ~23.2 ms, więc bity/ramke = kbps * 23.22.
+(Np. 128k stereo: średnia ~2972 bitow/ramke; sufit 12288.)</p>
+<table>
+<thead>
+<tr class="header">
+<th>Switch</th>
+<th>Wartości</th>
+<th>Domyślnie</th>
+<th>Opis</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>--vbr-reservoir &lt;bity&gt;</code></td>
+<td>0..(6144*kanały - średnia)</td>
+<td>-1 (off)</td>
+<td>Rozmiar bit-reservoir. Więcej = większy rozrzut ramek wokol
+średniej. min 0 (trzymaj sie targetu ciasno). Auto-clamp do sufitu - nie
+przegniesz. Bezpieczny start: 2-3x default.</td>
+</tr>
+<tr class="even">
+<td><code>--peak-bitrate &lt;bps&gt;</code></td>
+<td>&gt; target</td>
+<td>-1 (off)</td>
+<td>Dopuszcza krótkie szczyty do tej wartości, trzymając średnia. Ustaw
+POWYŻEJ <code>-b</code> (np. -b 128000 --peak-bitrate 160000). Poniżej
+targetu ignorowane.</td>
+</tr>
+<tr class="odd">
+<td><code>--max-bits-frame &lt;bity&gt;</code></td>
+<td>średnia..12288(st.)</td>
+<td>-1 (off)</td>
+<td>Twardy sufit bitow w JEDNEJ ramce. Musi byc &gt;= średnia i &lt;=
+6144*kanały (inaczej clamp). Rozsądny cap ~1.5x średnia (~4500 dla 128k
+st.). Za nisko = głodzi głośne ramki (słyszalne).</td>
+</tr>
+<tr class="even">
+<td><code>--min-bits-frame &lt;bity&gt;</code></td>
+<td>0..średnia</td>
+<td>-1 (off)</td>
+<td>Twarda podłoga bitow/ramke. Wyższa podłoga marnuje bity na ciszę.
+Zostaw 0 chyba ze eksperymentujesz.</td>
+</tr>
+<tr class="odd">
+<td><code>--bitres-mode &lt;n&gt;</code></td>
+<td>0/1/2</td>
+<td>-1 (def)</td>
+<td>Tryb reservoir: 0 pelny (jak default), 1 zredukowany, 2 wyłączony
+(sztywny, najbliżej twardego CBR per-ramka).</td>
+</tr>
+</tbody>
+</table>
+<p>JAK USTAWIAC OPTYMALNIE (dla mniej doświadczonych - żeby nie
+przegiąć):</p>
+<ul>
+<li>Bezpieczny quasi-CVBR ~128k stereo:
+<code>-b 128000 --peak-bitrate 160000 --vbr-reservoir 6000</code>.</li>
+<li>NIE ustawiaj <code>--max-bits-frame</code> PONIŻEJ średniej ani
+<code>--min-bits-frame</code> POWYŻEJ średniej - to walczy z targetem i
+psuje jakość.</li>
+<li><code>--vbr-reservoir</code> jest auto-clampowany do sufitu, więc
+bezpiecznie eksperymentować.</li>
+<li>Zmierzone realnie (sygnal 4s zmienny, 128k stereo): CBR default
+rozrzut 95-167 kbps; z
+<code>--vbr-reservoir 8000 --peak-bitrate 192000</code> rozrzut 36-158
+kbps (mocniej oddycha, średnia trzymana); <code>--bitres-mode 2</code>
+rozrzut 127.8-128.2 (sztywny). Wszystkie w pelni dekodowalne.</li>
+<li>Ograniczenie: to silnik CBR+reservoir, nie prawdziwy ABR jak LAME.
+Wahania umiarkowane (limit 6144 bitow/kanał), ale to jest ten "lekki
+lot" AAC.</li>
+</ul>
+<h2 id="10-audiofilskie--ekstremalne-opt-in-poza-typowym-zakresem">10.
+Audiofilskie / ekstremalne (opt-in, poza typowym zakresem)</h2>
+<table>
+<thead>
+<tr class="header">
+<th>Switch</th>
+<th>Wartości</th>
+<th>Domyślnie</th>
+<th>Opis</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>--uncap-bandwidth</code></td>
+<td>flaga</td>
+<td>off</td>
+<td>Zdejmij twardy cap 20 kHz rdzenia. <code>--core-cutoff</code> może
+wtedy sięgnąć az do Nyquista.</td>
+</tr>
+<tr class="even">
+<td><code>--is-aggression &lt;0..100&gt;</code></td>
+<td>0..100</td>
+<td>-1 (off)</td>
+<td>Suwak agresywności IS (patrz sekcja 1).</td>
+</tr>
+<tr class="odd">
+<td><code>--force-pns</code></td>
+<td>flaga</td>
+<td>off</td>
+<td>PNS poniżej bramki ~28 kbps (patrz sekcja 5).</td>
+</tr>
+<tr class="even">
+<td><code>--unlock-bitrate</code></td>
+<td>flaga</td>
+<td>off</td>
+<td>Zdejmij DOLNY prog bitrate. Pozwala na skrajnie niskie: 8k HE-AAC
+stereo, 6k LC. WAZNE: w tym trybie <code>-b</code> bierzemy DOSLOWNIE
+jako bps (bez konwencji nu774 x1000), więc <code>-b 6000</code> = 6000
+bps. Górny sufit 6144*kanały zostaje (twardy limit AAC). Rezydualny
+floor ~10 kbps = minimum nagłówków AAC.</td>
+</tr>
+<tr class="odd">
+<td><code>--speech</code></td>
+<td>flaga</td>
+<td>off</td>
+<td>Tryb strojenia SBR pod MOWE ludzka (inne progi inverse filtering,
+poziom szumu, bez parametric coding). Dotyczy HE-AAC (SBR); LC nie ma
+osobnego trybu mowy. Dla czystej mowy w niskim bitrate.</td>
+</tr>
+<tr class="even">
+<td><code>--spread-mask &lt;n&gt;</code></td>
+<td>Q8, &gt;=0</td>
+<td>-1 (off)</td>
+<td>Skaluje rozlewanie maskowania między pasmami. <code>&lt;256</code> =
+MNIEJ maskowania = więcej detali (odpowiednik luzowania
+tone-masks-noise). Największy efekt gdzie bity ograniczone (96-192k).
+256=bez zmian. Łącz z <code>--ath-scale &lt;256</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>PASMO POWYŻEJ 20 kHz (audiofilskie): FDK ma zaszyty cap
+<code>min(20000, sr/2)</code> na pasmo rdzenia — nawet przy wejściu 96
+kHz i wysokim bitrate realnie nic powyżej 20 kHz nie jest kodowane
+(Twoje podejrzenie bylo trafne). <code>--uncap-bandwidth</code> znosi
+ten cap; wtedy <code>--core-cutoff</code> steruje pasmem az do sr/2.</p>
+<p>Zmierzone (96 kHz wejście, LC 400k, szum szerokopasmowy):</p>
+<ul>
+<li>bez uncap, <code>--core-cutoff 40000</code>: verbose 20000 Hz,
+energia &gt;20 kHz ~= 0%.</li>
+<li><code>--core-cutoff 40000 --uncap-bandwidth</code>: verbose 40000
+Hz, energia 20-24 kHz ~10%, 24-32 kHz ~20%, 32-44 kHz ~20% — pelne pasmo
+do 40 kHz realnie kodowane.</li>
+</ul>
+<p>Preset audiofilski (pelne pasmo + ręczne maskowanie, dla 190+
+kbps):</p>
+<pre><code>fdkaac-franken-x64.exe -p 2 -b 320000 --uncap-bandwidth --core-cutoff 40000 \
+    --ath-scale 200 -o out.m4a in96k.wav</code></pre>
+<p><code>--ath-scale &lt;256</code> obniża progi maskowania (czysciej,
+więcej bitow na detale) — sensowne gdy masz duzy zapas bitrate. Uwaga:
+pasmo &gt;20 kHz i skrajne ustawienia mogą byc odrzucone przez czesc
+dekoderow (poza typowa specyfikacja) — świadomy opt-in.</p>
+<hr />
+<h2
+id="11-kontener-mp4m4a--które-boxy-są-konieczne-a-co-można-wyciąć">11.
+Kontener MP4/M4A — które boxy są konieczne, a co można wyciąć</h2>
+<p>Plik .m4a to zestaw zagnieżdżonych "boxow" (atomow). Sprawdzone, co
+jest czym:</p>
+<p>OBOWIAZKOWE (bez nich plik jest NIEGRYWALNY — nie ma do nich
+przełączników): <code>ftyp</code>, <code>mdat</code> (surowe dane
+audio), oraz szkielet <code>moov</code> → <code>mvhd</code> +
+<code>trak</code> → <code>tkhd</code> → <code>mdia</code>
+(<code>mdhd</code>/<code>hdlr</code>/<code>minf</code> →
+<code>smhd</code>/<code>dinf</code>/<code>stbl</code> z tabelami
+<code>stsd</code>/<code>stts</code>/<code>stsc</code>/<code>stsz</code>/<code>stco</code>).
+To jest minimalna mapa pliku wymagana przez standard ISO — kazdy dekoder
+tego potrzebuje, żeby w ogole znaleźć i odtworzyć dźwięk. Wycinanie ich
+nie ma sensu (efekt: uszkodzony plik).</p>
+<p>OPCJONALNE (można wyłączyć) — cały blok <code>udta</code> →
+<code>meta</code> → <code>ilst</code>, czyli:</p>
+<ul>
+<li>tag identyfikacyjny kodera (<code>©too</code>, teraz "PompAAC based
+on …"),</li>
+<li><code>iTunSMPB</code> — dane o opóźnieniu kodera do bezszwowego
+(gapless) odtwarzania,</li>
+<li>wszystkie tagi (tytuł, artysta, album itd.).</li>
+</ul>
+<table>
+<thead>
+<tr class="header">
+<th>Switch</th>
+<th>Działa na</th>
+<th>Opis</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>--no-tool-tag</code></td>
+<td>.m4a</td>
+<td>Nie zapisuj tagu identyfikującego koder (<code>©too</code>). Reszta
+tagow i gapless zostaje.</td>
+</tr>
+<tr class="even">
+<td><code>--minimal-moov</code></td>
+<td>.m4a</td>
+<td>Najmniejszy legalny .m4a: pomija CALY blok
+<code>udta</code>/metadata (tag kodera + gapless iTunSMPB + wszystkie
+tagi). Szkielet odtwarzania zostaje nienaruszony.</td>
+</tr>
+</tbody>
+</table>
+<p>Ile to oszczędza (2 s, 128k stereo, pomiar): default ~34381 B →
+<code>--no-tool-tag</code> ~34297 B (−84) → <code>--minimal-moov</code>
+~34048 B (−333). To male liczby — narzut MP4 to glownie obowiazkowy
+szkielet, którego usunąć sie nie da. Chcesz naprawde zero narzutu
+kontenera? Użyj surowego ADTS: <code>-f 2 -o out.aac</code> (strumien
+bez żadnych boxow, ale tez bez tagow i gapless).</p>
+<p>UWAGA gapless: <code>--minimal-moov</code> usuwa iTunSMPB, więc przy
+łączeniu utworow mogą pojawić sie mikro-przerwy (encoder delay nie
+bedzie zasygnalizowany). Do zwykłego odsłuchu bez znaczenia; do płyt
+"bez przerw" zostaw domyślne.</p>
+<hr />
+<h2 id="12-legenda-odczytu---verbose">12. Legenda odczytu
+<code>--verbose</code></h2>
+<p><code>--verbose</code> wypisuje SUROWE wartości (bez podpowiedzi w
+nawiasach, żeby nie zaśmiecać). Poniżej co oznaczają te, które nie są
+oczywiste:</p>
+<table>
+<thead>
+<tr class="header">
+<th>Pole</th>
+<th>Jak czytac</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>AOT (profile)</code></td>
+<td>2=AAC-LC, 5=HE-AAC, 29=HE-AAC v2, 23=AAC-LD, 39=AAC-ELD.</td>
+</tr>
+<tr class="even">
+<td><code>bitrate-mode</code></td>
+<td>0=CBR, 1..5=VBR (wyżej=lepiej).</td>
+</tr>
+<tr class="odd">
+<td><code>channel-mode</code></td>
+<td>1=mono, 2=stereo (dla HE-AAC v2 rdzen jest mono, stereo robi
+PS).</td>
+</tr>
+<tr class="even">
+<td><code>core bandwidth</code></td>
+<td>Górna częstotliwość rdzenia AAC. W nawiasie ZRODLO:
+<code>from -w</code>, <code>from --core-cutoff</code>, albo
+<code>auto</code>. Pod SBR to tylko rdzen — SBR gra wyżej.</td>
+</tr>
+<tr class="odd">
+<td><code>final BW (AAC+SBR)</code></td>
+<td>Pokazywane tylko gdy SBR aktywny: orientacyjna GÓRNA częstotliwość
+całego sygnalu (rdzen + SBR), wyliczona ze
+<code>sbr stop freq index</code>. To odpowiednik
+<code>core bandwidth</code>, ale dla pelnego pasma HE-AAC.</td>
+</tr>
+<tr class="even">
+<td><code>signaling-mode</code></td>
+<td>Sposób sygnalizacji SBR/PS: 0=implicit, 1=explicit backward-compat,
+2=explicit hierarchical, auto=biblioteka wybiera.</td>
+</tr>
+<tr class="odd">
+<td><code>SBR mode</code></td>
+<td>Wewnętrzny tryb SBR (-1/0 gdy nieuzywany).</td>
+</tr>
+<tr class="even">
+<td><code>sbr-ratio</code></td>
+<td>1=downsampled (single-rate), 2=dual-rate (rdzen na polowie
+częstotliwości).</td>
+</tr>
+<tr class="odd">
+<td><code>sbr amp res</code></td>
+<td>0=1.5 dB, 1=3.0 dB (rozdzielczość amplitudy obwiedni).</td>
+</tr>
+<tr class="even">
+<td><code>granule/frame length</code></td>
+<td>Długość ramki w probkach (1024 dla LC, 512/480 dla LD/ELD).</td>
+</tr>
+<tr class="odd">
+<td><code>codec delay</code></td>
+<td>Opóźnienie kodeka w probkach/kanał (total i sam rdzen). Do
+gapless.</td>
+</tr>
+<tr class="even">
+<td><code>IS corr threshold</code> / <code>IS L/R ratio</code></td>
+<td>Progi w skali Q8: 256 = 1.0. Niższy prog korelacji = intensity
+stereo CHĘTNIEJSZE (odwrotnie do intuicji).</td>
+</tr>
+<tr class="odd">
+<td><code>IS min contiguous SFBs</code></td>
+<td>Ile sąsiadujących pasm musi sie "zgodzić", zanim włączy sie IS.</td>
+</tr>
+<tr class="even">
+<td><code>TNS mask</code></td>
+<td>Maska bitowa 0x0..0xF które filtry TNS aktywne.</td>
+</tr>
+<tr class="odd">
+<td><code>MS/IS bands: auto up to N</code></td>
+<td>Górny indeks pasma, do którego narzędzie może działać.</td>
+</tr>
+<tr class="even">
+<td><code>franken overrides applied</code></td>
+<td>Lista przełączników które w TYM uruchomieniu odbiegają od czystego
+FDK (albo "none").</td>
+</tr>
+</tbody>
+</table>
+<p>Wartości Q8 (jak <code>IS corr threshold</code>,
+<code>--ms-precision</code>, <code>--ms-bias</code>,
+<code>--ath-scale</code>, <code>--spread-mask</code>) to liczby
+staloprzecinkowe gdzie 256 = 1.0; np. 243 oznacza 243/256 ≈ 0.95.</p>
+<hr />
+<h2 id="13-tabele-referencyjne-z-tablic-strojenia-fdk">13. Tabele
+referencyjne (z tablic strojenia FDK)</h2>
+<p>Trzy tabele orientacyjne, żeby świadomie dobierać
+<code>--msbands</code>, <code>--sbr-start/stop</code> i <code>-w</code>.
+Wartości wyliczone z tablic w kodzie FDK; są PRZYBLIZONE (siatka SFB
+jest schodkowa), ale pokazuja właściwy rząd wielkości.</p>
+<h3 id="tabela-1--orientacyjna-górna-częstotliwość-pasma-sfb-hz">Tabela
+1 — orientacyjna górna częstotliwość pasma (SFB) [Hz]</h3>
+<p>Pasma numerowane od dołu (0=bas). Pokazano co 4. pasmo; ostatni
+wiersz = liczba pasm i częstotliwość Nyquista. Użyteczne przy
+<code>--msbands</code>/<code>--isbands</code>/<code>--msbands-lo/-hi</code>.</p>
+<table>
+<thead>
+<tr class="header">
+<th style="text-align: right;">SFB</th>
+<th style="text-align: right;">16 kHz</th>
+<th style="text-align: right;">22.05 kHz</th>
+<th style="text-align: right;">32 kHz</th>
+<th style="text-align: right;">44.1 kHz</th>
+<th style="text-align: right;">48 kHz</th>
+<th style="text-align: right;">96 kHz</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">62</td>
+<td style="text-align: right;">43</td>
+<td style="text-align: right;">62</td>
+<td style="text-align: right;">86</td>
+<td style="text-align: right;">94</td>
+<td style="text-align: right;">188</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">312</td>
+<td style="text-align: right;">215</td>
+<td style="text-align: right;">312</td>
+<td style="text-align: right;">431</td>
+<td style="text-align: right;">469</td>
+<td style="text-align: right;">938</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">8</td>
+<td style="text-align: right;">562</td>
+<td style="text-align: right;">388</td>
+<td style="text-align: right;">562</td>
+<td style="text-align: right;">775</td>
+<td style="text-align: right;">844</td>
+<td style="text-align: right;">1688</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">12</td>
+<td style="text-align: right;">875</td>
+<td style="text-align: right;">646</td>
+<td style="text-align: right;">1000</td>
+<td style="text-align: right;">1378</td>
+<td style="text-align: right;">1500</td>
+<td style="text-align: right;">2438</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">16</td>
+<td style="text-align: right;">1250</td>
+<td style="text-align: right;">991</td>
+<td style="text-align: right;">1500</td>
+<td style="text-align: right;">2067</td>
+<td style="text-align: right;">2250</td>
+<td style="text-align: right;">3750</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">20</td>
+<td style="text-align: right;">1656</td>
+<td style="text-align: right;">1335</td>
+<td style="text-align: right;">2250</td>
+<td style="text-align: right;">3101</td>
+<td style="text-align: right;">3375</td>
+<td style="text-align: right;">5625</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">24</td>
+<td style="text-align: right;">2188</td>
+<td style="text-align: right;">1852</td>
+<td style="text-align: right;">3375</td>
+<td style="text-align: right;">4651</td>
+<td style="text-align: right;">5062</td>
+<td style="text-align: right;">8062</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">28</td>
+<td style="text-align: right;">2875</td>
+<td style="text-align: right;">2584</td>
+<td style="text-align: right;">5000</td>
+<td style="text-align: right;">6891</td>
+<td style="text-align: right;">7500</td>
+<td style="text-align: right;">12938</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">32</td>
+<td style="text-align: right;">3844</td>
+<td style="text-align: right;">3618</td>
+<td style="text-align: right;">7000</td>
+<td style="text-align: right;">9647</td>
+<td style="text-align: right;">10500</td>
+<td style="text-align: right;">24000</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">36</td>
+<td style="text-align: right;">5188</td>
+<td style="text-align: right;">5039</td>
+<td style="text-align: right;">9000</td>
+<td style="text-align: right;">12403</td>
+<td style="text-align: right;">13500</td>
+<td style="text-align: right;">36000</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">40</td>
+<td style="text-align: right;">7000</td>
+<td style="text-align: right;">7020</td>
+<td style="text-align: right;">11000</td>
+<td style="text-align: right;">15159</td>
+<td style="text-align: right;">16500</td>
+<td style="text-align: right;">48000</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">44</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">9647</td>
+<td style="text-align: right;">13000</td>
+<td style="text-align: right;">17916</td>
+<td style="text-align: right;">19500</td>
+<td style="text-align: right;">—</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">48</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">15000</td>
+<td style="text-align: right;">22050</td>
+<td style="text-align: right;">24000</td>
+<td style="text-align: right;">—</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;"><strong>liczba pasm /
+Nyquist</strong></td>
+<td style="text-align: right;">43 / 8000</td>
+<td style="text-align: right;">47 / 11025</td>
+<td style="text-align: right;">51 / 16000</td>
+<td style="text-align: right;">49 / 22050</td>
+<td style="text-align: right;">49 / 24000</td>
+<td style="text-align: right;">41 / 48000</td>
+</tr>
+</tbody>
+</table>
+<h3
+id="tabela-2--sbr-indeks-start-freq--orientacyjna-częstotliwość-przejścia-hz">Tabela
+2 — SBR: indeks start freq → orientacyjna częstotliwość przejścia
+[Hz]</h3>
+<p>To częstotliwość, od której SBR przejmuje pasmo powyżej rdzenia AAC
+(<code>--sbr-start</code>, indeks 0..15; niższy = SBR startuje niżej =
+wezszy rdzen). "core" to częstotliwość rdzenia; przy dual-rate wyjście
+jest dwa razy wyższe (np. core 24k → wyjście 48k).</p>
+<table>
+<thead>
+<tr class="header">
+<th style="text-align: right;">indeks start</th>
+<th style="text-align: right;">core 16 kHz</th>
+<th style="text-align: right;">core 24 kHz</th>
+<th style="text-align: right;">core 32 kHz</th>
+<th style="text-align: right;">core 44.1 kHz</th>
+<th style="text-align: right;">core 48 kHz</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">2750</td>
+<td style="text-align: right;">2250</td>
+<td style="text-align: right;">2500</td>
+<td style="text-align: right;">1378</td>
+<td style="text-align: right;">1500</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">3000</td>
+<td style="text-align: right;">2625</td>
+<td style="text-align: right;">3000</td>
+<td style="text-align: right;">2067</td>
+<td style="text-align: right;">2250</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">3250</td>
+<td style="text-align: right;">3000</td>
+<td style="text-align: right;">3500</td>
+<td style="text-align: right;">2756</td>
+<td style="text-align: right;">3000</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">3500</td>
+<td style="text-align: right;">3375</td>
+<td style="text-align: right;">4000</td>
+<td style="text-align: right;">3445</td>
+<td style="text-align: right;">3750</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">3750</td>
+<td style="text-align: right;">3750</td>
+<td style="text-align: right;">4500</td>
+<td style="text-align: right;">4134</td>
+<td style="text-align: right;">4500</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">4000</td>
+<td style="text-align: right;">4125</td>
+<td style="text-align: right;">5000</td>
+<td style="text-align: right;">4823</td>
+<td style="text-align: right;">5250</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">4250</td>
+<td style="text-align: right;">4500</td>
+<td style="text-align: right;">5500</td>
+<td style="text-align: right;">5512</td>
+<td style="text-align: right;">6000</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">7</td>
+<td style="text-align: right;">4500</td>
+<td style="text-align: right;">4875</td>
+<td style="text-align: right;">6000</td>
+<td style="text-align: right;">6202</td>
+<td style="text-align: right;">6750</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">8</td>
+<td style="text-align: right;">4750</td>
+<td style="text-align: right;">5250</td>
+<td style="text-align: right;">6500</td>
+<td style="text-align: right;">6891</td>
+<td style="text-align: right;">7500</td>
+</tr>
+</tbody>
+</table>
+<p>Stop freq (<code>--sbr-stop</code>, 0..13) działa analogicznie na
+górnej granicy SBR — wyższy indeks = SBR sięga wyżej (bliżej Nyquista
+wyjścia). Domyślnie biblioteka dobiera oba pod bitrate.</p>
+<h3
+id="tabela-3--aac-lc-orientacyjne-odcięcie--wauto-wg-bitrate-na-kanał-hz">Tabela
+3 — AAC-LC: orientacyjne odcięcie (<code>-w</code>/auto) wg bitrate na
+kanał [Hz]</h3>
+<p>Gdy nie podasz <code>-w</code>, FDK dobiera pasmo z tej tablicy wg
+bitrate NA KANAL (stereo 128k = 64k/kanał). Wartości interpolowane;
+kolumna mono i stereo różna. Pomaga ocenic, czy <code>-w</code> ma sens
+(podawanie wyższego niż auto ma efekt tylko jesli jest zapas bitow).</p>
+<table>
+<thead>
+<tr class="header">
+<th style="text-align: right;">bitrate/kanał</th>
+<th style="text-align: right;">pasmo (mono)</th>
+<th style="text-align: right;">pasmo (stereo+)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">0–12 kbps</td>
+<td style="text-align: right;">3700</td>
+<td style="text-align: right;">5000</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">20 kbps</td>
+<td style="text-align: right;">6900</td>
+<td style="text-align: right;">9640</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">28 kbps</td>
+<td style="text-align: right;">9600</td>
+<td style="text-align: right;">13050</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">40 kbps</td>
+<td style="text-align: right;">12060</td>
+<td style="text-align: right;">14260</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">56 kbps</td>
+<td style="text-align: right;">13950</td>
+<td style="text-align: right;">15500</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">72 kbps</td>
+<td style="text-align: right;">14200</td>
+<td style="text-align: right;">16120</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">≥96 kbps</td>
+<td style="text-align: right;">17000</td>
+<td style="text-align: right;">17000</td>
+</tr>
+</tbody>
+</table>
+<p>Uwaga: ta tablica jest WSPOLNA dla 32/44.1/48 kHz i wyższych — FDK
+indeksuje ja bitratem na kanał, nie samplerate (samplerate wpływa tylko
+na górny limit = Nyquist). Dla LC bez SBR realny sufit to ~17 kHz z
+auto; wyżej tylko przez <code>-w</code> (z zapasem bitow) lub
+<code>--uncap-bandwidth</code> przy sr≥96k.</p>
+<hr />
+<h2 id="przykłady">Przykłady</h2>
+<pre><code># Punkt wyjscia — co ustawil enkoder:
+fdkaac-franken-x64.exe -p 29 -b 48000 --verbose -o out.m4a in.wav
+
+# Quasi-constrained VBR ~128k (bezpieczny preset):
+fdkaac-franken-x64.exe -p 2 -b 128000 --peak-bitrate 160000 --vbr-reservoir 6000 -o out.m4a in.wav
+
+# Agresywne intensity stereo przy 64k:
+fdkaac-franken-x64.exe -p 2 -b 64000 --is 1 --is-aggression 70 -o out.m4a in.wav
+
+# PNS na sile przy 24k (inaczej bramka FDK je wyłącza):
+fdkaac-franken-x64.exe -p 2 -b 24000 --pns 1 --force-pns -o out.m4a in.wav
+
+# Audiofilskie pelne pasmo 40 kHz z wejscia 96 kHz:
+fdkaac-franken-x64.exe -p 2 -b 320000 --uncap-bandwidth --core-cutoff 40000 -o out.m4a in96k.wav
+
+# MS na 5 najwyzszych pasmach + plytsze dziury (nie najnizsze):
+fdkaac-franken-x64.exe -p 2 -b 128000 --msbands-lo 44 --msbands-hi 48 --ms-precision 448 -o out.m4a in.wav
+
+# Skrajnie niski HE-AAC v2: 8000 bps stereo 48 kHz:
+fdkaac-franken-x64.exe -p 29 -b 8000 --unlock-bitrate -o out.m4a in48k.wav
+
+# SBR: pelna separacja stereo LR + wymuszony inverse filtering:
+fdkaac-franken-x64.exe -p 5 -b 96000 --sbr-stereo-mode 1 --sbr-invf 2 -o out.m4a in.wav
+
+# Twoj przypadek: 7.5 kHz rdzenia pod HE-AAC v2 48k:
+fdkaac-franken-x64.exe -p 29 -b 48000 --core-cutoff 7500 -o out.m4a in.wav
+
+# Kompletnie niezalezne stereo (bez MS/IS) na LC 128k:
+fdkaac-franken-x64.exe -p 2 -b 128000 --msmask 0 --is 0 -o out.m4a in.wav
+
+# MS tylko na 6 dolnych pasmach:
+fdkaac-franken-x64.exe -p 2 -b 96000 --msmask 1 --msbands 6 -o out.m4a in.wav
+
+# Tylko krotkie bloki + ograniczony TNS:
+# Tylko dlugie bloki (bias) + ograniczony TNS:
+fdkaac-franken-x64.exe -p 2 -b 96000 --block-bias 0 --tns-order 2 -o out.m4a in.wav
+
+# Agresywniejsze maskowanie (progi x2) + wczesniejszy PNS:
+fdkaac-franken-x64.exe -p 2 -b 80000 --ath-scale 512 --pns 1 --pns-start 4000 -o out.m4a in.wav
+
+# Gestszy opis szumu SBR + dokladniejsza amplituda:
+fdkaac-franken-x64.exe -p 5 -b 64000 --sbr-noise-bands 5 --sbr-amp-res 0 -o out.m4a in.wav
+
+# HE-AAC v2 z wyłączonym PS (splaszczone stereo):
+fdkaac-franken-x64.exe -p 29 -b 32000 --ps 0 -o out.m4a in.wav</code></pre>
+<hr />
+<h2 id="jakość-domyślna-vs-oryginalna-binarka-fdkaac2exe">Jakość
+domyślna vs oryginalna binarka (fdkaac2.exe)</h2>
+<p>Weryfikacja (21.07.2026) czy domyślne ustawienia franken = oryginalna
+dostarczona binarka (dBpoweramp R17, ta sama wersja libfdk-aac 4.0.1 /
+pakiet 2.0.3):</p>
+<ul>
+<li>AAC-LC: <strong>bit-identyczne</strong> (ten sam md5) — zero
+regresji.</li>
+<li>HE-AAC v1/v2: bajty sie różnią, ALE: widmo HE-AAC v2 identyczne co
+do 0.000 dB, a błąd HE-AAC v1 wzgledem oryginału jest praktycznie taki
+sam jak w oryginale (7.05e11 vs 7.05e11). Różnica bajtow wynika z innego
+kompilatora (mingw/gcc vs MSVC) i zaokrągleń fixed-point, NIE z gorszej
+jakości. Słyszalna "inność" SBR to inna, równie poprawna realizacja, nie
+strata jakości.</li>
+</ul>
+<hr />
+<h2 id="testy-make-check">Testy (make check)</h2>
+<p>Upstream fdk-aac/nu774 nie maja testów jednostkowych
+(<code>make check</code> w nich = no-op). Ten projekt ma WŁASNY
+funkcjonalny test suite w <code>tests/check.sh</code>, uruchamiany:</p>
+<pre><code>make check</code></pre>
+<p>Sprawdza (na binarkach x64 + x86 jesli obecne): kompletność switchy w
+--help, dekodowalność strumienia dla kazdego przełącznika (ffmpeg, 0
+błędów), realne działanie quasi-CVBR (CVBR oddycha szerzej niż sztywny
+bitres-mode2), verbose bez wartości -1, oraz BRAK REGRESJI (domyślny CBR
+bez franken-flag = ADTS bit-identyczny z oryginalna fdkaac2.exe). Wymaga
+ffmpeg + python3 (są w WSL). Exit 0 = OK, 1 = błędy, 77 = brak
+zależności. Ostatni wynik: 27/27 PASS.</p>
+<hr />
+<p>Zrodla z naniesionymi patchami leza w <code>src-fdk-aac/</code> i
+<code>src-fdkaac/</code>. Wszystkie zmiany w libfdk są spięte przez
+jeden modul <code>libAACenc/src/franken.{h,cpp}</code> (globalny blok
+<code>g_franken</code>, sentinele = domyślne FDK), a nowe
+<code>AACENC_PARAM</code> (zakres <code>0xF0xx</code>) są wystawione w
+<code>aacenc_lib.h</code>.</p>
+<div class="sourceCode" id="cb10"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> apt-get install <span class="at">-y</span> mingw-w64          <span class="co"># + autotools (autoconf/automake/libtool)</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a><span class="co"># --- libfdk-aac (x64) ---</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> src-fdk-aac <span class="kw">&amp;&amp;</span> <span class="ex">autoreconf</span> <span class="at">-i</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a><span class="ex">./configure</span> <span class="at">--host</span><span class="op">=</span>x86_64-w64-mingw32 <span class="at">--prefix</span><span class="op">=</span><span class="va">$PWD</span>/../inst-x64 <span class="dt">\</span></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">--enable-static</span> <span class="at">--disable-shared</span> CFLAGS=-O2 CXXFLAGS=-O2</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> <span class="at">-j</span> <span class="kw">&amp;&amp;</span> <span class="fu">make</span> install</span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a><span class="co"># --- frontend (x64) ---</span></span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> ../src-fdkaac <span class="kw">&amp;&amp;</span> <span class="ex">autoreconf</span> <span class="at">-i</span></span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a><span class="va">PKG_CONFIG_PATH</span><span class="op">=</span><span class="va">$PWD</span>/../inst-x64/lib/pkgconfig <span class="ex">./configure</span> <span class="dt">\</span></span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">--host</span><span class="op">=</span>x86_64-w64-mingw32 CFLAGS=<span class="st">&quot;-O2 -I</span><span class="va">$PWD</span><span class="st">/../inst-x64/include&quot;</span> <span class="dt">\</span></span>
+<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a>    LDFLAGS=<span class="st">&quot;-static -static-libgcc -L</span><span class="va">$PWD</span><span class="st">/../inst-x64/lib&quot;</span></span>
+<span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> <span class="at">-j</span>     <span class="co"># -&gt; fdkaac.exe</span></span>
+<span id="cb10-15"><a href="#cb10-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-16"><a href="#cb10-16" aria-hidden="true" tabindex="-1"></a><span class="co"># x86: to samo z --host=i686-w64-mingw32 i osobnym prefixem inst-x86.</span></span></code></pre></div>
+<h2 id="lista-zmienionych-plikow-fdk-mapa-na-punkty">Lista zmienionych
+plikow FDK (mapa na punkty)</h2>
+<ul>
+<li><code>libAACenc/src/franken.{h,cpp}</code> — nowy modul
+sterujący.</li>
+<li><code>libAACenc/include/aacenc_lib.h</code> — nowe
+<code>AACENC_PARAM</code> 0xF0xx.</li>
+<li><code>libAACenc/src/aacenc_lib.cpp</code> — dispatch SetParam +
+override useMS/IS/PNS/ afterburner/cutoff + guard cutoffu pod SBR (po
+<code>sbrEncoder_Init</code>) + read-only GetParam mirrors dla verbose
+(useTns/Pns/IS/MS, efektywne SBR).</li>
+<li><code>libAACenc/src/ms_stereo.cpp</code> — kontrola MS per-pasmo W
+PETLI decyzyjnej (maska
+<ul>
+<li>motylek L/R-&gt;M/S zsynchronizowane; naprawiony artefakt
+"lewy=center") + MS bias</li>
+<li>zakres pasm MS (--msbands-lo/-hi) + precyzja MS (--ms-precision,
+prog ld64).</li>
+</ul></li>
+<li><code>libAACenc/src/intensity.cpp</code> — kap pasm IS (spójny z
+maska) + bias progow IS (initIsParams: min_is_sfbs, corr_thresh,
+left_right_ratio) + --is-aggression.</li>
+<li><code>libAACenc/src/psy_configuration.cpp</code> — read-back liczby
+SFB + zniesienie gate IS.</li>
+<li><code>libAACenc/src/bandwidth.cpp</code> — --uncap-bandwidth
+(zdjęcie capa 20kHz).</li>
+<li><code>libAACenc/src/pnsparam.cpp</code> — override PNS start +
+--force-pns (bypass bramki tabeli).</li>
+<li><code>libAACenc/src/aacenc.cpp</code> — override maski TNS +
+quasi-CVBR + --unlock-bitrate (zniesienie dolnego floora bitrate w
+FDKaacEnc_LimitBitrate).</li>
+<li><code>libSBRenc/src/sbr_encoder.cpp</code> — override gęstości SBR +
+--sbr-num-env (static framing) + --sbr-freqres-fixfix +
+--sbr-stereo-mode + --sbr-noise-floor-offset.</li>
+<li><code>libSBRenc/src/invf_est.cpp</code> — --sbr-invf (wymuszony
+poziom inverse filtering).</li>
+<li><code>libSBRenc/src/ps_encode.cpp</code> — override PS IID +
+--ps-icc/--ps-icc-mode.</li>
+<li><code>libAACenc/src/aacenc_tns.cpp</code> — kap rzędu TNS.</li>
+<li><code>libAACenc/src/pnsparam.cpp</code> — override startowej
+częstotliwości PNS.</li>
+<li><code>libSBRenc/src/sbr_encoder.cpp</code> — override
+gęstości/dokładności SBR + zapis efektywnych wartości SBR do g_franken
+(dla verbose).</li>
+<li><code>libSBRenc/src/ps_encode.cpp</code> — override PS (wymuszenie
+IID + tryb kwantyzacji).</li>
+<li><code>libAACenc/src/main.c</code>, <code>aacenc.c</code>,
+<code>aacenc.h</code> (frontend) — switche CLI, parsowanie, przekazanie
+do SetParam, dump <code>--verbose</code>, help.</li>
+</ul>
+</body>
+</html>

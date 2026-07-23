@@ -1,0 +1,19 @@
+# Build artifacts (binaries are built on demand via GitHub Actions, never committed)
+*.exe
+out/
+inst-x64/
+inst-x86/
+
+# Pandoc intermediate
+*.docx
+
+# Local build trees / test leftovers
+*.aac
+*.m4a
+*.wav
+*.o
+*.lo
+*.a
+*.la
+.libs/
+.deps/

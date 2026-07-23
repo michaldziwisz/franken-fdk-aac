@@ -1,0 +1,844 @@
+{\rtf1\ansi\deff0{\fonttbl{\f0 \fswiss Helvetica;}{\f1 \fmodern Courier;}}
+{\colortbl;\red255\green0\blue0;\red0\green0\blue255;}
+\widowctrl\hyphauto
+
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel0 \b \fs36 Franken FDK AAC \u8212- Manual dla d\u378 ?wi\u281 ?kowca\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Kompletny przewodnik po kodowaniu d\u378 ?wi\u281 ?ku w AAC / MPEG-4 oraz po wszystkich opcjach tego enkodera. Napisany dla osoby, kt\u243 ?ra zna si\u281 ? na d\u378 ?wi\u281 ?ku i biegle pos\u322 ?uguje si\u281 ? komputerem, ale nie musi by\u263 ? programist\u261 ? ani matematykiem.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Wersja dokumentu: lipiec 2026. Enkoder: libfdk-aac 2.0.3 + frontend nu774, z rozszerzeniami "Frankenstein".\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Autor: Micha\u322 ? Dziwisz. Konsultant merytoryczny: Patryk Faliszewski. Zbudowane na oprogramowaniu open source: libfdk-aac (Fraunhofer IIS) oraz frontend nu774/fdkaac.\par}
+{\pard \qc \f0 \sa180 \li0 \fi0 \emdash\emdash\emdash\emdash\emdash\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel0 \b \fs36 Cz\u281 ?\u347 ?\u263 ? I. Jak w og\u243 ?le dzia\u322 ?a AAC\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 1. Po co komu kodek stratny\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Nagranie PCM (to, co jest na p\u322 ?ycie CD albo w pliku WAV) zapisuje ka\u380 ?d\u261 ? pr\u243 ?bk\u281 ? d\u378 ?wi\u281 ?ku dok\u322 ?adnie. Przy 44,1 kHz i 16 bitach na kana\u322 ? stereo to oko\u322 ?o 1411 kilobit\u243 ?w na sekund\u281 ?. To du\u380 ?o. Kodek stratny, taki jak AAC czy MP3, potrafi odda\u263 ? ten sam materia\u322 ? przy 128, 96, a nawet 64 kilobitach tak, \u380 ?e ucho w codziennych warunkach r\u243 ?\u380 ?nicy nie us\u322 ?yszy \u8212- albo us\u322 ?yszy bardzo niewielk\u261 ?.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Sztuczka nie polega na "\u347 ?ci\u347 ?ni\u281 ?ciu" d\u378 ?wi\u281 ?ku jak plik ZIP. Polega na WYRZUCENIU tego, czego i tak nie us\u322 ?yszysz, i zapisaniu tylko reszty. Ca\u322 ?a inteligencja kodeka le\u380 ?y w tym, \u380 ?eby dobrze zgadn\u261 ?\u263 ?, co jest nieistotne. To jest model psychoakustyczny \u8212- matematyczny opis tego, jak dzia\u322 ?a ludzki s\u322 ?uch.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 2. Trzy filary psychoakustyki\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Enkoder podejmuje decyzje w oparciu o kilka zjawisk, kt\u243 ?re warto rozumie\u263 ?, bo po\u322 ?owa opcji tego programu w\u322 ?a\u347 ?nie nimi steruje.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 MASKOWANIE JEDNOCZESNE. G\u322 ?o\u347 ?ny d\u378 ?wi\u281 ?k o jakiej\u347 ? cz\u281 ?stotliwo\u347 ?ci sprawia, \u380 ?e przestajesz s\u322 ?ysze\u263 ? cichsze d\u378 ?wi\u281 ?ki tu\u380 ? obok niego w widmie. Je\u347 ?li gra g\u322 ?o\u347 ?ne 1000 Hz, to cichy sygna\u322 ? 1100 Hz jest "zamaskowany" \u8212- ucho go nie wychwyci. Enkoder mo\u380 ?e wi\u281 ?c zapisa\u263 ? ten zamaskowany fragment bardzo niedbale (ma\u322 ?o bit\u243 ?w) albo w og\u243 ?le. To jest najwa\u380 ?niejszy mechanizm oszcz\u281 ?dzania bit\u243 ?w w AAC.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 MASKOWANIE CZASOWE. Tu\u380 ? przed i tu\u380 ? po g\u322 ?o\u347 ?nym uderzeniu (np. werbla) ucho jest "og\u322 ?uszone" i nie s\u322 ?yszy cichych detali. Enkoder to wykorzystuje.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 PR\u211 ?G S\u321 ?YSZALNO\u346 ?CI (ATH, Absolute Threshold of Hearing). Istnieje granica ciszy, poni\u380 ?ej kt\u243 ?rej ucho po prostu nie rejestruje d\u378 ?wi\u281 ?ku \u8212- i granica ta jest r\u243 ?\u380 ?na dla r\u243 ?\u380 ?nych cz\u281 ?stotliwo\u347 ?ci (najlepiej s\u322 ?yszymy 2\u8211-5 kHz, gorzej skraje pasma). Cokolwiek jest poni\u380 ?ej tego progu, mo\u380 ?na wyrzuci\u263 ?.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Kiedy s\u322 ?yszysz, \u380 ?e kodek "zabra\u322 ? powietrze" albo "sp\u322 ?aszczy\u322 ? blachy", to prawie zawsze znaczy, \u380 ?e model psychoakustyczny uzna\u322 ? co\u347 ? za nies\u322 ?yszalne, a Twoje ucho si\u281 ? z nim nie zgodzi\u322 ?o. Du\u380 ?a cz\u281 ?\u347 ?\u263 ? tego manuala to nauka, jak przesuwa\u263 ? te decyzje w stron\u281 ? Twojego ucha.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 3. Pasma, MDCT i wsp\u243 ?\u322 ?czynniki skali\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 AAC nie pracuje na pr\u243 ?bkach w czasie, tylko na WIDMIE. Sygna\u322 ? jest ci\u281 ?ty na ramki (1024 pr\u243 ?bki) i przekszta\u322 ?cany do dziedziny cz\u281 ?stotliwo\u347 ?ci (transformata MDCT). Powsta\u322 ?e wsp\u243 ?\u322 ?czynniki grupowane s\u261 ? w PASMA WSP\u211 ?\u321 ?CZYNNIK\u211 ?W SKALI (scale factor bands, w skr\u243 ?cie SFB). Numeracja SFB idzie OD DO\u321 ?U: SFB 0 to najni\u380 ?sze cz\u281 ?stotliwo\u347 ?ci (basy), a im wy\u380 ?szy numer, tym wy\u380 ?ej w widmie.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 To wa\u380 ?ne, bo wiele opcji tego enkodera operuje w\u322 ?a\u347 ?nie na numerach pasm SFB. Gdy m\u243 ?wimy "MS na 5 najwy\u380 ?szych pasmach", chodzi o pasma o najwy\u380 ?szych numerach.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 W ka\u380 ?dym pa\u347 ?mie enkoder decyduje, jak dok\u322 ?adnie (ile bit\u243 ?w) zapisa\u263 ? wsp\u243 ?\u322 ?czynniki. Im mniej bit\u243 ?w, tym wi\u281 ?kszy b\u322 ?\u261 ?d kwantyzacji \u8212- s\u322 ?yszalny jako szum albo "dziura" w widmie. Model psychoakustyczny m\u243 ?wi, gdzie ten b\u322 ?\u261 ?d si\u281 ? schowa pod maskowaniem, a gdzie b\u281 ?dzie s\u322 ?yszalny.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 4. Rodziny AAC: LC, HE-AAC, HE-AAC v2\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 AAC to nie jeden format, tylko rodzina profili. W tym enkoderze wybierasz je prze\u322 ?\u261 ?cznikiem {\f1 -p}:\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 AAC-LC (Low Complexity, profil 2). Podstawowy, najcz\u281 ?\u347 ?ciej u\u380 ?ywany wariant. Koduje pe\u322 ?ne pasmo tradycyjnie. Sensowny od oko\u322 ?o 96 kbps stereo w g\u243 ?r\u281 ?. Bezpieczny wyb\u243 ?r do muzyki w dobrej jako\u347 ?ci.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 HE-AAC (High Efficiency, profil 5, zwany te\u380 ? AAC+ albo aacPlus). Do LC dok\u322 ?ada SBR \u8212- Spectral Band Replication. Rdze\u324 ? AAC koduje tylko doln\u261 ? cz\u281 ?\u347 ?\u263 ? pasma (np. do 8\u8211-13 kHz), a g\u243 ?r\u281 ? SBR "odtwarza sztucznie" na podstawie dolnej i niewielkiego opisu. Ogromna oszcz\u281 ?dno\u347 ?\u263 ? bit\u243 ?w przy zachowaniu wra\u380 ?enia szerokiego pasma. Sensowny w okolicach 32\u8211-80 kbps stereo.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 HE-AAC v2 (profil 29). Do HE-AAC dok\u322 ?ada PS \u8212- Parametric Stereo. Zamiast kodowa\u263 ? dwa kana\u322 ?y, koduje jeden (mono) plus gar\u347 ?\u263 ? parametr\u243 ?w opisuj\u261 ?cych, jak z niego odtworzy\u263 ? stereo. Sensowny w bardzo niskich bitrate'ach, 16\u8211-48 kbps stereo.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Zasada praktyczna: im ni\u380 ?szy bitrate, tym wi\u281 ?cej "protez" (SBR, PS). Przy 320 kbps te protezy tylko przeszkadzaj\u261 ? \u8212- u\u380 ?ywaj wtedy LC.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 5. Co to jest SBR (g\u243 ?rne pasmo sztuczne)\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Warto zrozumie\u263 ? SBR, bo steruje nim wiele opcji. SBR NIE koduje g\u243 ?rnego pasma pr\u243 ?bka po pr\u243 ?bce. Zamiast tego wysy\u322 ?a OBWIEDNIE (envelopes) \u8212- informacj\u281 ? "w tym kawa\u322 ?ku czasu i w tym zakresie cz\u281 ?stotliwo\u347 ?ci energia ma taki a taki kszta\u322 ?t" \u8212- plus wskaz\u243 ?wki, z kt\u243 ?rych fragment\u243 ?w dolnego pasma "skopiowa\u263 ?" materia\u322 ? w g\u243 ?r\u281 ?, i ile do\u322 ?o\u380 ?y\u263 ? szumu. Dekoder rekonstruuje g\u243 ?r\u281 ? na tej podstawie.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Dlatego g\u243 ?rne pasmo w HE-AAC brzmi inaczej ni\u380 ? orygina\u322 ?: to inteligentna rekonstrukcja, nie kopia. Opcje SBR w tym enkoderze pozwalaj\u261 ? sterowa\u263 ? g\u281 ?sto\u347 ?ci\u261 ? obwiedni w czasie, ich rozdzielczo\u347 ?ci\u261 ? cz\u281 ?stotliwo\u347 ?ci, ilo\u347 ?ci\u261 ? wstrzykiwanego szumu i tak zwanym filtrowaniem odwrotnym (o tym dalej).\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 6. Co to jest Parametric Stereo (PS)\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 PS idzie jeszcze dalej ni\u380 ? SBR w oszcz\u281 ?dzaniu. Wysy\u322 ?a jeden kana\u322 ? d\u378 ?wi\u281 ?ku i parametry opisuj\u261 ?ce r\u243 ?\u380 ?nice mi\u281 ?dzy lewym a prawym:\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab IID (Inter-channel Intensity Difference) \u8212- r\u243 ?\u380 ?nica g\u322 ?o\u347 ?no\u347 ?ci mi\u281 ?dzy kana\u322 ?ami.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab ICC (Inter-channel Coherence) \u8212- jak bardzo kana\u322 ?y s\u261 ? do siebie podobne/sp\u243 ?jne.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab IPD/OPD (r\u243 ?\u380 ?nice fazy) \u8212- te w enkoderze FDK NIE s\u261 ? wspierane (zawsze zero); o tym uczciwie w cz\u281 ?\u347 ?ci o opcjach PS.\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Dekoder z tego jednego kana\u322 ?u i tych parametr\u243 ?w "rozk\u322 ?ada" d\u378 ?wi\u281 ?k z powrotem na stereo. Przy 24 kbps to jedyny spos\u243 ?b, \u380 ?eby stereo w og\u243 ?le mia\u322 ?o sens. Przy wy\u380 ?szych bitrate'ach PS zwykle przeszkadza i si\u281 ? go nie u\u380 ?ywa.\par}
+{\pard \qc \f0 \sa180 \li0 \fi0 \emdash\emdash\emdash\emdash\emdash\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel0 \b \fs36 Cz\u281 ?\u347 ?\u263 ? II. Bitrate, rezerwuar bit\u243 ?w i sterowanie jako\u347 ?ci\u261 ?\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 7. CBR, VBR i co si\u281 ? naprawd\u281 ? dzieje w \u347 ?rodku\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 CBR (Constant Bitrate) to sta\u322 ?y bitrate: ka\u380 ?da sekunda d\u378 ?wi\u281 ?ku zajmuje mniej wi\u281 ?cej tyle samo miejsca. Wygodne do streamingu, przewidywalne. Wybierasz go prze\u322 ?\u261 ?cznikiem {\f1 -b} (np. {\f1 -b 128000} = 128 kbit/s).\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 VBR (Variable Bitrate) to bitrate zmienny: fragmenty trudne (du\u380 ?o detali, transjenty) dostaj\u261 ? wi\u281 ?cej bit\u243 ?w, ciche i proste mniej. Teoretycznie lepsza jako\u347 ?\u263 ? na bit. W FDK VBR wybiera si\u281 ? prze\u322 ?\u261 ?cznikiem {\f1 -m} (tryby 1\u8211-5), ale \u8212- i to trzeba powiedzie\u263 ? wprost \u8212- VBR w FDK jest s\u322 ?aby. Presety s\u261 ? zachowawcze i nie daj\u261 ? tej swobody, co np. LAME w MP3.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Kluczowa rzecz do zrozumienia: NAWET w trybie CBR bitrate lokalnie "oddycha". S\u322 ?u\u380 ?y do tego REZERWUAR BIT\u211 ?W (bit reservoir). To bufor: gdy ramka jest \u322 ?atwa, enkoder zapisuje j\u261 ? oszcz\u281 ?dnie i odk\u322 ?ada zaoszcz\u281 ?dzone bity do rezerwuaru; gdy przychodzi ramka trudna, po\u380 ?ycza z rezerwuaru i wydaje wi\u281 ?cej, ni\u380 ? wynika\u322 ?oby ze \u347 ?redniej. \u346 ?rednia zostaje zachowana, ale chwilowo bitrate skacze w g\u243 ?r\u281 ? i w d\u243 ?\u322 ?. To dlatego "CBR" w AAC nie jest idealnie p\u322 ?aski.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Ten enkoder wystawia sterowanie rezerwuarem na zewn\u261 ?trz, i to jest podstawa naszego w\u322 ?asnego, lepszego VBR \u8212- patrz nast\u281 ?pny rozdzia\u322 ?.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 8. Przepis: VBR, kt\u243 ?ry nie tnie ostatnich ramek "na si\u322 ?\u281 ?"\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 To jest dok\u322 ?adnie sytuacja, o kt\u243 ?r\u261 ? cz\u281 ?sto chodzi: masz trudny fragment (np. wej\u347 ?cie ca\u322 ?ej sekcji d\u281 ?tej albo talerze), enkoder wypu\u347 ?ci\u322 ? kilka ramek grubo powy\u380 ?ej \u347 ?redniej \u8212- i zamiast pozwoli\u263 ? tej jako\u347 ?ci "\u380 ?y\u263 ?", zaczyna dusi\u263 ? kolejne ramki, \u380 ?eby tylko wr\u243 ?ci\u263 ? do \u347 ?redniej. Efekt: s\u322 ?yszalne przygaszenie zaraz po g\u322 ?o\u347 ?nym momencie.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Nasze rozwi\u261 ?zanie to quasi-CVBR: bierzemy silnik CBR (kt\u243 ?ry trzyma sensown\u261 ? \u347 ?redni\u261 ?), ale ROZSZERZAMY rezerwuar i wide\u322 ?ki bit\u243 ?w, \u380 ?eby enkoder m\u243 ?g\u322 ? oddycha\u263 ? znacznie mocniej i nie musia\u322 ? natychmiast "oddawa\u263 ? d\u322 ?ugu". Cztery prze\u322 ?\u261 ?czniki:\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\f1 --vbr-reservoir <bity>} \u8212- rozmiar rezerwuaru. Wi\u281 ?kszy = enkoder mo\u380 ?e d\u322 ?u\u380 ?ej utrzyma\u263 ? podwy\u380 ?szon\u261 ? jako\u347 ?\u263 ? po trudnym fragmencie, zanim wr\u243 ?ci do \u347 ?redniej.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\f1 --peak-bitrate <bps>} \u8212- dozwolony chwilowy szczyt. Pozwala trudnym ramkom si\u281 ?gn\u261 ?\u263 ? wysoko, przy zachowaniu \u347 ?redniej.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\f1 --max-bits-frame <n>} i {\f1 --min-bits-frame <n>} \u8212- twarde wide\u322 ?ki bit\u243 ?w na ramk\u281 ?. To rdze\u324 ? "constrained VBR": m\u243 ?wisz "nie mniej ni\u380 ? X, nie wi\u281 ?cej ni\u380 ? Y na ramk\u281 ?".\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\f1 --bitres-mode <0|1|2>} \u8212- tryb rezerwuaru: 0 pe\u322 ?ny, 1 zredukowany, 2 wy\u322 ?\u261 ?czony (sztywny bitrate ramka po ramce).\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 PRZEPIS PRAKTYCZNY dla materia\u322 ?u, kt\u243 ?ry ma "\u380 ?y\u263 ?" po trudnych fragmentach (~128 kbps stereo, muzyka akustyczna/orkiestrowa):\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \f1 fdkaac-franken-x64.exe -p 2 -b 128000 --peak-bitrate 200000 --vbr-reservoir 12000 -o out.m4a in.wav\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Co to robi: \u347 ?rednia zostaje w okolicach 128, ale gdy przychodzi kulminacja, ramki mog\u261 ? si\u281 ?gn\u261 ?\u263 ? 200 kbps, a szeroki rezerwuar (12000 bit\u243 ?w) sprawia, \u380 ?e enkoder NIE dusi natychmiast kolejnych ramek \u8212- pozwala jako\u347 ?ci opa\u347 ?\u263 ? \u322 ?agodnie. To jest dok\u322 ?adnie ten efekt "nie tnij na si\u322 ?\u281 ?, pozw\u243 ?l temu \u380 ?y\u263 ?".\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Chcesz mocniej: podnie\u347 ? {\f1 --peak-bitrate} do 256000 i {\f1 --vbr-reservoir} do 18000. Chcesz twardziej trzyma\u263 ? \u347 ?redni\u261 ? (limit \u322 ?\u261 ?cza): zmniejsz rezerwuar do 4000.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 WA\u379 ?NE OGRANICZENIE, uczciwie: to nadal dzia\u322 ?a na silniku CBR + rezerwuar, nie na prawdziwej alokacji "po zawarto\u347 ?ci" jak w LAME. Wahania s\u261 ? umiarkowane (rz\u281 ?du \u177 ?20\u8211-50%), bo AAC ma twardy limit 6144 bity na kana\u322 ? na ramk\u281 ?. Ale ten "lekki lot" to w\u322 ?a\u347 ?nie to, co zwykle chcesz \u8212- i jest w pe\u322 ?ni kontrolowany.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 9. Skrajne bitrate: bardzo nisko i bardzo wysoko\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 BARDZO NISKO. Standardowo FDK nie pozwoli zej\u347 ?\u263 ? poni\u380 ?ej pewnej pod\u322 ?ogi. Je\u347 ?li naprawd\u281 ? chcesz 8 kbps HE-AAC stereo albo 6 kbps LC (cho\u263 ?by dla eksperymentu), u\u380 ?yj flagi {\f1 --unlock-bitrate}. UWAGA na jeden szczeg\u243 ?\u322 ?: normalnie ten frontend traktuje ma\u322 ?e liczby przy {\f1 -b} jako kilobity (czyli {\f1 -b 96} = 96 kbps). W trybie {\f1 --unlock-bitrate} bierze {\f1 -b} DOS\u321 ?OWNIE jako bity na sekund\u281 ? \u8212- czyli {\f1 -b 8000} to 8000 bps = 8 kbps. Poni\u380 ?ej mniej wi\u281 ?cej 10 kbps jest naturalna pod\u322 ?oga wynikaj\u261 ?ca z samych nag\u322 ?\u243 ?wk\u243 ?w AAC \u8212- ni\u380 ?ej si\u281 ? nie da bez \u322 ?amania formatu.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \f1 fdkaac-franken-x64.exe -p 29 -b 8000 --unlock-bitrate -o out.m4a in48k.wav\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 DWA WA\u379 ?NE ZASTRZE\u379 ?ENIA do bardzo niskich bitrate'\u243 ?w:\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Po pierwsze \u8212- {\f1 --unlock-bitrate} obni\u380 ?a pod\u322 ?og\u281 ? tylko dla AAC-LC (profil 2). HE-AAC i HE-AAC v2 (profile 5 i 29) maj\u261 ? W\u321 ?ASN\u260 ?, tward\u261 ? pod\u322 ?og\u281 ? oko\u322 ?o 16 kbps, wynikaj\u261 ?c\u261 ? z tego, \u380 ?e SBR nie potrafi skonfigurowa\u263 ? si\u281 ? poni\u380 ?ej \u8212- enkoder albo podniesie bitrate do 16 kbps, albo w og\u243 ?le odm\u243 ?wi startu. Dlatego je\u347 ?li pod HE-AAC wpiszesz {\f1 -b 5} albo {\f1 -b 8000}, dostaniesz 16 kbps (program Ci\u281 ? o tym ostrze\u380 ?e). Chcesz naprawd\u281 ? ni\u380 ?ej ni\u380 ? 16 kbps? U\u380 ?yj AAC-LC: {\f1 -p 2 -b 8000 --unlock-bitrate}.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Po drugie \u8212- UWAGA na interpretacj\u281 ? {\f1 -b} w trybie unlock. Normalnie ten frontend traktuje ma\u322 ?e liczby jako kilobity: {\f1 -b 128} = 128 kbps, {\f1 -b 1152} = 1152 kbps. Ale z {\f1 --unlock-bitrate} liczba jest brana DOS\u321 ?OWNIE jako bity na sekund\u281 ?: {\f1 -b 8000} = 8000 bps = 8 kbps. Gdyby\u347 ? przez pomy\u322 ?k\u281 ? napisa\u322 ? {\f1 -b 1152 --unlock-bitrate} (my\u347 ?l\u261 ?c "1152 kbps"), dosta\u322 ?by\u347 ? 1152 bps \u8212- czyli praktycznie nic. Program ostrze\u380 ?e, gdy warto\u347 ?\u263 ? wygl\u261 ?da na tak\u261 ? pomy\u322 ?k\u281 ?. Regu\u322 ?a: w trybie unlock zawsze podawaj pe\u322 ?n\u261 ? liczb\u281 ? bit\u243 ?w (np. {\f1 -b 6000}, nie {\f1 -b 6}).\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 BARDZO WYSOKO. G\u243 ?rny sufit to 6144 bity na kana\u322 ? na ramk\u281 ?. Przy 48 kHz to wychodzi oko\u322 ?o 576 kbps na kana\u322 ?; przy stereo realne ograniczenie pojawia si\u281 ? w okolicach 600 kbps sumarycznie. Je\u347 ?li chcesz 1000+ kbps, musisz podnie\u347 ?\u263 ? cz\u281 ?stotliwo\u347 ?\u263 ? pr\u243 ?bkowania powy\u380 ?ej 48 kHz (\u378 ?r\u243 ?d\u322 ?o 96 kHz) \u8212- wtedy sufit ro\u347 ?nie i osi\u261 ?gniesz 1024, a nawet 1152 kbps. To ograniczenie samego standardu AAC.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Uwaga o jednoznaczno\u347 ?ci: przy tak wysokich bitrate'ach (1152) NIE u\u380 ?ywasz {\f1 --unlock-bitrate} (on s\u322 ?u\u380 ?y do schodzenia w d\u243 ?\u322 ?), wi\u281 ?c {\f1 -b 1152} znaczy tam jednoznacznie 1152 kbps. Kolizja interpretacji dotyczy wy\u322 ?\u261 ?cznie trybu unlock, gdzie i tak operujesz ma\u322 ?ymi liczbami bps. Praktycznie te dwa \u347 ?wiaty si\u281 ? nie stykaj\u261 ?.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 9a. Czy warto robi\u263 ? "afterburner plus" \u8212- wi\u281 ?cej iteracji przy skrajnym bitrate\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Skoro optymalizacja przy bardzo wysokim bitrate to Tw\u243 ?j konik, jedno trzeba powiedzie\u263 ? wprost, bo inaczej stracisz czas na \u347 ?lep\u261 ? uliczk\u281 ?. W \u347 ?rodku enkodera jest p\u281 ?tla, kt\u243 ?ra iteracyjnie dobiera kwantyzacj\u281 ? (parametr wewn\u281 ?trzny "maxIterations"; afterburner w\u322 ?\u261 ?czony daje 5 pr\u243 ?b, wy\u322 ?\u261 ?czony 2). Kusz\u261 ?ce jest my\u347 ?lenie "dam 20 iteracji, b\u281 ?dzie dok\u322 ?adniej". Ale ta p\u281 ?tla to mechanizm RATUNKOWY na wypadek NIEDOBORU bit\u243 ?w \u8212- uruchamia si\u281 ? dopiero, gdy ramka nie mie\u347 ?ci si\u281 ? w bud\u380 ?ecie i trzeba j\u261 ? docisn\u261 ?\u263 ?. Przy skrajnie WYSOKIM bitrate bud\u380 ?et jest ogromny, ramka mie\u347 ?ci si\u281 ? od razu, wi\u281 ?c p\u281 ?tla prawie nigdy nie wchodzi w kolejne iteracje. Zwi\u281 ?kszanie limitu nic tam nie da \u8212- to nie jest "wi\u281 ?cej polerowania", tylko "wy\u380 ?szy limit awaryjnego dociskania", kt\u243 ?rego i tak nie u\u380 ?ywasz. Sam afterburner ({\f1 --afterburner 1}) ju\u380 ? wybiera dok\u322 ?adniejsz\u261 ? tabel\u281 ? strojenia (i to jest w\u322 ?\u261 ?czone domy\u347 ?lnie) \u8212- a wy\u380 ?ej ten konkretny mechanizm nie si\u281 ?ga, bo w kodeku nie ma dodatkowych poziom\u243 ?w.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Co NAPRAWD\u280 ? daje wi\u281 ?cej detalu przy wysokim bitrate, to nie liczba iteracji, ale OBNI\u379 ?ENIE PROG\u211 ?W MASKOWANIA, \u380 ?eby enkoder w og\u243 ?le uzna\u322 ? wi\u281 ?cej rzeczy za warte zakodowania: {\f1 --ath-scale} poni\u380 ?ej 256, {\f1 --spread-mask} poni\u380 ?ej 256 i {\f1 --ms-precision} powy\u380 ?ej 256. To s\u261 ? d\u378 ?wignie, kt\u243 ?re faktycznie zamieniaj\u261 ? nadmiarowe bity na zachowany detal (patrz rozdzia\u322 ? 18). Iteracje kwantyzacji nie.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 BARDZO WYSOKO (ci\u261 ?g dalszy w\u322 ?a\u347 ?ciwej optymalizacji) \u8212- patrz rozdzia\u322 ? 18.\par}
+{\pard \qc \f0 \sa180 \li0 \fi0 \emdash\emdash\emdash\emdash\emdash\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel0 \b \fs36 Cz\u281 ?\u347 ?\u263 ? III. Opcje standardowe (nie tylko Frankenstein)\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 To s\u261 ? prze\u322 ?\u261 ?czniki dost\u281 ?pne w ka\u380 ?dej wersji tego frontendu. Zna\u263 ? je warto, bo to fundament, na kt\u243 ?rym budujesz reszt\u281 ?.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 10. Wyb\u243 ?r profilu i podstawy\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\f1 -p <n>} \u8212- profil (Audio Object Type). Najwa\u380 ?niejsze: {\f1 2} = AAC-LC, {\f1 5} = HE-AAC, {\f1 29} = HE-AAC v2, {\f1 23} = AAC-LD (low delay, do komunikacji), {\f1 39} = AAC-ELD. Do muzyki: 2 dla wysokich bitrate, 5 dla \u347 ?rednich, 29 dla najni\u380 ?szych.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\f1 -b <n>} \u8212- bitrate w bitach na sekund\u281 ? dla CBR (np. {\f1 -b 192000}). Ma\u322 ?e liczby frontend mno\u380 ?y \u215 ?1000 ({\f1 -b 192} = 192 kbps) \u8212- poza trybem {\f1 --unlock-bitrate}.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\f1 -m <n>} \u8212- tryb VBR 1\u8211-5 (1 najni\u380 ?sza jako\u347 ?\u263 ?, 5 najwy\u380 ?sza). Jak wspomniano, w FDK s\u322 ?aby; do powa\u380 ?nej pracy u\u380 ?yj CBR + rozdzia\u322 ? 8.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\f1 -o <plik>} \u8212- plik wyj\u347 ?ciowy. Rozszerzenie {\f1 .m4a} daje kontener MP4; {\f1 -f 2} prze\u322 ?\u261 ?cza na surowy strumie\u324 ? ADTS ({\f1 .aac}).\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\f1 -w <n>} \u8212- szeroko\u347 ?\u263 ? pasma (bandwidth) rdzenia w Hz. Uwaga: pod SBR to nie dzia\u322 ?a tak, jak si\u281 ? spodziewasz \u8212- do sterowania pasmem rdzenia pod HE-AAC u\u380 ?yj {\f1 --core-cutoff} (cz\u281 ?\u347 ?\u263 ? IV).\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 11. Afterburner i sygnalizacja\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\f1 --afterburner <0|1>} \u8212- afterburner to dodatkowy, wolniejszy algorytm optymalizacji kwantyzacji. {\f1 1} = w\u322 ?\u261 ?czony (lepsza jako\u347 ?\u263 ?, wolniej), i to jest domy\u347 ?lne oraz zalecane. Wy\u322 ?\u261 ?czaj tylko gdy zale\u380 ?y Ci na szybko\u347 ?ci.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\f1 -s <n>} / signaling \u8212- spos\u243 ?b sygnalizowania SBR/PS w strumieniu (kompatybilno\u347 ?\u263 ? ze starszymi dekoderami). Domy\u347 ?lne "auto" jest w wi\u281 ?kszo\u347 ?ci przypadk\u243 ?w dobre.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 12. Kontener i metadane\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\f1 --moov-before-mdat} \u8212- umieszcza indeks MP4 na pocz\u261 ?tku pliku (przydatne do streamingu progresywnego). Standardowe tagi (tytu\u322 ?, artysta itd.) ustawia si\u281 ? prze\u322 ?\u261 ?cznikami {\f1 --title}, {\f1 --artist}, {\f1 --album} i pokrewnymi.\par}
+{\pard \qc \f0 \sa180 \li0 \fi0 \emdash\emdash\emdash\emdash\emdash\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel0 \b \fs36 Cz\u281 ?\u347 ?\u263 ? IV. Opcje Frankenstein \u8212- sterowanie wn\u281 ?trzem enkodera\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 To jest sedno tego enkodera: prze\u322 ?\u261 ?czniki, kt\u243 ?re w zwyk\u322 ?ym FDK s\u261 ? zaszyte na sztywno, a tutaj wystawione na zewn\u261 ?trz. Ka\u380 ?dy opisany jest praktycznie \u8212- co robi dla ucha, kiedy go u\u380 ?y\u263 ?, i jakie warto\u347 ?ci maj\u261 ? sens.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 13. Stereo w rdzeniu: MS i Intensity\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 MS STEREO (Mid/Side). Zamiast kodowa\u263 ? lewy i prawy kana\u322 ? osobno, koduje sum\u281 ? (mid = L+R) i r\u243 ?\u380 ?nic\u281 ? (side = L\u8722 ?R). Gdy kana\u322 ?y s\u261 ? podobne (a w muzyce zwykle s\u261 ?), r\u243 ?\u380 ?nica jest ma\u322 ?a i tania w zapisie. To niemal darmowa oszcz\u281 ?dno\u347 ?\u263 ?.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\f1 --msmask <0|1>} \u8212- wymu\u347 ?: {\f1 0} = wsz\u281 ?dzie osobne L/R (pe\u322 ?na niezale\u380 ?no\u347 ?\u263 ? kana\u322 ?\u243 ?w), {\f1 1} = MS na wszystkich pasmach. Domy\u347 ?lnie enkoder decyduje sam per pasmo.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\f1 --msbands <n>} \u8212- ogranicz MS do pasm o numerze mniejszym ni\u380 ? n. Czyli bierze N NAJNI\u379 ?SZYCH pasm (pami\u281 ?taj: pasma numerowane s\u261 ? od do\u322 ?u, 0 = basy). Powy\u380 ?ej \u8212- czyste L/R. Przyk\u322 ?ad: {\f1 --msbands 6} = MS tylko na 6 najni\u380 ?szych pasmach.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\f1 --msbands-lo <lo>} i {\f1 --msbands-hi <hi>} \u8212- to para "OD\u8211-DO". Podajesz OBA prze\u322 ?\u261 ?czniki i wyznaczasz przedzia\u322 ? numer\u243 ?w pasm, w kt\u243 ?rym MS jest dozwolone; poza tym przedzia\u322 ?em idzie czyste L/R. To pozwala umie\u347 ?ci\u263 ? MS GDZIEKOLWIEK, w tym na samej g\u243 ?rze widma \u8212- czego {\f1 --msbands} (zawsze od do\u322 ?u) nie potrafi.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Jak to zapami\u281 ?ta\u263 ?: {\f1 --msbands} = "od do\u322 ?u do numeru N"; {\f1 --msbands-lo/-hi} = "od numeru LO do numeru HI". Przyk\u322 ?ady (zak\u322 ?adaj\u261 ?c oko\u322 ?o 49 pasm w LC stereo):\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab MS tylko na 5 NAJWY\u379 ?SZYCH pasmach (scali\u263 ? szum w g\u243 ?rze, d\u243 ?\u322 ? zostawi\u263 ? w pe\u322 ?nym stereo): najwy\u380 ?sze pasma to numery 44\u8211-48, wi\u281 ?c {\f1 --msbands-lo 44 --msbands-hi 48}.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab MS tylko w \u347 ?rodku pasma: {\f1 --msbands-lo 10 --msbands-hi 30}.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab MS na 6 najni\u380 ?szych: pro\u347 ?ciej {\f1 --msbands 6} (to samo co {\f1 --msbands-lo 0 --msbands-hi 5}).\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Ile pasm masz realnie dla danego trybu i cz\u281 ?stotliwo\u347 ?ci pokazuje {\f1 --verbose} (pole "active SFBs") \u8212- sprawd\u378 ? tam g\u243 ?rny numer, zanim ustawisz {\f1 --msbands-hi}.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\f1 --ms-precision <n>} \u8212- precyzja pasm zakodowanych w MS, w skali Q8 (256 = bez zmian). Warto\u347 ?ci powy\u380 ?ej 256 obni\u380 ?aj\u261 ? pr\u243 ?g maskowania na pasmach MS, przez co enkoder przeznacza WI\u280 ?CEJ bit\u243 ?w na ich dok\u322 ?adny opis \u8212- "dziury" w widmie MS robi\u261 ? si\u281 ? p\u322 ?ytsze. To odpowiednik podkr\u281 ?cenia jako\u347 ?ci w stylu LAME {\f1 -q}. 384 to oko\u322 ?o 1,5\u215 ?, 512 oko\u322 ?o 2\u215 ?. Nie ma g\u243 ?rnego limitu \u8212- przy 512 kbps te\u380 ? si\u281 ? przydaje. Najbardziej u\u380 ?yteczny zakres to 48\u8211-192 kbps.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 INTENSITY STEREO (IS). Bardziej agresywna technika: dla wysokich pasm, gdzie ucho s\u322 ?abo lokalizuje kierunek, enkoder wysy\u322 ?a jedn\u261 ? obwiedni\u281 ? energii zamiast dw\u243 ?ch kana\u322 ?\u243 ?w. Oszcz\u281 ?dza du\u380 ?o, ale mo\u380 ?e zw\u281 ?zi\u263 ? scen\u281 ?.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\f1 --is <0|1>} \u8212- globalnie w\u322 ?\u261 ?cz/wy\u322 ?\u261 ?cz IS.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\f1 --is-aggression <0..100>} \u8212- KONSUMENCKI suwak agresywno\u347 ?ci IS. To jest to, czego zwykle chcesz u\u380 ?ywa\u263 ?. 0 = zachowanie domy\u347 ?lne FDK (bardzo ostro\u380 ?ne), 100 = maksymalnie agresywne intensity. Dlaczego to potrzebne: FDK ma trzy niezale\u380 ?ne "bramki" wpuszczaj\u261 ?ce IS (stosunek bitrate do pasma, pr\u243 ?g korelacji kana\u322 ?\u243 ?w, minimalna liczba ci\u261 ?g\u322 ?ych pasm) i musz\u261 ? by\u263 ? spe\u322 ?nione JEDNOCZE\u346 ?NIE. Ruszenie jednego progu nic nie da, bo blokuje inny. Ten suwak rusza wszystkie naraz. Zacznij od 40\u8211-70 i s\u322 ?uchaj.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Zaawansowane progi IS (dla eksperymentuj\u261 ?cych \u8212- dzia\u322 ?aj\u261 ? PO przej\u347 ?ciu przez suwak agresywno\u347 ?ci): {\f1 --is-min-sfbs <n>} (minimalna liczba ci\u261 ?g\u322 ?ych pasm), {\f1 --is-corr-thresh <n>} (pr\u243 ?g korelacji kana\u322 ?\u243 ?w, Q8), {\f1 --is-lr-ratio <n>} (pr\u243 ?g stosunku L/R, Q8). Uwaga praktyczna: te progi dzia\u322 ?aj\u261 ? NIEINTUICYJNIE \u8212- ni\u380 ?sza warto\u347 ?\u263 ? progu korelacji oznacza AGRESYWNIEJSZE IS, nie odwrotnie.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 14. Pasmo i cutoff (w tym audiofilskie pe\u322 ?ne pasmo)\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\f1 --core-cutoff <Hz>} \u8212- g\u243 ?rna granica pasma kodowanego przez rdze\u324 ?, w Hz. Dzia\u322 ?a tak\u380 ?e pod SBR (w przeciwie\u324 ?stwie do {\f1 -w}). Np. {\f1 --core-cutoff 7500} pod HE-AAC v2 oddaje rdzeniowi 7,5 kHz, reszt\u281 ? robi SBR.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\f1 --uncap-bandwidth} \u8212- audiofilskie. FDK ma zaszyty twardy limit pasma rdzenia: minimum z 20 kHz i po\u322 ?owy cz\u281 ?stotliwo\u347 ?ci pr\u243 ?bkowania. Oznacza to, \u380 ?e NAWET przy \u378 ?r\u243 ?dle 96 kHz i wysokim bitrate realnie nic powy\u380 ?ej 20 kHz nie by\u322 ?o kodowane. Ta flaga zdejmuje limit \u8212- {\f1 --core-cutoff} mo\u380 ?e wtedy si\u281 ?gn\u261 ?\u263 ? a\u380 ? do po\u322 ?owy cz\u281 ?stotliwo\u347 ?ci pr\u243 ?bkowania. Dla materia\u322 ?u 96 kHz i s\u322 ?uchaczy, kt\u243 ?rzy chc\u261 ? pe\u322 ?ne pasmo:\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \f1 fdkaac-franken-x64.exe -p 2 -b 320000 --uncap-bandwidth --core-cutoff 40000 -o out.m4a in96k.wav\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Zmierzono: bez tej flagi powy\u380 ?ej 20 kHz jest praktycznie zero energii; z ni\u261 ? realnie kodowane jest pasmo do 40 kHz.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 15. SBR \u8212- sterowanie g\u243 ?rnym pasmem\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Nadpisuje ustawienia z wewn\u281 ?trznej tabeli tuningowej SBR.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\f1 --sbr-start <n>} / {\f1 --sbr-stop <n>} \u8212- indeksy pocz\u261 ?tku i ko\u324 ?ca pasma SBR. UWAGA: FDK waliduje kombinacj\u281 ? \u8212- z\u322 ?a para da "encoder initialization failed". Dobieraj sprawdzone pary (np. dla 64k stereo dzia\u322 ?a start=5 stop=9).\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\f1 --sbr-freqscale <n>} \u8212- grupowanie cz\u281 ?stotliwo\u347 ?ci (0 liniowe, wy\u380 ?ej = drobniejsze logarytmiczne). {\f1 --sbr-noise-bands <n>} \u8212- g\u281 ?sto\u347 ?\u263 ? opisu szumu SBR. {\f1 --sbr-amp-res <0|1>} \u8212- rozdzielczo\u347 ?\u263 ? amplitudy obwiedni (0 = 1,5 dB, 1 = 3 dB).\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\f1 --sbr-num-env <1|2|4>} \u8212- liczba obwiedni na ramk\u281 ? = rozdzielczo\u347 ?\u263 ? czasowa SBR. Wi\u281 ?cej obwiedni = lepiej oddane zmiany w czasie w g\u243 ?rnym pa\u347 ?mie, kosztem bit\u243 ?w. WA\u379 ?NE: ta opcja WYMUSZA statyczn\u261 ? siatk\u281 ? czasow\u261 ? (wy\u322 ?\u261 ?cza detektor transient\u243 ?w), wi\u281 ?c na materiale z ostrymi atakami mo\u380 ?e by\u263 ? gorzej. Dobre do stabilnych, wybrzmiewaj\u261 ?cych d\u378 ?wi\u281 ?k\u243 ?w. (Warto\u347 ?\u263 ? 8 przekracza standardow\u261 ? siatk\u281 ? i jest odrzucana.)\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\f1 --sbr-freqres-fixfix <0|1>} \u8212- rozdzielczo\u347 ?\u263 ? cz\u281 ?stotliwo\u347 ?ci obwiedni.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\f1 --sbr-stereo-mode <0..3>} \u8212- tryb stereo w warstwie SBR (osobny od MS rdzenia!): 0 = mono, 1 = LR (pe\u322 ?na, niezale\u380 ?na separacja lewego i prawego w g\u243 ?rnym pa\u347 ?mie), 2 = coupling (oszcz\u281 ?dny: wsp\u243 ?lna obwiednia + poziom/balans), 3 = switch (domy\u347 ?lnie enkoder wybiera per ramk\u281 ?). Wymu\u347 ? 1 dla maksymalnej separacji stereo w g\u243 ?rze (audiofilsko), 2 dla oszcz\u281 ?dno\u347 ?ci bit\u243 ?w przy niskim bitrate.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\f1 --sbr-invf <0..3>} \u8212- filtrowanie odwrotne (inverse filtering). To mechanizm sterowany przez ESTYMATOR TONALNO\u346 ?CI: SBR analizuje, czy g\u243 ?rne pasmo powinno by\u263 ? bardziej tonalne czy bardziej szumowe, i odpowiednio "wybiela" skopiowany materia\u322 ?. 0 = wy\u322 ?\u261 ?czone, 1 = s\u322 ?abe, 2 = \u347 ?rednie, 3 = mocne. Mocniejsze = mniej "metalicznego" dzwonienia w g\u243 ?rze, kosztem cz\u281 ?\u347 ?ci detalu. Zwykle steruje tym automat; wymu\u347 ? r\u281 ?cznie, gdy s\u322 ?yszysz metaliczno\u347 ?\u263 ?.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\f1 --sbr-noise-floor-offset <n>} \u8212- offset poziomu szumu wstrzykiwanego przez SBR. Wi\u281 ?ksze warto\u347 ?ci = wi\u281 ?cej szumu wype\u322 ?niaj\u261 ?cego rekonstrukcj\u281 ?.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 16. Parametric Stereo (HE-AAC v2)\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\f1 --ps <0|1>} \u8212- wymu\u347 ? wysy\u322 ?anie parametru IID (r\u243 ?\u380 ?nica g\u322 ?o\u347 ?no\u347 ?ci): 0 = nigdy (sp\u322 ?aszcza obraz stereo do mono-podobnego), 1 = zawsze.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\f1 --ps-iid-quant <0|1>} \u8212- dok\u322 ?adno\u347 ?\u263 ? kwantyzacji IID: 0 gruba, 1 dok\u322 ?adna.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\f1 --ps-icc <0|1>} \u8212- wymu\u347 ? ICC (Inter-channel Coherence \u8212- sp\u243 ?jno\u347 ?\u263 ?/podobie\u324 ?stwo kana\u322 ?\u243 ?w) on/off. {\f1 --ps-icc-mode <0|1>} \u8212- tryb rotacji ICC (ROT_A / ROT_B).\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 UCZCIWIE o IPD/OPD (r\u243 ?\u380 ?nice fazy): enkoder FDK ich NIE liczy. W kodzie jest to jawnie oznaczone jako "nie wspierane" \u8212- pola fazy s\u261 ? zawsze zerowane. Wystawienie ich wymaga\u322 ?oby napisania od zera analizy fazy mi\u281 ?dzykana\u322 ?owej, co jest du\u380 ?ym, ryzykownym zadaniem. Dlatego tych parametr\u243 ?w tu nie ma i nie da si\u281 ? ich w\u322 ?\u261 ?czy\u263 ?.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 17. TNS, PNS i afterburner\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\f1 --tns-mask <n>} / {\f1 --tns-order <n>} \u8212- TNS (Temporal Noise Shaping) kszta\u322 ?tuje szum kwantyzacji w czasie, \u380 ?eby chowa\u322 ? si\u281 ? pod transjentami (wa\u380 ?ne dla ostrych atak\u243 ?w, np. perkusji). Maska to bitowa mapa aktywnych filtr\u243 ?w, rz\u261 ?d to d\u322 ?ugo\u347 ?\u263 ? filtra.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\f1 --pns <0|1>} \u8212- PNS (Perceptual Noise Substitution) zast\u281 ?puje szumowe pasma opisem "tu jest szum o takiej energii" zamiast kodowa\u263 ? go dok\u322 ?adnie. Du\u380 ?a oszcz\u281 ?dno\u347 ?\u263 ? na szumowym materiale.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\f1 --pns-start <Hz>} \u8212- od jakiej cz\u281 ?stotliwo\u347 ?ci PNS mo\u380 ?e dzia\u322 ?a\u263 ?.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\f1 --force-pns} \u8212- obejd\u378 ? bramk\u281 ? niskiego bitrate dla PNS. WYJA\u346 ?NIENIE: FDK ma tabel\u281 ?, kt\u243 ?ra przy bardzo niskich bitrate'ach (poni\u380 ?ej oko\u322 ?o 28 kbps) ca\u322 ?kowicie wy\u322 ?\u261 ?cza PNS \u8212- i wtedy {\f1 --pns-start} jest ignorowane, bo PNS w og\u243 ?le nie dzia\u322 ?a. To dlatego przy 24 kbps s\u322 ?ysza\u322 ?e\u347 ? artefakty jak z MP3, a przy 64 kbps PNS dzia\u322 ?a\u322 ?. Ta flaga omija tabel\u281 ? i w\u322 ?\u261 ?cza PNS mimo niskiego bitrate.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\f1 --ath-scale <n>} \u8212- skalowanie progu s\u322 ?yszalno\u347 ?ci (ATH), w Q8 (256 = \u215 ?1,0). To jest GLOBALNY regulator maskowania. Powy\u380 ?ej 256 = podnosi progi = enkoder uznaje wi\u281 ?cej rzeczy za nies\u322 ?yszalne = agresywniej, mniej bit\u243 ?w. Poni\u380 ?ej 256 = obni\u380 ?a progi = enkoder zachowuje wi\u281 ?cej detalu = wi\u281 ?cej bit\u243 ?w. To najprostszy spos\u243 ?b powiedzie\u263 ? enkoderowi "b\u261 ?d\u378 ? czystszy" albo "b\u261 ?d\u378 ? oszcz\u281 ?dniejszy".\par}
+{\pard \qc \f0 \sa180 \li0 \fi0 \emdash\emdash\emdash\emdash\emdash\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel0 \b \fs36 Cz\u281 ?\u347 ?\u263 ? V. Detale w wysokich bitrate i dostrajanie do mowy\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 18. "Wi\u281 ?cej bit\u243 ?w = wi\u281 ?cej detalu": jak to naprawd\u281 ? wycisn\u261 ?\u263 ?\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Pytanie, kt\u243 ?re cz\u281 ?sto pada: skoro daj\u281 ? 400 kbps, czy enkoder naprawd\u281 ? wykorzysta je na lepszy opis detali, czy cz\u281 ?\u347 ?\u263 ? si\u281 ? marnuje? W AAC nie ma tak zaawansowanych, osobnych regulator\u243 ?w jak w MusePack (signal-to-mask ratio, tone-masks-noise, noise-masks-tone jako oddzielne pokr\u281 ?t\u322 ?a). Ale efekt "opisz dok\u322 ?adniej, mniej maskuj" osi\u261 ?gamy dwoma narz\u281 ?dziami, kt\u243 ?re razem robi\u261 ? dok\u322 ?adnie to samo.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\f1 --ath-scale <n>} PONI\u379 ?EJ 256 \u8212- obni\u380 ?a globalny pr\u243 ?g s\u322 ?yszalno\u347 ?ci. Enkoder przestaje zak\u322 ?ada\u263 ?, \u380 ?e co\u347 ? jest nies\u322 ?yszalne, i zaczyna to dok\u322 ?adnie kodowa\u263 ?. To najbli\u380 ?szy odpowiednik obni\u380 ?enia progu maskowania z MusePacka. Przy 320\u8211-400 kbps spr\u243 ?buj 200 albo 180.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\f1 --spread-mask <n>} PONI\u379 ?EJ 256 \u8212- steruje ROZLEWANIEM maskowania mi\u281 ?dzy s\u261 ?siednimi pasmami. W psychoakustyce g\u322 ?o\u347 ?ne pasmo "rozlewa" swoj\u261 ? zdolno\u347 ?\u263 ? maskowania na s\u261 ?siad\u243 ?w (to w\u322 ?a\u347 ?nie tone-masks-noise). Zmniejszaj\u261 ?c ten parametr, m\u243 ?wisz enkoderowi: mniej zak\u322 ?adaj, \u380 ?e s\u261 ?siednie pasma si\u281 ? nawzajem maskuj\u261 ? \u8212- przez co wi\u281 ?cej pasm jest traktowanych jako s\u322 ?yszalne i dok\u322 ?adnie kodowanych. Najwi\u281 ?kszy efekt tam, gdzie bity s\u261 ? ograniczeniem (96\u8211-192 kbps); przy bardzo wysokim bitrate enkoder i tak ma nadmiar bit\u243 ?w, wi\u281 ?c zmiana bywa ma\u322 ?a.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 PRZEPIS audiofilski (maksimum detalu, wysoki bitrate, materia\u322 ? z bogat\u261 ? g\u243 ?r\u261 ?):\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \f1 fdkaac-franken-x64.exe -p 2 -b 400000 --ath-scale 190 --spread-mask 128 -o out.m4a in.wav\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Po\u322 ?\u261 ?czenie: obni\u380 ?ony globalny pr\u243 ?g (ath-scale 190) + zmniejszone rozlewanie maskowania (spread-mask 128). Enkoder zachowuje znacznie wi\u281 ?cej mikrodetalu, co w por\u243 ?wnaniu fazowym z orygina\u322 ?em daje mniejsze r\u243 ?\u380 ?nice. To jest w duchu tego, co robi\u322 ? MusePack przy 1000 kbps \u8212- w granicach tego, co AAC pozwala wystawi\u263 ? bez przepisywania ca\u322 ?ego modelu.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Dla MS-owanego materia\u322 ?u do\u322 ?\u243 ?\u380 ? {\f1 --ms-precision 448} \u8212- p\u322 ?ytsze dziury w pasmach MS to kolejne miejsce, gdzie wysoki bitrate daje realnie lepszy d\u378 ?wi\u281 ?k.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 19. Dostrajanie do mowy ludzkiej\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Tak, w HE-AAC (a konkretnie w warstwie SBR) istnieje osobny tryb strojenia pod mow\u281 ?. W zwyk\u322 ?ym FDK jest zaszyty na sztywno jako wy\u322 ?\u261 ?czony \u8212- tutaj wystawili\u347 ?my go flag\u261 ?:\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\f1 --speech} \u8212- w\u322 ?\u261 ?cza strojenie SBR pod mow\u281 ? ludzk\u261 ?. Zmienia progi filtrowania odwrotnego, poziom szumu i wy\u322 ?\u261 ?cza kodowanie parametryczne g\u243 ?rnego pasma \u8212- wszystko po to, \u380 ?eby mowa (podcast, audiobook, dialog) w niskim bitrate brzmia\u322 ?a naturalniej, bez "bulgotania" w g\u243 ?rze. Dotyczy HE-AAC/HE-AAC v2 (bo dzia\u322 ?a w SBR).\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \f1 fdkaac-franken-x64.exe -p 5 -b 32000 --speech -o mowa.m4a podcast.wav\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Uczciwie o LC: czysty AAC-LC (bez SBR) NIE ma osobnego, oddzielnego "trybu mowy" w FDK. Model psychoakustyczny LC jest ten sam dla mowy i muzyki. Dla mowy w LC najlepiej po prostu zej\u347 ?\u263 ? z pasmem ({\f1 --core-cutoff} np. 12000\u8211-14000 Hz, bo mowa nie ma du\u380 ?o powy\u380 ?ej) i ewentualnie w\u322 ?\u261 ?czy\u263 ? {\f1 --pns} z {\f1 --force-pns} przy bardzo niskich bitrate'ach. Ale dedykowanego prze\u322 ?\u261 ?cznika "speech" dla LC nie ma, bo nie ma go w samym kodeku \u8212- i nie chc\u281 ? udawa\u263 ?, \u380 ?e jest.\par}
+{\pard \qc \f0 \sa180 \li0 \fi0 \emdash\emdash\emdash\emdash\emdash\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel0 \b \fs36 Cz\u281 ?\u347 ?\u263 ? VI. Gotowe przepisy (od skrajno\u347 ?ci do skrajno\u347 ?ci)\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 20. Zestaw praktycznych receptur\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 MUZYKA, WYSOKA JAKO\u346 ?\u262 ? ARCHIWALNA (przezroczyste stereo):\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \f1 fdkaac-franken-x64.exe -p 2 -b 256000 --afterburner 1 -o out.m4a in.wav\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 MUZYKA, "ODDYCHAJ\u260 ?CY" QUASI-VBR (nie tnie po kulminacjach):\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \f1 fdkaac-franken-x64.exe -p 2 -b 160000 --peak-bitrate 256000 --vbr-reservoir 16000 -o out.m4a in.wav\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 AUDIOFIL, PE\u321 ?NE PASMO 96 kHz + maksimum detalu:\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \f1 fdkaac-franken-x64.exe -p 2 -b 400000 --uncap-bandwidth --core-cutoff 40000 --ath-scale 190 --spread-mask 128 -o out.m4a in96k.wav\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 STREAMING MUZYKI, \u346 ?REDNI BITRATE:\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \f1 fdkaac-franken-x64.exe -p 5 -b 64000 --sbr-stereo-mode 3 -o out.m4a in.wav\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 PODCAST / MOWA, NISKI BITRATE:\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \f1 fdkaac-franken-x64.exe -p 5 -b 32000 --speech --core-cutoff 12000 -o out.m4a mowa.wav\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 SKRAJNIE NISKO (eksperyment, 8 kbps stereo):\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \f1 fdkaac-franken-x64.exe -p 29 -b 8000 --unlock-bitrate -o out.m4a in48k.wav\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 RATOWANIE STEREO PRZY NISKIM BITRACIE (agresywne intensity):\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \f1 fdkaac-franken-x64.exe -p 2 -b 96000 --is 1 --is-aggression 70 -o out.m4a in.wav\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 MS TYLKO NA G\u211 ?RZE (d\u243 ?\u322 ? pe\u322 ?ne stereo, g\u243 ?ra scalona):\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \f1 fdkaac-franken-x64.exe -p 2 -b 128000 --msbands-lo 44 --msbands-hi 48 -o out.m4a in.wav\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 21. Jak podej\u347 ?\u263 ? do w\u322 ?asnych eksperyment\u243 ?w\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Zmieniaj JEDEN parametr naraz i s\u322 ?uchaj (albo por\u243 ?wnuj widmo/faz\u281 ? z orygina\u322 ?em). Enkoder bez \u380 ?adnych flag Frankenstein zachowuje si\u281 ? dok\u322 ?adnie jak oryginalny FDK \u8212- to Tw\u243 ?j punkt odniesienia. Ka\u380 ?da flaga to \u347 ?wiadome odchylenie od domy\u347 ?lnego, sprawdzonego zachowania.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Kolejno\u347 ?\u263 ?, w jakiej warto pr\u243 ?bowa\u263 ? przy problemach:\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab "za ma\u322 ?o detalu / za p\u322 ?asko" \u8594 ? {\f1 --ath-scale} w d\u243 ?\u322 ?, potem {\f1 --spread-mask} w d\u243 ?\u322 ?.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab "stereo za w\u261 ?skie w g\u243 ?rze" \u8594 ? {\f1 --sbr-stereo-mode 1} (HE-AAC) albo mniej agresywne IS.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab "metaliczne wysokie" \u8594 ? {\f1 --sbr-invf 2} lub 3.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab "tnie po g\u322 ?o\u347 ?nych fragmentach" \u8594 ? {\f1 --peak-bitrate} + {\f1 --vbr-reservoir} (rozdzia\u322 ? 8).\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab "artefakty jak MP3 przy bardzo niskim bitrate" \u8594 ? {\f1 --force-pns}.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab "chc\u281 ? pe\u322 ?ne pasmo z 96 kHz" \u8594 ? {\f1 --uncap-bandwidth --core-cutoff 40000}.\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 22. Uwaga ko\u324 ?cowa o rzetelno\u347 ?ci\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Wszystkie opisane tu zachowania zosta\u322 ?y sprawdzone pomiarowo (dekodowalno\u347 ?\u263 ? strumienia, realny rozrzut bitrate, zawarto\u347 ?\u263 ? widma), a nie tylko za\u322 ?o\u380 ?one. Tam, gdzie co\u347 ? ma ograniczenie (IPD/OPD nieobs\u322 ?ugiwane, brak trybu mowy w LC, sufit 6144 bity na kana\u322 ?, rezydualna pod\u322 ?oga bitrate ~10 kbps), jest to powiedziane wprost, zamiast obiecywa\u263 ? rzeczy, kt\u243 ?rych kodek nie potrafi.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Enkoder bez flag = czysty FDK. Flagi = Twoje \u347 ?wiadome decyzje. Mi\u322 ?ego strojenia.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel0 \b \fs36 Cz\u281 ?\u347 ?\u263 ? VII. Tabele referencyjne\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Trzy tabele orientacyjne wyliczone z tablic strojenia w kodzie FDK. S\u261 ? PRZYBLI\u379 ?ONE (siatka pasm jest schodkowa), ale pokazuj\u261 ? w\u322 ?a\u347 ?ciwy rz\u261 ?d wielko\u347 ?ci i pomagaj\u261 ? \u347 ?wiadomie dobra\u263 ? ustawienia bez zgadywania.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 23. Tabela 1 \u8212- g\u243 ?rna cz\u281 ?stotliwo\u347 ?\u263 ? pasma (SFB)\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Widmo jest podzielone na pasma (scale factor bands, SFB), numerowane od do\u322 ?u: pasmo 0 to najni\u380 ?szy bas, im wy\u380 ?ej numer, tym wy\u380 ?ej w cz\u281 ?stotliwo\u347 ?ci. Kiedy ograniczasz co\u347 ? do "N pasm" ({\f1 --msbands}, {\f1 --isbands}), ta tabela m\u243 ?wi, jakiej cz\u281 ?stotliwo\u347 ?ci to mniej wi\u281 ?cej odpowiada. Pokazano co czwarte pasmo; ostatni wiersz to \u322 ?\u261 ?czna liczba pasm i cz\u281 ?stotliwo\u347 ?\u263 ? Nyquista (po\u322 ?owa pr\u243 ?bkowania).\par}
+{
+\trowd \trgaph120
+\clbrdrb\brdrs\cellx1234\clbrdrb\brdrs\cellx2468\clbrdrb\brdrs\cellx3702\clbrdrb\brdrs\cellx4936\clbrdrb\brdrs\cellx6170\clbrdrb\brdrs\cellx7404\clbrdrb\brdrs\cellx8638
+\trkeep\intbl
+{
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 SFB\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 16 kHz\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 22,05 kHz\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 32 kHz\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 44,1 kHz\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 48 kHz\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 96 kHz\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx1234\cellx2468\cellx3702\cellx4936\cellx6170\cellx7404\cellx8638
+\trkeep\intbl
+{
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 0\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 62\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 43\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 62\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 86\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 94\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 188\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx1234\cellx2468\cellx3702\cellx4936\cellx6170\cellx7404\cellx8638
+\trkeep\intbl
+{
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 4\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 312\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 215\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 312\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 431\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 469\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 938\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx1234\cellx2468\cellx3702\cellx4936\cellx6170\cellx7404\cellx8638
+\trkeep\intbl
+{
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 8\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 562\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 388\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 562\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 775\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 844\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 1688\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx1234\cellx2468\cellx3702\cellx4936\cellx6170\cellx7404\cellx8638
+\trkeep\intbl
+{
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 12\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 875\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 646\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 1000\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 1378\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 1500\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 2438\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx1234\cellx2468\cellx3702\cellx4936\cellx6170\cellx7404\cellx8638
+\trkeep\intbl
+{
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 16\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 1250\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 991\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 1500\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 2067\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 2250\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 3750\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx1234\cellx2468\cellx3702\cellx4936\cellx6170\cellx7404\cellx8638
+\trkeep\intbl
+{
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 20\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 1656\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 1335\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 2250\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 3101\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 3375\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 5625\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx1234\cellx2468\cellx3702\cellx4936\cellx6170\cellx7404\cellx8638
+\trkeep\intbl
+{
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 24\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 2188\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 1852\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 3375\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 4651\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 5062\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 8062\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx1234\cellx2468\cellx3702\cellx4936\cellx6170\cellx7404\cellx8638
+\trkeep\intbl
+{
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 28\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 2875\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 2584\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 5000\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 6891\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 7500\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 12938\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx1234\cellx2468\cellx3702\cellx4936\cellx6170\cellx7404\cellx8638
+\trkeep\intbl
+{
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 32\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 3844\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 3618\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 7000\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 9647\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 10500\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 24000\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx1234\cellx2468\cellx3702\cellx4936\cellx6170\cellx7404\cellx8638
+\trkeep\intbl
+{
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 36\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 5188\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 5039\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 9000\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 12403\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 13500\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 36000\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx1234\cellx2468\cellx3702\cellx4936\cellx6170\cellx7404\cellx8638
+\trkeep\intbl
+{
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 40\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 7000\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 7020\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 11000\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 15159\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 16500\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 48000\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx1234\cellx2468\cellx3702\cellx4936\cellx6170\cellx7404\cellx8638
+\trkeep\intbl
+{
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 44\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 \u8212-\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 9647\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 13000\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 17916\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 19500\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 \u8212-\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx1234\cellx2468\cellx3702\cellx4936\cellx6170\cellx7404\cellx8638
+\trkeep\intbl
+{
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 48\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 \u8212-\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 \u8212-\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 15000\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 22050\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 24000\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 \u8212-\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx1234\cellx2468\cellx3702\cellx4936\cellx6170\cellx7404\cellx8638
+\trkeep\intbl
+{
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 liczba pasm / Nyquist\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 43 / 8000\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 47 / 11025\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 51 / 16000\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 49 / 22050\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 49 / 24000\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 41 / 48000\par}
+\cell}
+}
+\intbl\row}
+{\pard \ql \f0 \sa180 \li0 \fi0 \par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Przyk\u322 ?ad odczytu: przy 44,1 kHz pasmo nr 40 ko\u324 ?czy si\u281 ? oko\u322 ?o 15,2 kHz. Je\u347 ?li chcesz, \u380 ?eby MS dzia\u322 ?a\u322 ?o tylko poni\u380 ?ej ~15 kHz, ustaw {\f1 --msbands 40}.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 24. Tabela 2 \u8212- SBR: indeks startu a cz\u281 ?stotliwo\u347 ?\u263 ? przej\u347 ?cia\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 W HE-AAC doln\u261 ? cz\u281 ?\u347 ?\u263 ? pasma koduje rdze\u324 ? AAC, a g\u243 ?rn\u261 ? dorabia SBR. {\f1 --sbr-start} (indeks 0..15) decyduje, od jakiej cz\u281 ?stotliwo\u347 ?ci zaczyna si\u281 ? SBR \u8212- ni\u380 ?szy indeks oznacza, \u380 ?e SBR wchodzi ni\u380 ?ej, wi\u281 ?c rdze\u324 ? jest w\u281 ?\u380 ?szy. "core" to cz\u281 ?stotliwo\u347 ?\u263 ? pr\u243 ?bkowania rdzenia; przy trybie dual-rate wyj\u347 ?cie jest dwa razy wy\u380 ?sze ni\u380 ? rdze\u324 ?.\par}
+{
+\trowd \trgaph120
+\clbrdrb\brdrs\cellx1440\clbrdrb\brdrs\cellx2880\clbrdrb\brdrs\cellx4320\clbrdrb\brdrs\cellx5760\clbrdrb\brdrs\cellx7200\clbrdrb\brdrs\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 indeks startu\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 core 16 kHz\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 core 24 kHz\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 core 32 kHz\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 core 44,1 kHz\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 core 48 kHz\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx1440\cellx2880\cellx4320\cellx5760\cellx7200\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 0\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 2750\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 2250\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 2500\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 1378\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 1500\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx1440\cellx2880\cellx4320\cellx5760\cellx7200\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 1\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 3000\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 2625\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 3000\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 2067\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 2250\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx1440\cellx2880\cellx4320\cellx5760\cellx7200\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 2\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 3250\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 3000\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 3500\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 2756\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 3000\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx1440\cellx2880\cellx4320\cellx5760\cellx7200\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 3\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 3500\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 3375\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 4000\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 3445\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 3750\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx1440\cellx2880\cellx4320\cellx5760\cellx7200\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 4\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 3750\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 3750\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 4500\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 4134\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 4500\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx1440\cellx2880\cellx4320\cellx5760\cellx7200\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 5\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 4000\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 4125\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 5000\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 4823\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 5250\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx1440\cellx2880\cellx4320\cellx5760\cellx7200\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 6\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 4250\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 4500\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 5500\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 5512\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 6000\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx1440\cellx2880\cellx4320\cellx5760\cellx7200\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 7\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 4500\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 4875\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 6000\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 6202\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 6750\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx1440\cellx2880\cellx4320\cellx5760\cellx7200\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 8\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 4750\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 5250\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 6500\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 6891\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 7500\par}
+\cell}
+}
+\intbl\row}
+{\pard \ql \f0 \sa180 \li0 \fi0 \par}
+{\pard \ql \f0 \sa180 \li0 \fi0 G\u243 ?rn\u261 ? granic\u281 ? SBR ustawia {\f1 --sbr-stop} (0..13) \u8212- wy\u380 ?szy indeks to SBR si\u281 ?gaj\u261 ?ce wy\u380 ?ej. Domy\u347 ?lnie biblioteka dobiera oba indeksy pod bitrate; te warto\u347 ?ci podawaj tylko, gdy \u347 ?wiadomie chcesz przesun\u261 ?\u263 ? punkt przej\u347 ?cia.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 25. Tabela 3 \u8212- AAC-LC: automatyczne odci\u281 ?cie pasma wg bitrate\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Gdy nie podasz {\f1 -w}, koder sam dobiera szeroko\u347 ?\u263 ? pasma z tej tablicy \u8212- wed\u322 ?ug bitrate NA KANA\u321 ? (stereo 128 kbps to 64 kbps na kana\u322 ?). Tabela jest wsp\u243 ?lna dla 32/44,1/48 kHz i wy\u380 ?szych; pr\u243 ?bkowanie wp\u322 ?ywa tylko na g\u243 ?rny limit (Nyquista).\par}
+{
+\trowd \trgaph120
+\clbrdrb\brdrs\cellx2880\clbrdrb\brdrs\cellx5760\clbrdrb\brdrs\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 bitrate na kana\u322 ?\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 pasmo mono\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 pasmo stereo i wi\u281 ?cej\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2880\cellx5760\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 do 12 kbps\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 3700\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 5000\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2880\cellx5760\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 20 kbps\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 6900\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 9640\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2880\cellx5760\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 28 kbps\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 9600\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 13050\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2880\cellx5760\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 40 kbps\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 12060\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 14260\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2880\cellx5760\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 56 kbps\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 13950\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 15500\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2880\cellx5760\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 72 kbps\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 14200\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 16120\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2880\cellx5760\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 96 kbps i wi\u281 ?cej\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 17000\par}
+\cell}
+{{\pard\intbl \qr \f0 \sa0 \li0 \fi0 17000\par}
+\cell}
+}
+\intbl\row}
+{\pard \ql \f0 \sa180 \li0 \fi0 \par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Wniosek praktyczny: w czystym AAC-LC (bez SBR) automat i tak zatrzyma si\u281 ? oko\u322 ?o 17 kHz. Podawanie {\f1 -w} wy\u380 ?ej ma sens tylko przy du\u380 ?ym zapasie bitrate; pe\u322 ?ne pasmo powy\u380 ?ej 20 kHz wymaga {\f1 --uncap-bandwidth} i pr\u243 ?bkowania co najmniej 96 kHz.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 26. Jak czyta\u263 ? {\f1 --verbose}\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\f1 --verbose} wypisuje surowe warto\u347 ?ci bez podpowiedzi w nawiasach, \u380 ?eby odczyt by\u322 ? czysty. Oto co oznaczaj\u261 ? te mniej oczywiste:\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab AOT (profil): 2 = AAC-LC, 5 = HE-AAC, 29 = HE-AAC v2, 23 = AAC-LD, 39 = AAC-ELD.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab bitrate-mode: 0 = CBR, 1 do 5 = VBR (wy\u380 ?ej = lepsza jako\u347 ?\u263 ?).\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab channel-mode: 1 = mono, 2 = stereo. W HE-AAC v2 rdze\u324 ? jest mono, a stereo odtwarza si\u281 ? z parametr\u243 ?w (Parametric Stereo).\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab core bandwidth: g\u243 ?rna cz\u281 ?stotliwo\u347 ?\u263 ? rdzenia AAC. W nawiasie podane jest \u377 ?R\u211 ?D\u321 ?O: "from -w" (poda\u322 ?e\u347 ? r\u281 ?cznie), "from --core-cutoff" albo "auto". Pod SBR to tylko rdze\u324 ? \u8212- SBR gra powy\u380 ?ej tej warto\u347 ?ci.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab final BW (AAC+SBR): pokazywane tylko przy aktywnym SBR \u8212- orientacyjna g\u243 ?rna cz\u281 ?stotliwo\u347 ?\u263 ? CA\u321 ?EGO sygna\u322 ?u (rdze\u324 ? plus SBR), wyliczona z indeksu stopu SBR. To dope\u322 ?nienie "core bandwidth": tamto m\u243 ?wi dok\u261 ?d si\u281 ?ga sam rdze\u324 ?, a to dok\u261 ?d si\u281 ?ga ca\u322 ?y HE-AAC po do\u322 ?o\u380 ?eniu SBR.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab sbr-ratio: 1 = single-rate (downsampled), 2 = dual-rate (rdze\u324 ? na po\u322 ?owie cz\u281 ?stotliwo\u347 ?ci wyj\u347 ?cia).\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab sbr amp res: 0 = rozdzielczo\u347 ?\u263 ? 1,5 dB, 1 = 3,0 dB.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab codec delay: op\u243 ?\u378 ?nienie kodeka w pr\u243 ?bkach na kana\u322 ? \u8212- istotne przy gapless.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab IS corr threshold, IS L/R ratio: progi w skali Q8, gdzie 256 = 1,0. Ni\u380 ?szy pr\u243 ?g korelacji oznacza, \u380 ?e intensity stereo w\u322 ?\u261 ?cza si\u281 ? CH\u280 ?TNIEJ (odwrotnie do intuicji).\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab franken overrides applied: lista prze\u322 ?\u261 ?cznik\u243 ?w, kt\u243 ?re w tym uruchomieniu odbiegaj\u261 ? od czystego FDK (albo "none", gdy nic nie zmienia\u322 ?e\u347 ?).\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Warto\u347 ?ci w skali Q8 (jak progi IS, {\f1 --ms-precision}, {\f1 --ms-bias}, {\f1 --ath-scale}, {\f1 --spread-mask}) to liczby, gdzie 256 znaczy 1,0 \u8212- na przyk\u322 ?ad 243 to oko\u322 ?o 0,95.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel0 \b \fs36 Cz\u281 ?\u347 ?\u263 ? VIII. S\u322 ?ownik poj\u281 ?\u263 ?\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Dla szybkiego przypomnienia \u8212- wszystkie terminy z tego manuala, wyja\u347 ?nione jednym\u8211-dwoma zdaniami, j\u281 ?zykiem d\u378 ?wi\u281 ?kowca.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 AAC (Advanced Audio Coding). Rodzina stratnych kodek\u243 ?w d\u378 ?wi\u281 ?ku z rodziny MPEG, nast\u281 ?pca MP3. Lepsza jako\u347 ?\u263 ? na bit ni\u380 ? MP3, zw\u322 ?aszcza w niskich bitrate'ach.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 AAC-LC (Low Complexity). Podstawowy profil AAC. Koduje pe\u322 ?ne pasmo klasycznie. Wyb\u243 ?r do wysokich bitrate'\u243 ?w i archiwizacji.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Afterburner. Dodatkowy, wolniejszy algorytm optymalizuj\u261 ?cy kwantyzacj\u281 ? w FDK. W\u322 ?\u261 ?czony daje nieco lepsz\u261 ? jako\u347 ?\u263 ?. Domy\u347 ?lnie i zalecanie w\u322 ?\u261 ?czony.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 ATH (Absolute Threshold of Hearing). Pr\u243 ?g s\u322 ?yszalno\u347 ?ci \u8212- granica ciszy zale\u380 ?na od cz\u281 ?stotliwo\u347 ?ci, poni\u380 ?ej kt\u243 ?rej ucho nie rejestruje d\u378 ?wi\u281 ?ku. Enkoder wyrzuca to, co jest poni\u380 ?ej. W tym enkoderze regulowany przez {\f1 --ath-scale}.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Bitrate. Ilo\u347 ?\u263 ? danych na sekund\u281 ? d\u378 ?wi\u281 ?ku, w kilobitach (kbps) lub bitach (bps). Wy\u380 ?szy = wi\u281 ?cej miejsca na detale = lepsza jako\u347 ?\u263 ? (do pewnej granicy).\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Bit reservoir (rezerwuar bit\u243 ?w). Bufor pozwalaj\u261 ?cy po\u380 ?ycza\u263 ? bity mi\u281 ?dzy ramkami. Dzi\u281 ?ki niemu nawet CBR lokalnie "oddycha". Podstawa naszego quasi-VBR.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 CBR (Constant Bitrate). Sta\u322 ?y bitrate. Przewidywalny rozmiar, wygodny do streamingu. W AAC i tak lekko zmienny dzi\u281 ?ki rezerwuarowi.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Coupling (SBR). Tryb stereo w warstwie SBR, w kt\u243 ?rym oba kana\u322 ?y dziel\u261 ? wsp\u243 ?ln\u261 ? obwiedni\u281 ? plus opis poziomu \u8212- oszcz\u281 ?dny, ale w\u281 ?\u380 ?sza scena w g\u243 ?rnym pa\u347 ?mie.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Cutoff. G\u243 ?rna granica pasma kodowanego przez rdze\u324 ?. Powy\u380 ?ej niej albo cisza, albo (w HE-AAC) robot\u281 ? przejmuje SBR.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 HE-AAC (High Efficiency). AAC-LC + SBR. Rdze\u324 ? koduje d\u243 ?\u322 ? pasma, SBR odtwarza g\u243 ?r\u281 ?. Do \u347 ?rednich i niskich bitrate'\u243 ?w.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 HE-AAC v2. HE-AAC + Parametric Stereo. Do najni\u380 ?szych bitrate'\u243 ?w stereo.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 ICC (Inter-channel Coherence). Parametr PS opisuj\u261 ?cy, jak bardzo kana\u322 ?y s\u261 ? do siebie podobne/sp\u243 ?jne. Sterowany przez {\f1 --ps-icc}.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 IID (Inter-channel Intensity Difference). Parametr PS opisuj\u261 ?cy r\u243 ?\u380 ?nic\u281 ? g\u322 ?o\u347 ?no\u347 ?ci mi\u281 ?dzy kana\u322 ?ami. Podstawowy no\u347 ?nik obrazu stereo w PS.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Intensity Stereo (IS). Technika, w kt\u243 ?rej wysokie pasma kodowane s\u261 ? jako jedna obwiednia energii zamiast dw\u243 ?ch kana\u322 ?\u243 ?w. Oszcz\u281 ?dna, ale mo\u380 ?e zw\u281 ?zi\u263 ? scen\u281 ?. Sterowana suwakiem {\f1 --is-aggression}.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Inverse filtering (filtrowanie odwrotne). Mechanizm SBR "wybielaj\u261 ?cy" skopiowany materia\u322 ? g\u243 ?rnego pasma, sterowany estymatorem tonalno\u347 ?ci. Mocniejsze = mniej metaliczno\u347 ?ci. Regulowane {\f1 --sbr-invf}.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 IPD/OPD (r\u243 ?\u380 ?nice fazy w PS). W enkoderze FDK NIE obs\u322 ?ugiwane (zawsze zero).\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Kwantyzacja. Zaokr\u261 ?glanie wsp\u243 ?\u322 ?czynnik\u243 ?w widma do sko\u324 ?czonej dok\u322 ?adno\u347 ?ci. Im mniej bit\u243 ?w, tym wi\u281 ?kszy b\u322 ?\u261 ?d (szum/dziury). Serce stratnej kompresji.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Maskowanie. Zjawisko, w kt\u243 ?rym g\u322 ?o\u347 ?ny d\u378 ?wi\u281 ?k sprawia, \u380 ?e nie s\u322 ?yszysz cichszych tu\u380 ? obok (w widmie lub w czasie). G\u322 ?\u243 ?wne \u378 ?r\u243 ?d\u322 ?o oszcz\u281 ?dno\u347 ?ci bit\u243 ?w w AAC.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 MDCT. Transformata przenosz\u261 ?ca ramk\u281 ? d\u378 ?wi\u281 ?ku z czasu do dziedziny cz\u281 ?stotliwo\u347 ?ci. Na jej wyniku pracuje ca\u322 ?y model psychoakustyczny.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 MS Stereo (Mid/Side). Kodowanie sumy (mid) i r\u243 ?\u380 ?nicy (side) zamiast L i R. Prawie darmowa oszcz\u281 ?dno\u347 ?\u263 ?, gdy kana\u322 ?y s\u261 ? podobne.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 PNS (Perceptual Noise Substitution). Zast\u281 ?puje szumowe pasma opisem "tu jest szum o takiej energii" zamiast kodowa\u263 ? je dok\u322 ?adnie. Sterowany {\f1 --pns}, {\f1 --force-pns}.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Parametric Stereo (PS). Koduje jeden kana\u322 ? + parametry (IID, ICC), z kt\u243 ?rych dekoder odtwarza stereo. Do najni\u380 ?szych bitrate'\u243 ?w.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Profil (AOT, Audio Object Type). Wariant AAC wybierany przez {\f1 -p} (LC, HE, v2, LD, ELD).\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Ramka. Porcja d\u378 ?wi\u281 ?ku (1024 pr\u243 ?bki), kt\u243 ?r\u261 ? enkoder przetwarza naraz.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 SBR (Spectral Band Replication). Rekonstrukcja g\u243 ?rnego pasma z dolnego plus niewielki opis. Serce HE-AAC.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 SFB (Scale Factor Band). Pasmo wsp\u243 ?\u322 ?czynnik\u243 ?w skali. Grupa s\u261 ?siednich wsp\u243 ?\u322 ?czynnik\u243 ?w widma, dla kt\u243 ?rej enkoder podejmuje wsp\u243 ?ln\u261 ? decyzj\u281 ? o dok\u322 ?adno\u347 ?ci. Numerowane od do\u322 ?u (0 = basy).\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Spreading (rozlewanie maskowania). Rozprzestrzenianie zdolno\u347 ?ci maskowania na s\u261 ?siednie pasma. Zmniejszane przez {\f1 --spread-mask} dla wi\u281 ?kszego detalu.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Tabela tuningowa. Zestaw domy\u347 ?lnych ustawie\u324 ? SBR/PS dobieranych przez FDK wg bitrate i cz\u281 ?stotliwo\u347 ?ci. Nasze flagi j\u261 ? nadpisuj\u261 ?.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 TNS (Temporal Noise Shaping). Kszta\u322 ?tuje szum kwantyzacji w czasie, \u380 ?eby chowa\u322 ? si\u281 ? pod transjentami. Wa\u380 ?ne dla perkusji i ostrych atak\u243 ?w.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Transjent. Ostry, kr\u243 ?tki d\u378 ?wi\u281 ?k (uderzenie, atak). Trudny dla kodeka, bo szum kwantyzacji mo\u380 ?e "wyprzedzi\u263 ?" atak (pre-echo).\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 VBR (Variable Bitrate). Zmienny bitrate zale\u380 ?ny od trudno\u347 ?ci materia\u322 ?u. W FDK s\u322 ?aby; nasz quasi-VBR (rozdzia\u322 ? 8) jest lepsz\u261 ? alternatyw\u261 ?.\par}
+{\pard \qc \f0 \sa180 \li0 \fi0 \emdash\emdash\emdash\emdash\emdash\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Koniec s\u322 ?ownika.\par}
+}

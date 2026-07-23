@@ -1,0 +1,438 @@
+2016-08-26  nu774 <honeycomb77@gmail.com>
+
+  * update ChangeLog [HEAD -> master]
+
+  * bump [origin/master]
+
+  * Ticket #23: quit supporting MPEG-2 AOT
+
+2016-08-25  nu774 <honeycomb77@gmail.com>
+
+  * fix libfdkaac encoder version check for SBR_RATIO availability
+
+  * Use our SBR signaling implementation on old libfdkaac
+
+2015-10-10  nu774 <honeycomb77@gmail.com>
+
+  * improve MSVC project
+
+2015-09-21  nu774 <honeycomb77@gmail.com>
+
+  * fix indents
+
+  * update compat layer, mainly for MSVC14 issue
+
+2015-07-22  nu774 <honeycomb77@gmail.com>
+
+  * add platformtoolset in vcxproj
+
+  * fix build issue on MSVC14
+
+2015-06-12  nu774 <honeycomb77@gmail.com>
+
+  * remove an unused variable decl
+
+  * remove an unused variable decl
+
+  * m4af: move internal struct m4af_itmf_entry_t from header
+
+2015-02-14  nu774 <honeycomb77@gmail.com>
+
+  * update ChangeLog
+
+  * bump version [v0.6.2]
+
+  * take stco->co64 switch due to mdat relocation into account on finalizing m4a
+
+  * fix incorrect iTunSMPB written when interrupted by signals
+
+2014-09-13  nu774 <honeycomb77@gmail.com>
+
+  * update ChangeLog
+
+  * bump version [v0.6.1]
+
+2014-09-12  nu774 <honeycomb77@gmail.com>
+
+  * write actual number of channels to mp4a box
+
+2014-08-17  nu774 <honeycomb77@gmail.com>
+
+  * update INSTALL
+
+  * add m4 macros
+
+2014-08-13  nu774 <honeycomb77@gmail.com>
+
+  * update ChangeLog
+
+  * bump version [v0.6.0]
+
+2014-08-12  nu774 <honeycomb77@gmail.com>
+
+  * apply limiter when input is float
+
+  * refactor pcm reader framework
+
+2014-07-30  nu774 <honeycomb77@gmail.com>
+
+  * update ChangeLog
+
+  * win32compat: fix aacenc_printf() not to write junk characters [v0.5.4]
+
+2014-05-12  nu774 <honeycomb77@gmail.com>
+
+  * write INSTALL
+
+2014-03-14  nu774 <honeycomb77@gmail.com>
+
+  * update COPYING (patch from darealshinji)
+
+2014-02-17  nu774 <honeycomb77@gmail.com>
+
+  * update ChangeLog
+
+  * bump version [v0.5.3]
+
+  * fix: CAF chan chunk using channel bitmap was not correctly handled
+
+2014-01-18  nu774 <honeycomb77@gmail.com>
+
+  * update ChangeLog
+
+  * bump version [v0.5.2]
+
+  * fix reading of caf file without chan chunk
+
+2013-11-17  nu774 <honeycomb77@gmail.com>
+
+  * Merge pull request #9 from rbrito/fix-typo
+
+2013-11-18  Rogério Brito <rbrito@ime.usp.br>
+
+  * man: Regen manpage with hyphens escaped.
+
+  * README: Remove trailing whitespaces that end up in the manpages.
+
+  * README: Fix typo in bandwidth to match CLI options.
+
+2013-11-08  nu774 <honeycomb77@gmail.com>
+
+  * add genman.sh, update fdkaac.1
+
+  * update ChangeLog
+
+  * bump version [v0.5.1]
+
+  * fix to use libFDKAAC signaling mode 1
+
+2013-11-05  nu774 <honeycomb77@gmail.com>
+
+  * fix README
+
+2013-11-04  nu774 <honeycomb77@gmail.com>
+
+  * rename README.md -> README
+
+  * Update README -> README.md, generate groff manpage from README.md
+
+  * update ChangeLog
+
+  * update git2changelog to accept non-ascii output
+
+  * add manpage
+
+2013-11-03  nu774 <honeycomb77@gmail.com>
+
+  * fix gcc warnings
+
+  * Merge pull request #7 from rbrito/misc-fixes
+
+2013-11-03  Rogério Brito <rbrito@ime.usp.br>
+
+  * gitignore: Add list of files to ignore.
+
+2013-11-03  nu774 <honeycomb77@gmail.com>
+
+  * update ChangeLog
+
+  * bump version [v0.5.0]
+
+  * add --sbr-ratio to support AACENC_SBR_RATIO appeared on libFDK 3.4.12
+
+  * support 7.1 channel mode added on FDK 3.4.12
+
+2013-10-30  nu774 <honeycomb77@gmail.com>
+
+  * update ChangeLog
+
+  * bump version [v0.4.2]
+
+  * use tell() to obtain data chunk offset
+
+  * rename aacenc_result_t -> aacenc_frame_t, simplify write_sample()
+
+  * prepend 1 sample zero padding in case of SBR and enc_delay is odd
+
+  * cleanup interface of aac_encode_frame()
+
+  * add some copyright notice
+
+2013-10-29  nu774 <honeycomb77@gmail.com>
+
+  * smart padding for better gapless playback
+
+  * fix unused variable warning
+
+  * fix warning: cast size_t as sprintf() arg to int
+
+  * fix vcxproj
+
+  * fix pcm_seek() to inline
+
+2013-10-27  nu774 <honeycomb77@gmail.com>
+
+  * bump version [v0.4.1]
+
+  * add --include-sbr-delay
+
+  * fix help message: show -I as shorthand for --ignorelength
+
+  * remove --sbr-signaling
+
+2013-10-26  nu774 <honeycomb77@gmail.com>
+
+  * re-fix #ifdef cond for lrint()
+
+  * tag mapping: add recorded date and tempo, remove performer->artist
+
+2013-10-25  nu774 <honeycomb77@gmail.com>
+
+  * fix MSVC12 build issue
+
+  * fix build issue on platform where fileno is a naive macro
+
+  * update ChangeLog
+
+  * bump version [v0.4.0]
+
+  * update README
+
+2013-10-24  nu774 <honeycomb77@gmail.com>
+
+  * caf input support
+
+  * refactor pcm io routines
+
+2013-10-23  nu774 <honeycomb77@gmail.com>
+
+  * cleanup metadata handling
+
+  * --tag-from-json: properly support number/total format in json track field
+
+2013-10-22  nu774 <honeycomb77@gmail.com>
+
+  * bump version [v0.3.3]
+
+  * fixed bogus sgpd written on --gapless-mode=1 and 2
+
+2013-10-21  nu774 <honeycomb77@gmail.com>
+
+  * bump version [v0.3.2]
+
+2013-10-20  nu774 <honeycomb77@gmail.com>
+
+  * reimplement int16 conversion as pcm_reader
+
+  * add abstraction layer for pcm reading
+
+  * improve handling of avgBitrate
+
+2013-10-19  nu774 <honeycomb77@gmail.com>
+
+  * update ChangeLog and git2changelog.py
+
+2013-10-18  nu774 <honeycomb77@gmail.com>
+
+  * bump version [v0.3.1]
+
+  * update README
+
+  * set avgBitrate field to zero for 14496-1 compliance
+
+2013-09-07  nu774 <honeycomb77@gmail.com>
+
+  * updated ChangeLog with new git2changelog.py
+
+2013-06-14  nu774 <honeycomb77@gmail.com>
+
+  * add --moov-before-mdat [v0.3.0]
+
+2013-03-04  nu774 <honeycomb77@gmail.com>
+
+  * fix an error message
+
+2013-03-03  nu774 <honeycomb77@gmail.com>
+
+  * bump version [v0.2.0]
+
+  * add --gapless-mode
+
+2013-02-20  nu774 <honeycomb77@gmail.com>
+
+  * simplify __timeb64 condition
+
+  * use fseeko64() on i686-pc-mingw32
+
+2013-02-18  nu774 <honeycomb77@gmail.com>
+
+  * fix build issue on i686-pc-mingw (struct __timeb64 is missing)
+
+2013-02-17  nu774 <honeycomb77@gmail.com>
+
+  * bump version [v0.1.9]
+
+  * fix to accept option -C
+
+2013-02-16  nu774 <honeycomb77@gmail.com>
+
+  * bump version [v0.1.8]
+
+  * refine json metadata importing
+
+  * m4af: duplication check on adding tags
+
+2013-02-15  nu774 <honeycomb77@gmail.com>
+
+  * add --tag-from-json [v0.1.7]
+
+  * fix implicit int variable decl.
+
+  * update m4af
+
+2013-02-03  nu774 <honeycomb77@gmail.com>
+
+  * bump version [v0.1.6]
+
+  * win32: change _wfopen() -> wfsopen()
+
+2013-01-30  nu774 <honeycomb77@gmail.com>
+
+  * update README (add note for character encoding)
+
+2013-01-28  nu774 <honeycomb77@gmail.com>
+
+  * bump version [v0.1.5]
+
+  * gracefully shutdown on signals
+
+2013-01-27  nu774 <honeycomb77@gmail.com>
+
+  * fix MSVC project build issue
+
+2013-01-25  nu774 <honeycomb77@gmail.com>
+
+  * bump version [v0.1.4]
+
+  * add --tag-from-file
+
+2013-01-24  nu774 <honeycomb77@gmail.com>
+
+  * add --silent
+
+2013-01-19  nu774 <honeycomb77@gmail.com>
+
+  * retab
+
+  * bump version [v0.1.3]
+
+  * fix crash on wrong long option, rename --ignore-length to --ignorelength
+
+2013-01-17  nu774 <honeycomb77@gmail.com>
+
+  * bump version [v0.1.2]
+
+  * compat_win32: free argv with atexit()
+
+  * take care of COPYRIGHT-SIGN in UTF-8
+
+2013-01-15  nu774 <honeycomb77@gmail.com>
+
+  * bump version [v0.1.1]
+
+  * fix return type of put_type_entry() to void
+
+  * add ADTS header size(7) to output byte length
+
+2013-01-13  nu774 <honeycomb77@gmail.com>
+
+  * fix mp4 duration & version calcuration [v0.1.0]
+
+2013-01-11  nu774 <honeycomb77@gmail.com>
+
+  * add support for xid
+
+  * support for i686-pc-mingw32 (missing _vscprintf)
+
+2013-01-10  nu774 <honeycomb77@gmail.com>
+
+  * bump version [v0.0.9]
+
+  * rename basename() -> aacenc_basename() and move to compat layer
+
+2013-01-09  nu774 <honeycomb77@gmail.com>
+
+  * add --tag and --long-tag
+
+  * fix corner case of progress display
+
+  * calculate length from file size
+
+  * raw input support
+
+2013-01-08  nu774 <honeycomb77@gmail.com>
+
+  * insert a white space in progress message
+
+2013-01-07  nu774 <honeycomb77@gmail.com>
+
+  * fix typo of bitrate-mode option [v0.0.8]
+
+  * more static inlining (missed on the previous commit) [v0.0.7]
+
+  * check error of fread() and fwrite() [v0.0.6]
+
+  * change inline->static inline to follow C99 semantics (for Clang)
+
+  * explicitly add -lfdk-aac to LDADD in Makefile.am
+
+  * add some files to EXTRA_DIST in Makefile.am
+
+  * fixed a typo in usage message [v0.0.5]
+
+2013-01-06  nu774 <honeycomb77@gmail.com>
+
+  * add MSVC projects
+
+  * add .gitattributes
+
+  * more tweak on configure.ac and Makefile.am (take care of getopt_long) [v0.0.4]
+
+  * use fstat() to test seekability of input file
+
+  * retrieve bitrate for tool tag with aacEncoder_GetParam()
+
+  * output to current working directory by default
+
+2013-01-05  nu774 <honeycomb77@gmail.com>
+
+  * zero clear LIB_INFO before calling aacEncGetLibInfo() [v0.0.3]
+
+  * tweak configure.ac and Makefile.am
+
+  * update version.h [v0.0.2]
+
+  * fixed to clip before converting float to int
+
+  * initial commit [v0.0.1]
+
