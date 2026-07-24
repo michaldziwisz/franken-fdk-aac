@@ -91,6 +91,49 @@ typedef struct FRANKEN_CFG {
   int psIcc;          /* -1 default; 0 force ICC off, 1 force ICC on */
   int psIccMode;      /* -1 default; else ICC rotation mode 0 ROT_A, 1 ROT_B */
 
+  /* ---- 15. Intensity stereo band range + force (this batch) ---- */
+  int isBandLo;       /* -1 default; else lowest SFB index eligible for IS */
+  int isBandHi;       /* -1 default; else highest SFB index eligible for IS (inclusive) */
+  int isForceLo;      /* -1 default; else force IS ON from this SFB (inclusive) */
+  int isForceHi;      /* -1 default; else force IS ON up to this SFB (inclusive).
+                         When isForceLo/Hi set, IS is forced regardless of the
+                         correlation / min-sfbs / loudness gates in [lo,hi]. */
+
+  /* ---- 16. MusePack-style masking knobs (opt-in, safe variant) ---- */
+  int minSnrScaleQ8;  /* -1 default; else scale required per-band min-SNR, Q8 (256=x1.0).
+                         <256 = demand HIGHER coding SNR (more detail/bits),
+                         >256 = allow LOWER SNR (coarser). Applied as ld64 offset
+                         AFTER FDK's own MIN/MAX_SNR clamps, so it can reach beyond
+                         the stock -1..-25 dB window. */
+  int minSnrClampHiQ8;/* -1 default; else scale FDK's MAX_SNR ceiling (0.8), Q8. */
+  int minSnrClampLoQ8;/* -1 default; else scale FDK's MIN_SNR floor (0.003), Q8. */
+  int reduceClamp;    /* -1 default(on); 0 = drop the "29 dB Ratio" threshold-reduction
+                         clamp in adj_thr, letting thresholds be pushed deeper. */
+
+  /* ---- 17. Stereo bit-split precision ---- */
+  int midBiasQ8;      /* -1 default; else RAISE the MID (L+R) channel masking
+                         threshold by this Q8 factor after the MS butterfly.
+                         >256 = deliberately free bits from mid for side. */
+
+  /* ---- 18. SBR header period (streaming SBR sync) ---- */
+  int sbrHeaderPeriod;/* -1 default(FDK, ~10 frames); else frames between SBR headers.
+                         1 = SBR config in every frame => decoder locks SBR almost
+                         instantly when tuning into an Icecast/Shoutcast stream;
+                         higher = longer core-only period before SBR kicks in. */
+  int effSbrHeaderPeriod; /* read-back: effective NrSendHeaderData (-1 n/a) */
+
+  /* ---- 19. PNS shaping (loudness / detection width of the fabricated noise) ---- */
+  int pnsGainX100;    /* -1 default(off). Scales the CODED PNS noise energy (the
+                         loudness of the noise the decoder fabricates). value*100,
+                         1.00 -> 100 = unchanged. >1.0 = louder-than-original noise,
+                         <1.0 = quieter. Applied as an ld64 offset to noiseNrg. */
+  int pnsTonalityX100;/* -1 default. Scales refTonality detection threshold, value*100
+                         (1.00->100). Higher = more (also tonal-ish) bands qualify as
+                         PNS => wider noise substitution. */
+  int pnsRefPowerX100;/* -1 default. Scales refPower detection threshold, value*100. */
+  int pnsGapFillX100; /* -1 default. Scales gapFillThr, value*100. */
+  int pnsMinWidth;    /* -1 default; else min SFB width for PNS (raw int). */
+
   /* ---- Read-back: effective values chosen by the encoder (for --verbose) ----
    * Populated by the encoder during init regardless of overrides. -1 = unknown. */
   int effSbrActive;
@@ -100,6 +143,8 @@ typedef struct FRANKEN_CFG {
   int effSbrNoiseBands;
   int effSbrAmpRes;
   int effSbrStopHz;   /* final AAC+SBR bandwidth in Hz (from stop index), -1 n/a */
+  int effBandwidthHz; /* effective core cutoff in Hz, anchored to the SFB boundary
+                         (what -w / --core-cutoff really became), -1 n/a */
   int effMaxSfb;      /* number of active SFBs (ceiling for MS/IS band counts) */
   int effTnsMaxOrder; /* effective TNS max filter order (long window) */
   int effTnsMask;     /* effective TNS enable mask */

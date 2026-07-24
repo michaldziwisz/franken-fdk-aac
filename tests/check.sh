@@ -57,8 +57,8 @@ test_exe(){
 
   # 1) help kompletny - franken switche obecne
   local hn
-  hn=$("$exe" --help 2>&1 | grep -cE '^ --(msmask|msbands|is|isbands|is-min-sfbs|is-corr-thresh|is-lr-ratio|core-cutoff|sbr-start|sbr-stop|sbr-freqscale|sbr-alterscale|sbr-noise-bands|sbr-amp-res|sbr-data-extra|ps|ps-iid-quant|tns-mask|tns-order|pns|pns-start|ath-scale|block-bias|vbr-reservoir|peak-bitrate|max-bits-frame|min-bits-frame|bitres-mode|ms-bias|verbose)')
-  [ "$hn" -ge 29 ] && ok "help: $hn franken switchy" || bad "help: tylko $hn switchy (oczekiwano >=29)"
+  hn=$("$exe" --help 2>&1 | grep -cE '^ --(msmask|msbands|is|isbands|is-min-sfbs|is-corr-thresh|is-lr-ratio|is-lo|is-hi|is-force-lo|is-force-hi|core-cutoff|sbr-start|sbr-stop|sbr-freqscale|sbr-alterscale|sbr-noise-bands|sbr-amp-res|sbr-data-extra|sbr-header-period|ps|ps-iid-quant|tns-mask|tns-order|pns|pns-start|pns-gain|pns-tonality|pns-refpower|pns-gapfill|pns-min-width|ath-scale|minsnr-scale|minsnr-clamp-hi|minsnr-clamp-lo|reduce-clamp|mid-bias|block-bias|vbr-reservoir|peak-bitrate|max-bits-frame|min-bits-frame|bitres-mode|ms-bias|verbose)')
+  [ "$hn" -ge 40 ] && ok "help: $hn franken switchy" || bad "help: tylko $hn switchy (oczekiwano >=40)"
 
   # 2) baseline + rozny bitstream per switch, wszystko dekodowalne
   enc "$exe" -p2 -b128000 -o "${OUT}_base.m4a" "$WAV"
@@ -73,7 +73,21 @@ test_exe(){
                 "sbr-invf:-p5 -b64000 --sbr-invf 3" "sbr-stereo:-p5 -b64000 --sbr-stereo-mode 1"
                 "ps-icc:-p29 -b32000 --ps-icc 0" "unlock:-b8000 --unlock-bitrate"
                 "speech:-p5 -b32000 --speech" "spread-mask:-b128000 --spread-mask 64"
-                "ms-prec-hi:--ms-precision 1024" )
+ "ms-prec-hi:--ms-precision 1024"
+ "mid-bias:-b96000 --mid-bias 384"
+ "minsnr-scale:-b128000 --minsnr-scale 128"
+ "minsnr-clamp-hi:-b128000 --minsnr-clamp-hi 512"
+ "minsnr-clamp-lo:-b128000 --minsnr-clamp-lo 64"
+ "reduce-clamp:-b128000 --reduce-clamp 0"
+ "pns-gain:-b64000 --pns 1 --force-pns --pns-gain 2.0"
+ "pns-tonality:-b64000 --pns 1 --force-pns --pns-tonality 2.0"
+ "pns-refpower:-b64000 --pns 1 --force-pns --pns-refpower 2.0"
+ "pns-min-width:-b64000 --pns 1 --force-pns --pns-min-width 32"
+ "cutoff-verbose:-b128000 -w 17300 --verbose"
+ "is-lo:-p2 -b48000 --is 1 --is-aggression 80 --is-lo 15"
+ "is-hi:-p2 -b48000 --is 1 --is-aggression 80 --is-hi 2"
+ "is-force:-p2 -b48000 --is 1 --is-aggression 80 --is-force-lo 25 --is-force-hi 45"
+ "sbr-header-period:-p5 -b48000 --sbr-header-period 1" )
   for s in "${specs[@]}"; do
     local n="${s%%:*}" a="${s#*:}"
     enc "$exe" -p2 -b128000 $a -o "${OUT}_$n.m4a" "$WAV"

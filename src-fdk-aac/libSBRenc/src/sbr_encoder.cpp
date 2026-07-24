@@ -1782,6 +1782,10 @@ static INT FDKsbrEnc_EnvInit(HANDLE_SBR_ELEMENT hSbrElement,
     hSbrElement->sbrBitstreamData.NrSendHeaderData = 0;
   }
 
+  /* Frankenstein: expose the effective SBR header repetition (frames between
+   * sbr_header) for --verbose so the streaming SBR-sync period is visible. */
+  g_franken.effSbrHeaderPeriod = hSbrElement->sbrBitstreamData.NrSendHeaderData;
+
   hSbrElement->sbrHeaderData.sbr_data_extra = params->sbr_data_extra;
   hSbrElement->sbrBitstreamData.HeaderActive = 0;
   hSbrElement->sbrBitstreamData.rightBorderFIX = 0;

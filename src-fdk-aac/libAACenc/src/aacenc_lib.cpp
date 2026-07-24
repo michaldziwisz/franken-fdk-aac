@@ -1373,7 +1373,9 @@ static AACENC_ERROR aacEncInit(HANDLE_AACENCODER hAacEncoder, ULONG InitFlags,
         (hAacConfig->audioObjectType == AOT_ER_AAC_ELD) ? 1 : TRANS_FAC,
         (config->userTpHeaderPeriod != 0xFF)
             ? config->userTpHeaderPeriod
-            : DEFAULT_HEADER_PERIOD_REPETITION_RATE,
+            : ((g_franken.sbrHeaderPeriod >= 1)
+                   ? g_franken.sbrHeaderPeriod
+                   : DEFAULT_HEADER_PERIOD_REPETITION_RATE),
         initFlag);
 
     /* Suppress AOT reconfiguration and check error status. */
@@ -2623,6 +2625,66 @@ AACENC_ERROR aacEncoder_SetParam(const HANDLE_AACENCODER hAacEncoder,
       g_franken.psIccMode = (INT)value;
       hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
       break;
+    case AACENC_FRANKEN_IS_BAND_LO:
+      g_franken.isBandLo = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_IS_BAND_HI:
+      g_franken.isBandHi = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_IS_FORCE_LO:
+      g_franken.isForceLo = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_IS_FORCE_HI:
+      g_franken.isForceHi = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_MINSNR_SCALE:
+      g_franken.minSnrScaleQ8 = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_MINSNR_CLAMP_HI:
+      g_franken.minSnrClampHiQ8 = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_MINSNR_CLAMP_LO:
+      g_franken.minSnrClampLoQ8 = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_REDUCE_CLAMP:
+      g_franken.reduceClamp = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_MID_BIAS:
+      g_franken.midBiasQ8 = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_SBR_HEADER_PERIOD:
+      g_franken.sbrHeaderPeriod = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_PNS_GAIN:
+      g_franken.pnsGainX100 = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_PNS_TONALITY:
+      g_franken.pnsTonalityX100 = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_PNS_REFPOWER:
+      g_franken.pnsRefPowerX100 = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_PNS_GAPFILL:
+      g_franken.pnsGapFillX100 = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_PNS_MIN_WIDTH:
+      g_franken.pnsMinWidth = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
     case AACENC_FRANKEN_VERBOSE:
       g_franken.verbose = (INT)value;
       break;
@@ -2792,6 +2854,12 @@ UINT aacEncoder_GetParam(const HANDLE_AACENCODER hAacEncoder,
       break;
     case AACENC_FRANKEN_GET_IS_LRRATIO:
       value = (UINT)(g_franken.isLRRatioQ8 >= 0 ? g_franken.isLRRatioQ8 : 179);
+      break;
+    case AACENC_FRANKEN_GET_SBR_HEADER_PERIOD:
+      value = (UINT)g_franken.effSbrHeaderPeriod;
+      break;
+    case AACENC_FRANKEN_GET_BANDWIDTH_HZ:
+      value = (UINT)g_franken.effBandwidthHz;
       break;
 
     default:

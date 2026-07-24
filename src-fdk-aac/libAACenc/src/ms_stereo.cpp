@@ -266,6 +266,20 @@ void FDKaacEnc_MsStereoProcessing(PSY_DATA *RESTRICT psyData[(2)],
           sfbEnergyRightLdData[sfb + sfboffs] =
               sfbEnergySideLdData[sfb + sfboffs];
 
+          /* Frankenstein: --mid-bias RAISES the MID (Left = L+R) channel masking
+           * threshold after the MS butterfly, freeing bits from mid for side.
+           * ld64 additive offset (value = log2(x)/64). Use sparingly. */
+          if (g_franken.midBiasQ8 > 256) {
+            double f = (double)g_franken.midBiasQ8 / 256.0;
+            double ldOff = (log(f) / log(2.0)) / 64.0;
+            if (ldOff > 0.99) ldOff = 0.99;
+            FIXP_DBL off = (FIXP_DBL)((INT)(ldOff * 2147483648.0));
+            /* mid lives in the "Left" channel arrays; RAISE its threshold */
+            sfbThresholdLeftLdData[sfb + sfboffs] = fixMin(
+                sfbThresholdLeftLdData[sfb + sfboffs] + off,
+                (FIXP_DBL)MAXVAL_DBL);
+          }
+
           sfbSpreadEnLeft[sfb + sfboffs] = sfbSpreadEnRight[sfb + sfboffs] =
               fixMin(sfbSpreadEnLeft[sfb + sfboffs],
                      sfbSpreadEnRight[sfb + sfboffs]) >>

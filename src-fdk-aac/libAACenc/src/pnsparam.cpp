@@ -577,6 +577,29 @@ AAC_ENCODER_ERROR FDKaacEnc_GetPnsParam(NOISEPARAMS *np, INT bitRate,
   np->gapFillThr =
       pnsInfo->gapFillThr; /* for LC it is always FL2FXCONST_SGL(0.5) */
 
+  /* Frankenstein: PNS detection shaping - how MUCH / how WIDE the spectrum is
+   * replaced by noise. All value*100 (100 = x1.0 = unchanged), sentinel <0 keeps
+   * FDK defaults. Higher tonality/gapfill thresholds let more (also less-noisy)
+   * bands qualify => wider noise substitution. */
+  if (g_franken.pnsTonalityX100 >= 0) {
+    INT64 v = ((INT64)np->refTonality * g_franken.pnsTonalityX100) / 100;
+    if (v > (INT64)MAXVAL_DBL) v = (INT64)MAXVAL_DBL;
+    np->refTonality = (FIXP_DBL)(INT)v;
+  }
+  if (g_franken.pnsRefPowerX100 >= 0) {
+    INT64 v = ((INT64)np->refPower * g_franken.pnsRefPowerX100) / 100;
+    if (v > (INT64)MAXVAL_DBL) v = (INT64)MAXVAL_DBL;
+    np->refPower = (FIXP_DBL)(INT)v;
+  }
+  if (g_franken.pnsGapFillX100 >= 0) {
+    INT64 v = ((INT64)np->gapFillThr * g_franken.pnsGapFillX100) / 100;
+    if (v > (INT64)0x7FFF) v = (INT64)0x7FFF;
+    np->gapFillThr = (FIXP_SGL)(SHORT)v;
+  }
+  if (g_franken.pnsMinWidth >= 0) {
+    np->minSfbWidth = g_franken.pnsMinWidth;
+  }
+
   /* assuming a constant dB/Hz slope in the signal's PSD curve,
     the detection threshold needs to be corrected for the width of the band */
 

@@ -1564,6 +1564,21 @@ typedef enum {
   AACENC_FRANKEN_SBR_NOISE_FLOOR_OFFSET = 0xF03A, /*!< SBR noise floor offset (-128 off). */
   AACENC_FRANKEN_PS_ICC = 0xF03B,      /*!< Force PS ICC on/off (0/1, -1 off). */
   AACENC_FRANKEN_PS_ICC_MODE = 0xF03C, /*!< PS ICC rotation 0 A/1 B (-1 off). */
+  AACENC_FRANKEN_IS_BAND_LO = 0xF041,  /*!< Lowest SFB eligible for intensity stereo (-1 off). */
+  AACENC_FRANKEN_IS_BAND_HI = 0xF042,  /*!< Highest SFB eligible for intensity stereo (-1 off). */
+  AACENC_FRANKEN_IS_FORCE_LO = 0xF043, /*!< Force IS ON from this SFB (-1 off). */
+  AACENC_FRANKEN_IS_FORCE_HI = 0xF044, /*!< Force IS ON up to this SFB (-1 off). */
+  AACENC_FRANKEN_MINSNR_SCALE = 0xF045,/*!< Per-band min-SNR scale Q8, <256 = more detail (-1 off). */
+  AACENC_FRANKEN_MINSNR_CLAMP_HI = 0xF046, /*!< Scale MAX_SNR ceiling Q8 (-1 off). */
+  AACENC_FRANKEN_MINSNR_CLAMP_LO = 0xF047, /*!< Scale MIN_SNR floor Q8 (-1 off). */
+  AACENC_FRANKEN_REDUCE_CLAMP = 0xF048,/*!< 0 = drop the 29 dB threshold-reduction clamp (-1 default on). */
+  AACENC_FRANKEN_MID_BIAS = 0xF04A,    /*!< Mid (L+R) bias Q8, >256 = free bits for side (-1 off). */
+  AACENC_FRANKEN_SBR_HEADER_PERIOD = 0xF04B, /*!< Frames between SBR headers, 1=instant sync (-1 off). */
+  AACENC_FRANKEN_PNS_GAIN = 0xF04D,    /*!< PNS fabricated-noise loudness, value*100 (100=unchanged, -1 off). */
+  AACENC_FRANKEN_PNS_TONALITY = 0xF04E,/*!< PNS refTonality detection scale, value*100 (-1 off). */
+  AACENC_FRANKEN_PNS_REFPOWER = 0xF04F,/*!< PNS refPower detection scale, value*100 (-1 off). */
+  AACENC_FRANKEN_PNS_GAPFILL = 0xF050, /*!< PNS gapFillThr scale, value*100 (-1 off). */
+  AACENC_FRANKEN_PNS_MIN_WIDTH = 0xF051, /*!< PNS min SFB width, raw int (-1 off). */
   AACENC_FRANKEN_VERBOSE = 0xF016,     /*!< Verbose init dump 0/1. */
 
   /* Read-only (GetParam) mirrors of internal encoder-chosen values, for --verbose. */
@@ -1585,6 +1600,8 @@ typedef enum {
   AACENC_FRANKEN_GET_IS_MINSFBS = 0xF028,    /*!< Effective IS min SFBs. */
   AACENC_FRANKEN_GET_IS_CORR = 0xF029,       /*!< Effective IS corr threshold, Q8. */
   AACENC_FRANKEN_GET_IS_LRRATIO = 0xF02A,    /*!< Effective IS L/R ratio threshold, Q8. */
+  AACENC_FRANKEN_GET_SBR_HEADER_PERIOD = 0xF04C, /*!< Effective SBR header repetition (frames). */
+  AACENC_FRANKEN_GET_BANDWIDTH_HZ = 0xF052, /*!< Effective core cutoff Hz anchored to SFB boundary. */
 
   AACENC_NONE = 0xFFFF /*!< ------ */
 

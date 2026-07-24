@@ -437,6 +437,24 @@ static void FDKaacEnc_initMinSnr(const LONG bitrate, const LONG samplerate,
   FIXP_DBL MAX_SNR = (FIXP_DBL)0x33333333;    /* 0.8 in q30 */
   FIXP_DBL MIN_SNR = (FIXP_DBL)0x003126e9;    /* 0.003 in q30 */
 
+  /* Frankenstein: optionally loosen FDK's hard SNR window. MAX_SNR is the upper
+   * limit (~-1 dB) and MIN_SNR the lower (~-25 dB). Scaling them in Q8 lets the
+   * per-band min-SNR reach beyond the stock window (MusePack-style control).
+   * Values are clamped to the representable q30 range. */
+  if (g_franken.minSnrClampHiQ8 > 0 && g_franken.minSnrClampHiQ8 != 256) {
+    INT64 v = ((INT64)MAX_SNR * g_franken.minSnrClampHiQ8) >> 8;
+    if (v > (INT64)0x7FFFFFFF) v = (INT64)0x7FFFFFFF;
+    if (v < 1) v = 1;
+    MAX_SNR = (FIXP_DBL)(INT)v;
+  }
+  if (g_franken.minSnrClampLoQ8 > 0 && g_franken.minSnrClampLoQ8 != 256) {
+    INT64 v = ((INT64)MIN_SNR * g_franken.minSnrClampLoQ8) >> 8;
+    if (v > (INT64)0x7FFFFFFF) v = (INT64)0x7FFFFFFF;
+    if (v < 1) v = 1;
+    MIN_SNR = (FIXP_DBL)(INT)v;
+  }
+  if (MIN_SNR > MAX_SNR) MIN_SNR = MAX_SNR;
+
   FIXP_DBL barcFactor, pePerWindow, pePart, barcWidth;
   FIXP_DBL pePart_const, tmp, snr, one_qsnr, one_point5;
 
@@ -520,6 +538,20 @@ static void FDKaacEnc_initMinSnr(const LONG bitrate, const LONG samplerate,
     snr = fDivNorm(one_qsnr, snr, &qsnr);
     qsnr = DFRACT_BITS - 1 - qsnr;
     snr = (qsnr > 30) ? (snr >> (qsnr - 30)) : snr;
+
+    /* Frankenstein: scale the required per-band min-SNR (MusePack-style).
+     * 'snr' here is threshold/energy ratio: a SMALLER value = lower allowed
+     * masking threshold = the encoder must code the band more faithfully.
+     * minSnrScaleQ8 in Q8 (256 = x1.0): <256 shrinks snr => demands higher
+     * coding SNR (more detail/bits); >256 grows it => coarser. Linear scale in
+     * fixed point, no libm needed. Applied before the clamps so the clamp-hi/lo
+     * knobs still bound the final window. */
+    if (g_franken.minSnrScaleQ8 > 0 && g_franken.minSnrScaleQ8 != 256) {
+      INT64 v = ((INT64)snr * g_franken.minSnrScaleQ8) >> 8;
+      if (v > (INT64)0x7FFFFFFF) v = (INT64)0x7FFFFFFF;
+      if (v < 1) v = 1;
+      snr = (FIXP_DBL)(INT)v;
+    }
 
     /* upper limit is -1 dB */
     snr = (snr > MAX_SNR) ? MAX_SNR : snr;
@@ -623,6 +655,15 @@ AAC_ENCODER_ERROR FDKaacEnc_InitPsyConfiguration(INT bitrate, INT samplerate,
   }
   psyConf->sfbActive = fMax(sfb, 1);
 
+  /* Frankenstein: record the REAL core cutoff for --verbose. -w / --core-cutoff
+   * are anchored to the nearest SFB boundary (the encoder codes whole SFBs up to
+   * lowpassLine), so the effective top edge is sfbOffset[sfbActive] mapped back
+   * to Hz - NOT the raw value the user typed. Long block only (the meaningful one). */
+  if (blocktype != SHORT_WINDOW) {
+    g_franken.effBandwidthHz =
+        (INT)(((INT64)psyConf->sfbOffset[psyConf->sfbActive] * samplerate) /
+              (2 * frameLengthLong));
+  }
   for (sfb = 0; sfb < psyConf->sfbCnt; sfb++) {
     if (psyConf->sfbOffset[sfb] >= psyConf->lowpassLineLFE) break;
   }

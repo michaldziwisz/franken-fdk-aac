@@ -335,6 +335,10 @@ robią się płytsze. To odpowiednik podkręcenia jakości w stylu LAME `-q`.
 384 to około 1,5×, 512 około 2×. Nie ma górnego limitu — przy 512 kbps też się
 przydaje. Najbardziej użyteczny zakres to 48–192 kbps.
 
+`--mid-bias <n>` — powyżej 256 PODNOSI próg kanału mid (L+R) po transformacie
+(motylku) MS, celowo uwalniając bity dla kanału side. Używaj oszczędnie — mid niesie
+większość głośności, więc zbyt mocne jego głodzenie jest słyszalne. 256 = off.
+
 INTENSITY STEREO (IS). Bardziej agresywna technika: dla wysokich pasm, gdzie ucho
 słabo lokalizuje kierunek, enkoder wysyła jedną obwiednię energii zamiast dwóch
 kanałów. Oszczędza dużo, ale może zwęzić scenę.
@@ -355,11 +359,29 @@ suwak agresywności): `--is-min-sfbs <n>` (minimalna liczba ciągłych pasm),
 stosunku L/R, Q8). Uwaga praktyczna: te progi działają NIEINTUICYJNIE — niższa
 wartość progu korelacji oznacza AGRESYWNIEJSZE IS, nie odwrotnie.
 
+Umiejscowienie IS w pasmach. `--is-lo <sfb>` i `--is-hi <sfb>` pozwalają OGRANICZYĆ
+intensity stereo do zakresu pasm: IS jest dozwolone dopiero od `--is-lo` w górę
+i tylko do `--is-hi` włącznie. To nigdy nie wymusza IS — jedynie ogranicza, gdzie
+FDK może go użyć. W praktyce przy niskim bitrate IS ląduje na NISKICH pasmach, więc
+skanuj małe wartości, żeby w ogóle zobaczyć efekt. Jeśli chcesz pójść dalej i
+WYMUSIĆ IS, `--is-force-lo <sfb>` i `--is-force-hi <sfb>` wpychają intensity stereo
+na cały zakres z pominięciem bramek korelacji, min-sfbs i głośności. To tryb
+laboratoryjny: ponieważ IS jest stratne i kierunkowe (prawy kanał zostaje
+wyzerowany, zostaje tylko współczynnik panoramy), wymuszenie może celowo rozbić
+obraz stereo. Strumień i tak pozostaje zgodny ze standardem.
+
 ## 14. Pasmo i cutoff (w tym audiofilskie pełne pasmo)
 
 `--core-cutoff <Hz>` — górna granica pasma kodowanego przez rdzeń, w Hz. Działa
 także pod SBR (w przeciwieństwie do `-w`). Np. `--core-cutoff 7500` pod HE-AAC v2
 oddaje rdzeniowi 7,5 kHz, resztę robi SBR.
+
+Uwaga o realnym cutoffie w `--verbose`: widmo AAC jest podzielone na granice SFB,
+więc enkoder nie potrafi uciąć pasma w dowolnym miejscu w Hz — zakotwicza cutoff
+na najbliższej granicy SFB. Dlatego `--verbose` pokazuje REALNY cutoff, który może
+różnić się od podanej wartości `-w`/`--core-cutoff` (np. `-w 17300` wyświetla się
+jako `17915 Hz (SFB-anchored)`). To nie jest błąd — to prawdziwe pasmo, które
+trafia do strumienia.
 
 `--uncap-bandwidth` — audiofilskie. FDK ma zaszyty twardy limit pasma rdzenia:
 minimum z 20 kHz i połowy częstotliwości próbkowania. Oznacza to, że NAWET przy
@@ -410,6 +432,19 @@ tym automat; wymuś ręcznie, gdy słyszysz metaliczność.
 `--sbr-noise-floor-offset <n>` — offset poziomu szumu wstrzykiwanego przez SBR.
 Większe wartości = więcej szumu wypełniającego rekonstrukcję.
 
+`--sbr-header-period <n>` — co ile ramek zapisywane są nagłówki SBR, co decyduje,
+jak szybko górne pasmo SBR "wchodzi", gdy dekoder podłącza się do strumienia
+HE-AAC NA ŻYWO (Icecast/Shoutcast). Haczyk jest taki: cała konfiguracja SBR
+mieszka w okresowym nagłówku, a nie w każdej ramce. Słuchacz, który wpina się w
+środek transmisji, słyszy najpierw sam rdzeń AAC (przytłumiony, bez góry), aż
+nadejdzie kolejny nagłówek. Ustaw `1`, a nagłówek zapisze się w każdej ramce, więc
+dekoder złapie SBR niemal natychmiast (~23 ms) — to właściwy wybór dla strumienia,
+do którego ludzie dołączają w losowych momentach. Większe wartości wydłużają ten
+moment "sam rdzeń". Domyślnie FDK daje około 10 ramek (~0,23 s przy HE dual-rate,
+~0,46 s przy LC), a FDK kapuje okres do najwyżej raz na sekundę, więc bardzo duże
+wartości są przycinane (np. 40 staje się 21 ramkami przy 44,1 kHz). `--verbose`
+wypisuje efektywny okres w milisekundach.
+
 ## 16. Parametric Stereo (HE-AAC v2)
 
 `--ps <0|1>` — wymuś wysyłanie parametru IID (różnica głośności): 0 = nigdy
@@ -443,6 +478,24 @@ tabelę, która przy bardzo niskich bitrate'ach (poniżej około 28 kbps) całko
 wyłącza PNS — i wtedy `--pns-start` jest ignorowane, bo PNS w ogóle nie działa.
 To dlatego przy 24 kbps słyszałeś artefakty jak z MP3, a przy 64 kbps PNS
 działał. Ta flaga omija tabelę i włącza PNS mimo niskiego bitrate.
+
+`--pns-gain <x>` — GŁOŚNOŚĆ dorabianego szumu PNS i pokrętło PNS, po które
+sięgniesz najczęściej. Gdy PNS zastępuje pasmo, zapisuje tylko "tu jest szum
+o takiej energii"; ten przełącznik wprost skaluje tę energię. `1.0` = bez zmian
+(dorobiony szum ma energię oryginalnego pasma); `>1.0` = szum głośniejszy niż
+oryginał; `<1.0` = cichszy. Traktuj to jak pokrętło "jak głośny jest podstawiony
+szum". Wejście dziesiętne, `-1` = off.
+
+`--pns-tonality <x>` — skaluje próg detekcji tonalności PNS. `1.0` = domyślnie;
+wyższe wartości pozwalają większej liczbie pasm (nawet tych mniej szumiących)
+zakwalifikować się do PNS, więc podstawianie szumu robi się SZERSZE.
+`--pns-refpower <x>` — skaluje próg mocy referencyjnej detekcji (`1.0` =
+domyślnie). `--pns-gapfill <x>` — skaluje próg wypełniania luk, który zapełnia
+dziury PNS między dwoma pasmami PNS; zaawansowane i subtelne, rzadko słyszalne
+(`1.0` = domyślnie). `--pns-min-width <n>` — minimalna szerokość SFB dla PNS;
+skuteczny powyżej wbudowanej domyślnej (LC = 16), np. 32 lub 64 ogranicza PNS
+tylko do szerszych pasm. Wszystkie przyjmują wejście dziesiętne, `-1` = off,
+`1.0` = bez zmian.
 
 `--ath-scale <n>` — skalowanie progu słyszalności (ATH), w Q8 (256 = ×1,0).
 To jest GLOBALNY regulator maskowania. Powyżej 256 = podnosi progi = enkoder
@@ -486,6 +539,21 @@ przepisywania całego modelu.
 
 Dla MS-owanego materiału dołóż `--ms-precision 448` — płytsze dziury w pasmach
 MS to kolejne miejsce, gdzie wysoki bitrate daje realnie lepszy dźwięk.
+
+Poza ath-scale jest jeszcze bardziej bezpośrednia dźwignia. `--minsnr-scale <n>`
+(Q8, 256 = off) to najbliższy FDK-owy odpowiednik gałek TMN/NMT z MusePacka:
+skaluje WYMAGANY per-pasmo SNR kodowania (`sfbMinSnrLdData`). Wartości PONIŻEJ 256
+wymagają WYŻSZEGO SNR — więcej detalu, więcej bitów — a powyżej 256 kodują
+zgrubniej. Jest skuteczniejsza niż `--ath-scale`, bo to właśnie do min-SNR logika
+"avoid holes" (unikania dziur) cofa progi; samo ruszenie kopii progu (jak robi
+ath-scale) jest częściowo cofane dalej w łańcuchu, ale min-SNR już nie. Jeśli
+chcesz wyjść poza fabryczne okno FDK, `--minsnr-clamp-hi <n>` skaluje sufit
+MAX_SNR (około −1 dB), a `--minsnr-clamp-lo <n>` skaluje podłogę MIN_SNR (około
+−25 dB); oba w Q8, 256 = off. Na koniec `--reduce-clamp 0` zdejmuje sufit "29 dB
+Ratio" redukcji progów w kwantyzatorze CBR, pozwalając enkoderowi wepchnąć progi
+głębiej i wlać bity w najbardziej wymagające pasma. Łączy się naturalnie z
+`--minsnr-scale` dla ekstremalnego detalu i dotyczy tylko CBR
+(VBR chodzi inną ścieżką).
 
 ## 19. Dostrajanie do mowy ludzkiej
 

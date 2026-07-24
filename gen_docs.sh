@@ -19,6 +19,13 @@ soffice -env:UserInstallation="file:///tmp/lo_$$_p" --headless \
 # nazwa pdf = basename docx; zmien jesli trzeba
 BASE=$(basename "$OUT.docx" .docx)
 [ "$BASE.pdf" != "$OUT.pdf" ] && [ -f "$BASE.pdf" ] && mv "$BASE.pdf" "$OUT.pdf"
+# Ustaw tytul PDF (dostepnosc PDF/UA - czytnik ekranu oglasza tytul dokumentu).
+# soffice/pandoc nie przenosza --metadata title do PDF Title, wiec robimy to przez fitz.
+python3 - "$OUT.pdf" "$TITLE" <<'PY' 2>/dev/null || true
+import sys, fitz
+d = fitz.open(sys.argv[1]); m = d.metadata; m["title"] = sys.argv[2]
+d.set_metadata(m); d.saveIncr(); d.close()
+PY
 echo "  $OUT.pdf: $(stat -c%s "$OUT.pdf" 2>/dev/null) B"
 
 # RTF: pandoc bezposrednio (bez soffice - unika blokady przy sekwencyjnych konwersjach)

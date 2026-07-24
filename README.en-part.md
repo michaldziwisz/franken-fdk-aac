@@ -83,12 +83,17 @@ Here you can override these decisions and force extreme configurations.
 | `--msbands-lo <n>` | -1 off, 0..N | -1 | START (lowest SFB band number) of the range in which MS is allowed. |
 | `--msbands-hi <n>` | -1 off, 0..N | -1 | END (highest SFB band number) of the MS range. Used together with `--msbands-lo` as a FROM–TO pair. Bands outside this range go pure L/R. |
 | `--ms-precision <n>` | 256..no limit (Q8) | -1 (off) | Precision of MS bands. `>256` = shallower holes in the MS spectrum (the coder allocates more bits to describe them, LAME -q style). 256=no change, 384~1.5x, 512~2x. Useful AUDIBLE effect up to ~600-800; above that the threshold hits FDK's hard floor (ld64 -0.515625) and, under CBR, bits are only SHIFTED between bands (fixed budget), so the sound stops changing. Works best when you have spare bits (>=128k) or in VBR. |
+| `--mid-bias <n>` | 256..no limit (Q8) | -1 (off) | `>256` RAISES the mid (L+R) channel masking threshold after the MS butterfly, freeing bits from mid for the side channel. Use sparingly — mid carries most of the loudness. 256=off. |
 | `--is <n>` | -1 auto, 0 off, 1 on | -1 | Intensity stereo globally on/off. |
 | `--isbands <n>` | -1 no limit, 0..N | -1 | Maximum number of SFBs that may use intensity. Above that — coded normally. |
 | `--is-aggression <0..100>` | 0..100 | -1 (off) | CONSUMER slider: how hard the encoder should push intensity stereo. Start here, leave the advanced `--is-*` alone. |
 | `--is-min-sfbs <n>` | -1 def(6), 0..N | -1 | (advanced) Min. number of contiguous SFBs before IS turns on. |
 | `--is-corr-thresh <n>` | -1 def(243), Q8 | -1 | (advanced) L/R correlation threshold for IS in Q8 (256=1.0). |
 | `--is-lr-ratio <n>` | -1 def(179), Q8 | -1 | (advanced) L/R energy balance threshold for IS in Q8 (256=1.0). |
+| `--is-lo <sfb>` | -1 off, 0..N | -1 | Allow intensity stereo ONLY from this SFB upward. Bands below stay pure L/R. Only RESTRICTS where FDK may place IS — never forces it on. |
+| `--is-hi <sfb>` | -1 off, 0..N | -1 | Allow IS only up to this SFB (inclusive). Pair with `--is-lo` as a range. TIP: IS usually lands on LOW bands at low bitrate, so scan small values to see the effect. |
+| `--is-force-lo <sfb>` | -1 off, 0..N | -1 | FORCE intensity stereo from this SFB, bypassing the correlation / min-sfbs / loudness gates. Laboratory mode: can deliberately wreck the stereo image (IS is lossy + directional — the right channel is zeroed, only a panning coefficient survives). The stream stays legal. |
+| `--is-force-hi <sfb>` | -1 off, 0..N | -1 | Upper SFB of the forced-IS range (inclusive). |
 
 ### Intensity stereo in practice (how to use it, not the formulas)
 
@@ -214,6 +219,7 @@ Overrides the settings from the SBR tuning table (after it is loaded).
 | `--sbr-stereo-mode <0..3>` | -1 off | -1 | SBR stereo mode: 0 mono, 1 LR (full separation of the upper band), 2 coupling (economical, shared envelope + level), 3 switch-LRC (by default the coder chooses per-frame). Force 1 for max separation, 2 for economy. |
 | `--sbr-invf <0..3>` | -1 auto | -1 | Force SBR inverse filtering: 0 off, 1 low, 2 mid, 3 high. Normally driven by the tonality estimator. Higher = stronger "whitening" of tonal SBR (less metallicness at the cost of detail). |
 | `--sbr-noise-floor-offset <n>` | -128 off | -128 | SBR noise floor offset (small integer). Larger = more filling noise in the SBR reconstruction. |
+| `--sbr-header-period <n>` | -1 off, >=1 | -1 | Frames between SBR headers = how fast the SBR high band "kicks in" when a decoder tunes into a live HE-AAC stream (Icecast/Shoutcast). The SBR CONFIG lives in a periodic header, not in every frame; a decoder joining mid-stream plays core-only (muffled) until the next header arrives. `1` = header in every frame → near-instant SBR lock (~23 ms); higher = longer core-only moment. FDK default is ~10 frames (~0.23 s HE dual-rate / ~0.46 s LC). FDK caps this to at most once per second, so very large values are clamped (e.g. 40 → 21 frames @44.1k). See `--verbose` for the effective period in ms. |
 
 NOTE: `--sbr-start`/`--sbr-stop` are validated BY FDK — an incorrect start/stop
 COMBINATION (wrong number of master bands) will give "encoder initialization
@@ -248,6 +254,11 @@ What, at medium bitrates, is replaced by noise or resynthesized.
 | `--pns <n>` | -1 def, 0/1 | -1 | Perceptual Noise Substitution on/off. NOTE: FDK forces PNS=off when SBR or VBR is active. |
 | `--pns-start <hz>` | -1 def, Hz | -1 | PNS start frequency. Lower = more of the spectrum replaced by noise. |
 | `--force-pns` | flag | off | Bypass the low-bitrate gate for PNS. |
+| `--pns-gain <x>` | >=0.0 | -1 (off) | Loudness of the fabricated PNS noise. `1.0` = unchanged (noise energy = original band). `>1.0` = louder-than-original noise fill, `<1.0` = quieter. Directly scales the coded noise energy — this is the "how loud is the noise" knob. Decimal input. |
+| `--pns-tonality <x>` | >=0.0 | -1 (off) | Scales the PNS tonality detection threshold. `1.0` = default; higher = more (even less-noisy) bands qualify as PNS = WIDER noise substitution. |
+| `--pns-refpower <x>` | >=0.0 | -1 (off) | Scales the PNS reference-power detection threshold. `1.0` = default. |
+| `--pns-gapfill <x>` | >=0.0 | -1 (off) | Scales the PNS gap-fill threshold (fills PNS holes between two PNS bands). `1.0` = default. Advanced/subtle — rarely visible. |
+| `--pns-min-width <n>` | -1 off, >=1 | -1 | Minimum SFB width for PNS. Effective above the built-in default (LC=16); e.g. 32/64 restricts PNS to wider bands. |
 | `--afterburner <n>` | 0/1 (also stock `-a`) | 1 | Afterburner (more precise quantization). |
 
 IMPORTANT about PNS at low bitrate: FDK has a tuning table (`levelTable`) that
@@ -263,8 +274,12 @@ it without a deeper rebuild).
 
 | Switch | Values | Default | Description |
 |---|---|---|---|
-| `--ath-scale <n>` | 1..~4096 (Q8) | 256 | Masking threshold scale in Q8 (256 = x1.0). `>256` raises the thresholds (more noise, fewer bits per band), `<256` lowers them (cleaner, more bits). Works in FDK's ld64 domain as an additive log2 offset. |
+| `--ath-scale <n>` | 1..~4096 (Q8) | 256 | Masking threshold scale in Q8 (256 = x1.0). `>256` raises the thresholds (more noise, fewer bits per band), `<256` lowers them (cleaner, more bits). Works in FDK's ld64 domain as an additive log2 offset. NOTE: this only touches the log-domain threshold copy and is partly undone downstream by the min-SNR / 29 dB clamps — for a stronger, more direct effect prefer `--minsnr-scale` below. |
 | `--spread-mask <n>` | Q8, >=0 | -1 (off) | Scales the spreading of masking between bands. `<256` = less masking = more detail. Biggest effect where bits are limited (96-192k). |
+| `--minsnr-scale <n>` | 1..no limit (Q8) | -1 (off) | MusePack-style: scales the REQUIRED per-band coding SNR (`sfbMinSnrLdData`, FDK's closest thing to TMN/NMT). `<256` = demand HIGHER SNR = more detail/bits; `>256` = coarser. More effective than `--ath-scale` because min-SNR is what the avoid-holes logic clamps thresholds back to. 256=off. |
+| `--minsnr-clamp-hi <n>` | 1..no limit (Q8) | -1 (off) | Scales FDK's MAX_SNR ceiling (~−1 dB). `>256` lets bands demand more than the stock cap. 256=off. |
+| `--minsnr-clamp-lo <n>` | 1..no limit (Q8) | -1 (off) | Scales FDK's MIN_SNR floor (~−25 dB). 256=off. |
+| `--reduce-clamp <0\|1>` | 0, 1 | 1 (on) | `0` drops the "29 dB Ratio" threshold-reduction ceiling in the CBR quantizer, letting thresholds be pushed deeper (more bits into demanding bands). Pairs with `--minsnr-scale` for extreme detail. CBR only (VBR uses a different path). |
 
 ### What really helps at low and medium bitrate (10-144 kbps)
 
@@ -442,7 +457,7 @@ Below is what the non-obvious ones mean:
 | `AOT (profile)` | 2=AAC-LC, 5=HE-AAC, 29=HE-AAC v2, 23=AAC-LD, 39=AAC-ELD. |
 | `bitrate-mode` | 0=CBR, 1..5=VBR (higher=better). |
 | `channel-mode` | 1=mono, 2=stereo (for HE-AAC v2 the core is mono, stereo is done by PS). |
-| `core bandwidth` | Upper frequency of the AAC core. In parentheses the SOURCE: `from -w`, `from --core-cutoff`, or `auto`. Under SBR this is only the core — SBR plays higher. |
+| `core bandwidth` | Upper frequency of the AAC core, **anchored to the nearest SFB boundary** (the real cutoff, which can differ from the `-w`/`--core-cutoff` value you typed, e.g. `-w 17300` → `17915 Hz (SFB-anchored)`). In parentheses the SOURCE: `from -w`, `from --core-cutoff`, or `auto`. Under SBR this is only the core — SBR plays higher. |
 | `final BW (AAC+SBR)` | Shown only when SBR is active: approximate UPPER frequency of the whole signal (core + SBR), computed from the `sbr stop freq index`. This is the equivalent of `core bandwidth`, but for the full HE-AAC band. |
 | `signaling-mode` | Way of signaling SBR/PS: 0=implicit, 1=explicit backward-compat, 2=explicit hierarchical, auto=the library chooses. |
 | `SBR mode` | Internal SBR mode (-1/0 when unused). |

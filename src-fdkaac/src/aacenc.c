@@ -276,6 +276,21 @@ int aacenc_init(HANDLE_AACENCODER *encoder, const aacenc_param_t *params,
     FR_SET(params->fr_sbr_noise_floor_offset != -128, AACENC_FRANKEN_SBR_NOISE_FLOOR_OFFSET, params->fr_sbr_noise_floor_offset);
     FR_SET(params->fr_ps_icc != -1, AACENC_FRANKEN_PS_ICC, params->fr_ps_icc);
     FR_SET(params->fr_ps_icc_mode != -1, AACENC_FRANKEN_PS_ICC_MODE, params->fr_ps_icc_mode);
+    FR_SET(params->fr_is_band_lo != -1, AACENC_FRANKEN_IS_BAND_LO, params->fr_is_band_lo);
+    FR_SET(params->fr_is_band_hi != -1, AACENC_FRANKEN_IS_BAND_HI, params->fr_is_band_hi);
+    FR_SET(params->fr_is_force_lo != -1, AACENC_FRANKEN_IS_FORCE_LO, params->fr_is_force_lo);
+    FR_SET(params->fr_is_force_hi != -1, AACENC_FRANKEN_IS_FORCE_HI, params->fr_is_force_hi);
+    FR_SET(params->fr_minsnr_scale != -1, AACENC_FRANKEN_MINSNR_SCALE, params->fr_minsnr_scale);
+    FR_SET(params->fr_minsnr_clamp_hi != -1, AACENC_FRANKEN_MINSNR_CLAMP_HI, params->fr_minsnr_clamp_hi);
+    FR_SET(params->fr_minsnr_clamp_lo != -1, AACENC_FRANKEN_MINSNR_CLAMP_LO, params->fr_minsnr_clamp_lo);
+    FR_SET(params->fr_reduce_clamp != -1, AACENC_FRANKEN_REDUCE_CLAMP, params->fr_reduce_clamp);
+    FR_SET(params->fr_mid_bias != -1, AACENC_FRANKEN_MID_BIAS, params->fr_mid_bias);
+    FR_SET(params->fr_sbr_header_period != -1, AACENC_FRANKEN_SBR_HEADER_PERIOD, params->fr_sbr_header_period);
+    FR_SET(params->fr_pns_gain != -1, AACENC_FRANKEN_PNS_GAIN, params->fr_pns_gain);
+    FR_SET(params->fr_pns_tonality != -1, AACENC_FRANKEN_PNS_TONALITY, params->fr_pns_tonality);
+    FR_SET(params->fr_pns_refpower != -1, AACENC_FRANKEN_PNS_REFPOWER, params->fr_pns_refpower);
+    FR_SET(params->fr_pns_gapfill != -1, AACENC_FRANKEN_PNS_GAPFILL, params->fr_pns_gapfill);
+    FR_SET(params->fr_pns_min_width != -1, AACENC_FRANKEN_PNS_MIN_WIDTH, params->fr_pns_min_width);
     FR_SET(params->fr_peak_bitrate  != -1, AACENC_PEAK_BITRATE,          params->fr_peak_bitrate);
     FR_SET(params->fr_verbose       !=  0, AACENC_FRANKEN_VERBOSE,       params->fr_verbose);
 #undef FR_SET
@@ -304,11 +319,17 @@ int aacenc_init(HANDLE_AACENCODER *encoder, const aacenc_param_t *params,
         fprintf(stderr, " samplerate            : %u\n", aacEncoder_GetParam(*encoder, AACENC_SAMPLERATE));
         fprintf(stderr, " channel-mode          : %u\n", aacEncoder_GetParam(*encoder, AACENC_CHANNELMODE));
         { unsigned bw = aacEncoder_GetParam(*encoder, AACENC_BANDWIDTH);
+          int effbw = (int)aacEncoder_GetParam(*encoder, AACENC_FRANKEN_GET_BANDWIDTH_HZ);
           const char *src;
           if (params->fr_core_cutoff > 0)      src = "from --core-cutoff";
           else if (params->bandwidth > 0)      src = "from -w";
           else                                 src = "auto (FDK picked for this bitrate)";
-          fprintf(stderr, " core bandwidth        : %u Hz  [%s]\n", bw, src);
+          /* Effective cutoff is anchored to the nearest SFB boundary, so it can
+           * differ from the requested -w/--core-cutoff. Show the REAL value. */
+          if (effbw > 0)
+            fprintf(stderr, " core bandwidth        : %d Hz (SFB-anchored)  [%s]\n", effbw, src);
+          else
+            fprintf(stderr, " core bandwidth        : %u Hz  [%s]\n", bw, src);
           if (sbr)
             fprintf(stderr, "                         (this is the AAC CORE cutoff; SBR extends above it)\n");
         }
@@ -355,6 +376,10 @@ int aacenc_init(HANDLE_AACENCODER *encoder, const aacenc_param_t *params,
         fprintf(stderr, " Intensity stereo (IS) : %s", useIS ? "on" : "off");
         if (params->fr_is_bands >= 0) fprintf(stderr, "  [max %d bands]", params->fr_is_bands);
         else fprintf(stderr, "  [bands: auto up to %d]", maxsfb);
+        if (params->fr_is_band_lo >= 0 || params->fr_is_band_hi >= 0)
+            fprintf(stderr, "  [allowed range %d..%d]", params->fr_is_band_lo, params->fr_is_band_hi);
+        if (params->fr_is_force_lo >= 0 || params->fr_is_force_hi >= 0)
+            fprintf(stderr, "  [FORCED range %d..%d]", params->fr_is_force_lo, params->fr_is_force_hi);
         fprintf(stderr, "\n");
         fprintf(stderr, " IS min contiguous SFBs: %d\n", (int)aacEncoder_GetParam(*encoder, AACENC_FRANKEN_GET_IS_MINSFBS));
         fprintf(stderr, " IS corr threshold     : %d\n", (int)aacEncoder_GetParam(*encoder, AACENC_FRANKEN_GET_IS_CORR));
@@ -374,6 +399,17 @@ int aacenc_init(HANDLE_AACENCODER *encoder, const aacenc_param_t *params,
             else fprintf(stderr, "  start=auto (may be gated off at low bitrate; see --force-pns)");
         }
         fprintf(stderr, "\n");
+        if (params->fr_pns_gain >= 0 || params->fr_pns_tonality >= 0 ||
+            params->fr_pns_refpower >= 0 || params->fr_pns_gapfill >= 0 ||
+            params->fr_pns_min_width >= 0) {
+            fprintf(stderr, " PNS shaping           :");
+            if (params->fr_pns_gain >= 0)     fprintf(stderr, " gain=%.2f", params->fr_pns_gain/100.0);
+            if (params->fr_pns_tonality >= 0) fprintf(stderr, " tonality=%.2f", params->fr_pns_tonality/100.0);
+            if (params->fr_pns_refpower >= 0) fprintf(stderr, " refpower=%.2f", params->fr_pns_refpower/100.0);
+            if (params->fr_pns_gapfill >= 0)  fprintf(stderr, " gapfill=%.2f", params->fr_pns_gapfill/100.0);
+            if (params->fr_pns_min_width >= 0)fprintf(stderr, " min-width=%d", params->fr_pns_min_width);
+            fprintf(stderr, "\n");
+        }
         if (sbr) {
             fprintf(stderr, "--- SBR (active) effective settings ---\n");
             fprintf(stderr, " sbr-ratio             : %u\n", aacEncoder_GetParam(*encoder, AACENC_SBR_RATIO));
@@ -385,6 +421,16 @@ int aacenc_init(HANDLE_AACENCODER *encoder, const aacenc_param_t *params,
             fprintf(stderr, " sbr freq scale        : %d\n", (int)aacEncoder_GetParam(*encoder, AACENC_FRANKEN_GET_SBR_FREQSCALE));
             fprintf(stderr, " sbr noise bands       : %d\n", (int)aacEncoder_GetParam(*encoder, AACENC_FRANKEN_GET_SBR_NOISEBANDS));
             fprintf(stderr, " sbr amp res           : %d\n", (int)aacEncoder_GetParam(*encoder, AACENC_FRANKEN_GET_SBR_AMPRES));
+            { int hp = (int)aacEncoder_GetParam(*encoder, AACENC_FRANKEN_GET_SBR_HEADER_PERIOD);
+              unsigned sr = aacEncoder_GetParam(*encoder, AACENC_SAMPLERATE);
+              unsigned gl = aacEncoder_GetParam(*encoder, AACENC_GRANULE_LENGTH);
+              if (hp > 0 && sr > 0 && gl > 0) {
+                double ms = 1000.0 * (double)hp * (double)gl / (double)sr;
+                fprintf(stderr, " sbr header period      : every %d frame(s) = ~%.0f ms  (SBR sync delay when tuning into a stream)\n", hp, ms);
+                if (params->fr_sbr_header_period >= 1)
+                    fprintf(stderr, "                          [forced via --sbr-header-period %d; 1 = near-instant SBR lock]\n", params->fr_sbr_header_period);
+              }
+            }
             fprintf(stderr, " sbr stereo-mode       : %s\n",
                     params->fr_sbr_stereo_mode < 0 ? "auto (default)" :
                     params->fr_sbr_stereo_mode == 0 ? "0 mono" :
@@ -418,6 +464,28 @@ int aacenc_init(HANDLE_AACENCODER *encoder, const aacenc_param_t *params,
                     params->fr_ps_icc_mode == 0 ? "ROT_A" : "ROT_B");
             fprintf(stderr, " PS IPD/OPD (phase)    : not supported by FDK (always 0)\n");
         }
+        /* Bit-reservoir budget helper: the hard AAC ceiling is 6144 bits per
+         * channel per frame; the usable reservoir is that minus the average
+         * bits already spent per frame. Showing both the mono and stereo
+         * ceilings lets you size --vbr-reservoir consciously without overshoot. */
+        {
+            unsigned br = aacEncoder_GetParam(*encoder, AACENC_BITRATE);
+            unsigned sr = aacEncoder_GetParam(*encoder, AACENC_SAMPLERATE);
+            unsigned gl = aacEncoder_GetParam(*encoder, AACENC_GRANULE_LENGTH);
+            if (br > 0 && sr > 0 && gl > 0) {
+                double avg = (double)br * (double)gl / (double)sr; /* avg bits/frame */
+                long avg_i = (long)(avg + 0.5);
+                long res_mono = 6144L * 1 - avg_i;
+                long res_stereo = 6144L * 2 - avg_i;
+                if (res_mono < 0) res_mono = 0;
+                if (res_stereo < 0) res_stereo = 0;
+                fprintf(stderr, "--- bit reservoir budget (for --vbr-reservoir) ---\n");
+                fprintf(stderr, " avg bits/frame        : ~%ld  (bitrate x %u / %u)\n", avg_i, gl, sr);
+                fprintf(stderr, " max reservoir (mono)  : ~%ld bits   (6144 - avg)\n", res_mono);
+                fprintf(stderr, " max reservoir (stereo): ~%ld bits   (2*6144 - avg)\n", res_stereo);
+                fprintf(stderr, "                         (set --vbr-reservoir at or below the ceiling for your channel count)\n");
+            }
+        }
         /* Franken overrides actually applied this run (kept last so it is obvious
          * which knobs deviate from stock FDK). Only non-default ones are shown. */
         {
@@ -428,6 +496,14 @@ int aacenc_init(HANDLE_AACENCODER *encoder, const aacenc_param_t *params,
             if (params->fr_ms_band_lo >= 0 || params->fr_ms_band_hi >= 0) { FRV_HDR(); fprintf(stderr, " ms band range         : lo=%d hi=%d\n", params->fr_ms_band_lo, params->fr_ms_band_hi); }
             if (params->fr_spread_mask >= 0)    { FRV_HDR(); fprintf(stderr, " spread-mask           : %d Q8 (<256 = less masking, more detail)\n", params->fr_spread_mask); }
             if (params->fr_ath_scale >= 0)      { FRV_HDR(); fprintf(stderr, " ath-scale             : %d Q8 (<256 = cleaner/more bits)\n", params->fr_ath_scale); }
+            if (params->fr_mid_bias >= 0)       { FRV_HDR(); fprintf(stderr, " mid-bias              : %d Q8 (>256 = free bits from mid for side)\n", params->fr_mid_bias); }
+            if (params->fr_minsnr_scale >= 0)   { FRV_HDR(); fprintf(stderr, " minsnr-scale          : %d Q8 (<256 = demand higher SNR, more detail)\n", params->fr_minsnr_scale); }
+            if (params->fr_minsnr_clamp_hi >= 0){ FRV_HDR(); fprintf(stderr, " minsnr-clamp-hi       : %d Q8 (scale MAX_SNR ceiling)\n", params->fr_minsnr_clamp_hi); }
+            if (params->fr_minsnr_clamp_lo >= 0){ FRV_HDR(); fprintf(stderr, " minsnr-clamp-lo       : %d Q8 (scale MIN_SNR floor)\n", params->fr_minsnr_clamp_lo); }
+            if (params->fr_reduce_clamp == 0)   { FRV_HDR(); fprintf(stderr, " reduce-clamp          : off (29 dB threshold-reduction ceiling dropped, CBR)\n"); }
+            if (params->fr_is_band_lo >= 0 || params->fr_is_band_hi >= 0) { FRV_HDR(); fprintf(stderr, " is band range         : lo=%d hi=%d (IS allowed only here)\n", params->fr_is_band_lo, params->fr_is_band_hi); }
+            if (params->fr_is_force_lo >= 0 || params->fr_is_force_hi >= 0) { FRV_HDR(); fprintf(stderr, " is FORCE range        : lo=%d hi=%d (IS forced, gates bypassed)\n", params->fr_is_force_lo, params->fr_is_force_hi); }
+            if (params->fr_sbr_header_period >= 1) { FRV_HDR(); fprintf(stderr, " sbr-header-period     : %d frame(s) (SBR stream-sync rate)\n", params->fr_sbr_header_period); }
             if (params->fr_is_aggression >= 0)  { FRV_HDR(); fprintf(stderr, " is-aggression         : %d/100\n", params->fr_is_aggression); }
             if (params->fr_block_bias >= 0)     { FRV_HDR(); fprintf(stderr, " block-bias            : %d (128=default, >128 more short blocks)\n", params->fr_block_bias); }
             if (params->fr_uncap_bw == 1)       { FRV_HDR(); fprintf(stderr, " uncap-bandwidth       : on (20 kHz core cap lifted)\n"); }

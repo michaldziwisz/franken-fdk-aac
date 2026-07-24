@@ -63,6 +63,28 @@ extern "C" void frankenResetDefaults(void) {
   g_franken.psIcc = -1;
   g_franken.psIccMode = -1;
 
+  g_franken.isBandLo = -1;
+  g_franken.isBandHi = -1;
+  g_franken.isForceLo = -1;
+  g_franken.isForceHi = -1;
+
+  g_franken.minSnrScaleQ8 = -1;
+  g_franken.minSnrClampHiQ8 = -1;
+  g_franken.minSnrClampLoQ8 = -1;
+  g_franken.reduceClamp = -1;
+
+  g_franken.midBiasQ8 = -1;
+
+  g_franken.sbrHeaderPeriod = -1;
+  g_franken.effSbrHeaderPeriod = -1;
+
+  g_franken.pnsGainX100 = -1;
+  g_franken.pnsTonalityX100 = -1;
+  g_franken.pnsRefPowerX100 = -1;
+  g_franken.pnsGapFillX100 = -1;
+  g_franken.pnsMinWidth = -1;
+  g_franken.effBandwidthHz = -1;
+
   g_franken.effSbrActive = 0;
   g_franken.effSbrStart = -1;
   g_franken.effSbrStop = -1;
@@ -89,3 +111,4 @@ struct FrankenInit {
   FrankenInit() { frankenResetDefaults(); }
 } g_frankenInit;
 }
+

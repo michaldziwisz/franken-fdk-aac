@@ -84,13 +84,18 @@ te decyzję nadpisac i wymusic ekstremalne konfiguracje.
 | `--msbands <n>` | -1 brak limitu, 0..N | -1 | Maksymalny numer SFB, który może użyć MS (bierze N NAJNIŻSZYCH pasm). Powyżej — MS wyłączone. |
 | `--msbands-lo <n>` | -1 off, 0..N | -1 | POCZATEK (najniższy numer pasma SFB) zakresu, w którym dozwolone jest MS. |
 | `--msbands-hi <n>` | -1 off, 0..N | -1 | KONIEC (najwyższy numer pasma SFB) zakresu MS. Używane razem z `--msbands-lo` jako para OD–DO. Pasma poza tym zakresem ida czystym L/R. |
-| `--ms-precision <n>` | 256..bez limitu (Q8) | -1 (off) | Precyzja pasm MS. `>256` = płytsze dziury w spektrum MS (koder alokuje więcej bitow na ich opis, styl LAME -q). 256=bez zmian, 384~1.5x, 512~2x. Użyteczny efekt SLYSZALNY do ~600-800; wyżej prog uderza w twarda podłogę FDK (ld64 -0.515625) i przy CBR bity są tylko PRZESUWANE między pasmami (stały budzet), więc brzmienie przestaje sie zmieniac. Działa najlepiej gdy masz zapas bitow (>=128k) lub w VBR. |
+| `--ms-precision <n>` | 256..bez limitu (Q8) | -1 (off) | Precyzja pasm MS. `>256` = płytsze dziury w spektrum MS (koder alokuje więcej bitow na ich opis, styl LAME -q). 256=bez zmian, 384~1.5x, 512~2x. Użyteczny efekt SLYSZALNY do ~600-800; wyżej prog uderza w twarda podłogę FDK (ld64 -0.515625) i przy CBR bity są tylko PRZESUWANE między pasmami (stały budzet), więc brzmienie przestaje sie zmieniac. Działa najlepiej gdy masz zapas bitow (>=128k) lub w VBR. UWAGA: działa jednakowo na mid i side. |
+| `--mid-bias <n>` | 256..bez limitu (Q8) | -1 (off) | `>256` podnosi prog kanału MID (L+R) po butterfly, uwalniając bity dla kanału side; używać oszczędnie — mid niesie większość głośności. 256=off. |
 | `--is <n>` | -1 auto, 0 off, 1 on | -1 | Intensity stereo globalnie wł/wył. |
 | `--isbands <n>` | -1 brak limitu, 0..N | -1 | Maksymalna liczba SFB, które mogą użyć intensity. Powyżej — kodowane normalnie. |
 | `--is-aggression <0..100>` | 0..100 | -1 (off) | KONSUMENCKI suwak: jak bardzo enkoder ma isc w intensity stereo. Zaczynaj tu, zaawansowane `--is-*` zostaw. |
 | `--is-min-sfbs <n>` | -1 def(6), 0..N | -1 | (zaawansowane) Min. liczba ciaglych SFB, zanim IS sie włączy. |
 | `--is-corr-thresh <n>` | -1 def(243), Q8 | -1 | (zaawansowane) Prog korelacji L/R dla IS w Q8 (256=1.0). |
 | `--is-lr-ratio <n>` | -1 def(179), Q8 | -1 | (zaawansowane) Prog balansu energii L/R dla IS w Q8 (256=1.0). |
+| `--is-lo <sfb>` | -1 off, 0..N | -1 | Pozwól na intensity stereo TYLKO od tego SFB w górę. Pasma poniżej zostają czyste L/R. Tylko OGRANICZA gdzie FDK może użyć IS — nigdy go nie wymusza. |
+| `--is-hi <sfb>` | -1 off, 0..N | -1 | Pozwól na IS tylko do tego SFB (włącznie). Używaj z `--is-lo` jako zakres. WSKAZOWKA: IS zwykle ląduje na NISKICH pasmach przy niskim bitrate, więc skanuj małe wartości, by zobaczyć efekt. |
+| `--is-force-lo <sfb>` | -1 off, 0..N | -1 | WYMUSZA intensity stereo od tego SFB, omijając bramki korelacji / min-sfbs / głośności. Tryb laboratoryjny: może celowo rozbić obraz stereo (IS jest stratne i kierunkowe — prawy kanał zostaje wyzerowany, zostaje tylko współczynnik panoramy). Strumien pozostaje legalny. |
+| `--is-force-hi <sfb>` | -1 off, 0..N | -1 | Górny SFB wymuszonego zakresu IS (włącznie). |
 
 ### Intensity stereo w praktyce (jak tego używać, nie wzory)
 
@@ -208,6 +213,7 @@ Nadpisuje ustawienia z tabeli tuningowej SBR (po jej załadowaniu).
 | `--sbr-stereo-mode <0..3>` | -1 off | -1 | Tryb stereo SBR: 0 mono, 1 LR (pelna separacja górnego pasma), 2 coupling (oszczędny, wspolna obwiednia + poziom), 3 switch-LRC (domyślnie koder wybiera per-ramke). Wymuś 1 dla max separacji, 2 dla oszczędności. |
 | `--sbr-invf <0..3>` | -1 auto | -1 | Wymuś inverse filtering SBR: 0 off, 1 low, 2 mid, 3 high. Sterowane normalnie estymatorem tonalności. Wyżej = mocniejsze "wybielanie" tonalnego SBR (mniej metaliczności kosztem detalu). |
 | `--sbr-noise-floor-offset <n>` | -128 off | -128 | Offset poziomu szumu SBR (mala l. calkowita). Wieksze = więcej szumu wypełniającego w rekonstrukcji SBR. |
+| `--sbr-header-period <n>` | -1 off, >=1 | -1 | Liczba ramek między nagłówkami SBR = jak szybko górne pasmo SBR \"wchodzi\", gdy dekoder podłącza się do strumienia HE-AAC na żywo (Icecast/Shoutcast). KONFIGURACJA SBR jest w okresowym nagłówku, nie w każdej ramce; dekoder wpięty w środek gra sam rdzeń (przytłumiony) do nadejścia kolejnego nagłówka. `1` = nagłówek w każdej ramce → niemal natychmiastowy sync SBR (~23 ms); wyżej = dłuższy moment core-only. Domyślnie FDK ~10 ramek (~0.23 s HE dual-rate / ~0.46 s LC). FDK kapuje to do maks. raz na sekundę, więc bardzo duże wartości są przycinane (np. 40 → 21 ramek @44.1k). Efektywny okres w ms pokazuje `--verbose`. |
 
 UWAGA: `--sbr-start`/`--sbr-stop` są walidowane PRZEZ FDK — niepoprawna
 KOMBINACJA start/stop (zła liczba pasm master) da "encoder initialization
@@ -242,7 +248,11 @@ To, co w średnich bitrate'ach jest zastępowane szumem lub resyntezowane.
 | `--pns <n>` | -1 def, 0/1 | -1 | Perceptual Noise Substitution wł/wył. UWAGA: FDK wymusza PNS=off gdy aktywne SBR albo VBR. |
 | `--pns-start <hz>` | -1 def, Hz | -1 | Częstotliwość startowa PNS. Niżej = więcej widma zastępowane szumem. |
 | `--force-pns` | flaga | off | Obejdz bramkę niskiego bitrate dla PNS. |
-| `--afterburner <n>` | 0/1 (tez stock `-a`) | 1 | Afterburner (dokładniejsza kwantyzacja). |
+| `--pns-gain <x>` | >=0.0 | -1 (off) | Głośność dorabianego szumu PNS. `1.0` = bez zmian (energia szumu = oryginalne pasmo). `>1.0` = szum głośniejszy niż oryginał, `<1.0` = cichszy. Wprost skaluje energię kodowanego szumu — to pokrętło „jak głośny szum". Wejście dziesiętne. |
+| `--pns-tonality <x>` | >=0.0 | -1 (off) | Skaluje prog detekcji tonalności PNS. `1.0` = domyślnie; wyżej = więcej (nawet mniej-szumiacych) pasm kwalifikuje się do PNS = SZERSZY szum. Wejście dziesiętne. |
+| `--pns-refpower <x>` | >=0.0 | -1 (off) | Skaluje prog mocy referencyjnej detekcji PNS. `1.0` = domyślnie. Wejście dziesiętne. |
+| `--pns-gapfill <x>` | >=0.0 | -1 (off) | Skaluje prog wypełniania luk PNS (wypełnia dziury PNS między dwoma pasmami PNS). `1.0` = domyślnie. Zaawansowane/subtelne — rzadko widoczne. Wejście dziesiętne. |
+| `--pns-min-width <n>` | -1 off, >=1 | -1 | Minimalna szerokość SFB dla PNS. Skuteczny powyżej wbudowanej domyślnej (LC=16); np. 32/64 ogranicza PNS do szerszych pasm. |
 
 WAZNE o PNS przy niskim bitrate: FDK ma tabele tuningowa (`levelTable`), która
 CALKOWICIE wyłącza PNS poniżej ~28 kbps (wiersz bitrate 0-27999 = same zera dla
@@ -258,6 +268,10 @@ zerowane wyżej w łańcuchu (nic na to nie poradzimy bez głębszej przebudowy)
 |---|---|---|---|
 | `--ath-scale <n>` | 1..~4096 (Q8) | 256 | Skala progu maskowania w Q8 (256 = x1.0). `>256` podnosi progi (więcej szumu, mniej bitow na pasmo), `<256` obniża (czysciej, więcej bitow). Działa w domenie ld64 FDK jako addytywny offset log2. |
 | `--spread-mask <n>` | Q8, >=0 | -1 (off) | Skaluje rozlewanie maskowania między pasmami. `<256` = mniej maskowania = więcej detalu. Największy efekt gdzie bity ograniczone (96-192k). |
+| `--minsnr-scale <n>` | 1..bez limitu (Q8) | -1 (off) | Styl MusePack: skaluje WYMAGANY per-pasmo SNR kodowania (`sfbMinSnrLdData`, najbliższy FDK-owy odpowiednik TMN/NMT). `<256` = wymagaj WYŻSZEGO SNR = więcej detalu/bitow; `>256` = zgrubniej. Skuteczniejszy niż `--ath-scale`, bo to do min-SNR logika avoid-holes cofa progi. 256=off. |
+| `--minsnr-clamp-hi <n>` | 1..bez limitu (Q8) | -1 (off) | Skaluje sufit MAX_SNR FDK (~−1 dB). `>256` pozwala pasmom wymagać więcej niż fabryczny cap. 256=off. |
+| `--minsnr-clamp-lo <n>` | 1..bez limitu (Q8) | -1 (off) | Skaluje podłogę MIN_SNR FDK (~−25 dB). 256=off. |
+| `--reduce-clamp <0\|1>` | 0, 1 | 1 (on) | `0` zdejmuje sufit \"29 dB Ratio\" redukcji progów w kwantyzatorze CBR, pozwalając wepchnąć progi głębiej (więcej bitow do wymagających pasm). Łączy się z `--minsnr-scale` dla ekstremalnego detalu. Tylko CBR (VBR używa innej ścieżki). |
 
 ### Co realnie pomaga w niskim i średnim bitrate (10-144 kbps)
 
@@ -433,7 +447,7 @@ zaśmiecać). Poniżej co oznaczają te, które nie są oczywiste:
 | `AOT (profile)` | 2=AAC-LC, 5=HE-AAC, 29=HE-AAC v2, 23=AAC-LD, 39=AAC-ELD. |
 | `bitrate-mode` | 0=CBR, 1..5=VBR (wyżej=lepiej). |
 | `channel-mode` | 1=mono, 2=stereo (dla HE-AAC v2 rdzen jest mono, stereo robi PS). |
-| `core bandwidth` | Górna częstotliwość rdzenia AAC. W nawiasie ZRODLO: `from -w`, `from --core-cutoff`, albo `auto`. Pod SBR to tylko rdzen — SBR gra wyżej. |
+| `core bandwidth` | Górna częstotliwość rdzenia AAC, **zakotwiczona na najbliższej granicy SFB** (realny cutoff, który może różnić się od podanej wartości `-w`/`--core-cutoff`, np. `-w 17300` → `17915 Hz (SFB-anchored)`). W nawiasie ZRODLO: `from -w`, `from --core-cutoff`, albo `auto`. Pod SBR to tylko rdzen — SBR gra wyżej. |
 | `final BW (AAC+SBR)` | Pokazywane tylko gdy SBR aktywny: orientacyjna GÓRNA częstotliwość całego sygnalu (rdzen + SBR), wyliczona ze `sbr stop freq index`. To odpowiednik `core bandwidth`, ale dla pelnego pasma HE-AAC. |
 | `signaling-mode` | Sposób sygnalizacji SBR/PS: 0=implicit, 1=explicit backward-compat, 2=explicit hierarchical, auto=biblioteka wybiera. |
 | `SBR mode` | Wewnętrzny tryb SBR (-1/0 gdy nieuzywany). |

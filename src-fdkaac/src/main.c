@@ -240,6 +240,9 @@ PROGNAME " %s\n"
 "                               LAME -q feel). 256=no change, 384~1.5x, 512~2x. Audible\n"
 "                               up to ~600-800; higher hits FDK's threshold floor and\n"
 "                               under CBR just shifts bits around. No upper limit.\n"
+" --mid-bias <n>              Q8, >256 = deliberately raise the MID (L+R) threshold to\n"
+"                               free bits for the side channel. Use sparingly (mid carries\n"
+"                               most loudness). 256=off.\n"
 "   -- IS (intensity) --      \n"
 " --is <n>                    Intensity stereo: -1 auto(def), 0 off, 1 on.\n"
 " --isbands <n>               Max SFBs allowed to use intensity. -1 no limit(def).\n"
@@ -248,6 +251,13 @@ PROGNAME " %s\n"
 " --is-corr-thresh <n>        IS L/R correlation threshold, Q8 (256=1.0). LOWER = IS more\n"
 "                               eager (counter-intuitive). -1 def(~243=0.95).\n"
 " --is-lr-ratio <n>           IS panning L/R ratio threshold, Q8. -1 def(~179=0.7).\n"
+" --is-lo <sfb>               Allow IS only from this SFB up (band range). Outside the\n"
+"                               range stays L/R. Only RESTRICTS where FDK may place IS.\n"
+" --is-hi <sfb>               Allow IS only up to this SFB (inclusive). -1 off.\n"
+" --is-force-lo <sfb>         FORCE intensity stereo from this SFB, bypassing the\n"
+"                               correlation/min-sfbs/loudness gates. Laboratory mode: can\n"
+"                               deliberately wreck the stereo image. Stream stays legal.\n"
+" --is-force-hi <sfb>         Upper SFB of the forced-IS range (inclusive). -1 off.\n"
 "   -- PS (parametric stereo, HE-AAC v2) -- \n"
 " --ps <n>                    Force PS IID sending: -1 auto(def), 0 off, 1 on.\n"
 " --ps-iid-quant <n>          PS IID quant grid: -1 def, 0 coarse, 1 fine.\n"
@@ -274,6 +284,11 @@ PROGNAME " %s\n"
 "                               less metallic top, less detail. -1 = auto (tonality est.).\n"
 " --sbr-noise-floor-offset <n> SBR noise floor offset (small int). Bigger = more fill\n"
 "                               noise in the reconstruction. off=-128.\n"
+" --sbr-header-period <n>     Frames between SBR headers = how fast SBR locks when a\n"
+"                               decoder tunes into an Icecast/Shoutcast HE-AAC stream.\n"
+"                               1 = SBR config in every frame => near-instant (no core-\n"
+"                               only moment); higher = longer core-only period. FDK\n"
+"                               default ~10 frames (~0.46 s @44.1k). -1 off. See verbose.\n"
 "\n== D. Masking / noise shaping / detail ==\n"
 " --ath-scale <n>             Global masking-threshold scale Q8 (256=x1.0 def). >256 =\n"
 "                               noisier/fewer bits, <256 = cleaner/more detail. min 1,\n"
@@ -281,6 +296,16 @@ PROGNAME " %s\n"
 " --spread-mask <n>           Q8, scales inter-band masking spread. <256 = LESS masking =\n"
 "                               more detail kept (like relaxing tone-masks-noise). Biggest\n"
 "                               effect where bits are tight (96-192k). 256=no change.\n"
+" --minsnr-scale <n>          MusePack-style: scale the required per-band coding SNR. Q8,\n"
+"                               <256 = demand HIGHER SNR (more detail/bits), >256 = coarser.\n"
+"                               More effective than --ath-scale (it drives what avoid-holes\n"
+"                               clamps back to). 256=off.\n"
+" --minsnr-clamp-hi <n>       Q8 scale on FDK's MAX_SNR ceiling (~-1 dB). >256 lets bands\n"
+"                               demand more than the stock cap. 256=off.\n"
+" --minsnr-clamp-lo <n>       Q8 scale on FDK's MIN_SNR floor (~-25 dB). 256=off.\n"
+" --reduce-clamp <0|1>        1=default. 0 drops the 29 dB threshold-reduction ceiling in\n"
+"                               CBR, letting thresholds be pushed deeper (pairs with\n"
+"                               --minsnr-scale for extreme detail).\n"
 " --tns-mask <n>              TNS enable mask: -1 def(0xF), 0..15.\n"
 " --tns-order <n>             Max TNS order: -1 def, 1..12 (short<=5).\n"
 " --pns <n>                   Perceptual Noise Substitution: -1 def, 0 off, 1 on.\n"
@@ -288,6 +313,15 @@ PROGNAME " %s\n"
 " --pns-start <hz>            PNS start freq Hz: -1 def (lower = more noise-coded).\n"
 " --force-pns                 Bypass the low-bitrate PNS gate (tuning table disables PNS\n"
 "                               below ~28 kbps). Lets you force PNS e.g. at 24 kbps.\n"
+" --pns-gain <x>              Loudness of the fabricated PNS noise. x>=0.0, 1.0=unchanged\n"
+"                               (noise energy = original band). >1.0 louder, <1.0 quieter.\n"
+"                               Geeky: deliberately over/under-drive the noise fill.\n"
+" --pns-tonality <x>          Scales the PNS tonality detection threshold. 1.0=default,\n"
+"                               higher = more (also less-noisy) bands become PNS = wider\n"
+"                               noise substitution.\n"
+" --pns-refpower <x>          Scales the PNS reference-power detection threshold. 1.0=def.\n"
+" --pns-gapfill <x>           Scales the PNS gap-fill threshold. 1.0=default.\n"
+" --pns-min-width <n>         Minimum SFB width for PNS (raw). Lower = PNS on narrower bands.\n"
 "\n== E. Block switching & bitrate control ==\n"
 " --block-bias <n>            Bias short/long block decision. 128=default(unchanged),\n"
 "                               >128 favours short (transient-like), <128 long, 0=long\n"
@@ -403,6 +437,21 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
 #define OPT_FR_SBR_NF_OFFSET     M4AF_FOURCC('f','s','n','f')
 #define OPT_FR_PS_ICC            M4AF_FOURCC('f','p','i','c')
 #define OPT_FR_PS_ICC_MODE       M4AF_FOURCC('f','p','i','m')
+#define OPT_FR_IS_BAND_LO        M4AF_FOURCC('f','i','l','o')
+#define OPT_FR_IS_BAND_HI        M4AF_FOURCC('f','i','h','i')
+#define OPT_FR_IS_FORCE_LO       M4AF_FOURCC('f','i','f','l')
+#define OPT_FR_IS_FORCE_HI       M4AF_FOURCC('f','i','f','h')
+#define OPT_FR_MINSNR_SCALE      M4AF_FOURCC('f','m','s','s')
+#define OPT_FR_MINSNR_CLAMP_HI   M4AF_FOURCC('f','m','c','h')
+#define OPT_FR_MINSNR_CLAMP_LO   M4AF_FOURCC('f','m','c','l')
+#define OPT_FR_REDUCE_CLAMP      M4AF_FOURCC('f','r','d','c')
+#define OPT_FR_MID_BIAS          M4AF_FOURCC('f','m','d','b')
+#define OPT_FR_SBR_HEADER_PERIOD M4AF_FOURCC('f','s','h','p')
+#define OPT_FR_PNS_GAIN          M4AF_FOURCC('f','p','g','a')
+#define OPT_FR_PNS_TONALITY      M4AF_FOURCC('f','p','t','o')
+#define OPT_FR_PNS_REFPOWER      M4AF_FOURCC('f','p','r','p')
+#define OPT_FR_PNS_GAPFILL       M4AF_FOURCC('f','p','g','f')
+#define OPT_FR_PNS_MIN_WIDTH     M4AF_FOURCC('f','p','m','w')
 #define OPT_FR_PEAK_BITRATE      M4AF_FOURCC('f','p','k','b')
 #define OPT_FR_VERBOSE           M4AF_FOURCC('f','v','r','b')
 
@@ -496,6 +545,21 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
         { "sbr-noise-floor-offset",required_argument, 0, OPT_FR_SBR_NF_OFFSET     },
         { "ps-icc",              required_argument, 0, OPT_FR_PS_ICC            },
         { "ps-icc-mode",         required_argument, 0, OPT_FR_PS_ICC_MODE       },
+        { "is-lo",               required_argument, 0, OPT_FR_IS_BAND_LO        },
+        { "is-hi",               required_argument, 0, OPT_FR_IS_BAND_HI        },
+        { "is-force-lo",         required_argument, 0, OPT_FR_IS_FORCE_LO       },
+        { "is-force-hi",         required_argument, 0, OPT_FR_IS_FORCE_HI       },
+        { "minsnr-scale",        required_argument, 0, OPT_FR_MINSNR_SCALE      },
+        { "minsnr-clamp-hi",     required_argument, 0, OPT_FR_MINSNR_CLAMP_HI   },
+        { "minsnr-clamp-lo",     required_argument, 0, OPT_FR_MINSNR_CLAMP_LO   },
+        { "reduce-clamp",        required_argument, 0, OPT_FR_REDUCE_CLAMP      },
+        { "mid-bias",            required_argument, 0, OPT_FR_MID_BIAS          },
+        { "sbr-header-period",   required_argument, 0, OPT_FR_SBR_HEADER_PERIOD },
+        { "pns-gain",            required_argument, 0, OPT_FR_PNS_GAIN          },
+        { "pns-tonality",        required_argument, 0, OPT_FR_PNS_TONALITY      },
+        { "pns-refpower",        required_argument, 0, OPT_FR_PNS_REFPOWER      },
+        { "pns-gapfill",         required_argument, 0, OPT_FR_PNS_GAPFILL       },
+        { "pns-min-width",       required_argument, 0, OPT_FR_PNS_MIN_WIDTH     },
         { "peak-bitrate",     required_argument, 0, OPT_FR_PEAK_BITRATE    },
         { "verbose",          no_argument,       0, OPT_FR_VERBOSE         },
 
@@ -547,6 +611,21 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
     params->fr_sbr_noise_floor_offset = -128;
     params->fr_ps_icc = -1;
     params->fr_ps_icc_mode = -1;
+    params->fr_is_band_lo = -1;
+    params->fr_is_band_hi = -1;
+    params->fr_is_force_lo = -1;
+    params->fr_is_force_hi = -1;
+    params->fr_minsnr_scale = -1;
+    params->fr_minsnr_clamp_hi = -1;
+    params->fr_minsnr_clamp_lo = -1;
+    params->fr_reduce_clamp = -1;
+    params->fr_mid_bias = -1;
+    params->fr_sbr_header_period = -1;
+    params->fr_pns_gain = -1;
+    params->fr_pns_tonality = -1;
+    params->fr_pns_refpower = -1;
+    params->fr_pns_gapfill = -1;
+    params->fr_pns_min_width = -1;
     params->fr_peak_bitrate = -1;
     params->fr_verbose = 0;
 
@@ -857,6 +936,51 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
         case OPT_FR_PS_ICC_MODE:
             if (sscanf(optarg, "%d", &n) != 1 || n < 0 || n > 1) { fprintf(stderr, "invalid arg for ps-icc-mode (0,1)\n"); return -1; }
             params->fr_ps_icc_mode = n; break;
+        case OPT_FR_IS_BAND_LO:
+            if (sscanf(optarg, "%d", &n) != 1 || n < 0) { fprintf(stderr, "invalid arg for is-lo (>=0)\n"); return -1; }
+            params->fr_is_band_lo = n; break;
+        case OPT_FR_IS_BAND_HI:
+            if (sscanf(optarg, "%d", &n) != 1 || n < 0) { fprintf(stderr, "invalid arg for is-hi (>=0)\n"); return -1; }
+            params->fr_is_band_hi = n; break;
+        case OPT_FR_IS_FORCE_LO:
+            if (sscanf(optarg, "%d", &n) != 1 || n < 0) { fprintf(stderr, "invalid arg for is-force-lo (>=0)\n"); return -1; }
+            params->fr_is_force_lo = n; break;
+        case OPT_FR_IS_FORCE_HI:
+            if (sscanf(optarg, "%d", &n) != 1 || n < 0) { fprintf(stderr, "invalid arg for is-force-hi (>=0)\n"); return -1; }
+            params->fr_is_force_hi = n; break;
+        case OPT_FR_MINSNR_SCALE:
+            if (sscanf(optarg, "%d", &n) != 1 || n < 1) { fprintf(stderr, "invalid arg for minsnr-scale (>=1, 256=neutral, <256=more detail)\n"); return -1; }
+            params->fr_minsnr_scale = n; break;
+        case OPT_FR_MINSNR_CLAMP_HI:
+            if (sscanf(optarg, "%d", &n) != 1 || n < 1) { fprintf(stderr, "invalid arg for minsnr-clamp-hi (>=1, 256=neutral)\n"); return -1; }
+            params->fr_minsnr_clamp_hi = n; break;
+        case OPT_FR_MINSNR_CLAMP_LO:
+            if (sscanf(optarg, "%d", &n) != 1 || n < 1) { fprintf(stderr, "invalid arg for minsnr-clamp-lo (>=1, 256=neutral)\n"); return -1; }
+            params->fr_minsnr_clamp_lo = n; break;
+        case OPT_FR_REDUCE_CLAMP:
+            if (sscanf(optarg, "%d", &n) != 1 || n < 0 || n > 1) { fprintf(stderr, "invalid arg for reduce-clamp (0 off,1 on)\n"); return -1; }
+            params->fr_reduce_clamp = n; break;
+        case OPT_FR_MID_BIAS:
+            if (sscanf(optarg, "%d", &n) != 1 || n < 256) { fprintf(stderr, "invalid arg for mid-bias (>=256, 256=neutral)\n"); return -1; }
+            params->fr_mid_bias = n; break;
+        case OPT_FR_SBR_HEADER_PERIOD:
+            if (sscanf(optarg, "%d", &n) != 1 || n < 1) { fprintf(stderr, "invalid arg for sbr-header-period (>=1; 1=near-instant SBR sync)\n"); return -1; }
+            params->fr_sbr_header_period = n; break;
+        case OPT_FR_PNS_GAIN:
+            { double dv; if (sscanf(optarg, "%lf", &dv) != 1 || dv < 0.0) { fprintf(stderr, "invalid arg for pns-gain (>=0.0; 1.0=unchanged)\n"); return -1; }
+              params->fr_pns_gain = (int)(dv * 100.0 + 0.5); } break;
+        case OPT_FR_PNS_TONALITY:
+            { double dv; if (sscanf(optarg, "%lf", &dv) != 1 || dv < 0.0) { fprintf(stderr, "invalid arg for pns-tonality (>=0.0; 1.0=unchanged)\n"); return -1; }
+              params->fr_pns_tonality = (int)(dv * 100.0 + 0.5); } break;
+        case OPT_FR_PNS_REFPOWER:
+            { double dv; if (sscanf(optarg, "%lf", &dv) != 1 || dv < 0.0) { fprintf(stderr, "invalid arg for pns-refpower (>=0.0; 1.0=unchanged)\n"); return -1; }
+              params->fr_pns_refpower = (int)(dv * 100.0 + 0.5); } break;
+        case OPT_FR_PNS_GAPFILL:
+            { double dv; if (sscanf(optarg, "%lf", &dv) != 1 || dv < 0.0) { fprintf(stderr, "invalid arg for pns-gapfill (>=0.0; 1.0=unchanged)\n"); return -1; }
+              params->fr_pns_gapfill = (int)(dv * 100.0 + 0.5); } break;
+        case OPT_FR_PNS_MIN_WIDTH:
+            if (sscanf(optarg, "%d", &n) != 1 || n < 1) { fprintf(stderr, "invalid arg for pns-min-width (>=1)\n"); return -1; }
+            params->fr_pns_min_width = n; break;
         case OPT_FR_PEAK_BITRATE:
             if (sscanf(optarg, "%d", &n) != 1 || n < 0) { fprintf(stderr, "invalid arg for peak-bitrate\n"); return -1; }
             params->fr_peak_bitrate = n; break;

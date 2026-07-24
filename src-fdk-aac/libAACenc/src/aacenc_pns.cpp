@@ -101,6 +101,8 @@ amm-info@iis.fraunhofer.de
 *******************************************************************************/
 
 #include "aacenc_pns.h"
+#include "franken.h"
+#include <math.h>
 
 #include "psy_data.h"
 #include "pnsparam.h"
@@ -360,6 +362,16 @@ static void FDKaacEnc_CalcNoiseNrgs(const INT sfbActive, INT *RESTRICT pnsFlag,
       INT nrg = (-sfbEnergyLdData[sfb] + FL2FXCONST_DBL(0.5f / 64.0f)) >>
                 (DFRACT_BITS - 1 - 7);
       noiseNrg[sfb] = tmp - nrg;
+      /* Frankenstein: --pns-gain scales the loudness of the fabricated noise.
+       * noiseNrg = 60 + 2*log2(E) (ld units), so scaling the noise energy by v
+       * shifts noiseNrg by 2*log2(v). pnsGainX100 = v*100 (100 = unchanged).
+       * >100 = louder-than-original noise, <100 = quieter. */
+      if (g_franken.pnsGainX100 >= 0 && g_franken.pnsGainX100 != 100) {
+        double v = (double)g_franken.pnsGainX100 / 100.0;
+        if (v < 0.01) v = 0.01;
+        INT d = (INT)(2.0 * (log(v) / log(2.0)) + (v >= 1.0 ? 0.5 : -0.5));
+        noiseNrg[sfb] += d;
+      }
     }
   }
 }

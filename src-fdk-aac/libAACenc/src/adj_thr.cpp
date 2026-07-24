@@ -103,6 +103,7 @@ amm-info@iis.fraunhofer.de
 #include "adj_thr.h"
 #include "sf_estim.h"
 #include "aacEnc_ram.h"
+#include "franken.h"
 
 #define NUM_NRG_LEVS (8)
 #define INV_INT_TAB_SIZE (8)
@@ -1036,7 +1037,11 @@ static void FDKaacEnc_reduceThresholdsCBR(
           }
 
           /* minimum of 29 dB Ratio for Thresholds */
-          if ((sfbEnLdData + (FIXP_DBL)MAXVAL_DBL) >
+          /* Frankenstein: --reduce-clamp 0 drops this 29 dB ceiling, letting the
+           * threshold be pushed deeper (more bits toward that band). Default
+           * (reduceClamp != 0) keeps FDK's behaviour. */
+          if (g_franken.reduceClamp != 0 &&
+              (sfbEnLdData + (FIXP_DBL)MAXVAL_DBL) >
               FL2FXCONST_DBL(9.6336206 / LD_DATA_SCALING)) {
             sfbThrReducedLdData = fixMax(
                 sfbThrReducedLdData,

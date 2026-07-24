@@ -64,6 +64,21 @@
     int fr_sbr_noise_floor_offset; \
     int fr_ps_icc; \
     int fr_ps_icc_mode; \
+    int fr_is_band_lo; \
+    int fr_is_band_hi; \
+    int fr_is_force_lo; \
+    int fr_is_force_hi; \
+    int fr_minsnr_scale; \
+    int fr_minsnr_clamp_hi; \
+    int fr_minsnr_clamp_lo; \
+    int fr_reduce_clamp; \
+    int fr_mid_bias; \
+    int fr_sbr_header_period; \
+    int fr_pns_gain; \
+    int fr_pns_tonality; \
+    int fr_pns_refpower; \
+    int fr_pns_gapfill; \
+    int fr_pns_min_width; \
     int fr_peak_bitrate; \
     int fr_verbose;
 

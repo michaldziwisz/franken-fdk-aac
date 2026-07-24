@@ -334,6 +334,10 @@ become shallower. This is the equivalent of turning up quality in the LAME `-q` 
 384 is about 1.5×, 512 about 2×. There's no upper limit — it's useful at 512 kbps too.
 The most useful range is 48–192 kbps.
 
+`--mid-bias <n>` — above 256 it RAISES the threshold of the mid (L+R) channel after the MS
+butterfly, deliberately freeing bits for the side channel. Use it sparingly — mid
+carries most of the loudness, so starving it too hard is audible. 256 = off.
+
 INTENSITY STEREO (IS). A more aggressive technique: for high bands, where the ear
 poorly localizes direction, the encoder sends one energy envelope instead of two
 channels. It saves a lot, but can narrow the scene.
@@ -354,11 +358,27 @@ the aggressiveness slider): `--is-min-sfbs <n>` (the minimum number of contiguou
 L/R ratio threshold, Q8). A practical note: these thresholds act COUNTERINTUITIVELY — a lower
 correlation-threshold value means MORE aggressive IS, not the other way around.
 
+Placing IS by band. `--is-lo <sfb>` and `--is-hi <sfb>` let you RESTRICT intensity stereo to a
+range of bands: IS is allowed only from `--is-lo` upward, and only up to `--is-hi` inclusive.
+This never forces IS on — it only limits where FDK may place it. In practice IS lands on the
+LOW bands at low bitrate, so scan small values to actually see the effect. If you want to go
+further and FORCE it, `--is-force-lo <sfb>` and `--is-force-hi <sfb>` push intensity stereo
+onto the whole range regardless of the correlation, min-sfbs, and loudness gates. This is a
+laboratory mode: because IS is lossy and directional (the right channel is zeroed and only a
+panning coefficient survives), forcing it can deliberately wreck the stereo image. The stream
+still stays standard-compliant.
+
 ## 14. Band and cutoff (including audiophile full band)
 
 `--core-cutoff <Hz>` — the upper limit of the band encoded by the core, in Hz. It works
 also under SBR (unlike `-w`). E.g. `--core-cutoff 7500` under HE-AAC v2
 gives the core 7.5 kHz, and SBR does the rest.
+
+A note on the effective cutoff in `--verbose`: the AAC spectrum is quantized into SFB
+boundaries, so the encoder cannot cut at an arbitrary Hz value — it snaps the cutoff to the
+nearest SFB boundary. `--verbose` therefore reports the REAL cutoff, which may differ from the
+`-w`/`--core-cutoff` value you typed (e.g. `-w 17300` shows up as `17915 Hz (SFB-anchored)`).
+This is not an error; it is the true band that ends up in the stream.
 
 `--uncap-bandwidth` — audiophile. FDK has a hard-wired band limit for the core:
 the minimum of 20 kHz and half the sample rate. This means that EVEN with a
@@ -408,6 +428,17 @@ automation controls it; force manually when you hear metallicness.
 `--sbr-noise-floor-offset <n>` — the offset of the noise level injected by SBR.
 Larger values = more fill noise in the reconstruction.
 
+`--sbr-header-period <n>` — how many frames apart the SBR headers are written, which
+decides how fast the SBR upper band "kicks in" when a decoder tunes into a LIVE HE-AAC
+stream (Icecast/Shoutcast). Here's the catch: the whole SBR configuration lives in a
+periodic header, not in every frame. A listener who joins mid-stream hears only the AAC
+core (muffled, no top) until the next header arrives. Set `1` and a header is written in
+every frame, so a decoder locks onto SBR almost instantly (~23 ms) — the right choice for
+a stream people join at random moments. Larger values stretch that core-only stretch.
+FDK's default is about 10 frames (~0.23 s under HE dual-rate, ~0.46 s under LC), and FDK
+caps the period to at most once per second, so very large values are clamped (e.g. 40
+becomes 21 frames at 44.1 kHz). `--verbose` prints the effective period in milliseconds.
+
 ## 16. Parametric Stereo (HE-AAC v2)
 
 `--ps <0|1>` — force the sending of the IID parameter (loudness difference): 0 = never
@@ -441,6 +472,20 @@ table that at very low bitrates (below about 28 kbps) completely
 disables PNS — and then `--pns-start` is ignored, because PNS doesn't work at all.
 That's why at 24 kbps you heard artifacts like from MP3, and at 64 kbps PNS
 worked. This flag bypasses the table and turns on PNS despite the low bitrate.
+
+`--pns-gain <x>` — the LOUDNESS of the fabricated PNS noise, and the one PNS knob you'll
+reach for most. When PNS replaces a band, it stores only "there is noise of such energy
+here"; this switch scales that energy directly. `1.0` = unchanged (the noise fill matches the
+original band); `>1.0` = a louder-than-original noise fill; `<1.0` = quieter. Think of it as
+the "how loud is the substituted noise" dial. Decimal input, `-1` = off.
+
+`--pns-tonality <x>` — scales the PNS tonality-detection threshold. `1.0` = default; higher
+values let more bands (even less noise-like ones) qualify as PNS, so the noise substitution
+gets WIDER. `--pns-refpower <x>` — scales the reference-power detection threshold (`1.0` =
+default). `--pns-gapfill <x>` — scales the gap-fill threshold that fills PNS holes between two
+PNS bands; advanced and subtle, rarely audible (`1.0` = default). `--pns-min-width <n>` — the
+minimum SFB width for PNS; effective above the built-in default (LC = 16), e.g. 32 or 64
+restricts PNS to wider bands only. All of these take decimal input, `-1` = off, `1.0` = no change.
 
 `--ath-scale <n>` — scaling of the threshold of hearing (ATH), in Q8 (256 = ×1.0).
 This is the GLOBAL masking regulator. Above 256 = raises the thresholds = the encoder
@@ -484,6 +529,20 @@ rewriting the whole model.
 
 For MS-ed material add `--ms-precision 448` — shallower holes in the MS bands
 are another place where high bitrate really gives better sound.
+
+Beyond ath-scale there's a more direct lever. `--minsnr-scale <n>` (Q8, 256 = off) is the
+closest thing FDK has to MusePack's TMN/NMT knobs: it scales the REQUIRED per-band coding
+SNR (`sfbMinSnrLdData`). Values BELOW 256 demand a HIGHER SNR — more detail, more bits —
+while values above 256 code more coarsely. It's more effective than `--ath-scale`, because
+min-SNR is exactly the floor that FDK's "avoid holes" logic clamps the thresholds back to;
+touching the threshold copy alone (as ath-scale does) is partly undone downstream, but
+min-SNR is not. If you want to reach outside FDK's factory window, `--minsnr-clamp-hi <n>`
+scales the MAX_SNR ceiling (about −1 dB) and `--minsnr-clamp-lo <n>` scales the MIN_SNR
+floor (about −25 dB); both are Q8 with 256 = off. Finally, `--reduce-clamp 0` removes the
+"29 dB Ratio" ceiling on threshold reduction in the CBR quantizer, letting the encoder push
+thresholds deeper and pour bits into the most demanding bands. It pairs naturally with
+`--minsnr-scale` for extreme detail, and it only affects CBR (VBR
+runs a different path).
 
 ## 19. Tuning for human speech
 

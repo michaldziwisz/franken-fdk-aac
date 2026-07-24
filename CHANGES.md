@@ -14,13 +14,14 @@ stock FDK):
 - `libAACenc/src/franken.{h,cpp}` — new central override module (`g_franken`).
 - `libAACenc/include/aacenc_lib.h` — new `AACENC_PARAM` values in the `0xF0xx` range.
 - `libAACenc/src/aacenc_lib.cpp` — SetParam/GetParam dispatch for the new params.
-- `libAACenc/src/ms_stereo.cpp` — per-band MS control, MS band range, MS precision, MS bias.
-- `libAACenc/src/intensity.cpp`, `psy_configuration.cpp` — intensity-stereo gating / aggression.
+- `libAACenc/src/ms_stereo.cpp` — per-band MS control, MS band range, MS precision, MS bias, plus a mid bit-split bias (`--mid-bias`).
+- `libAACenc/src/intensity.cpp`, `psy_configuration.cpp` — intensity-stereo gating / aggression, IS band range (`--is-lo/--is-hi`) and forced IS (`--is-force-lo/--is-force-hi`); MusePack-style per-band min-SNR control (`--minsnr-scale`, `--minsnr-clamp-hi/-lo`).
+- `libAACenc/src/adj_thr.cpp` — optional removal of the 29 dB threshold-reduction clamp (`--reduce-clamp`).
 - `libAACenc/src/bandwidth.cpp` — bandwidth cap lift (`--uncap-bandwidth`).
 - `libAACenc/src/pnsparam.cpp` — PNS start / force-pns.
 - `libAACenc/src/aacenc.cpp` — TNS mask, quasi-VBR knobs, lower-bitrate unlock.
 - `libAACenc/src/aacenc_tns.cpp` — TNS order cap.
-- `libSBRenc/src/sbr_encoder.cpp` — SBR density/grid/stereo-mode/noise-floor + effective-value readback.
+- `libSBRenc/src/sbr_encoder.cpp` — SBR density/grid/stereo-mode/noise-floor + SBR header period (`--sbr-header-period`, streaming SBR sync) + effective-value readback.
 - `libSBRenc/src/invf_est.cpp` — forced SBR inverse filtering.
 - `libSBRenc/src/ps_encode.cpp` — PS IID/ICC overrides.
 - Frontend (`nu774/fdkaac`: `main.c`, `aacenc.c`, `aacenc.h`) — CLI switches,

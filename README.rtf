@@ -128,6 +128,21 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 \cellx2160\cellx4320\cellx6480\cellx8640
 \trkeep\intbl
 {
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --mid-bias <n>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 256..no limit (Q8)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (off)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 >256} RAISES the mid (L+R) channel masking threshold after the MS butterfly, freeing bits from mid for the side channel. Use sparingly \u8212- mid carries most of the loudness. 256=off.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
 {{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --is <n>}\par}
 \cell}
 {{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 auto, 0 off, 1 on\par}
@@ -210,6 +225,66 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 {{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1\par}
 \cell}
 {{\pard\intbl \ql \f0 \sa0 \li0 \fi0 (advanced) L/R energy balance threshold for IS in Q8 (256=1.0).\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --is-lo <sfb>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 off, 0..N\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Allow intensity stereo ONLY from this SFB upward. Bands below stay pure L/R. Only RESTRICTS where FDK may place IS \u8212- never forces it on.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --is-hi <sfb>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 off, 0..N\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Allow IS only up to this SFB (inclusive). Pair with {\f1 --is-lo} as a range. TIP: IS usually lands on LOW bands at low bitrate, so scan small values to see the effect.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --is-force-lo <sfb>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 off, 0..N\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 FORCE intensity stereo from this SFB, bypassing the correlation / min-sfbs / loudness gates. Laboratory mode: can deliberately wreck the stereo image (IS is lossy + directional \u8212- the right channel is zeroed, only a panning coefficient survives). The stream stays legal.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --is-force-hi <sfb>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 off, 0..N\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Upper SFB of the forced-IS range (inclusive).\par}
 \cell}
 }
 \intbl\row}
@@ -476,6 +551,21 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 \cell}
 }
 \intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --sbr-header-period <n>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 off, >=1\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Frames between SBR headers = how fast the SBR high band "kicks in" when a decoder tunes into a live HE-AAC stream (Icecast/Shoutcast). The SBR CONFIG lives in a periodic header, not in every frame; a decoder joining mid-stream plays core-only (muffled) until the next header arrives. {\f1 1} = header in every frame \u8594 ? near-instant SBR lock (~23 ms); higher = longer core-only moment. FDK default is ~10 frames (~0.23 s HE dual-rate / ~0.46 s LC). FDK caps this to at most once per second, so very large values are clamped (e.g. 40 \u8594 ? 21 frames @44.1k). See {\f1 --verbose} for the effective period in ms.\par}
+\cell}
+}
+\intbl\row}
 {\pard \ql \f0 \sa180 \li0 \fi0 \par}
 {\pard \ql \f0 \sa180 \li0 \fi0 NOTE: {\f1 --sbr-start}/{\f1 --sbr-stop} are validated BY FDK \u8212- an incorrect start/stop COMBINATION (wrong number of master bands) will give "encoder initialization failed". This is a limitation of SBR itself, not a bug. Choose pairs (e.g. for 64k stereo start=5 stop=9, start=8 stop=14 work).\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 4. Parametric Stereo (HE-AAC v2)\par}
@@ -654,6 +744,81 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 \cellx2160\cellx4320\cellx6480\cellx8640
 \trkeep\intbl
 {
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --pns-gain <x>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 >=0.0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (off)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Loudness of the fabricated PNS noise. {\f1 1.0} = unchanged (noise energy = original band). {\f1 >1.0} = louder-than-original noise fill, {\f1 <1.0} = quieter. Directly scales the coded noise energy \u8212- this is the "how loud is the noise" knob. Decimal input.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --pns-tonality <x>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 >=0.0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (off)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Scales the PNS tonality detection threshold. {\f1 1.0} = default; higher = more (even less-noisy) bands qualify as PNS = WIDER noise substitution.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --pns-refpower <x>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 >=0.0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (off)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Scales the PNS reference-power detection threshold. {\f1 1.0} = default.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --pns-gapfill <x>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 >=0.0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (off)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Scales the PNS gap-fill threshold (fills PNS holes between two PNS bands). {\f1 1.0} = default. Advanced/subtle \u8212- rarely visible.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --pns-min-width <n>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 off, >=1\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Minimum SFB width for PNS. Effective above the built-in default (LC=16); e.g. 32/64 restricts PNS to wider bands.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
 {{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --afterburner <n>}\par}
 \cell}
 {{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0/1 (also stock {\f1 -a})\par}
@@ -693,7 +858,7 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 \cell}
 {{\pard\intbl \ql \f0 \sa0 \li0 \fi0 256\par}
 \cell}
-{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Masking threshold scale in Q8 (256 = x1.0). {\f1 >256} raises the thresholds (more noise, fewer bits per band), {\f1 <256} lowers them (cleaner, more bits). Works in FDK's ld64 domain as an additive log2 offset.\par}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Masking threshold scale in Q8 (256 = x1.0). {\f1 >256} raises the thresholds (more noise, fewer bits per band), {\f1 <256} lowers them (cleaner, more bits). Works in FDK's ld64 domain as an additive log2 offset. NOTE: this only touches the log-domain threshold copy and is partly undone downstream by the min-SNR / 29 dB clamps \u8212- for a stronger, more direct effect prefer {\f1 --minsnr-scale} below.\par}
 \cell}
 }
 \intbl\row}
@@ -709,6 +874,66 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 {{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (off)\par}
 \cell}
 {{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Scales the spreading of masking between bands. {\f1 <256} = less masking = more detail. Biggest effect where bits are limited (96-192k).\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --minsnr-scale <n>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 1..no limit (Q8)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (off)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 MusePack-style: scales the REQUIRED per-band coding SNR ({\f1 sfbMinSnrLdData}, FDK's closest thing to TMN/NMT). {\f1 <256} = demand HIGHER SNR = more detail/bits; {\f1 >256} = coarser. More effective than {\f1 --ath-scale} because min-SNR is what the avoid-holes logic clamps thresholds back to. 256=off.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --minsnr-clamp-hi <n>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 1..no limit (Q8)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (off)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Scales FDK's MAX_SNR ceiling (~\u8722 ?1 dB). {\f1 >256} lets bands demand more than the stock cap. 256=off.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --minsnr-clamp-lo <n>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 1..no limit (Q8)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (off)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Scales FDK's MIN_SNR floor (~\u8722 ?25 dB). 256=off.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --reduce-clamp <0|1>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0, 1\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 1 (on)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 0} drops the "29 dB Ratio" threshold-reduction ceiling in the CBR quantizer, letting thresholds be pushed deeper (more bits into demanding bands). Pairs with {\f1 --minsnr-scale} for extreme detail. CBR only (VBR uses a different path).\par}
 \cell}
 }
 \intbl\row}
@@ -1117,7 +1342,7 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 {
 {{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 core bandwidth}\par}
 \cell}
-{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Upper frequency of the AAC core. In parentheses the SOURCE: {\f1 from -w}, {\f1 from --core-cutoff}, or {\f1 auto}. Under SBR this is only the core \u8212- SBR plays higher.\par}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Upper frequency of the AAC core, {\b anchored to the nearest SFB boundary} (the real cutoff, which can differ from the {\f1 -w}/{\f1 --core-cutoff} value you typed, e.g. {\f1 -w 17300} \u8594 ? {\f1 17915 Hz (SFB-anchored)}). In parentheses the SOURCE: {\f1 from -w}, {\f1 from --core-cutoff}, or {\f1 auto}. Under SBR this is only the core \u8212- SBR plays higher.\par}
 \cell}
 }
 \intbl\row}
@@ -1974,7 +2199,6 @@ make -j     # -> fdkaac.exe\line
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\f1 libSBRenc/src/ps_encode.cpp} \u8212- PS override (forcing IID + quantization mode).\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\f1 libAACenc/src/main.c}, {\f1 aacenc.c}, {\f1 aacenc.h} (frontend) \u8212- CLI switches, parsing, passing to SetParam, {\f1 --verbose} dump, help.\sa180\par}
 {\pard \qc \f0 \sa180 \li0 \fi0 \emdash\emdash\emdash\emdash\emdash\par}
-{\pard \qc \f0 \sa180 \li0 \fi0 \emdash\emdash\emdash\emdash\emdash\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel0 \b \fs36 \u55356 ?\u56821 ?\u55356 ?\u56817 ? Wersja polska (Polish version below)\par}
 {\pard \qc \f0 \sa180 \li0 \fi0 \emdash\emdash\emdash\emdash\emdash\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel0 \b \fs36 Franken FDK AAC \u8212- laboratoryjny/"geekowski" enkoder AAC (FDK)\par}
@@ -2094,7 +2318,22 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 \cell}
 {{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (off)\par}
 \cell}
-{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Precyzja pasm MS. {\f1 >256} = p\u322 ?ytsze dziury w spektrum MS (koder alokuje wi\u281 ?cej bitow na ich opis, styl LAME -q). 256=bez zmian, 384~1.5x, 512~2x. U\u380 ?yteczny efekt SLYSZALNY do ~600-800; wy\u380 ?ej prog uderza w twarda pod\u322 ?og\u281 ? FDK (ld64 -0.515625) i przy CBR bity s\u261 ? tylko PRZESUWANE mi\u281 ?dzy pasmami (sta\u322 ?y budzet), wi\u281 ?c brzmienie przestaje sie zmieniac. Dzia\u322 ?a najlepiej gdy masz zapas bitow (>=128k) lub w VBR.\par}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Precyzja pasm MS. {\f1 >256} = p\u322 ?ytsze dziury w spektrum MS (koder alokuje wi\u281 ?cej bitow na ich opis, styl LAME -q). 256=bez zmian, 384~1.5x, 512~2x. U\u380 ?yteczny efekt SLYSZALNY do ~600-800; wy\u380 ?ej prog uderza w twarda pod\u322 ?og\u281 ? FDK (ld64 -0.515625) i przy CBR bity s\u261 ? tylko PRZESUWANE mi\u281 ?dzy pasmami (sta\u322 ?y budzet), wi\u281 ?c brzmienie przestaje sie zmieniac. Dzia\u322 ?a najlepiej gdy masz zapas bitow (>=128k) lub w VBR. UWAGA: dzia\u322 ?a jednakowo na mid i side.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --mid-bias <n>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 256..bez limitu (Q8)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (off)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 >256} podnosi prog kana\u322 ?u MID (L+R) po butterfly, uwalniaj\u261 ?c bity dla kana\u322 ?u side; u\u380 ?ywa\u263 ? oszcz\u281 ?dnie \u8212- mid niesie wi\u281 ?kszo\u347 ?\u263 ? g\u322 ?o\u347 ?no\u347 ?ci. 256=off.\par}
 \cell}
 }
 \intbl\row}
@@ -2185,6 +2424,66 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 {{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1\par}
 \cell}
 {{\pard\intbl \ql \f0 \sa0 \li0 \fi0 (zaawansowane) Prog balansu energii L/R dla IS w Q8 (256=1.0).\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --is-lo <sfb>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 off, 0..N\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Pozw\u243 ?l na intensity stereo TYLKO od tego SFB w g\u243 ?r\u281 ?. Pasma poni\u380 ?ej zostaj\u261 ? czyste L/R. Tylko OGRANICZA gdzie FDK mo\u380 ?e u\u380 ?y\u263 ? IS \u8212- nigdy go nie wymusza.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --is-hi <sfb>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 off, 0..N\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Pozw\u243 ?l na IS tylko do tego SFB (w\u322 ?\u261 ?cznie). U\u380 ?ywaj z {\f1 --is-lo} jako zakres. WSKAZOWKA: IS zwykle l\u261 ?duje na NISKICH pasmach przy niskim bitrate, wi\u281 ?c skanuj ma\u322 ?e warto\u347 ?ci, by zobaczy\u263 ? efekt.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --is-force-lo <sfb>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 off, 0..N\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 WYMUSZA intensity stereo od tego SFB, omijaj\u261 ?c bramki korelacji / min-sfbs / g\u322 ?o\u347 ?no\u347 ?ci. Tryb laboratoryjny: mo\u380 ?e celowo rozbi\u263 ? obraz stereo (IS jest stratne i kierunkowe \u8212- prawy kana\u322 ? zostaje wyzerowany, zostaje tylko wsp\u243 ?\u322 ?czynnik panoramy). Strumien pozostaje legalny.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --is-force-hi <sfb>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 off, 0..N\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 G\u243 ?rny SFB wymuszonego zakresu IS (w\u322 ?\u261 ?cznie).\par}
 \cell}
 }
 \intbl\row}
@@ -2451,6 +2750,21 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 \cell}
 }
 \intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --sbr-header-period <n>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 off, >=1\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Liczba ramek mi\u281 ?dzy nag\u322 ?\u243 ?wkami SBR = jak szybko g\u243 ?rne pasmo SBR "wchodzi", gdy dekoder pod\u322 ?\u261 ?cza si\u281 ? do strumienia HE-AAC na \u380 ?ywo (Icecast/Shoutcast). KONFIGURACJA SBR jest w okresowym nag\u322 ?\u243 ?wku, nie w ka\u380 ?dej ramce; dekoder wpi\u281 ?ty w \u347 ?rodek gra sam rdze\u324 ? (przyt\u322 ?umiony) do nadej\u347 ?cia kolejnego nag\u322 ?\u243 ?wka. {\f1 1} = nag\u322 ?\u243 ?wek w ka\u380 ?dej ramce \u8594 ? niemal natychmiastowy sync SBR (~23 ms); wy\u380 ?ej = d\u322 ?u\u380 ?szy moment core-only. Domy\u347 ?lnie FDK ~10 ramek (~0.23 s HE dual-rate / ~0.46 s LC). FDK kapuje to do maks. raz na sekund\u281 ?, wi\u281 ?c bardzo du\u380 ?e warto\u347 ?ci s\u261 ? przycinane (np. 40 \u8594 ? 21 ramek @44.1k). Efektywny okres w ms pokazuje {\f1 --verbose}.\par}
+\cell}
+}
+\intbl\row}
 {\pard \ql \f0 \sa180 \li0 \fi0 \par}
 {\pard \ql \f0 \sa180 \li0 \fi0 UWAGA: {\f1 --sbr-start}/{\f1 --sbr-stop} s\u261 ? walidowane PRZEZ FDK \u8212- niepoprawna KOMBINACJA start/stop (z\u322 ?a liczba pasm master) da "encoder initialization failed". To ograniczenie samego SBR, nie buga. Dobieraj pary (np. dla 64k stereo dzia\u322 ?a start=5 stop=9, start=8 stop=14).\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 4. Parametric Stereo (HE-AAC v2)\par}
@@ -2629,13 +2943,73 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 \cellx2160\cellx4320\cellx6480\cellx8640
 \trkeep\intbl
 {
-{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --afterburner <n>}\par}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --pns-gain <x>}\par}
 \cell}
-{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0/1 (tez stock {\f1 -a})\par}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 >=0.0\par}
 \cell}
-{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 1\par}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (off)\par}
 \cell}
-{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Afterburner (dok\u322 ?adniejsza kwantyzacja).\par}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 G\u322 ?o\u347 ?no\u347 ?\u263 ? dorabianego szumu PNS. {\f1 1.0} = bez zmian (energia szumu = oryginalne pasmo). {\f1 >1.0} = szum g\u322 ?o\u347 ?niejszy ni\u380 ? orygina\u322 ?, {\f1 <1.0} = cichszy. Wprost skaluje energi\u281 ? kodowanego szumu \u8212- to pokr\u281 ?t\u322 ?o \u8222 ?jak g\u322 ?o\u347 ?ny szum". Wej\u347 ?cie dziesi\u281 ?tne.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --pns-tonality <x>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 >=0.0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (off)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Skaluje prog detekcji tonalno\u347 ?ci PNS. {\f1 1.0} = domy\u347 ?lnie; wy\u380 ?ej = wi\u281 ?cej (nawet mniej-szumiacych) pasm kwalifikuje si\u281 ? do PNS = SZERSZY szum. Wej\u347 ?cie dziesi\u281 ?tne.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --pns-refpower <x>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 >=0.0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (off)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Skaluje prog mocy referencyjnej detekcji PNS. {\f1 1.0} = domy\u347 ?lnie. Wej\u347 ?cie dziesi\u281 ?tne.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --pns-gapfill <x>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 >=0.0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (off)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Skaluje prog wype\u322 ?niania luk PNS (wype\u322 ?nia dziury PNS mi\u281 ?dzy dwoma pasmami PNS). {\f1 1.0} = domy\u347 ?lnie. Zaawansowane/subtelne \u8212- rzadko widoczne. Wej\u347 ?cie dziesi\u281 ?tne.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --pns-min-width <n>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 off, >=1\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Minimalna szeroko\u347 ?\u263 ? SFB dla PNS. Skuteczny powy\u380 ?ej wbudowanej domy\u347 ?lnej (LC=16); np. 32/64 ogranicza PNS do szerszych pasm.\par}
 \cell}
 }
 \intbl\row}
@@ -2684,6 +3058,66 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 {{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (off)\par}
 \cell}
 {{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Skaluje rozlewanie maskowania mi\u281 ?dzy pasmami. {\f1 <256} = mniej maskowania = wi\u281 ?cej detalu. Najwi\u281 ?kszy efekt gdzie bity ograniczone (96-192k).\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --minsnr-scale <n>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 1..bez limitu (Q8)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (off)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Styl MusePack: skaluje WYMAGANY per-pasmo SNR kodowania ({\f1 sfbMinSnrLdData}, najbli\u380 ?szy FDK-owy odpowiednik TMN/NMT). {\f1 <256} = wymagaj WY\u379 ?SZEGO SNR = wi\u281 ?cej detalu/bitow; {\f1 >256} = zgrubniej. Skuteczniejszy ni\u380 ? {\f1 --ath-scale}, bo to do min-SNR logika avoid-holes cofa progi. 256=off.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --minsnr-clamp-hi <n>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 1..bez limitu (Q8)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (off)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Skaluje sufit MAX_SNR FDK (~\u8722 ?1 dB). {\f1 >256} pozwala pasmom wymaga\u263 ? wi\u281 ?cej ni\u380 ? fabryczny cap. 256=off.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --minsnr-clamp-lo <n>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 1..bez limitu (Q8)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (off)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Skaluje pod\u322 ?og\u281 ? MIN_SNR FDK (~\u8722 ?25 dB). 256=off.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --reduce-clamp <0|1>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0, 1\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 1 (on)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 0} zdejmuje sufit "29 dB Ratio" redukcji prog\u243 ?w w kwantyzatorze CBR, pozwalaj\u261 ?c wepchn\u261 ?\u263 ? progi g\u322 ?\u281 ?biej (wi\u281 ?cej bitow do wymagaj\u261 ?cych pasm). \u321 ?\u261 ?czy si\u281 ? z {\f1 --minsnr-scale} dla ekstremalnego detalu. Tylko CBR (VBR u\u380 ?ywa innej \u347 ?cie\u380 ?ki).\par}
 \cell}
 }
 \intbl\row}
@@ -3092,7 +3526,7 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 {
 {{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 core bandwidth}\par}
 \cell}
-{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 G\u243 ?rna cz\u281 ?stotliwo\u347 ?\u263 ? rdzenia AAC. W nawiasie ZRODLO: {\f1 from -w}, {\f1 from --core-cutoff}, albo {\f1 auto}. Pod SBR to tylko rdzen \u8212- SBR gra wy\u380 ?ej.\par}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 G\u243 ?rna cz\u281 ?stotliwo\u347 ?\u263 ? rdzenia AAC, {\b zakotwiczona na najbli\u380 ?szej granicy SFB} (realny cutoff, kt\u243 ?ry mo\u380 ?e r\u243 ?\u380 ?ni\u263 ? si\u281 ? od podanej warto\u347 ?ci {\f1 -w}/{\f1 --core-cutoff}, np. {\f1 -w 17300} \u8594 ? {\f1 17915 Hz (SFB-anchored)}). W nawiasie ZRODLO: {\f1 from -w}, {\f1 from --core-cutoff}, albo {\f1 auto}. Pod SBR to tylko rdzen \u8212- SBR gra wy\u380 ?ej.\par}
 \cell}
 }
 \intbl\row}

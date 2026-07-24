@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" lang="pl-PL" xml:lang="pl-PL">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <title>Franken FDK AAC - README (EN/PL)</title>
+  <title>Franken FDK AAC ��� README (EN/PL)</title>
   <style>
     html {
       color: #1a1a1a;
@@ -230,7 +230,7 @@
 </head>
 <body>
 <header id="title-block-header">
-<h1 class="title">Franken FDK AAC - README (EN/PL)</h1>
+<h1 class="title">Franken FDK AAC ��� README (EN/PL)</h1>
 </header>
 <nav id="TOC" role="doc-toc">
 <ul>
@@ -494,42 +494,81 @@ budget), so the sound stops changing. Works best when you have spare
 bits (&gt;=128k) or in VBR.</td>
 </tr>
 <tr class="even">
+<td><code>--mid-bias &lt;n&gt;</code></td>
+<td>256..no limit (Q8)</td>
+<td>-1 (off)</td>
+<td><code>&gt;256</code> RAISES the mid (L+R) channel masking threshold
+after the MS butterfly, freeing bits from mid for the side channel. Use
+sparingly — mid carries most of the loudness. 256=off.</td>
+</tr>
+<tr class="odd">
 <td><code>--is &lt;n&gt;</code></td>
 <td>-1 auto, 0 off, 1 on</td>
 <td>-1</td>
 <td>Intensity stereo globally on/off.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--isbands &lt;n&gt;</code></td>
 <td>-1 no limit, 0..N</td>
 <td>-1</td>
 <td>Maximum number of SFBs that may use intensity. Above that — coded
 normally.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--is-aggression &lt;0..100&gt;</code></td>
 <td>0..100</td>
 <td>-1 (off)</td>
 <td>CONSUMER slider: how hard the encoder should push intensity stereo.
 Start here, leave the advanced <code>--is-*</code> alone.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--is-min-sfbs &lt;n&gt;</code></td>
 <td>-1 def(6), 0..N</td>
 <td>-1</td>
 <td>(advanced) Min. number of contiguous SFBs before IS turns on.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--is-corr-thresh &lt;n&gt;</code></td>
 <td>-1 def(243), Q8</td>
 <td>-1</td>
 <td>(advanced) L/R correlation threshold for IS in Q8 (256=1.0).</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--is-lr-ratio &lt;n&gt;</code></td>
 <td>-1 def(179), Q8</td>
 <td>-1</td>
 <td>(advanced) L/R energy balance threshold for IS in Q8 (256=1.0).</td>
+</tr>
+<tr class="odd">
+<td><code>--is-lo &lt;sfb&gt;</code></td>
+<td>-1 off, 0..N</td>
+<td>-1</td>
+<td>Allow intensity stereo ONLY from this SFB upward. Bands below stay
+pure L/R. Only RESTRICTS where FDK may place IS — never forces it
+on.</td>
+</tr>
+<tr class="even">
+<td><code>--is-hi &lt;sfb&gt;</code></td>
+<td>-1 off, 0..N</td>
+<td>-1</td>
+<td>Allow IS only up to this SFB (inclusive). Pair with
+<code>--is-lo</code> as a range. TIP: IS usually lands on LOW bands at
+low bitrate, so scan small values to see the effect.</td>
+</tr>
+<tr class="odd">
+<td><code>--is-force-lo &lt;sfb&gt;</code></td>
+<td>-1 off, 0..N</td>
+<td>-1</td>
+<td>FORCE intensity stereo from this SFB, bypassing the correlation /
+min-sfbs / loudness gates. Laboratory mode: can deliberately wreck the
+stereo image (IS is lossy + directional — the right channel is zeroed,
+only a panning coefficient survives). The stream stays legal.</td>
+</tr>
+<tr class="even">
+<td><code>--is-force-hi &lt;sfb&gt;</code></td>
+<td>-1 off, 0..N</td>
+<td>-1</td>
+<td>Upper SFB of the forced-IS range (inclusive).</td>
 </tr>
 </tbody>
 </table>
@@ -760,6 +799,20 @@ SBR (less metallicness at the cost of detail).</td>
 <td>SBR noise floor offset (small integer). Larger = more filling noise
 in the SBR reconstruction.</td>
 </tr>
+<tr class="odd">
+<td><code>--sbr-header-period &lt;n&gt;</code></td>
+<td>-1 off, &gt;=1</td>
+<td>-1</td>
+<td>Frames between SBR headers = how fast the SBR high band "kicks in"
+when a decoder tunes into a live HE-AAC stream (Icecast/Shoutcast). The
+SBR CONFIG lives in a periodic header, not in every frame; a decoder
+joining mid-stream plays core-only (muffled) until the next header
+arrives. <code>1</code> = header in every frame → near-instant SBR lock
+(~23 ms); higher = longer core-only moment. FDK default is ~10 frames
+(~0.23 s HE dual-rate / ~0.46 s LC). FDK caps this to at most once per
+second, so very large values are clamped (e.g. 40 → 21 frames @44.1k).
+See <code>--verbose</code> for the effective period in ms.</td>
+</tr>
 </tbody>
 </table>
 <p>NOTE: <code>--sbr-start</code>/<code>--sbr-stop</code> are validated
@@ -862,6 +915,46 @@ noise.</td>
 <td>Bypass the low-bitrate gate for PNS.</td>
 </tr>
 <tr class="even">
+<td><code>--pns-gain &lt;x&gt;</code></td>
+<td>&gt;=0.0</td>
+<td>-1 (off)</td>
+<td>Loudness of the fabricated PNS noise. <code>1.0</code> = unchanged
+(noise energy = original band). <code>&gt;1.0</code> =
+louder-than-original noise fill, <code>&lt;1.0</code> = quieter.
+Directly scales the coded noise energy — this is the "how loud is the
+noise" knob. Decimal input.</td>
+</tr>
+<tr class="odd">
+<td><code>--pns-tonality &lt;x&gt;</code></td>
+<td>&gt;=0.0</td>
+<td>-1 (off)</td>
+<td>Scales the PNS tonality detection threshold. <code>1.0</code> =
+default; higher = more (even less-noisy) bands qualify as PNS = WIDER
+noise substitution.</td>
+</tr>
+<tr class="even">
+<td><code>--pns-refpower &lt;x&gt;</code></td>
+<td>&gt;=0.0</td>
+<td>-1 (off)</td>
+<td>Scales the PNS reference-power detection threshold. <code>1.0</code>
+= default.</td>
+</tr>
+<tr class="odd">
+<td><code>--pns-gapfill &lt;x&gt;</code></td>
+<td>&gt;=0.0</td>
+<td>-1 (off)</td>
+<td>Scales the PNS gap-fill threshold (fills PNS holes between two PNS
+bands). <code>1.0</code> = default. Advanced/subtle — rarely
+visible.</td>
+</tr>
+<tr class="even">
+<td><code>--pns-min-width &lt;n&gt;</code></td>
+<td>-1 off, &gt;=1</td>
+<td>-1</td>
+<td>Minimum SFB width for PNS. Effective above the built-in default
+(LC=16); e.g. 32/64 restricts PNS to wider bands.</td>
+</tr>
+<tr class="odd">
 <td><code>--afterburner &lt;n&gt;</code></td>
 <td>0/1 (also stock <code>-a</code>)</td>
 <td>1</td>
@@ -897,7 +990,10 @@ rebuild).</p>
 <td>Masking threshold scale in Q8 (256 = x1.0). <code>&gt;256</code>
 raises the thresholds (more noise, fewer bits per band),
 <code>&lt;256</code> lowers them (cleaner, more bits). Works in FDK's
-ld64 domain as an additive log2 offset.</td>
+ld64 domain as an additive log2 offset. NOTE: this only touches the
+log-domain threshold copy and is partly undone downstream by the min-SNR
+/ 29 dB clamps — for a stronger, more direct effect prefer
+<code>--minsnr-scale</code> below.</td>
 </tr>
 <tr class="even">
 <td><code>--spread-mask &lt;n&gt;</code></td>
@@ -906,6 +1002,39 @@ ld64 domain as an additive log2 offset.</td>
 <td>Scales the spreading of masking between bands. <code>&lt;256</code>
 = less masking = more detail. Biggest effect where bits are limited
 (96-192k).</td>
+</tr>
+<tr class="odd">
+<td><code>--minsnr-scale &lt;n&gt;</code></td>
+<td>1..no limit (Q8)</td>
+<td>-1 (off)</td>
+<td>MusePack-style: scales the REQUIRED per-band coding SNR
+(<code>sfbMinSnrLdData</code>, FDK's closest thing to TMN/NMT).
+<code>&lt;256</code> = demand HIGHER SNR = more detail/bits;
+<code>&gt;256</code> = coarser. More effective than
+<code>--ath-scale</code> because min-SNR is what the avoid-holes logic
+clamps thresholds back to. 256=off.</td>
+</tr>
+<tr class="even">
+<td><code>--minsnr-clamp-hi &lt;n&gt;</code></td>
+<td>1..no limit (Q8)</td>
+<td>-1 (off)</td>
+<td>Scales FDK's MAX_SNR ceiling (~−1 dB). <code>&gt;256</code> lets
+bands demand more than the stock cap. 256=off.</td>
+</tr>
+<tr class="odd">
+<td><code>--minsnr-clamp-lo &lt;n&gt;</code></td>
+<td>1..no limit (Q8)</td>
+<td>-1 (off)</td>
+<td>Scales FDK's MIN_SNR floor (~−25 dB). 256=off.</td>
+</tr>
+<tr class="even">
+<td><code>--reduce-clamp &lt;0|1&gt;</code></td>
+<td>0, 1</td>
+<td>1 (on)</td>
+<td><code>0</code> drops the "29 dB Ratio" threshold-reduction ceiling
+in the CBR quantizer, letting thresholds be pushed deeper (more bits
+into demanding bands). Pairs with <code>--minsnr-scale</code> for
+extreme detail. CBR only (VBR uses a different path).</td>
 </tr>
 </tbody>
 </table>
@@ -1276,10 +1405,13 @@ PS).</td>
 </tr>
 <tr class="even">
 <td><code>core bandwidth</code></td>
-<td>Upper frequency of the AAC core. In parentheses the SOURCE:
-<code>from -w</code>, <code>from --core-cutoff</code>, or
-<code>auto</code>. Under SBR this is only the core — SBR plays
-higher.</td>
+<td>Upper frequency of the AAC core, <strong>anchored to the nearest SFB
+boundary</strong> (the real cutoff, which can differ from the
+<code>-w</code>/<code>--core-cutoff</code> value you typed, e.g.
+<code>-w 17300</code> → <code>17915 Hz (SFB-anchored)</code>). In
+parentheses the SOURCE: <code>from -w</code>,
+<code>from --core-cutoff</code>, or <code>auto</code>. Under SBR this is
+only the core — SBR plays higher.</td>
 </tr>
 <tr class="odd">
 <td><code>final BW (AAC+SBR)</code></td>
@@ -1808,7 +1940,6 @@ verbose).</li>
 SetParam, <code>--verbose</code> dump, help.</li>
 </ul>
 <hr />
-<hr />
 <h1 id="-wersja-polska-polish-version-below">🇵🇱 Wersja polska (Polish
 version below)</h1>
 <hr />
@@ -1946,45 +2077,85 @@ zmian, 384~1.5x, 512~2x. Użyteczny efekt SLYSZALNY do ~600-800; wyżej
 prog uderza w twarda podłogę FDK (ld64 -0.515625) i przy CBR bity są
 tylko PRZESUWANE między pasmami (stały budzet), więc brzmienie przestaje
 sie zmieniac. Działa najlepiej gdy masz zapas bitow (&gt;=128k) lub w
-VBR.</td>
+VBR. UWAGA: działa jednakowo na mid i side.</td>
 </tr>
 <tr class="even">
+<td><code>--mid-bias &lt;n&gt;</code></td>
+<td>256..bez limitu (Q8)</td>
+<td>-1 (off)</td>
+<td><code>&gt;256</code> podnosi prog kanału MID (L+R) po butterfly,
+uwalniając bity dla kanału side; używać oszczędnie — mid niesie
+większość głośności. 256=off.</td>
+</tr>
+<tr class="odd">
 <td><code>--is &lt;n&gt;</code></td>
 <td>-1 auto, 0 off, 1 on</td>
 <td>-1</td>
 <td>Intensity stereo globalnie wł/wył.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--isbands &lt;n&gt;</code></td>
 <td>-1 brak limitu, 0..N</td>
 <td>-1</td>
 <td>Maksymalna liczba SFB, które mogą użyć intensity. Powyżej — kodowane
 normalnie.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--is-aggression &lt;0..100&gt;</code></td>
 <td>0..100</td>
 <td>-1 (off)</td>
 <td>KONSUMENCKI suwak: jak bardzo enkoder ma isc w intensity stereo.
 Zaczynaj tu, zaawansowane <code>--is-*</code> zostaw.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--is-min-sfbs &lt;n&gt;</code></td>
 <td>-1 def(6), 0..N</td>
 <td>-1</td>
 <td>(zaawansowane) Min. liczba ciaglych SFB, zanim IS sie włączy.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--is-corr-thresh &lt;n&gt;</code></td>
 <td>-1 def(243), Q8</td>
 <td>-1</td>
 <td>(zaawansowane) Prog korelacji L/R dla IS w Q8 (256=1.0).</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--is-lr-ratio &lt;n&gt;</code></td>
 <td>-1 def(179), Q8</td>
 <td>-1</td>
 <td>(zaawansowane) Prog balansu energii L/R dla IS w Q8 (256=1.0).</td>
+</tr>
+<tr class="odd">
+<td><code>--is-lo &lt;sfb&gt;</code></td>
+<td>-1 off, 0..N</td>
+<td>-1</td>
+<td>Pozwól na intensity stereo TYLKO od tego SFB w górę. Pasma poniżej
+zostają czyste L/R. Tylko OGRANICZA gdzie FDK może użyć IS — nigdy go
+nie wymusza.</td>
+</tr>
+<tr class="even">
+<td><code>--is-hi &lt;sfb&gt;</code></td>
+<td>-1 off, 0..N</td>
+<td>-1</td>
+<td>Pozwól na IS tylko do tego SFB (włącznie). Używaj z
+<code>--is-lo</code> jako zakres. WSKAZOWKA: IS zwykle ląduje na NISKICH
+pasmach przy niskim bitrate, więc skanuj małe wartości, by zobaczyć
+efekt.</td>
+</tr>
+<tr class="odd">
+<td><code>--is-force-lo &lt;sfb&gt;</code></td>
+<td>-1 off, 0..N</td>
+<td>-1</td>
+<td>WYMUSZA intensity stereo od tego SFB, omijając bramki korelacji /
+min-sfbs / głośności. Tryb laboratoryjny: może celowo rozbić obraz
+stereo (IS jest stratne i kierunkowe — prawy kanał zostaje wyzerowany,
+zostaje tylko współczynnik panoramy). Strumien pozostaje legalny.</td>
+</tr>
+<tr class="even">
+<td><code>--is-force-hi &lt;sfb&gt;</code></td>
+<td>-1 off, 0..N</td>
+<td>-1</td>
+<td>Górny SFB wymuszonego zakresu IS (włącznie).</td>
 </tr>
 </tbody>
 </table>
@@ -2213,6 +2384,21 @@ tonalnego SBR (mniej metaliczności kosztem detalu).</td>
 <td>Offset poziomu szumu SBR (mala l. calkowita). Wieksze = więcej szumu
 wypełniającego w rekonstrukcji SBR.</td>
 </tr>
+<tr class="odd">
+<td><code>--sbr-header-period &lt;n&gt;</code></td>
+<td>-1 off, &gt;=1</td>
+<td>-1</td>
+<td>Liczba ramek między nagłówkami SBR = jak szybko górne pasmo SBR
+"wchodzi", gdy dekoder podłącza się do strumienia HE-AAC na żywo
+(Icecast/Shoutcast). KONFIGURACJA SBR jest w okresowym nagłówku, nie w
+każdej ramce; dekoder wpięty w środek gra sam rdzeń (przytłumiony) do
+nadejścia kolejnego nagłówka. <code>1</code> = nagłówek w każdej ramce →
+niemal natychmiastowy sync SBR (~23 ms); wyżej = dłuższy moment
+core-only. Domyślnie FDK ~10 ramek (~0.23 s HE dual-rate / ~0.46 s LC).
+FDK kapuje to do maks. raz na sekundę, więc bardzo duże wartości są
+przycinane (np. 40 → 21 ramek @44.1k). Efektywny okres w ms pokazuje
+<code>--verbose</code>.</td>
+</tr>
 </tbody>
 </table>
 <p>UWAGA: <code>--sbr-start</code>/<code>--sbr-stop</code> są walidowane
@@ -2315,10 +2501,44 @@ szumem.</td>
 <td>Obejdz bramkę niskiego bitrate dla PNS.</td>
 </tr>
 <tr class="even">
-<td><code>--afterburner &lt;n&gt;</code></td>
-<td>0/1 (tez stock <code>-a</code>)</td>
-<td>1</td>
-<td>Afterburner (dokładniejsza kwantyzacja).</td>
+<td><code>--pns-gain &lt;x&gt;</code></td>
+<td>&gt;=0.0</td>
+<td>-1 (off)</td>
+<td>Głośność dorabianego szumu PNS. <code>1.0</code> = bez zmian
+(energia szumu = oryginalne pasmo). <code>&gt;1.0</code> = szum
+głośniejszy niż oryginał, <code>&lt;1.0</code> = cichszy. Wprost skaluje
+energię kodowanego szumu — to pokrętło „jak głośny szum". Wejście
+dziesiętne.</td>
+</tr>
+<tr class="odd">
+<td><code>--pns-tonality &lt;x&gt;</code></td>
+<td>&gt;=0.0</td>
+<td>-1 (off)</td>
+<td>Skaluje prog detekcji tonalności PNS. <code>1.0</code> = domyślnie;
+wyżej = więcej (nawet mniej-szumiacych) pasm kwalifikuje się do PNS =
+SZERSZY szum. Wejście dziesiętne.</td>
+</tr>
+<tr class="even">
+<td><code>--pns-refpower &lt;x&gt;</code></td>
+<td>&gt;=0.0</td>
+<td>-1 (off)</td>
+<td>Skaluje prog mocy referencyjnej detekcji PNS. <code>1.0</code> =
+domyślnie. Wejście dziesiętne.</td>
+</tr>
+<tr class="odd">
+<td><code>--pns-gapfill &lt;x&gt;</code></td>
+<td>&gt;=0.0</td>
+<td>-1 (off)</td>
+<td>Skaluje prog wypełniania luk PNS (wypełnia dziury PNS między dwoma
+pasmami PNS). <code>1.0</code> = domyślnie. Zaawansowane/subtelne —
+rzadko widoczne. Wejście dziesiętne.</td>
+</tr>
+<tr class="even">
+<td><code>--pns-min-width &lt;n&gt;</code></td>
+<td>-1 off, &gt;=1</td>
+<td>-1</td>
+<td>Minimalna szerokość SFB dla PNS. Skuteczny powyżej wbudowanej
+domyślnej (LC=16); np. 32/64 ogranicza PNS do szerszych pasm.</td>
 </tr>
 </tbody>
 </table>
@@ -2358,6 +2578,39 @@ addytywny offset log2.</td>
 <td>Skaluje rozlewanie maskowania między pasmami. <code>&lt;256</code> =
 mniej maskowania = więcej detalu. Największy efekt gdzie bity
 ograniczone (96-192k).</td>
+</tr>
+<tr class="odd">
+<td><code>--minsnr-scale &lt;n&gt;</code></td>
+<td>1..bez limitu (Q8)</td>
+<td>-1 (off)</td>
+<td>Styl MusePack: skaluje WYMAGANY per-pasmo SNR kodowania
+(<code>sfbMinSnrLdData</code>, najbliższy FDK-owy odpowiednik TMN/NMT).
+<code>&lt;256</code> = wymagaj WYŻSZEGO SNR = więcej detalu/bitow;
+<code>&gt;256</code> = zgrubniej. Skuteczniejszy niż
+<code>--ath-scale</code>, bo to do min-SNR logika avoid-holes cofa
+progi. 256=off.</td>
+</tr>
+<tr class="even">
+<td><code>--minsnr-clamp-hi &lt;n&gt;</code></td>
+<td>1..bez limitu (Q8)</td>
+<td>-1 (off)</td>
+<td>Skaluje sufit MAX_SNR FDK (~−1 dB). <code>&gt;256</code> pozwala
+pasmom wymagać więcej niż fabryczny cap. 256=off.</td>
+</tr>
+<tr class="odd">
+<td><code>--minsnr-clamp-lo &lt;n&gt;</code></td>
+<td>1..bez limitu (Q8)</td>
+<td>-1 (off)</td>
+<td>Skaluje podłogę MIN_SNR FDK (~−25 dB). 256=off.</td>
+</tr>
+<tr class="even">
+<td><code>--reduce-clamp &lt;0|1&gt;</code></td>
+<td>0, 1</td>
+<td>1 (on)</td>
+<td><code>0</code> zdejmuje sufit "29 dB Ratio" redukcji progów w
+kwantyzatorze CBR, pozwalając wepchnąć progi głębiej (więcej bitow do
+wymagających pasm). Łączy się z <code>--minsnr-scale</code> dla
+ekstremalnego detalu. Tylko CBR (VBR używa innej ścieżki).</td>
 </tr>
 </tbody>
 </table>
@@ -2726,9 +2979,12 @@ PS).</td>
 </tr>
 <tr class="even">
 <td><code>core bandwidth</code></td>
-<td>Górna częstotliwość rdzenia AAC. W nawiasie ZRODLO:
-<code>from -w</code>, <code>from --core-cutoff</code>, albo
-<code>auto</code>. Pod SBR to tylko rdzen — SBR gra wyżej.</td>
+<td>Górna częstotliwość rdzenia AAC, <strong>zakotwiczona na najbliższej
+granicy SFB</strong> (realny cutoff, który może różnić się od podanej
+wartości <code>-w</code>/<code>--core-cutoff</code>, np.
+<code>-w 17300</code> → <code>17915 Hz (SFB-anchored)</code>). W
+nawiasie ZRODLO: <code>from -w</code>, <code>from --core-cutoff</code>,
+albo <code>auto</code>. Pod SBR to tylko rdzen — SBR gra wyżej.</td>
 </tr>
 <tr class="odd">
 <td><code>final BW (AAC+SBR)</code></td>

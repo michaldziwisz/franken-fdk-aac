@@ -707,6 +707,47 @@ void FDKaacEnc_IntensityStereoProcessing(
     }
   }
 
+  /* Frankenstein: intensity-stereo band RANGE [is-lo, is-hi]. Bands outside the
+   * range are forced to L/R (isMask cleared) BEFORE the application loop, so the
+   * mask stays consistent with isBook/isScale. This only RESTRICTS where FDK is
+   * allowed to place IS - it never forces IS on (see is-force below for that). */
+  if (g_franken.isBandLo >= 0 || g_franken.isBandHi >= 0) {
+    for (sfb = 0; sfb < sfbCnt; sfb += sfbPerGroup) {
+      for (sfboffs = 0; sfboffs < maxSfbPerGroup; sfboffs++) {
+        INT band = sfboffs; /* SFB index within the group */
+        if (g_franken.isBandLo >= 0 && band < g_franken.isBandLo)
+          isMask[sfb + sfboffs] = 0;
+        if (g_franken.isBandHi >= 0 && band > g_franken.isBandHi)
+          isMask[sfb + sfboffs] = 0;
+      }
+    }
+  }
+
+  /* Frankenstein: FORCE intensity stereo across [is-force-lo, is-force-hi],
+   * bypassing the correlation / min-sfbs / loudness gates. This is the
+   * "I-know-what-I'm-doing" laboratory mode: IS is applied even where FDK
+   * decided against it, which can deliberately wreck the stereo image. The
+   * stream stays legal - isScale below is still computed from the real L/R
+   * energy of each forced band, the decoder just gets a panning it wouldn't
+   * normally see. Setting the mask here (before the application loop) keeps
+   * isBook/isScale in sync with the mask. */
+  if (g_franken.isForceLo >= 0 || g_franken.isForceHi >= 0) {
+    INT flo = (g_franken.isForceLo >= 0) ? g_franken.isForceLo : 0;
+    INT fhi = (g_franken.isForceHi >= 0) ? g_franken.isForceHi : (maxSfbPerGroup - 1);
+    for (sfb = 0; sfb < sfbCnt; sfb += sfbPerGroup) {
+      for (sfboffs = 0; sfboffs < maxSfbPerGroup; sfboffs++) {
+        INT band = sfboffs;
+        if (band >= flo && band <= fhi) {
+          /* Only force where both channels carry energy; forcing IS on a band
+           * with a silent channel would divide by ~0 in the isScale math. */
+          if (sfbEnergyLeft[sfb + sfboffs] > FL2FXCONST_DBL(0.0f) ||
+              sfbEnergyRight[sfb + sfboffs] > FL2FXCONST_DBL(0.0f))
+            isMask[sfb + sfboffs] = 1;
+        }
+      }
+    }
+  }
+
   for (sfb = 0; sfb < sfbCnt; sfb += sfbPerGroup) {
     for (sfboffs = 0; sfboffs < maxSfbPerGroup; sfboffs++) {
       INT sL, sR;
