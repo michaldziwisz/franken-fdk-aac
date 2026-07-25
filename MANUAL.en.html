@@ -537,9 +537,10 @@ additional levels in the codec.</p>
 <p>What REALLY gives more detail at high bitrate is not the number of
 iterations, but LOWERING THE MASKING THRESHOLDS, so the encoder deems
 more things worth encoding at all: <code>--ath-scale</code> below 256,
-<code>--spread-mask</code> below 256, and <code>--ms-precision</code>
-above 256. These are the levers that actually convert surplus bits into
-preserved detail (see chapter 18). Quantization iterations don't.</p>
+<code>--spread-mask</code> below 256, and <code>--side-bias</code> above
+0 (more bits into the stereo width). These are the levers that actually
+convert surplus bits into preserved detail (see chapter 18).
+Quantization iterations don't.</p>
 <p>VERY HIGH (continuation of the proper optimization) — see chapter
 18.</p>
 <hr />
@@ -623,18 +624,75 @@ bottom in full stereo): the highest bands are numbers 44–48, so
 <p>How many bands you really have for a given mode and frequency is
 shown by <code>--verbose</code> (the "active SFBs" field) — check the
 top number there before you set <code>--msbands-hi</code>.</p>
-<p><code>--ms-precision &lt;n&gt;</code> — the precision of bands
-encoded in MS, on the Q8 scale (256 = no change). Values above 256 lower
-the masking threshold on MS bands, so the encoder allocates MORE bits to
-their precise description — the "holes" in the MS spectrum become
-shallower. This is the equivalent of turning up quality in the LAME
-<code>-q</code> style. 384 is about 1.5×, 512 about 2×. There's no upper
-limit — it's useful at 512 kbps too. The most useful range is 48–192
-kbps.</p>
-<p><code>--mid-bias &lt;n&gt;</code> — above 256 it RAISES the threshold
-of the mid (L+R) channel after the MS butterfly, deliberately freeing
-bits for the side channel. Use it sparingly — mid carries most of the
-loudness, so starving it too hard is audible. 256 = off.</p>
+<p>STEERING THE STEREO BALANCE (the main knob).
+<code>--side-bias &lt;dB&gt;</code> is the switch to reach for when you
+want to control how much of your bit budget goes into the stereo width.
+It shifts the masking threshold of the SIDE channel (L−R) on the bands
+coded in MS, at the exact point where FDK decides whether a scale-factor
+band gets coded or dropped to zero (<code>energy &gt; threshold</code>
+in <code>sf_estim.cpp</code>). The sign is the effect. A POSITIVE value
+steers MORE bits to the side channel: the threshold drops, fewer side
+bands are zeroed, and the ones that survive are quantized more finely —
+you get cleaner stereo width, reverb tails and ambience — at the mid
+channel's expense. A NEGATIVE value deliberately degrades the side: it
+raises the threshold, side bands fall out, and the image narrows toward
+mono. Nothing exotic is happening here; this is the very same
+energy-versus-threshold decision that LAME rides for its bit allocation
+and that MusePack drives with its <code>--ms</code> control. It is a
+fixed-budget tradeoff, so at low bitrate you will hear the mid channel
+give up some bits to feed the side — that is expected behaviour, not a
+fault. Sane human range: <strong>+3 to +9</strong> for "wider and more
+spacious"; go negative only when you deliberately want the extreme,
+artistic, low-bitrate mangling of the width. The value is in decibels
+(decimal), and <code>0</code> means off — bit-identical to stock
+FDK.</p>
+<p>SHAPING THE SIDE CUTOFF. <code>--side-knee &lt;dB&gt;</code> controls
+HOW SHARPLY a side band flips between "coded" and "zeroed" at that
+threshold. Stock FDK is a hard cliff: the instant a band's energy drops
+to or below the threshold, the whole band is thrown away. A POSITIVE
+value gives you a SOFT knee — bands sitting up to N dB <em>below</em>
+the threshold are still kept (coded at the coarsest scale factor)
+instead of dropped, so the side fades out gradually rather than
+switching off abruptly; reverb and "air" decay more smoothly. A NEGATIVE
+value gives a HARD knee — bands that only just clear the threshold
+(within N dB <em>above</em> it) are forced to zero anyway, cutting the
+side off earlier for a leaner, more aggressive result. It is orthogonal
+to <code>--side-bias</code> and combines with it: bias sets
+<em>where</em> the threshold sits, knee sets <em>how soft the edge
+is</em>. Sane range <strong>+3 to +6</strong>. <code>0</code> = off.</p>
+<p>TUNING THE QUIET BANDS GLOBALLY. <code>--mask-slope &lt;dB&gt;</code>
+is a global (both mid AND side) adjustment of FDK's
+Masking-Slope-Adaptation — a NON-masking heuristic
+(<code>adj_thr.cpp</code>) that relaxes the required SNR for
+scale-factor bands whose energy sits far below the frame's average
+(stock: more than about 10 dB below). In plain terms, FDK deliberately
+starves very quiet bands to save bits, and this knob shifts the "how far
+below average before I stop caring" threshold. A POSITIVE value raises
+it, so fewer quiet bands get starved — more detail in quiet passages,
+reverb tails and decays, at the cost of bits. A NEGATIVE value lowers
+it, so quiet bands are starved harder — leaner and hollower, with more
+bits left for the loud material. It is the same family as
+<code>--side-bias</code>, but applied to both channels and keyed on
+energy-versus-average rather than the MS threshold. It is subtle on
+dense material (it only touches the very quietest bands) and most
+audible on sparse or reverberant content. Sane range <strong>±6 to
+±12</strong>. <code>0</code> = off.</p>
+<p><code>--ms-precision &lt;n&gt;</code> — VERY EXPERIMENTAL, and these
+days you almost certainly want <code>--side-bias</code> instead. It
+scales the precision of MS bands globally (both mid and side together),
+on the Q8 scale, LAME <code>-q</code> style: 256 = no change, 384 ≈
+1.5×, 512 ≈ 2×. In practice its reach is limited — above roughly 600–800
+the threshold hits FDK's hard floor, and under CBR the bits are merely
+shuffled between bands, so the sound stops changing. For stereo tuning
+it has been superseded by
+<code>--side-bias</code>/<code>--side-knee</code>, which act per-channel
+exactly where it matters. Kept for completeness.</p>
+<p><code>--mid-bias &lt;n&gt;</code> — also VERY EXPERIMENTAL and rarely
+needed. Above 256 it RAISES the threshold of the mid (L+R) channel after
+the MS butterfly, deliberately freeing bits for the side channel. The
+cleaner, better-measured way to shift the mid↔︎side balance is
+<code>--side-bias</code>, which pulls from the same budget from the side
+end. 256 = off.</p>
 <p>INTENSITY STEREO (IS). A more aggressive technique: for high bands,
 where the ear poorly localizes direction, the encoder sends one energy
 envelope instead of two channels. It saves a lot, but can narrow the
@@ -781,26 +839,53 @@ kbps) completely disables PNS — and then <code>--pns-start</code> is
 ignored, because PNS doesn't work at all. That's why at 24 kbps you
 heard artifacts like from MP3, and at 64 kbps PNS worked. This flag
 bypasses the table and turns on PNS despite the low bitrate.</p>
+<p>A word on the units before the individual knobs, because it makes the
+rest make sense. FDK keeps these PNS detection parameters as fixed-point
+integers internally, and our switches take a plain decimal MULTIPLIER:
+whatever you type is multiplied by 100 and used to scale FDK's factory
+value. So <code>1.0</code> means "×1.0 = leave the factory value alone",
+<code>1.5</code> means "×1.5", <code>0.5</code> means "×0.5", and
+<code>-1</code> means the switch is off entirely. That single convention
+(<code>value × 100</code>, <code>1.0</code> = no change) applies to
+every <code>--pns-*</code> scaling knob below.</p>
 <p><code>--pns-gain &lt;x&gt;</code> — the LOUDNESS of the fabricated
-PNS noise, and the one PNS knob you'll reach for most. When PNS replaces
-a band, it stores only "there is noise of such energy here"; this switch
-scales that energy directly. <code>1.0</code> = unchanged (the noise
-fill matches the original band); <code>&gt;1.0</code> = a
-louder-than-original noise fill; <code>&lt;1.0</code> = quieter. Think
-of it as the "how loud is the substituted noise" dial. Decimal input,
-<code>-1</code> = off.</p>
-<p><code>--pns-tonality &lt;x&gt;</code> — scales the PNS
-tonality-detection threshold. <code>1.0</code> = default; higher values
-let more bands (even less noise-like ones) qualify as PNS, so the noise
-substitution gets WIDER. <code>--pns-refpower &lt;x&gt;</code> — scales
-the reference-power detection threshold (<code>1.0</code> = default).
-<code>--pns-gapfill &lt;x&gt;</code> — scales the gap-fill threshold
-that fills PNS holes between two PNS bands; advanced and subtle, rarely
-audible (<code>1.0</code> = default).
-<code>--pns-min-width &lt;n&gt;</code> — the minimum SFB width for PNS;
-effective above the built-in default (LC = 16), e.g. 32 or 64 restricts
-PNS to wider bands only. All of these take decimal input,
-<code>-1</code> = off, <code>1.0</code> = no change.</p>
+PNS noise, and the one PNS knob you'll reach for most. When PNS decides
+a band is "just noise", it throws away the actual spectral lines and
+stores only a single number: the noise energy of that band. On playback
+the decoder regenerates random noise scaled to that energy.
+<code>--pns-gain</code> scales that stored energy directly.
+<code>1.0</code> = unchanged (the regenerated noise carries the original
+band's energy); <code>&gt;1.0</code> makes the noise fill louder than
+the original (useful when the substituted noise sounds too timid and the
+mix goes dull); <code>&lt;1.0</code> makes it quieter (when the noise
+fill hisses too much). Think of it as the "how loud is the substituted
+noise" dial. Decimal input, <code>-1</code> = off.</p>
+<p>The remaining PNS knobs govern WHICH bands get turned into noise in
+the first place — the detection stage — rather than how loud the result
+is. <code>--pns-tonality &lt;x&gt;</code> scales the tonality detection
+threshold. PNS only fires on bands the encoder judges "noise-like" (low
+tonality); raising this threshold lets more bands — even somewhat tonal
+ones — qualify as noise, so the noise substitution gets WIDER (more of
+the spectrum replaced by cheap noise, more saving but also more risk of
+smearing genuine tones). Lowering it makes PNS pickier. <code>1.0</code>
+= default.</p>
+<p><code>--pns-refpower &lt;x&gt;</code> scales the reference-power
+detection threshold. PNS compares each band's power against a reference
+before deciding it is a noise candidate; this knob moves that power
+gate. <code>1.0</code> = default; it interacts with tonality — both must
+agree for a band to become PNS.</p>
+<p><code>--pns-gapfill &lt;x&gt;</code> scales the gap-fill threshold.
+When PNS has marked bands on either side of a small gap, this heuristic
+can "close the gap" and mark the band between them as PNS too, so you
+don't get a coded island stranded between two noise bands. Advanced and
+subtle — rarely audible on its own. <code>1.0</code> = default.</p>
+<p><code>--pns-min-width &lt;n&gt;</code> sets the minimum SFB width, in
+spectral lines, that a band must have before PNS is allowed to act on
+it. This one is a raw line count, not a <code>×100</code> multiplier. It
+is effective only above the built-in default (LC = 16 lines); pushing it
+to 32 or 64 restricts PNS to the wider bands only, keeping the encoder
+from substituting noise on narrow low bands where it would be more
+obvious. <code>-1</code> = off (use FDK's default).</p>
 <p><code>--ath-scale &lt;n&gt;</code> — scaling of the threshold of
 hearing (ATH), in Q8 (256 = ×1.0). This is the GLOBAL masking regulator.
 Above 256 = raises the thresholds = the encoder deems more things
@@ -841,27 +926,48 @@ considerably more microdetail, which in a phase comparison with the
 original gives smaller differences. This is in the spirit of what
 MusePack did at 1000 kbps — within the bounds of what AAC allows
 exposing without rewriting the whole model.</p>
-<p>For MS-ed material add <code>--ms-precision 448</code> — shallower
-holes in the MS bands are another place where high bitrate really gives
-better sound.</p>
-<p>Beyond ath-scale there's a more direct lever.
+<p>For material where you want more of the budget in the stereo width,
+add <code>--side-bias 6</code> — steering bits into the side channel is
+another place where a high bitrate really gives better sound. (The old
+<code>--ms-precision</code> knob did something similar globally but is
+very experimental and largely superseded; <code>--side-bias</code> is
+the right tool now.)</p>
+<p>Beyond ath-scale there's a more direct lever, and it's worth
+understanding the units. These min-SNR knobs work on the Q8 fixed-point
+scale, where 256 stands for 1.0 (so 256 = "leave it alone", 128 = ×0.5,
+512 = ×2.0); <code>-1</code> means the switch is off.
 <code>--minsnr-scale &lt;n&gt;</code> (Q8, 256 = off) is the closest
 thing FDK has to MusePack's TMN/NMT knobs: it scales the REQUIRED
-per-band coding SNR (<code>sfbMinSnrLdData</code>). Values BELOW 256
-demand a HIGHER SNR — more detail, more bits — while values above 256
-code more coarsely. It's more effective than <code>--ath-scale</code>,
-because min-SNR is exactly the floor that FDK's "avoid holes" logic
-clamps the thresholds back to; touching the threshold copy alone (as
-ath-scale does) is partly undone downstream, but min-SNR is not. If you
-want to reach outside FDK's factory window,
-<code>--minsnr-clamp-hi &lt;n&gt;</code> scales the MAX_SNR ceiling
-(about −1 dB) and <code>--minsnr-clamp-lo &lt;n&gt;</code> scales the
-MIN_SNR floor (about −25 dB); both are Q8 with 256 = off. Finally,
-<code>--reduce-clamp 0</code> removes the "29 dB Ratio" ceiling on
-threshold reduction in the CBR quantizer, letting the encoder push
+per-band coding SNR (<code>sfbMinSnrLdData</code>), i.e. the minimum
+signal-to-noise ratio the encoder insists on achieving in each
+scale-factor band. Values BELOW 256 demand a HIGHER SNR — the encoder
+has to code each band more accurately, so more detail and more bits —
+while values above 256 relax the demand and code more coarsely. It's
+more effective than <code>--ath-scale</code> because min-SNR is exactly
+the floor that FDK's "avoid holes" logic clamps the thresholds back to;
+touching the threshold copy alone (as ath-scale does) is partly undone
+downstream, but the min-SNR floor is not.</p>
+<p>The two clamp knobs move the hard limits that FDK puts around that
+required SNR. Internally FDK never lets a band demand more than a
+MAX_SNR ceiling (about −1 dB) nor less than a MIN_SNR floor (about −25
+dB), so even an aggressive <code>--minsnr-scale</code> is capped by
+these. <code>--minsnr-clamp-hi &lt;n&gt;</code> (Q8, 256 = off) scales
+the MAX_SNR ceiling, letting demanding bands ask for MORE than the
+factory cap — this is what you raise if <code>--minsnr-scale</code>
+alone seems to "run out of room" at the top.
+<code>--minsnr-clamp-lo &lt;n&gt;</code> (Q8, 256 = off) scales the
+MIN_SNR floor at the other end. Together they widen FDK's factory window
+so <code>--minsnr-scale</code> has somewhere further to push.</p>
+<p>Finally, <code>--reduce-clamp 0</code> removes the "29 dB Ratio"
+ceiling on threshold reduction inside the CBR quantizer. When the CBR
+bit-allocation loop is short on bits it raises (loosens) thresholds, but
+stock FDK refuses to reduce a threshold by more than about 29 dB
+relative to the reference — a safety clamp. Setting
+<code>--reduce-clamp 0</code> lifts that clamp, letting the encoder push
 thresholds deeper and pour bits into the most demanding bands. It pairs
 naturally with <code>--minsnr-scale</code> for extreme detail, and it
-only affects CBR (VBR runs a different path).</p>
+only affects CBR (VBR runs a different path). The default is
+<code>1</code> (clamp on, stock behaviour).</p>
 <h2 id="19-tuning-for-human-speech">19. Tuning for human speech</h2>
 <p>Yes, in HE-AAC (specifically in the SBR layer) there's a separate
 tuning mode for speech. In ordinary FDK it's hard-wired as off — here

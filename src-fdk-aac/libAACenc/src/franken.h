@@ -12,6 +12,9 @@
 #ifndef FRANKEN_H
 #define FRANKEN_H
 
+/* sentinel for signed knobs where -1 is a legal value (e.g. dB biases) */
+#define FRANKEN_OFF (-2147483647)
+
 typedef struct FRANKEN_CFG {
   /* ---- 1. Joint stereo / MS / IS ---- */
   int forceMsMask;   /* -1 auto (FDK), 0 force MS off (all bands), 1 force MS on (all bands) */
@@ -114,10 +117,28 @@ typedef struct FRANKEN_CFG {
   int midBiasQ8;      /* -1 default; else RAISE the MID (L+R) channel masking
                          threshold by this Q8 factor after the MS butterfly.
                          >256 = deliberately free bits from mid for side. */
+  int sideBiasDbX10;  /* FRANKEN_OFF=off; else shift SIDE (L-R) masking threshold on
+                         MS bands by dB*10 (60 = 6.0 dB). SIGN = EFFECT: + steers
+                         MORE bits to side (lowers thr); - deliberately DEGRADES
+                         side (raises thr). Range ~ -240..+500. 0 = off. */
+  int sideKneeDbX10;  /* FRANKEN_OFF=off; shape the SIDE coded<->zeroed cliff, dB*10.
+                         + = SOFT knee (keep near-miss bands just under threshold at
+                         coarsest scf instead of dropping = smoother fade). - = HARD
+                         knee (drop bands that only just clear threshold = early
+                         cutoff, extreme destruction). Range ~ -240..+500. 0 = off. */
+  int msaSlopeDbX10;  /* FRANKEN_OFF=off; shift the Masking-Slope-Adaptation START
+                         threshold (dB*10). MSA is a NON-masking heuristic that
+                         relaxes the required min-SNR for SFBs whose energy sits
+                         far (>~10 dB stock) below the frame average - i.e. it
+                         starves quiet bands to save bits, on BOTH channels. + =
+                         raise the threshold => fewer bands starved => more detail
+                         in quiet bands (costs bits); - = lower it => starve quiet
+                         bands more aggressively (saves bits, hollows detail).
+                         Applies globally (mid+side). Range ~ -240..+500. 0 = off. */
 
   /* ---- 18. SBR header period (streaming SBR sync) ---- */
   int sbrHeaderPeriod;/* -1 default(FDK, ~10 frames); else frames between SBR headers.
-                         1 = SBR config in every frame => decoder locks SBR almost
+                          1 = SBR config in every frame => decoder locks SBR almost
                          instantly when tuning into an Icecast/Shoutcast stream;
                          higher = longer core-only period before SBR kicks in. */
   int effSbrHeaderPeriod; /* read-back: effective NrSendHeaderData (-1 n/a) */

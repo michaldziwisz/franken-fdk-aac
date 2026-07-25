@@ -243,6 +243,23 @@ PROGNAME " %s\n"
 " --mid-bias <n>              Q8, >256 = deliberately raise the MID (L+R) threshold to\n"
 "                               free bits for the side channel. Use sparingly (mid carries\n"
 "                               most loudness). 256=off.\n"
+" --side-bias <dB>            -24.0..50.0, 0=off. Shift the SIDE (L-R) masking threshold\n"
+"                               on MS bands. + steers MORE bits to side (cleaner stereo\n"
+"                               width/ambience) at mid's expense; - deliberately DEGRADES\n"
+"                               side (narrower, for extreme low bitrate, your call). This\n"
+"                               is the same energy-vs-threshold lever LAME and MusePack --ms\n"
+"                               ride for their stereo. Try +3..+9.\n"
+" --side-knee <dB>            -24.0..50.0, 0=off. Shape where a side SFB flips coded<->\n"
+"                               zeroed. + = SOFT: keep near-miss bands (just under thr) at\n"
+"                               the coarsest scf so side fades out smoothly; - = HARD: drop\n"
+"                               bands that only just clear thr = early cutoff. Try +3..+6.\n"
+" --mask-slope <dB>           -24.0..50.0, 0=off. Global (mid+side) non-masking heuristic:\n"
+"                               FDK relaxes required SNR for SFBs whose energy sits far\n"
+"                               (>~10 dB stock) below the frame average - starving quiet\n"
+"                               bands to save bits. + raises that threshold => fewer bands\n"
+"                               starved => more detail in reverb tails/quiet passages (costs\n"
+"                               bits); - lowers it => starve quiet bands harder (leaner,\n"
+"                               hollower). Same family as --side-bias but for both channels.\n"
 "   -- IS (intensity) --      \n"
 " --is <n>                    Intensity stereo: -1 auto(def), 0 off, 1 on.\n"
 " --isbands <n>               Max SFBs allowed to use intensity. -1 no limit(def).\n"
@@ -446,6 +463,9 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
 #define OPT_FR_MINSNR_CLAMP_LO   M4AF_FOURCC('f','m','c','l')
 #define OPT_FR_REDUCE_CLAMP      M4AF_FOURCC('f','r','d','c')
 #define OPT_FR_MID_BIAS          M4AF_FOURCC('f','m','d','b')
+#define OPT_FR_SIDE_BIAS         M4AF_FOURCC('f','s','d','b')
+#define OPT_FR_SIDE_KNEE         M4AF_FOURCC('f','s','d','k')
+#define OPT_FR_MASK_SLOPE        M4AF_FOURCC('f','m','s','l')
 #define OPT_FR_SBR_HEADER_PERIOD M4AF_FOURCC('f','s','h','p')
 #define OPT_FR_PNS_GAIN          M4AF_FOURCC('f','p','g','a')
 #define OPT_FR_PNS_TONALITY      M4AF_FOURCC('f','p','t','o')
@@ -554,6 +574,9 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
         { "minsnr-clamp-lo",     required_argument, 0, OPT_FR_MINSNR_CLAMP_LO   },
         { "reduce-clamp",        required_argument, 0, OPT_FR_REDUCE_CLAMP      },
         { "mid-bias",            required_argument, 0, OPT_FR_MID_BIAS          },
+        { "side-bias",           required_argument, 0, OPT_FR_SIDE_BIAS         },
+        { "side-knee",           required_argument, 0, OPT_FR_SIDE_KNEE         },
+        { "mask-slope",          required_argument, 0, OPT_FR_MASK_SLOPE        },
         { "sbr-header-period",   required_argument, 0, OPT_FR_SBR_HEADER_PERIOD },
         { "pns-gain",            required_argument, 0, OPT_FR_PNS_GAIN          },
         { "pns-tonality",        required_argument, 0, OPT_FR_PNS_TONALITY      },
@@ -620,6 +643,9 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
     params->fr_minsnr_clamp_lo = -1;
     params->fr_reduce_clamp = -1;
     params->fr_mid_bias = -1;
+    params->fr_side_bias = AACENC_FRANKEN_OFF;
+    params->fr_side_knee = AACENC_FRANKEN_OFF;
+    params->fr_mask_slope = AACENC_FRANKEN_OFF;
     params->fr_sbr_header_period = -1;
     params->fr_pns_gain = -1;
     params->fr_pns_tonality = -1;
@@ -963,6 +989,15 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
         case OPT_FR_MID_BIAS:
             if (sscanf(optarg, "%d", &n) != 1 || n < 256) { fprintf(stderr, "invalid arg for mid-bias (>=256, 256=neutral)\n"); return -1; }
             params->fr_mid_bias = n; break;
+        case OPT_FR_SIDE_BIAS:
+            { double dv; if (sscanf(optarg, "%lf", &dv) != 1 || dv < -24.0 || dv > 50.0) { fprintf(stderr, "invalid arg for side-bias (-24.0..50.0 dB; + = more side, - = destroy side, 0=off)\n"); return -1; }
+              params->fr_side_bias = (int)(dv * 10.0 + (dv<0?-0.5:0.5)); } break;
+        case OPT_FR_SIDE_KNEE:
+            { double dv; if (sscanf(optarg, "%lf", &dv) != 1 || dv < -24.0 || dv > 50.0) { fprintf(stderr, "invalid arg for side-knee (-24.0..50.0 dB; + = soft knee, - = hard cutoff, 0=off)\n"); return -1; }
+              params->fr_side_knee = (int)(dv * 10.0 + (dv<0?-0.5:0.5)); } break;
+        case OPT_FR_MASK_SLOPE:
+            { double dv; if (sscanf(optarg, "%lf", &dv) != 1 || dv < -24.0 || dv > 50.0) { fprintf(stderr, "invalid arg for mask-slope (-24.0..50.0 dB; + = more detail in quiet bands, - = starve harder, 0=off)\n"); return -1; }
+              params->fr_mask_slope = (int)(dv * 10.0 + (dv<0?-0.5:0.5)); } break;
         case OPT_FR_SBR_HEADER_PERIOD:
             if (sscanf(optarg, "%d", &n) != 1 || n < 1) { fprintf(stderr, "invalid arg for sbr-header-period (>=1; 1=near-instant SBR sync)\n"); return -1; }
             params->fr_sbr_header_period = n; break;

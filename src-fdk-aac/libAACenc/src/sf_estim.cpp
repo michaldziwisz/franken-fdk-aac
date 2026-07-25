@@ -101,6 +101,7 @@ amm-info@iis.fraunhofer.de
 *******************************************************************************/
 
 #include "sf_estim.h"
+#include "franken.h"
 #include "aacEnc_rom.h"
 #include "quantize.h"
 #include "bit_cnt.h"
@@ -1047,7 +1048,8 @@ static void FDKaacEnc_EstimateScaleFactorsChannel(
     QC_OUT_CHANNEL *qcOutChannel, PSY_OUT_CHANNEL *psyOutChannel,
     INT *RESTRICT scf, INT *RESTRICT globalGain,
     FIXP_DBL *RESTRICT sfbFormFactorLdData, const INT invQuant,
-    SHORT *RESTRICT quantSpec, const INT dZoneQuantEnable) {
+    SHORT *RESTRICT quantSpec, const INT dZoneQuantEnable,
+    const struct TOOLSINFO *const toolsInfo, const INT isSide) {
   INT i, j, sfb, sfbOffs;
   INT scfInt;
   INT maxSf;
@@ -1087,6 +1089,50 @@ static void FDKaacEnc_EstimateScaleFactorsChannel(
     for (sfb = 0; sfb < psyOutChannel->maxSfbPerGroup; sfb++) {
       threshLdData = qcOutChannel->sfbThresholdLdData[sfbOffs + sfb];
       energyLdData = qcOutChannel->sfbEnergyLdData[sfbOffs + sfb];
+
+      /* Frankenstein SIDE knobs: only on the side channel's MS-coded bands.
+       * ld64 domain: 1 dB ~= 0.00519 * 2^31. Sentinel FR_OFF = "not set".
+       * Sign convention (EFFECT, like a boost control): + = MORE/better side,
+       * - = deliberately DEGRADE side (extreme low-bitrate stereo, your call). */
+      if (isSide && toolsInfo != NULL && toolsInfo->msMask[sfbOffs + sfb]) {
+        /* Suwak 1 --side-bias <dB>: shift the side threshold. + lowers it
+         * (steers bits to side, finer/less-dropped); - raises it (starves the
+         * side on purpose). The subtraction handles both signs automatically. */
+        if (g_franken.sideBiasDbX10 != FRANKEN_OFF &&
+            g_franken.sideBiasDbX10 != 0) {
+          FIXP_DBL off = (FIXP_DBL)((INT)(
+              (g_franken.sideBiasDbX10 / 10.0) * 0.00519 * 2147483648.0));
+          threshLdData -= off; /* +dB -> lower thr; -dB -> raise thr */
+          qcOutChannel->sfbThresholdLdData[sfbOffs + sfb] = threshLdData;
+        }
+        /* Suwak 2 --side-knee <dB>: shape the coded<->zeroed cliff. + softens
+         * it (bands up to N dB BELOW threshold are kept at the coarsest scf
+         * instead of dropped, fading out gradually). - sharpens it past hard
+         * (bands up to N dB ABOVE the energy=thr line are forced to zero, so
+         * the side cuts off early = extreme destruction). */
+        if (g_franken.sideKneeDbX10 != FRANKEN_OFF &&
+            g_franken.sideKneeDbX10 != 0) {
+          double kneeDb = g_franken.sideKneeDbX10 / 10.0;
+          double kneeAbs = kneeDb < 0.0 ? -kneeDb : kneeDb;
+          FIXP_DBL knee = (FIXP_DBL)((INT)(kneeAbs * 0.00519 * 2147483648.0));
+          FIXP_DBL eps = (FIXP_DBL)((INT)(0.00519 * 2147483648.0));
+          if (kneeDb > 0.0) {
+            /* soft knee: rescue near-miss bands just under the threshold */
+            if (energyLdData <= threshLdData &&
+                threshLdData - energyLdData <= knee) {
+              threshLdData = energyLdData - eps; /* thresh<energy -> coded coarse */
+              qcOutChannel->sfbThresholdLdData[sfbOffs + sfb] = threshLdData;
+            }
+          } else {
+            /* hard knee: drop bands that only just clear the threshold */
+            if (energyLdData > threshLdData &&
+                energyLdData - threshLdData <= knee) {
+              threshLdData = energyLdData + eps; /* thresh>energy -> zeroed */
+              qcOutChannel->sfbThresholdLdData[sfbOffs + sfb] = threshLdData;
+            }
+          }
+        }
+      }
 
       sfbDistLdData[sfbOffs + sfb] = energyLdData;
 
@@ -1280,13 +1326,17 @@ void FDKaacEnc_EstimateScaleFactors(PSY_OUT_CHANNEL *psyOutChannel[],
                                     QC_OUT_CHANNEL *qcOutChannel[],
                                     const INT invQuant,
                                     const INT dZoneQuantEnable,
-                                    const INT nChannels) {
+                                    const INT nChannels,
+                                    const struct TOOLSINFO *const toolsInfo) {
   int ch;
 
   for (ch = 0; ch < nChannels; ch++) {
+    /* side channel = ch 1 of a 2-channel (CPE) element */
+    const INT isSide = (nChannels == 2 && ch == 1) ? 1 : 0;
     FDKaacEnc_EstimateScaleFactorsChannel(
         qcOutChannel[ch], psyOutChannel[ch], qcOutChannel[ch]->scf,
         &qcOutChannel[ch]->globalGain, qcOutChannel[ch]->sfbFormFactorLdData,
-        invQuant, qcOutChannel[ch]->quantSpec, dZoneQuantEnable);
+        invQuant, qcOutChannel[ch]->quantSpec, dZoneQuantEnable, toolsInfo,
+        isSide);
   }
 }

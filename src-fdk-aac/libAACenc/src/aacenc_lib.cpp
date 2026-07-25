@@ -2661,6 +2661,18 @@ AACENC_ERROR aacEncoder_SetParam(const HANDLE_AACENCODER hAacEncoder,
       g_franken.midBiasQ8 = (INT)value;
       hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
       break;
+    case AACENC_FRANKEN_SIDE_BIAS:
+      g_franken.sideBiasDbX10 = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_SIDE_KNEE:
+      g_franken.sideKneeDbX10 = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_MASK_SLOPE:
+      g_franken.msaSlopeDbX10 = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
     case AACENC_FRANKEN_SBR_HEADER_PERIOD:
       g_franken.sbrHeaderPeriod = (INT)value;
       hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;

@@ -119,7 +119,7 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 \cell}
 {{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (off)\par}
 \cell}
-{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Precision of MS bands. {\f1 >256} = shallower holes in the MS spectrum (the coder allocates more bits to describe them, LAME -q style). 256=no change, 384~1.5x, 512~2x. Useful AUDIBLE effect up to ~600-800; above that the threshold hits FDK's hard floor (ld64 -0.515625) and, under CBR, bits are only SHIFTED between bands (fixed budget), so the sound stops changing. Works best when you have spare bits (>=128k) or in VBR.\par}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\i (Very experimental \u8212- you probably want {\f1 --side-bias} instead.)} Scales the precision of MS bands globally (both mid and side together), LAME {\f1 -q} style. 256=no change, 384~1.5x, 512~2x. In practice its reach is limited: above ~600-800 the threshold hits FDK's hard floor and under CBR bits are only shifted between bands, so the sound stops changing. Superseded for stereo tuning by {\f1 --side-bias}/{\f1 --side-knee}, which act per-channel exactly where it matters.\par}
 \cell}
 }
 \intbl\row}
@@ -134,7 +134,52 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 \cell}
 {{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (off)\par}
 \cell}
-{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 >256} RAISES the mid (L+R) channel masking threshold after the MS butterfly, freeing bits from mid for the side channel. Use sparingly \u8212- mid carries most of the loudness. 256=off.\par}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\i (Very experimental \u8212- rarely needed.)} {\f1 >256} RAISES the mid (L+R) threshold after the MS butterfly to free bits from mid for side. The cleaner, better-measured way to shift the mid\u8596 ?side balance is {\f1 --side-bias} (which pulls from the same budget from the side end). Kept for completeness. 256=off.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --side-bias <dB>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -24.0 .. +50.0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0 (off)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\b The main stereo-quality knob.} Shifts the SIDE (L\u8722 ?R) channel's masking threshold on MS-coded bands, at the exact point where FDK decides whether a scalefactor band is coded or dropped ({\f1 energy > threshold} in {\f1 sf_estim.cpp}). Sign = EFFECT: {\b {\f1 +} steers MORE bits to the side channel} (lower threshold \u8594 ? fewer side bands zeroed, the survivors quantized finer \u8594 ? cleaner stereo width, reverb tails, ambience), at the mid channel's expense; {\b {\f1 \u8722 ?} deliberately DEGRADES the side} (raises the threshold \u8594 ? side bands drop out \u8594 ? narrower, more mono image). This is the very same energy-vs-threshold decision LAME rides for its bit allocation and MusePack drives with {\f1 --ms} \u8212- nothing exotic. Because it is a fixed-budget tradeoff, at low bitrate the mid channel audibly gives up bits; that is expected, not a bug. Sane range {\b +3 .. +9} for "more spacious", negative only for extreme/artistic low-bitrate mangling. Measured on real material at 96 kbps: {\f1 +9} lifts side error in the 4\u8211-8 kHz region while mid degrades a few dB. 0 = off (bit-identical to stock).\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --side-knee <dB>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -24.0 .. +50.0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0 (off)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Shapes HOW SHARPLY a side band flips between "coded" and "zeroed" at the threshold. Stock FDK is a hard cliff: the instant {\f1 energy \u8804 ? threshold} the whole band is dropped to zero. {\b {\f1 +} = SOFT knee}: bands sitting up to N dB {\i below} the threshold are still kept (coded at the coarsest scalefactor) instead of dropped, so the side fades out gradually rather than switching off \u8212- smoother decay of reverb/air. {\b {\f1 \u8722 ?} = HARD knee}: bands that only just clear the threshold (within N dB {\i above} it) are forced to zero anyway, cutting the side off early \u8212- leaner, more aggressive. Ortogonal to {\f1 --side-bias} and combines with it. Sane range {\b +3 .. +6}. 0 = off.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --mask-slope <dB>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -24.0 .. +50.0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0 (off)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Global (mid {\b and} side) tuning of FDK's {\b Masking-Slope-Adaptation} \u8212- a NON-masking heuristic ({\f1 adj_thr.cpp}) that relaxes the required SNR for scalefactor bands whose energy sits far below the frame average (stock: more than ~10 dB below), i.e. it deliberately starves very quiet bands to save bits. This knob shifts that "how far below average before I stop caring" threshold. {\b {\f1 +} raises it \u8594 ? fewer quiet bands starved \u8594 ? more detail in quiet passages, reverb tails, decays} (costs bits); {\b {\f1 \u8722 ?} lowers it \u8594 ? quiet bands starved harder \u8594 ? leaner, hollower, more bits for the loud stuff}. Same family as {\f1 --side-bias} but applied to both channels and keyed on energy-vs-average rather than the MS threshold. Subtle on dense material (it only touches the quietest bands); most audible on sparse/reverberant content. Sane range {\b \u177 ?6 .. \u177 ?12}. 0 = off.\par}
 \cell}
 }
 \intbl\row}
@@ -2220,7 +2265,7 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 Spis grup opcji (tak samo pogrupowane w {\f1 --help})\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Opcje s\u261 ? uporz\u261 ?dkowane tematycznie, z grubsza od najlatwiejszych do najbardziej geekowskich. Ta sama kolejno\u347 ?\u263 ? obowiazuje w {\f1 --help} (grupy A\u8211-E) i w sekcjach poni\u380 ?ej:\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\b A. Zacznij tutaj (konsumenckie):} {\f1 --verbose}, {\f1 --is-aggression}, {\f1 --speech}, {\f1 --uncap-bandwidth}, {\f1 --unlock-bitrate} \u8212- sekcje 0, 1, 2, 10.\par}
-{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\b B. Stereo:} MS ({\f1 --msmask}, {\f1 --msbands}, {\f1 --msbands-lo/-hi}, {\f1 --ms-bias}, {\f1 --ms-precision}), IS ({\f1 --is}, {\f1 --isbands}, {\f1 --is-*}), PS ({\f1 --ps}, {\f1 --ps-iid-quant}, {\f1 --ps-icc}, {\f1 --ps-icc-mode}) \u8212- sekcje 1, 4, 8.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\b B. Stereo:} MS ({\f1 --msmask}, {\f1 --msbands}, {\f1 --msbands-lo/-hi}, {\f1 --side-bias}, {\f1 --side-knee}, {\f1 --mask-slope}), IS ({\f1 --is}, {\f1 --isbands}, {\f1 --is-*}), PS ({\f1 --ps}, {\f1 --ps-iid-quant}, {\f1 --ps-icc}, {\f1 --ps-icc-mode}) \u8212- sekcje 1, 4, 8.\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\b C. Pasmo i SBR:} {\f1 --core-cutoff}, {\f1 --sbr-*} \u8212- sekcje 2, 3.\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\b D. Maskowanie / szum / detal:} {\f1 --ath-scale}, {\f1 --spread-mask}, {\f1 --tns-*}, {\f1 --pns}, {\f1 --pns-start}, {\f1 --force-pns} \u8212- sekcje 5, 6.\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\b E. Bloki i bitrate:} {\f1 --block-bias}, {\f1 --vbr-reservoir}, {\f1 --peak-bitrate}, {\f1 --max-bits-frame}, {\f1 --min-bits-frame}, {\f1 --bitres-mode} \u8212- sekcje 7, 9.\sa180\par}
@@ -2318,7 +2363,7 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 \cell}
 {{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (off)\par}
 \cell}
-{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Precyzja pasm MS. {\f1 >256} = p\u322 ?ytsze dziury w spektrum MS (koder alokuje wi\u281 ?cej bitow na ich opis, styl LAME -q). 256=bez zmian, 384~1.5x, 512~2x. U\u380 ?yteczny efekt SLYSZALNY do ~600-800; wy\u380 ?ej prog uderza w twarda pod\u322 ?og\u281 ? FDK (ld64 -0.515625) i przy CBR bity s\u261 ? tylko PRZESUWANE mi\u281 ?dzy pasmami (sta\u322 ?y budzet), wi\u281 ?c brzmienie przestaje sie zmieniac. Dzia\u322 ?a najlepiej gdy masz zapas bitow (>=128k) lub w VBR. UWAGA: dzia\u322 ?a jednakowo na mid i side.\par}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\i (Bardzo eksperymentalny \u8212- raczej niepotrzebny, u\u380 ?yj {\f1 --side-bias}.)} Skaluje precyzj\u281 ? pasm MS globalnie (mid i side razem), w stylu LAME {\f1 -q}. 256=bez zmian, 384~1.5x, 512~2x. W praktyce jego zasi\u281 ?g jest ograniczony: powy\u380 ?ej ~600-800 prog uderza w twarda pod\u322 ?og\u281 ? FDK, a przy CBR bity s\u261 ? tylko PRZESUWANE mi\u281 ?dzy pasmami, wi\u281 ?c brzmienie przestaje sie zmieniac. Do strojenia stereo zast\u261 ?piony przez {\f1 --side-bias}/{\f1 --side-knee}, kt\u243 ?re dzia\u322 ?aj\u261 ? per-kana\u322 ? dok\u322 ?adnie tam, gdzie trzeba.\par}
 \cell}
 }
 \intbl\row}
@@ -2333,7 +2378,52 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 \cell}
 {{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (off)\par}
 \cell}
-{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 >256} podnosi prog kana\u322 ?u MID (L+R) po butterfly, uwalniaj\u261 ?c bity dla kana\u322 ?u side; u\u380 ?ywa\u263 ? oszcz\u281 ?dnie \u8212- mid niesie wi\u281 ?kszo\u347 ?\u263 ? g\u322 ?o\u347 ?no\u347 ?ci. 256=off.\par}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\i (Bardzo eksperymentalny \u8212- raczej niepotrzebny.)} {\f1 >256} PODNOSI prog kana\u322 ?u mid (L+R) po motylku MS, \u380 ?eby uwolni\u263 ? bity z mid dla side. Czystszym, lepiej zmierzonym sposobem przesuni\u281 ?cia balansu mid\u8596 ?side jest {\f1 --side-bias} (kt\u243 ?ry si\u281 ?ga po ten sam budzet od strony side). Zostawiony dla kompletno\u347 ?ci. 256=off.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --side-bias <dB>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -24.0 .. +50.0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0 (off)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\b G\u322 ?\u243 ?wne pokr\u281 ?t\u322 ?o jako\u347 ?ci stereo.} Przesuwa prog maskowania kana\u322 ?u SIDE (L\u8722 ?R) na pasmach kodowanych w MS, dok\u322 ?adnie w miejscu, gdzie FDK decyduje, czy pasmo skali (SFB) jest kodowane czy zerowane ({\f1 energia > prog} w {\f1 sf_estim.cpp}). Znak = EFEKT: {\b {\f1 +} kieruje WI\u280 ?CEJ bitow do kana\u322 ?u side} (ni\u380 ?szy prog \u8594 ? mniej pasm side zerowanych, przetrwa\u322 ?e kwantyzowane dok\u322 ?adniej \u8594 ? czystsza szeroko\u347 ?\u263 ? stereo, ogony pog\u322 ?osu, ambience), kosztem kana\u322 ?u mid; {\b {\f1 \u8722 ?} celowo DEGRADUJE side} (podnosi prog \u8594 ? pasma side wypadaj\u261 ? \u8594 ? w\u281 ?\u380 ?szy, bardziej mono obraz). To dok\u322 ?adnie ta sama zale\u380 ?no\u347 ?\u263 ? energia-vs-prog, kt\u243 ?rej LAME u\u380 ?ywa do alokacji bitow, a MusePack steruje przez {\f1 --ms} \u8212- nic egzotycznego. Poniewa\u380 ? to tradeoff przy sta\u322 ?ym budzecie, przy niskim bitrate kana\u322 ? mid s\u322 ?yszalnie oddaje bity; to oczekiwane, nie b\u322 ?\u261 ?d. Rozs\u261 ?dny zakres {\b +3 .. +9} dla \u8222 ?szerzej", ujemne tylko do skrajnego/artystycznego niszczenia przy niskim bitrate. 0 = off (bit-identyczny ze stockiem).\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --side-knee <dB>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -24.0 .. +50.0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0 (off)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Kszta\u322 ?tuje JAK OSTRO pasmo side prze\u322 ?\u261 ?cza si\u281 ? mi\u281 ?dzy \u8222 ?kodowane" a \u8222 ?wyzerowane" na progu. Stock FDK to twardy klif: w chwili gdy {\f1 energia \u8804 ? prog}, ca\u322 ?e pasmo spada do zera. {\b {\f1 +} = MI\u280 ?KKIE kolano}: pasma le\u380 ?\u261 ?ce do N dB {\i poni\u380 ?ej} progu s\u261 ? nadal zachowane (kodowane na najzgrubszym scalefactorze) zamiast zerowane, wi\u281 ?c side ga\u347 ?nie stopniowo zamiast wy\u322 ?\u261 ?cza\u263 ? si\u281 ? \u8212- \u322 ?agodniejsze wybrzmienie pog\u322 ?osu/powietrza. {\b {\f1 \u8722 ?} = TWARDE kolano}: pasma, kt\u243 ?re ledwo przekraczaj\u261 ? prog (do N dB {\i nad} nim), s\u261 ? mimo to zerowane, odcinaj\u261 ?c side wcze\u347 ?niej \u8212- chudziej, agresywniej. Ortogonalny do {\f1 --side-bias} i \u322 ?\u261 ?czy si\u281 ? z nim. Rozs\u261 ?dny zakres {\b +3 .. +6}. 0 = off.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --mask-slope <dB>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -24.0 .. +50.0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0 (off)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Globalne (mid {\b i} side) strojenie {\b Masking-Slope-Adaptation} FDK \u8212- heurystyki NIE-maskuj\u261 ?cej ({\f1 adj_thr.cpp}), kt\u243 ?ra rozlu\u378 ?nia wymagany SNR dla pasm SFB o energii du\u380 ?o poni\u380 ?ej \u347 ?redniej ramki (stock: ponad ~10 dB poni\u380 ?ej), czyli celowo g\u322 ?odzi bardzo ciche pasma, \u380 ?eby oszcz\u281 ?dzi\u263 ? bity. To pokr\u281 ?t\u322 ?o przesuwa prog \u8222 ?jak daleko poni\u380 ?ej \u347 ?redniej, zanim przestan\u281 ? si\u281 ? przejmowa\u263 ?". {\b {\f1 +} podnosi go \u8594 ? mniej cichych pasm g\u322 ?odzonych \u8594 ? wi\u281 ?cej detalu w cichych fragmentach, ogonach pog\u322 ?osu, wybrzmieniach} (kosztuje bity); {\b {\f1 \u8722 ?} obni\u380 ?a go \u8594 ? ciche pasma g\u322 ?odzone mocniej \u8594 ? chudziej, bardziej pusto, wi\u281 ?cej bitow na g\u322 ?o\u347 ?ne rzeczy}. Ta sama rodzina co {\f1 --side-bias}, ale stosowana do obu kana\u322 ?\u243 ?w i zakotwiczona na energii-vs-\u347 ?rednia zamiast progu MS. Subtelny na g\u281 ?stym materiale (rusza tylko najcichsze pasma); najbardziej s\u322 ?yszalny na rzadkiej/pog\u322 ?osowej tre\u347 ?ci. Rozs\u261 ?dny zakres {\b \u177 ?6 .. \u177 ?12}. 0 = off.\par}
 \cell}
 }
 \intbl\row}
@@ -3130,7 +3220,7 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 {\pard \ql \f0 \sa180 \li0 \fi0 REALNY zestaw d\u378 ?wigni jako\u347 ?ci dla 10-144 kbps jest JUZ wystawiony:\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\f1 --ath-scale <256} \u8212- globalnie obni\u380 ? prog maskowania (wi\u281 ?cej detalu za bity).\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\f1 --spread-mask <256} \u8212- mniej maskowania mi\u281 ?dzypasmowego (wi\u281 ?cej pasm kodowanych).\par}
-{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\f1 --ms-precision >256} \u8212- p\u322 ?ytsze dziury w pasmach MS.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\f1 --side-bias >0} \u8212- wi\u281 ?cej bitow do kana\u322 ?u side (czystsza szeroko\u347 ?\u263 ? stereo).\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\f1 --is-aggression} \u8212- steruj intensity stereo (kluczowe przy niskim bitrate).\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\f1 --force-pns} + {\f1 --pns-start} \u8212- kontrola szumu przy bardzo niskim bitrate.\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab pod HE-AAC: {\f1 --sbr-invf}, {\f1 --sbr-noise-floor-offset}, {\f1 --speech} (mowa).\sa180\par}
@@ -3195,7 +3285,7 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 \cell}
 {{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (off)\par}
 \cell}
-{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Przesuwa prog decyzji L/R vs MS. Q8, 128 = +0.5 w jednostkach ld64 FDK. >0 = MS ch\u281 ?tniejsze. Reaguje juz od ~32 (po rekalibracji skali).\par}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\i (Bardzo eksperymentalny \u8212- raczej niepotrzebny, u\u380 ?yj {\f1 --side-bias}.)} Przesuwa prog decyzji L/R vs MS. Q8, 128 = +0.5 w jednostkach ld64 FDK. >0 = MS ch\u281 ?tniejsze. Reaguje juz od ~32 (po rekalibracji skali). Do realnego strojenia balansu stereo w\u322 ?a\u347 ?ciwym narz\u281 ?dziem jest {\f1 --side-bias}, nie ten bias.\par}
 \cell}
 }
 \intbl\row}

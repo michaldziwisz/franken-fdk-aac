@@ -119,6 +119,7 @@ void FDKaacEnc_EstimateScaleFactors(PSY_OUT_CHANNEL *psyOutChannel[],
                                     QC_OUT_CHANNEL *qcOutChannel[],
                                     const INT invQuant,
                                     const INT dZoneQuantEnable,
-                                    const INT nChannels);
+                                    const INT nChannels,
+                                    const struct TOOLSINFO *const toolsInfo);
 
 #endif

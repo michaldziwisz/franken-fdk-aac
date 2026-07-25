@@ -1573,6 +1573,9 @@ typedef enum {
   AACENC_FRANKEN_MINSNR_CLAMP_LO = 0xF047, /*!< Scale MIN_SNR floor Q8 (-1 off). */
   AACENC_FRANKEN_REDUCE_CLAMP = 0xF048,/*!< 0 = drop the 29 dB threshold-reduction clamp (-1 default on). */
   AACENC_FRANKEN_MID_BIAS = 0xF04A,    /*!< Mid (L+R) bias Q8, >256 = free bits for side (-1 off). */
+  AACENC_FRANKEN_SIDE_BIAS = 0xF049,   /*!< Shift side (L-R) threshold on MS bands, dB*10; + = more side, - = degrade side (AACENC_FRANKEN_OFF = off). */
+  AACENC_FRANKEN_SIDE_KNEE = 0xF053,   /*!< Shape side SFB-zeroing cliff, dB*10; + = soft knee, - = hard cutoff (AACENC_FRANKEN_OFF = off). */
+  AACENC_FRANKEN_MASK_SLOPE = 0xF054,  /*!< Shift MSA quiet-band starve threshold, dB*10; + = more detail, - = starve harder (AACENC_FRANKEN_OFF = off). */
   AACENC_FRANKEN_SBR_HEADER_PERIOD = 0xF04B, /*!< Frames between SBR headers, 1=instant sync (-1 off). */
   AACENC_FRANKEN_PNS_GAIN = 0xF04D,    /*!< PNS fabricated-noise loudness, value*100 (100=unchanged, -1 off). */
   AACENC_FRANKEN_PNS_TONALITY = 0xF04E,/*!< PNS refTonality detection scale, value*100 (-1 off). */
@@ -1606,6 +1609,9 @@ typedef enum {
   AACENC_NONE = 0xFFFF /*!< ------ */
 
 } AACENC_PARAM;
+
+/*!< Franken sentinel: "knob not set" for signed dB knobs where -1 is legal. */
+#define AACENC_FRANKEN_OFF (-2147483647)
 
 #ifdef __cplusplus
 extern "C" {

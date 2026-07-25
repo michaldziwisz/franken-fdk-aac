@@ -73,6 +73,9 @@
     int fr_minsnr_clamp_lo; \
     int fr_reduce_clamp; \
     int fr_mid_bias; \
+    int fr_side_bias; \
+    int fr_side_knee; \
+    int fr_mask_slope; \
     int fr_sbr_header_period; \
     int fr_pns_gain; \
     int fr_pns_tonality; \

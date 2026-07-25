@@ -45,8 +45,8 @@ poniżej:
 
 - **A. Zacznij tutaj (konsumenckie):** `--verbose`, `--is-aggression`, `--speech`,
   `--uncap-bandwidth`, `--unlock-bitrate` — sekcje 0, 1, 2, 10.
-- **B. Stereo:** MS (`--msmask`, `--msbands`, `--msbands-lo/-hi`, `--ms-bias`,
-  `--ms-precision`), IS (`--is`, `--isbands`, `--is-*`), PS (`--ps`, `--ps-iid-quant`,
+- **B. Stereo:** MS (`--msmask`, `--msbands`, `--msbands-lo/-hi`, `--side-bias`,
+  `--side-knee`, `--mask-slope`), IS (`--is`, `--isbands`, `--is-*`), PS (`--ps`, `--ps-iid-quant`,
   `--ps-icc`, `--ps-icc-mode`) — sekcje 1, 4, 8.
 - **C. Pasmo i SBR:** `--core-cutoff`, `--sbr-*` — sekcje 2, 3.
 - **D. Maskowanie / szum / detal:** `--ath-scale`, `--spread-mask`, `--tns-*`,
@@ -84,8 +84,11 @@ te decyzję nadpisac i wymusic ekstremalne konfiguracje.
 | `--msbands <n>` | -1 brak limitu, 0..N | -1 | Maksymalny numer SFB, który może użyć MS (bierze N NAJNIŻSZYCH pasm). Powyżej — MS wyłączone. |
 | `--msbands-lo <n>` | -1 off, 0..N | -1 | POCZATEK (najniższy numer pasma SFB) zakresu, w którym dozwolone jest MS. |
 | `--msbands-hi <n>` | -1 off, 0..N | -1 | KONIEC (najwyższy numer pasma SFB) zakresu MS. Używane razem z `--msbands-lo` jako para OD–DO. Pasma poza tym zakresem ida czystym L/R. |
-| `--ms-precision <n>` | 256..bez limitu (Q8) | -1 (off) | Precyzja pasm MS. `>256` = płytsze dziury w spektrum MS (koder alokuje więcej bitow na ich opis, styl LAME -q). 256=bez zmian, 384~1.5x, 512~2x. Użyteczny efekt SLYSZALNY do ~600-800; wyżej prog uderza w twarda podłogę FDK (ld64 -0.515625) i przy CBR bity są tylko PRZESUWANE między pasmami (stały budzet), więc brzmienie przestaje sie zmieniac. Działa najlepiej gdy masz zapas bitow (>=128k) lub w VBR. UWAGA: działa jednakowo na mid i side. |
-| `--mid-bias <n>` | 256..bez limitu (Q8) | -1 (off) | `>256` podnosi prog kanału MID (L+R) po butterfly, uwalniając bity dla kanału side; używać oszczędnie — mid niesie większość głośności. 256=off. |
+| `--ms-precision <n>` | 256..bez limitu (Q8) | -1 (off) | *(Bardzo eksperymentalny — raczej niepotrzebny, użyj `--side-bias`.)* Skaluje precyzję pasm MS globalnie (mid i side razem), w stylu LAME `-q`. 256=bez zmian, 384~1.5x, 512~2x. W praktyce jego zasięg jest ograniczony: powyżej ~600-800 prog uderza w twarda podłogę FDK, a przy CBR bity są tylko PRZESUWANE między pasmami, więc brzmienie przestaje sie zmieniac. Do strojenia stereo zastąpiony przez `--side-bias`/`--side-knee`, które działają per-kanał dokładnie tam, gdzie trzeba. |
+| `--mid-bias <n>` | 256..bez limitu (Q8) | -1 (off) | *(Bardzo eksperymentalny — raczej niepotrzebny.)* `>256` PODNOSI prog kanału mid (L+R) po motylku MS, żeby uwolnić bity z mid dla side. Czystszym, lepiej zmierzonym sposobem przesunięcia balansu mid↔side jest `--side-bias` (który sięga po ten sam budzet od strony side). Zostawiony dla kompletności. 256=off. |
+| `--side-bias <dB>` | -24.0 .. +50.0 | 0 (off) | **Główne pokrętło jakości stereo.** Przesuwa prog maskowania kanału SIDE (L−R) na pasmach kodowanych w MS, dokładnie w miejscu, gdzie FDK decyduje, czy pasmo skali (SFB) jest kodowane czy zerowane (`energia > prog` w `sf_estim.cpp`). Znak = EFEKT: **`+` kieruje WIĘCEJ bitow do kanału side** (niższy prog → mniej pasm side zerowanych, przetrwałe kwantyzowane dokładniej → czystsza szerokość stereo, ogony pogłosu, ambience), kosztem kanału mid; **`−` celowo DEGRADUJE side** (podnosi prog → pasma side wypadają → węższy, bardziej mono obraz). To dokładnie ta sama zależność energia-vs-prog, której LAME używa do alokacji bitow, a MusePack steruje przez `--ms` — nic egzotycznego. Ponieważ to tradeoff przy stałym budzecie, przy niskim bitrate kanał mid słyszalnie oddaje bity; to oczekiwane, nie błąd. Rozsądny zakres **+3 .. +9** dla „szerzej", ujemne tylko do skrajnego/artystycznego niszczenia przy niskim bitrate. 0 = off (bit-identyczny ze stockiem). |
+| `--side-knee <dB>` | -24.0 .. +50.0 | 0 (off) | Kształtuje JAK OSTRO pasmo side przełącza się między „kodowane" a „wyzerowane" na progu. Stock FDK to twardy klif: w chwili gdy `energia ≤ prog`, całe pasmo spada do zera. **`+` = MIĘKKIE kolano**: pasma leżące do N dB *poniżej* progu są nadal zachowane (kodowane na najzgrubszym scalefactorze) zamiast zerowane, więc side gaśnie stopniowo zamiast wyłączać się — łagodniejsze wybrzmienie pogłosu/powietrza. **`−` = TWARDE kolano**: pasma, które ledwo przekraczają prog (do N dB *nad* nim), są mimo to zerowane, odcinając side wcześniej — chudziej, agresywniej. Ortogonalny do `--side-bias` i łączy się z nim. Rozsądny zakres **+3 .. +6**. 0 = off. |
+| `--mask-slope <dB>` | -24.0 .. +50.0 | 0 (off) | Globalne (mid **i** side) strojenie **Masking-Slope-Adaptation** FDK — heurystyki NIE-maskującej (`adj_thr.cpp`), która rozluźnia wymagany SNR dla pasm SFB o energii dużo poniżej średniej ramki (stock: ponad ~10 dB poniżej), czyli celowo głodzi bardzo ciche pasma, żeby oszczędzić bity. To pokrętło przesuwa prog „jak daleko poniżej średniej, zanim przestanę się przejmować". **`+` podnosi go → mniej cichych pasm głodzonych → więcej detalu w cichych fragmentach, ogonach pogłosu, wybrzmieniach** (kosztuje bity); **`−` obniża go → ciche pasma głodzone mocniej → chudziej, bardziej pusto, więcej bitow na głośne rzeczy**. Ta sama rodzina co `--side-bias`, ale stosowana do obu kanałów i zakotwiczona na energii-vs-średnia zamiast progu MS. Subtelny na gęstym materiale (rusza tylko najcichsze pasma); najbardziej słyszalny na rzadkiej/pogłosowej treści. Rozsądny zakres **±6 .. ±12**. 0 = off. |
 | `--is <n>` | -1 auto, 0 off, 1 on | -1 | Intensity stereo globalnie wł/wył. |
 | `--isbands <n>` | -1 brak limitu, 0..N | -1 | Maksymalna liczba SFB, które mogą użyć intensity. Powyżej — kodowane normalnie. |
 | `--is-aggression <0..100>` | 0..100 | -1 (off) | KONSUMENCKI suwak: jak bardzo enkoder ma isc w intensity stereo. Zaczynaj tu, zaawansowane `--is-*` zostaw. |
@@ -290,7 +293,7 @@ kodu FDK:
 REALNY zestaw dźwigni jakości dla 10-144 kbps jest JUZ wystawiony:
 - `--ath-scale <256` — globalnie obniż prog maskowania (więcej detalu za bity).
 - `--spread-mask <256` — mniej maskowania międzypasmowego (więcej pasm kodowanych).
-- `--ms-precision >256` — płytsze dziury w pasmach MS.
+- `--side-bias >0` — więcej bitow do kanału side (czystsza szerokość stereo).
 - `--is-aggression` — steruj intensity stereo (kluczowe przy niskim bitrate).
 - `--force-pns` + `--pns-start` — kontrola szumu przy bardzo niskim bitrate.
 - pod HE-AAC: `--sbr-invf`, `--sbr-noise-floor-offset`, `--speech` (mowa).
@@ -315,7 +318,7 @@ maksimum krótkich: `--block-bias 255`.
 
 | Switch | Wartości | Domyślnie | Opis |
 |---|---|---|---|
-| `--ms-bias <n>` | 0..255 (Q8) | -1 (off) | Przesuwa prog decyzji L/R vs MS. Q8, 128 = +0.5 w jednostkach ld64 FDK. >0 = MS chętniejsze. Reaguje juz od ~32 (po rekalibracji skali). |
+| `--ms-bias <n>` | 0..255 (Q8) | -1 (off) | *(Bardzo eksperymentalny — raczej niepotrzebny, użyj `--side-bias`.)* Przesuwa prog decyzji L/R vs MS. Q8, 128 = +0.5 w jednostkach ld64 FDK. >0 = MS chętniejsze. Reaguje juz od ~32 (po rekalibracji skali). Do realnego strojenia balansu stereo właściwym narzędziem jest `--side-bias`, nie ten bias. |
 
 UCZCIWIE o `--ms-bias` — to najsłabsze narzędzie z całego zestawu i teraz wiadomo
 dlaczego "niewiele robi". MS (mid/side) to transformacja BEZSTRATNA: mid=L+R,

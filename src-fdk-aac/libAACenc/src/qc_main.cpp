@@ -870,7 +870,8 @@ AAC_ENCODER_ERROR FDKaacEnc_QCMain(QC_STATE* RESTRICT hQC, PSY_OUT** psyOut,
         FDKaacEnc_EstimateScaleFactors(
             psyOut[c]->psyOutElement[i]->psyOutChannel,
             qcElement[c][i]->qcOutChannel, hQC->invQuant, hQC->dZoneQuantEnable,
-            cm->elInfo[i].nChannelsInEl);
+            cm->elInfo[i].nChannelsInEl,
+            &psyOut[c]->psyOutElement[i]->toolsInfo);
 
         /*-------------------------------------------- */
         constraintsFulfilled[c][i] = 1;

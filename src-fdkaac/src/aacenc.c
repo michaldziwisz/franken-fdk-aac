@@ -285,6 +285,9 @@ int aacenc_init(HANDLE_AACENCODER *encoder, const aacenc_param_t *params,
     FR_SET(params->fr_minsnr_clamp_lo != -1, AACENC_FRANKEN_MINSNR_CLAMP_LO, params->fr_minsnr_clamp_lo);
     FR_SET(params->fr_reduce_clamp != -1, AACENC_FRANKEN_REDUCE_CLAMP, params->fr_reduce_clamp);
     FR_SET(params->fr_mid_bias != -1, AACENC_FRANKEN_MID_BIAS, params->fr_mid_bias);
+    FR_SET(params->fr_side_bias != AACENC_FRANKEN_OFF, AACENC_FRANKEN_SIDE_BIAS, params->fr_side_bias);
+    FR_SET(params->fr_side_knee != AACENC_FRANKEN_OFF, AACENC_FRANKEN_SIDE_KNEE, params->fr_side_knee);
+    FR_SET(params->fr_mask_slope != AACENC_FRANKEN_OFF, AACENC_FRANKEN_MASK_SLOPE, params->fr_mask_slope);
     FR_SET(params->fr_sbr_header_period != -1, AACENC_FRANKEN_SBR_HEADER_PERIOD, params->fr_sbr_header_period);
     FR_SET(params->fr_pns_gain != -1, AACENC_FRANKEN_PNS_GAIN, params->fr_pns_gain);
     FR_SET(params->fr_pns_tonality != -1, AACENC_FRANKEN_PNS_TONALITY, params->fr_pns_tonality);
@@ -497,6 +500,9 @@ int aacenc_init(HANDLE_AACENCODER *encoder, const aacenc_param_t *params,
             if (params->fr_spread_mask >= 0)    { FRV_HDR(); fprintf(stderr, " spread-mask           : %d Q8 (<256 = less masking, more detail)\n", params->fr_spread_mask); }
             if (params->fr_ath_scale >= 0)      { FRV_HDR(); fprintf(stderr, " ath-scale             : %d Q8 (<256 = cleaner/more bits)\n", params->fr_ath_scale); }
             if (params->fr_mid_bias >= 0)       { FRV_HDR(); fprintf(stderr, " mid-bias              : %d Q8 (>256 = free bits from mid for side)\n", params->fr_mid_bias); }
+            if (params->fr_side_bias != AACENC_FRANKEN_OFF) { FRV_HDR(); fprintf(stderr, " side-bias             : %+.1f dB (+ = more side, - = degrade side, vs mid)\n", params->fr_side_bias/10.0); }
+            if (params->fr_side_knee != AACENC_FRANKEN_OFF) { FRV_HDR(); fprintf(stderr, " side-knee             : %+.1f dB (+ = soft fade, - = hard cutoff)\n", params->fr_side_knee/10.0); }
+            if (params->fr_mask_slope != AACENC_FRANKEN_OFF) { FRV_HDR(); fprintf(stderr, " mask-slope            : %+.1f dB (+ = more detail in quiet bands, - = starve harder)\n", params->fr_mask_slope/10.0); }
             if (params->fr_minsnr_scale >= 0)   { FRV_HDR(); fprintf(stderr, " minsnr-scale          : %d Q8 (<256 = demand higher SNR, more detail)\n", params->fr_minsnr_scale); }
             if (params->fr_minsnr_clamp_hi >= 0){ FRV_HDR(); fprintf(stderr, " minsnr-clamp-hi       : %d Q8 (scale MAX_SNR ceiling)\n", params->fr_minsnr_clamp_hi); }
             if (params->fr_minsnr_clamp_lo >= 0){ FRV_HDR(); fprintf(stderr, " minsnr-clamp-lo       : %d Q8 (scale MIN_SNR floor)\n", params->fr_minsnr_clamp_lo); }

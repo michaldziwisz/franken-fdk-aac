@@ -529,8 +529,8 @@ poziomów.</p>
 <p>Co NAPRAWDĘ daje więcej detalu przy wysokim bitrate, to nie liczba
 iteracji, ale OBNIŻENIE PROGÓW MASKOWANIA, żeby enkoder w ogóle uznał
 więcej rzeczy za warte zakodowania: <code>--ath-scale</code> poniżej
-256, <code>--spread-mask</code> poniżej 256 i
-<code>--ms-precision</code> powyżej 256. To są dźwignie, które
+256, <code>--spread-mask</code> poniżej 256 i <code>--side-bias</code>
+powyżej 0 (więcej bitów w szerokość stereo). To są dźwignie, które
 faktycznie zamieniają nadmiarowe bity na zachowany detal (patrz rozdział
 18). Iteracje kwantyzacji nie.</p>
 <p>BARDZO WYSOKO (ciąg dalszy właściwej optymalizacji) — patrz rozdział
@@ -615,17 +615,75 @@ w pełnym stereo): najwyższe pasma to numery 44–48, więc
 <p>Ile pasm masz realnie dla danego trybu i częstotliwości pokazuje
 <code>--verbose</code> (pole "active SFBs") — sprawdź tam górny numer,
 zanim ustawisz <code>--msbands-hi</code>.</p>
-<p><code>--ms-precision &lt;n&gt;</code> — precyzja pasm zakodowanych w
-MS, w skali Q8 (256 = bez zmian). Wartości powyżej 256 obniżają próg
-maskowania na pasmach MS, przez co enkoder przeznacza WIĘCEJ bitów na
-ich dokładny opis — "dziury" w widmie MS robią się płytsze. To
-odpowiednik podkręcenia jakości w stylu LAME <code>-q</code>. 384 to
-około 1,5×, 512 około 2×. Nie ma górnego limitu — przy 512 kbps też się
-przydaje. Najbardziej użyteczny zakres to 48–192 kbps.</p>
-<p><code>--mid-bias &lt;n&gt;</code> — powyżej 256 PODNOSI próg kanału
-mid (L+R) po transformacie (motylku) MS, celowo uwalniając bity dla
-kanału side. Używaj oszczędnie — mid niesie większość głośności, więc
-zbyt mocne jego głodzenie jest słyszalne. 256 = off.</p>
+<p>STEROWANIE BALANSEM STEREO (główne pokrętło).
+<code>--side-bias &lt;dB&gt;</code> to przełącznik, po który sięgasz,
+gdy chcesz decydować, ile budżetu bitów pójdzie w szerokość stereo.
+Przesuwa próg maskowania kanału SIDE (L−R) na pasmach kodowanych w MS,
+dokładnie w tym miejscu, gdzie FDK decyduje, czy pasmo skali (SFB)
+zostanie zakodowane, czy wyzerowane (<code>energia &gt; próg</code> w
+<code>sf_estim.cpp</code>). Znak jest efektem. Wartość DODATNIA kieruje
+WIĘCEJ bitów do kanału side: próg spada, mniej pasm side jest
+zerowanych, a te, które przetrwają, są kwantyzowane dokładniej —
+dostajesz czystszą szerokość stereo, ogony pogłosu i ambience — kosztem
+kanału mid. Wartość UJEMNA celowo degraduje side: podnosi próg, pasma
+side wypadają, a obraz zwęża się w stronę mono. Nie dzieje się tu nic
+egzotycznego; to dokładnie ta sama zależność energia-vs-próg, której
+LAME używa do alokacji bitów, a MusePack steruje przez
+<code>--ms</code>. To tradeoff przy stałym budżecie, więc przy niskim
+bitrate usłyszysz, jak kanał mid oddaje część bitów, żeby nakarmić side
+— to oczekiwane zachowanie, nie usterka. Rozsądny, ludzki zakres:
+<strong>+3 do +9</strong> dla „szerzej i bardziej przestrzennie"; na
+ujemne schodź tylko wtedy, gdy świadomie chcesz skrajnego, artystycznego
+niszczenia szerokości przy niskim bitrate. Wartość jest w decybelach
+(dziesiętnie), a <code>0</code> oznacza off — bit-identycznie ze
+stockowym FDK.</p>
+<p>KSZTAŁTOWANIE ODCIĘCIA SIDE. <code>--side-knee &lt;dB&gt;</code>
+steruje tym, JAK OSTRO pasmo side przełącza się między „kodowane" a
+„wyzerowane" na tym progu. Stock FDK to twardy klif: w chwili gdy
+energia pasma spadnie do progu lub poniżej, całe pasmo jest wyrzucane.
+Wartość DODATNIA daje MIĘKKIE kolano — pasma leżące do N dB
+<em>poniżej</em> progu są nadal zachowane (kodowane na najzgrubszym
+współczynniku skali) zamiast wyrzucane, więc side gaśnie stopniowo
+zamiast wyłączać się nagle; pogłos i „powietrze" wybrzmiewają łagodniej.
+Wartość UJEMNA daje TWARDE kolano — pasma, które ledwo przekraczają próg
+(do N dB <em>nad</em> nim), są mimo to zerowane, odcinając side
+wcześniej, dla chudszego, agresywniejszego efektu. Jest ortogonalny do
+<code>--side-bias</code> i łączy się z nim: bias ustawia, <em>gdzie</em>
+leży próg, a knee — <em>jak miękka jest jego krawędź</em>. Rozsądny
+zakres <strong>+3 do +6</strong>. <code>0</code> = off.</p>
+<p>STROJENIE CICHYCH PASM GLOBALNIE.
+<code>--mask-slope &lt;dB&gt;</code> to globalna (mid ORAZ side)
+regulacja Masking-Slope-Adaptation FDK — heurystyki NIE-maskującej
+(<code>adj_thr.cpp</code>), która rozluźnia wymagany SNR dla pasm skali
+o energii dużo poniżej średniej ramki (stock: ponad około 10 dB
+poniżej). Mówiąc wprost, FDK celowo głodzi bardzo ciche pasma, żeby
+oszczędzić bity, a to pokrętło przesuwa próg „jak daleko poniżej
+średniej, zanim przestanę się przejmować". Wartość DODATNIA go podnosi,
+więc mniej cichych pasm jest głodzonych — więcej detalu w cichych
+fragmentach, ogonach pogłosu i wybrzmieniach, kosztem bitów. Wartość
+UJEMNA go obniża, więc ciche pasma są głodzone mocniej — chudziej i
+bardziej pusto, za to więcej bitów zostaje na głośny materiał. To ta
+sama rodzina co <code>--side-bias</code>, ale stosowana do obu kanałów i
+zakotwiczona na energii-vs-średnia zamiast progu MS. Subtelny na gęstym
+materiale (rusza tylko najcichsze pasma) i najbardziej słyszalny na
+rzadkiej lub pogłosowej treści. Rozsądny zakres <strong>±6 do
+±12</strong>. <code>0</code> = off.</p>
+<p><code>--ms-precision &lt;n&gt;</code> — BARDZO EKSPERYMENTALNY i dziś
+prawie na pewno chcesz zamiast tego <code>--side-bias</code>. Skaluje
+precyzję pasm MS globalnie (mid i side razem), w skali Q8, w stylu LAME
+<code>-q</code>: 256 = bez zmian, 384 ≈ 1,5×, 512 ≈ 2×. W praktyce jego
+zasięg jest ograniczony — powyżej mniej więcej 600–800 próg uderza w
+twardą podłogę FDK, a przy CBR bity są jedynie przetasowywane między
+pasmami, więc brzmienie przestaje się zmieniać. Do strojenia stereo
+został zastąpiony przez
+<code>--side-bias</code>/<code>--side-knee</code>, które działają
+per-kanał dokładnie tam, gdzie trzeba. Zostawiony dla kompletności.</p>
+<p><code>--mid-bias &lt;n&gt;</code> — również BARDZO EKSPERYMENTALNY i
+raczej niepotrzebny. Powyżej 256 PODNOSI próg kanału mid (L+R) po
+motylku MS, celowo uwalniając bity dla kanału side. Czystszym, lepiej
+zmierzonym sposobem przesunięcia balansu mid↔︎side jest
+<code>--side-bias</code>, który sięga po ten sam budżet od strony side.
+256 = off.</p>
 <p>INTENSITY STEREO (IS). Bardziej agresywna technika: dla wysokich
 pasm, gdzie ucho słabo lokalizuje kierunek, enkoder wysyła jedną
 obwiednię energii zamiast dwóch kanałów. Oszczędza dużo, ale może zwęzić
@@ -769,27 +827,55 @@ WYJAŚNIENIE: FDK ma tabelę, która przy bardzo niskich bitrate'ach
 <code>--pns-start</code> jest ignorowane, bo PNS w ogóle nie działa. To
 dlatego przy 24 kbps słyszałeś artefakty jak z MP3, a przy 64 kbps PNS
 działał. Ta flaga omija tabelę i włącza PNS mimo niskiego bitrate.</p>
+<p>Słowo o jednostkach, zanim przejdziemy do poszczególnych pokręteł, bo
+dzięki temu reszta nabiera sensu. FDK trzyma te parametry detekcji PNS
+wewnętrznie jako liczby stałoprzecinkowe, a nasze przełączniki przyjmują
+zwykły dziesiętny MNOŻNIK: to, co wpiszesz, jest mnożone przez 100 i
+użyte do przeskalowania fabrycznej wartości FDK. Czyli <code>1.0</code>
+znaczy „×1,0 = zostaw fabryczną wartość", <code>1.5</code> znaczy
+„×1,5", <code>0.5</code> znaczy „×0,5", a <code>-1</code> znaczy, że
+przełącznik jest wyłączony. Ta jedna konwencja
+(<code>wartość × 100</code>, <code>1.0</code> = bez zmian) dotyczy
+każdego skalującego pokrętła <code>--pns-*</code> poniżej.</p>
 <p><code>--pns-gain &lt;x&gt;</code> — GŁOŚNOŚĆ dorabianego szumu PNS i
-pokrętło PNS, po które sięgniesz najczęściej. Gdy PNS zastępuje pasmo,
-zapisuje tylko "tu jest szum o takiej energii"; ten przełącznik wprost
-skaluje tę energię. <code>1.0</code> = bez zmian (dorobiony szum ma
-energię oryginalnego pasma); <code>&gt;1.0</code> = szum głośniejszy niż
-oryginał; <code>&lt;1.0</code> = cichszy. Traktuj to jak pokrętło "jak
-głośny jest podstawiony szum". Wejście dziesiętne, <code>-1</code> =
-off.</p>
-<p><code>--pns-tonality &lt;x&gt;</code> — skaluje próg detekcji
-tonalności PNS. <code>1.0</code> = domyślnie; wyższe wartości pozwalają
-większej liczbie pasm (nawet tych mniej szumiących) zakwalifikować się
-do PNS, więc podstawianie szumu robi się SZERSZE.
-<code>--pns-refpower &lt;x&gt;</code> — skaluje próg mocy referencyjnej
-detekcji (<code>1.0</code> = domyślnie).
-<code>--pns-gapfill &lt;x&gt;</code> — skaluje próg wypełniania luk,
-który zapełnia dziury PNS między dwoma pasmami PNS; zaawansowane i
-subtelne, rzadko słyszalne (<code>1.0</code> = domyślnie).
-<code>--pns-min-width &lt;n&gt;</code> — minimalna szerokość SFB dla
-PNS; skuteczny powyżej wbudowanej domyślnej (LC = 16), np. 32 lub 64
-ogranicza PNS tylko do szerszych pasm. Wszystkie przyjmują wejście
-dziesiętne, <code>-1</code> = off, <code>1.0</code> = bez zmian.</p>
+pokrętło PNS, po które sięgniesz najczęściej. Gdy PNS uzna pasmo za „sam
+szum", wyrzuca faktyczne linie widmowe i zapisuje tylko jedną liczbę:
+energię szumu tego pasma. Przy odtwarzaniu dekoder odtwarza losowy szum
+wyskalowany do tej energii. <code>--pns-gain</code> skaluje tę zapisaną
+energię wprost. <code>1.0</code> = bez zmian (odtworzony szum niesie
+energię oryginalnego pasma); <code>&gt;1.0</code> czyni szum
+głośniejszym niż oryginał (przydatne, gdy podstawiony szum brzmi zbyt
+nieśmiało i miks robi się głuchy); <code>&lt;1.0</code> czyni go
+cichszym (gdy szum za mocno syczy). Traktuj to jak pokrętło „jak głośny
+jest podstawiony szum". Wejście dziesiętne, <code>-1</code> = off.</p>
+<p>Pozostałe pokrętła PNS rządzą tym, KTÓRE pasma w ogóle zostaną
+zamienione w szum — etapem detekcji — a nie tym, jak głośny jest wynik.
+<code>--pns-tonality &lt;x&gt;</code> skaluje próg detekcji tonalności.
+PNS odpala się tylko na pasmach, które enkoder uzna za „szumopodobne"
+(niska tonalność); podniesienie tego progu pozwala większej liczbie pasm
+— nawet nieco tonalnym — zakwalifikować się jako szum, więc podstawianie
+szumu robi się SZERSZE (więcej widma zastąpione tanim szumem, większa
+oszczędność, ale i większe ryzyko rozmycia prawdziwych tonów). Obniżenie
+czyni PNS bardziej wybrednym. <code>1.0</code> = domyślnie.</p>
+<p><code>--pns-refpower &lt;x&gt;</code> skaluje próg mocy referencyjnej
+detekcji. PNS porównuje moc każdego pasma z referencją, zanim uzna je za
+kandydata na szum; to pokrętło przesuwa tę bramkę mocy. <code>1.0</code>
+= domyślnie; działa w parze z tonalnością — oba warunki muszą się
+zgodzić, żeby pasmo stało się PNS.</p>
+<p><code>--pns-gapfill &lt;x&gt;</code> skaluje próg wypełniania luk.
+Gdy PNS oznaczył pasma po obu stronach małej luki, ta heurystyka może
+„domknąć lukę" i oznaczyć jako PNS także pasmo pomiędzy nimi, żeby nie
+zostawić zakodowanej wyspy uwięzionej między dwoma pasmami szumu.
+Zaawansowane i subtelne — rzadko słyszalne samo w sobie.
+<code>1.0</code> = domyślnie.</p>
+<p><code>--pns-min-width &lt;n&gt;</code> ustala minimalną szerokość
+SFB, w liniach widmowych, jaką musi mieć pasmo, zanim PNS będzie mógł na
+nim zadziałać. To jedyny z tej grupy, który jest surową liczbą linii, a
+nie mnożnikiem <code>×100</code>. Jest skuteczny dopiero powyżej
+wbudowanej domyślnej (LC = 16 linii); podbicie do 32 albo 64 ogranicza
+PNS tylko do szerszych pasm, powstrzymując enkoder przed podstawianiem
+szumu na wąskich niskich pasmach, gdzie byłoby to bardziej słyszalne.
+<code>-1</code> = off (użyj domyślnej FDK).</p>
 <p><code>--ath-scale &lt;n&gt;</code> — skalowanie progu słyszalności
 (ATH), w Q8 (256 = ×1,0). To jest GLOBALNY regulator maskowania. Powyżej
 256 = podnosi progi = enkoder uznaje więcej rzeczy za niesłyszalne =
@@ -829,26 +915,48 @@ więcej mikrodetalu, co w porównaniu fazowym z oryginałem daje mniejsze
 różnice. To jest w duchu tego, co robił MusePack przy 1000 kbps — w
 granicach tego, co AAC pozwala wystawić bez przepisywania całego
 modelu.</p>
-<p>Dla MS-owanego materiału dołóż <code>--ms-precision 448</code> —
-płytsze dziury w pasmach MS to kolejne miejsce, gdzie wysoki bitrate
-daje realnie lepszy dźwięk.</p>
-<p>Poza ath-scale jest jeszcze bardziej bezpośrednia dźwignia.
-<code>--minsnr-scale &lt;n&gt;</code> (Q8, 256 = off) to najbliższy
-FDK-owy odpowiednik gałek TMN/NMT z MusePacka: skaluje WYMAGANY
-per-pasmo SNR kodowania (<code>sfbMinSnrLdData</code>). Wartości PONIŻEJ
-256 wymagają WYŻSZEGO SNR — więcej detalu, więcej bitów — a powyżej 256
-kodują zgrubniej. Jest skuteczniejsza niż <code>--ath-scale</code>, bo
-to właśnie do min-SNR logika "avoid holes" (unikania dziur) cofa progi;
-samo ruszenie kopii progu (jak robi ath-scale) jest częściowo cofane
-dalej w łańcuchu, ale min-SNR już nie. Jeśli chcesz wyjść poza fabryczne
-okno FDK, <code>--minsnr-clamp-hi &lt;n&gt;</code> skaluje sufit MAX_SNR
-(około −1 dB), a <code>--minsnr-clamp-lo &lt;n&gt;</code> skaluje
-podłogę MIN_SNR (około −25 dB); oba w Q8, 256 = off. Na koniec
-<code>--reduce-clamp 0</code> zdejmuje sufit "29 dB Ratio" redukcji
-progów w kwantyzatorze CBR, pozwalając enkoderowi wepchnąć progi głębiej
-i wlać bity w najbardziej wymagające pasma. Łączy się naturalnie z
+<p>Dla materiału, gdzie chcesz więcej budżetu w szerokości stereo, dołóż
+<code>--side-bias 6</code> — skierowanie bitów do kanału side to kolejne
+miejsce, gdzie wysoki bitrate daje realnie lepszy dźwięk. (Stare
+pokrętło <code>--ms-precision</code> robiło coś podobnego globalnie, ale
+jest bardzo eksperymentalne i w dużej mierze zastąpione;
+<code>--side-bias</code> to teraz właściwe narzędzie.)</p>
+<p>Poza ath-scale jest jeszcze bardziej bezpośrednia dźwignia i warto
+zrozumieć jej jednostki. Te pokrętła min-SNR działają w skali
+stałoprzecinkowej Q8, gdzie 256 oznacza 1,0 (więc 256 = „zostaw w
+spokoju", 128 = ×0,5, 512 = ×2,0); <code>-1</code> oznacza, że
+przełącznik jest wyłączony. <code>--minsnr-scale &lt;n&gt;</code> (Q8,
+256 = off) to najbliższy FDK-owy odpowiednik gałek TMN/NMT z MusePacka:
+skaluje WYMAGANY per-pasmo SNR kodowania (<code>sfbMinSnrLdData</code>),
+czyli minimalny stosunek sygnału do szumu, jaki enkoder upiera się
+osiągnąć w każdym paśmie skali. Wartości PONIŻEJ 256 wymagają WYŻSZEGO
+SNR — enkoder musi kodować każde pasmo dokładniej, więc więcej detalu i
+więcej bitów — a powyżej 256 rozluźniają wymóg i kodują zgrubniej. Jest
+skuteczniejsza niż <code>--ath-scale</code>, bo to właśnie do min-SNR
+logika „avoid holes" (unikania dziur) cofa progi; samo ruszenie kopii
+progu (jak robi ath-scale) jest częściowo cofane dalej w łańcuchu, ale
+podłoga min-SNR już nie.</p>
+<p>Dwa pokrętła clampu przesuwają twarde granice, jakie FDK narzuca
+wokół tego wymaganego SNR. Wewnętrznie FDK nigdy nie pozwala pasmu żądać
+więcej niż sufit MAX_SNR (około −1 dB) ani mniej niż podłoga MIN_SNR
+(około −25 dB), więc nawet agresywny <code>--minsnr-scale</code> jest
+przez nie ograniczony. <code>--minsnr-clamp-hi &lt;n&gt;</code> (Q8, 256
+= off) skaluje sufit MAX_SNR, pozwalając wymagającym pasmom prosić o
+WIĘCEJ niż fabryczny cap — to podnosisz, gdy sam
+<code>--minsnr-scale</code> zdaje się „kończyć miejsce" u góry.
+<code>--minsnr-clamp-lo &lt;n&gt;</code> (Q8, 256 = off) skaluje podłogę
+MIN_SNR na drugim końcu. Razem poszerzają fabryczne okno FDK, żeby
+<code>--minsnr-scale</code> miał dokąd jeszcze pchać.</p>
+<p>Na koniec <code>--reduce-clamp 0</code> zdejmuje sufit „29 dB Ratio"
+redukcji progów wewnątrz kwantyzatora CBR. Gdy pętli alokacji bitów CBR
+brakuje bitów, podnosi (rozluźnia) progi, ale stock FDK nie pozwala
+zredukować progu o więcej niż około 29 dB względem referencji — to clamp
+bezpieczeństwa. Ustawienie <code>--reduce-clamp 0</code> zdejmuje ten
+clamp, pozwalając enkoderowi wepchnąć progi głębiej i wlać bity w
+najbardziej wymagające pasma. Łączy się naturalnie z
 <code>--minsnr-scale</code> dla ekstremalnego detalu i dotyczy tylko CBR
-(VBR chodzi inną ścieżką).</p>
+(VBR chodzi inną ścieżką). Domyślnie jest <code>1</code> (clamp
+włączony, zachowanie stockowe).</p>
 <h2 id="19-dostrajanie-do-mowy-ludzkiej">19. Dostrajanie do mowy
 ludzkiej</h2>
 <p>Tak, w HE-AAC (a konkretnie w warstwie SBR) istnieje osobny tryb

@@ -2575,6 +2575,16 @@ void FDKaacEnc_AdjThrInit(
     msaParam->maxRed = FL2FXCONST_DBL(0.00390625f); /* 0.25f/64.0f */
     /* start adaptation of minSnr for avgEn/sfbEn > startRatio */
     msaParam->startRatio = FL2FXCONST_DBL(0.05190512648f); /* ld64(10.0f) */
+    /* Frankenstein --mask-slope: shift the MSA start threshold by N dB. + raises
+     * it (fewer quiet bands starved = more detail); - lowers it (starve harder).
+     * ld64 domain: 1 dB ~= 0.00519. */
+    if (g_franken.msaSlopeDbX10 != FRANKEN_OFF &&
+        g_franken.msaSlopeDbX10 != 0) {
+      double off = (g_franken.msaSlopeDbX10 / 10.0) * 0.00519;
+      double nr = 0.05190512648 + off;
+      if (nr < 0.0) nr = 0.0; /* clamp: never negative ratio */
+      msaParam->startRatio = (FIXP_DBL)((INT)(nr * 2147483648.0));
+    }
     /* maximum minSnr reduction to minSnr^maxRed is reached for
        avgEn/sfbEn >= maxRatio */
     /* msaParam->maxRatio = 1000.0f; */

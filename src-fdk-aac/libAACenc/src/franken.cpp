@@ -74,6 +74,9 @@ extern "C" void frankenResetDefaults(void) {
   g_franken.reduceClamp = -1;
 
   g_franken.midBiasQ8 = -1;
+  g_franken.sideBiasDbX10 = FRANKEN_OFF;
+  g_franken.sideKneeDbX10 = FRANKEN_OFF;
+  g_franken.msaSlopeDbX10 = FRANKEN_OFF;
 
   g_franken.sbrHeaderPeriod = -1;
   g_franken.effSbrHeaderPeriod = -1;

@@ -485,61 +485,123 @@ pure L/R.</td>
 <td><code>--ms-precision &lt;n&gt;</code></td>
 <td>256..no limit (Q8)</td>
 <td>-1 (off)</td>
-<td>Precision of MS bands. <code>&gt;256</code> = shallower holes in the
-MS spectrum (the coder allocates more bits to describe them, LAME -q
-style). 256=no change, 384~1.5x, 512~2x. Useful AUDIBLE effect up to
-~600-800; above that the threshold hits FDK's hard floor (ld64
--0.515625) and, under CBR, bits are only SHIFTED between bands (fixed
-budget), so the sound stops changing. Works best when you have spare
-bits (&gt;=128k) or in VBR.</td>
+<td><em>(Very experimental — you probably want <code>--side-bias</code>
+instead.)</em> Scales the precision of MS bands globally (both mid and
+side together), LAME <code>-q</code> style. 256=no change, 384~1.5x,
+512~2x. In practice its reach is limited: above ~600-800 the threshold
+hits FDK's hard floor and under CBR bits are only shifted between bands,
+so the sound stops changing. Superseded for stereo tuning by
+<code>--side-bias</code>/<code>--side-knee</code>, which act per-channel
+exactly where it matters.</td>
 </tr>
 <tr class="even">
 <td><code>--mid-bias &lt;n&gt;</code></td>
 <td>256..no limit (Q8)</td>
 <td>-1 (off)</td>
-<td><code>&gt;256</code> RAISES the mid (L+R) channel masking threshold
-after the MS butterfly, freeing bits from mid for the side channel. Use
-sparingly — mid carries most of the loudness. 256=off.</td>
+<td><em>(Very experimental — rarely needed.)</em> <code>&gt;256</code>
+RAISES the mid (L+R) threshold after the MS butterfly to free bits from
+mid for side. The cleaner, better-measured way to shift the mid↔︎side
+balance is <code>--side-bias</code> (which pulls from the same budget
+from the side end). Kept for completeness. 256=off.</td>
 </tr>
 <tr class="odd">
+<td><code>--side-bias &lt;dB&gt;</code></td>
+<td>-24.0 .. +50.0</td>
+<td>0 (off)</td>
+<td><strong>The main stereo-quality knob.</strong> Shifts the SIDE (L−R)
+channel's masking threshold on MS-coded bands, at the exact point where
+FDK decides whether a scalefactor band is coded or dropped
+(<code>energy &gt; threshold</code> in <code>sf_estim.cpp</code>). Sign
+= EFFECT: <strong><code>+</code> steers MORE bits to the side
+channel</strong> (lower threshold → fewer side bands zeroed, the
+survivors quantized finer → cleaner stereo width, reverb tails,
+ambience), at the mid channel's expense; <strong><code>−</code>
+deliberately DEGRADES the side</strong> (raises the threshold → side
+bands drop out → narrower, more mono image). This is the very same
+energy-vs-threshold decision LAME rides for its bit allocation and
+MusePack drives with <code>--ms</code> — nothing exotic. Because it is a
+fixed-budget tradeoff, at low bitrate the mid channel audibly gives up
+bits; that is expected, not a bug. Sane range <strong>+3 .. +9</strong>
+for "more spacious", negative only for extreme/artistic low-bitrate
+mangling. Measured on real material at 96 kbps: <code>+9</code> lifts
+side error in the 4–8 kHz region while mid degrades a few dB. 0 = off
+(bit-identical to stock).</td>
+</tr>
+<tr class="even">
+<td><code>--side-knee &lt;dB&gt;</code></td>
+<td>-24.0 .. +50.0</td>
+<td>0 (off)</td>
+<td>Shapes HOW SHARPLY a side band flips between "coded" and "zeroed" at
+the threshold. Stock FDK is a hard cliff: the instant
+<code>energy ≤ threshold</code> the whole band is dropped to zero.
+<strong><code>+</code> = SOFT knee</strong>: bands sitting up to N dB
+<em>below</em> the threshold are still kept (coded at the coarsest
+scalefactor) instead of dropped, so the side fades out gradually rather
+than switching off — smoother decay of reverb/air.
+<strong><code>−</code> = HARD knee</strong>: bands that only just clear
+the threshold (within N dB <em>above</em> it) are forced to zero anyway,
+cutting the side off early — leaner, more aggressive. Ortogonal to
+<code>--side-bias</code> and combines with it. Sane range <strong>+3 ..
++6</strong>. 0 = off.</td>
+</tr>
+<tr class="odd">
+<td><code>--mask-slope &lt;dB&gt;</code></td>
+<td>-24.0 .. +50.0</td>
+<td>0 (off)</td>
+<td>Global (mid <strong>and</strong> side) tuning of FDK's
+<strong>Masking-Slope-Adaptation</strong> — a NON-masking heuristic
+(<code>adj_thr.cpp</code>) that relaxes the required SNR for scalefactor
+bands whose energy sits far below the frame average (stock: more than
+~10 dB below), i.e. it deliberately starves very quiet bands to save
+bits. This knob shifts that "how far below average before I stop caring"
+threshold. <strong><code>+</code> raises it → fewer quiet bands starved
+→ more detail in quiet passages, reverb tails, decays</strong> (costs
+bits); <strong><code>−</code> lowers it → quiet bands starved harder →
+leaner, hollower, more bits for the loud stuff</strong>. Same family as
+<code>--side-bias</code> but applied to both channels and keyed on
+energy-vs-average rather than the MS threshold. Subtle on dense material
+(it only touches the quietest bands); most audible on sparse/reverberant
+content. Sane range <strong>±6 .. ±12</strong>. 0 = off.</td>
+</tr>
+<tr class="even">
 <td><code>--is &lt;n&gt;</code></td>
 <td>-1 auto, 0 off, 1 on</td>
 <td>-1</td>
 <td>Intensity stereo globally on/off.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--isbands &lt;n&gt;</code></td>
 <td>-1 no limit, 0..N</td>
 <td>-1</td>
 <td>Maximum number of SFBs that may use intensity. Above that — coded
 normally.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--is-aggression &lt;0..100&gt;</code></td>
 <td>0..100</td>
 <td>-1 (off)</td>
 <td>CONSUMER slider: how hard the encoder should push intensity stereo.
 Start here, leave the advanced <code>--is-*</code> alone.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--is-min-sfbs &lt;n&gt;</code></td>
 <td>-1 def(6), 0..N</td>
 <td>-1</td>
 <td>(advanced) Min. number of contiguous SFBs before IS turns on.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--is-corr-thresh &lt;n&gt;</code></td>
 <td>-1 def(243), Q8</td>
 <td>-1</td>
 <td>(advanced) L/R correlation threshold for IS in Q8 (256=1.0).</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--is-lr-ratio &lt;n&gt;</code></td>
 <td>-1 def(179), Q8</td>
 <td>-1</td>
 <td>(advanced) L/R energy balance threshold for IS in Q8 (256=1.0).</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--is-lo &lt;sfb&gt;</code></td>
 <td>-1 off, 0..N</td>
 <td>-1</td>
@@ -547,7 +609,7 @@ Start here, leave the advanced <code>--is-*</code> alone.</td>
 pure L/R. Only RESTRICTS where FDK may place IS — never forces it
 on.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--is-hi &lt;sfb&gt;</code></td>
 <td>-1 off, 0..N</td>
 <td>-1</td>
@@ -555,7 +617,7 @@ on.</td>
 <code>--is-lo</code> as a range. TIP: IS usually lands on LOW bands at
 low bitrate, so scan small values to see the effect.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--is-force-lo &lt;sfb&gt;</code></td>
 <td>-1 off, 0..N</td>
 <td>-1</td>
@@ -564,7 +626,7 @@ min-sfbs / loudness gates. Laboratory mode: can deliberately wreck the
 stereo image (IS is lossy + directional — the right channel is zeroed,
 only a panning coefficient survives). The stream stays legal.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--is-force-hi &lt;sfb&gt;</code></td>
 <td>-1 off, 0..N</td>
 <td>-1</td>
@@ -1992,9 +2054,10 @@ najbardziej geekowskich. Ta sama kolejność obowiazuje w
 <code>--unlock-bitrate</code> — sekcje 0, 1, 2, 10.</li>
 <li><strong>B. Stereo:</strong> MS (<code>--msmask</code>,
 <code>--msbands</code>, <code>--msbands-lo/-hi</code>,
-<code>--ms-bias</code>, <code>--ms-precision</code>), IS
-(<code>--is</code>, <code>--isbands</code>, <code>--is-*</code>), PS
-(<code>--ps</code>, <code>--ps-iid-quant</code>, <code>--ps-icc</code>,
+<code>--side-bias</code>, <code>--side-knee</code>,
+<code>--mask-slope</code>), IS (<code>--is</code>,
+<code>--isbands</code>, <code>--is-*</code>), PS (<code>--ps</code>,
+<code>--ps-iid-quant</code>, <code>--ps-icc</code>,
 <code>--ps-icc-mode</code>) — sekcje 1, 4, 8.</li>
 <li><strong>C. Pasmo i SBR:</strong> <code>--core-cutoff</code>,
 <code>--sbr-*</code> — sekcje 2, 3.</li>
@@ -2071,61 +2134,123 @@ czystym L/R.</td>
 <td><code>--ms-precision &lt;n&gt;</code></td>
 <td>256..bez limitu (Q8)</td>
 <td>-1 (off)</td>
-<td>Precyzja pasm MS. <code>&gt;256</code> = płytsze dziury w spektrum
-MS (koder alokuje więcej bitow na ich opis, styl LAME -q). 256=bez
-zmian, 384~1.5x, 512~2x. Użyteczny efekt SLYSZALNY do ~600-800; wyżej
-prog uderza w twarda podłogę FDK (ld64 -0.515625) i przy CBR bity są
-tylko PRZESUWANE między pasmami (stały budzet), więc brzmienie przestaje
-sie zmieniac. Działa najlepiej gdy masz zapas bitow (&gt;=128k) lub w
-VBR. UWAGA: działa jednakowo na mid i side.</td>
+<td><em>(Bardzo eksperymentalny — raczej niepotrzebny, użyj
+<code>--side-bias</code>.)</em> Skaluje precyzję pasm MS globalnie (mid
+i side razem), w stylu LAME <code>-q</code>. 256=bez zmian, 384~1.5x,
+512~2x. W praktyce jego zasięg jest ograniczony: powyżej ~600-800 prog
+uderza w twarda podłogę FDK, a przy CBR bity są tylko PRZESUWANE między
+pasmami, więc brzmienie przestaje sie zmieniac. Do strojenia stereo
+zastąpiony przez <code>--side-bias</code>/<code>--side-knee</code>,
+które działają per-kanał dokładnie tam, gdzie trzeba.</td>
 </tr>
 <tr class="even">
 <td><code>--mid-bias &lt;n&gt;</code></td>
 <td>256..bez limitu (Q8)</td>
 <td>-1 (off)</td>
-<td><code>&gt;256</code> podnosi prog kanału MID (L+R) po butterfly,
-uwalniając bity dla kanału side; używać oszczędnie — mid niesie
-większość głośności. 256=off.</td>
+<td><em>(Bardzo eksperymentalny — raczej niepotrzebny.)</em>
+<code>&gt;256</code> PODNOSI prog kanału mid (L+R) po motylku MS, żeby
+uwolnić bity z mid dla side. Czystszym, lepiej zmierzonym sposobem
+przesunięcia balansu mid↔︎side jest <code>--side-bias</code> (który sięga
+po ten sam budzet od strony side). Zostawiony dla kompletności.
+256=off.</td>
 </tr>
 <tr class="odd">
+<td><code>--side-bias &lt;dB&gt;</code></td>
+<td>-24.0 .. +50.0</td>
+<td>0 (off)</td>
+<td><strong>Główne pokrętło jakości stereo.</strong> Przesuwa prog
+maskowania kanału SIDE (L−R) na pasmach kodowanych w MS, dokładnie w
+miejscu, gdzie FDK decyduje, czy pasmo skali (SFB) jest kodowane czy
+zerowane (<code>energia &gt; prog</code> w <code>sf_estim.cpp</code>).
+Znak = EFEKT: <strong><code>+</code> kieruje WIĘCEJ bitow do kanału
+side</strong> (niższy prog → mniej pasm side zerowanych, przetrwałe
+kwantyzowane dokładniej → czystsza szerokość stereo, ogony pogłosu,
+ambience), kosztem kanału mid; <strong><code>−</code> celowo DEGRADUJE
+side</strong> (podnosi prog → pasma side wypadają → węższy, bardziej
+mono obraz). To dokładnie ta sama zależność energia-vs-prog, której LAME
+używa do alokacji bitow, a MusePack steruje przez <code>--ms</code> —
+nic egzotycznego. Ponieważ to tradeoff przy stałym budzecie, przy niskim
+bitrate kanał mid słyszalnie oddaje bity; to oczekiwane, nie błąd.
+Rozsądny zakres <strong>+3 .. +9</strong> dla „szerzej", ujemne tylko do
+skrajnego/artystycznego niszczenia przy niskim bitrate. 0 = off
+(bit-identyczny ze stockiem).</td>
+</tr>
+<tr class="even">
+<td><code>--side-knee &lt;dB&gt;</code></td>
+<td>-24.0 .. +50.0</td>
+<td>0 (off)</td>
+<td>Kształtuje JAK OSTRO pasmo side przełącza się między „kodowane" a
+„wyzerowane" na progu. Stock FDK to twardy klif: w chwili gdy
+<code>energia ≤ prog</code>, całe pasmo spada do zera.
+<strong><code>+</code> = MIĘKKIE kolano</strong>: pasma leżące do N dB
+<em>poniżej</em> progu są nadal zachowane (kodowane na najzgrubszym
+scalefactorze) zamiast zerowane, więc side gaśnie stopniowo zamiast
+wyłączać się — łagodniejsze wybrzmienie pogłosu/powietrza.
+<strong><code>−</code> = TWARDE kolano</strong>: pasma, które ledwo
+przekraczają prog (do N dB <em>nad</em> nim), są mimo to zerowane,
+odcinając side wcześniej — chudziej, agresywniej. Ortogonalny do
+<code>--side-bias</code> i łączy się z nim. Rozsądny zakres <strong>+3
+.. +6</strong>. 0 = off.</td>
+</tr>
+<tr class="odd">
+<td><code>--mask-slope &lt;dB&gt;</code></td>
+<td>-24.0 .. +50.0</td>
+<td>0 (off)</td>
+<td>Globalne (mid <strong>i</strong> side) strojenie
+<strong>Masking-Slope-Adaptation</strong> FDK — heurystyki
+NIE-maskującej (<code>adj_thr.cpp</code>), która rozluźnia wymagany SNR
+dla pasm SFB o energii dużo poniżej średniej ramki (stock: ponad ~10 dB
+poniżej), czyli celowo głodzi bardzo ciche pasma, żeby oszczędzić bity.
+To pokrętło przesuwa prog „jak daleko poniżej średniej, zanim przestanę
+się przejmować". <strong><code>+</code> podnosi go → mniej cichych pasm
+głodzonych → więcej detalu w cichych fragmentach, ogonach pogłosu,
+wybrzmieniach</strong> (kosztuje bity); <strong><code>−</code> obniża go
+→ ciche pasma głodzone mocniej → chudziej, bardziej pusto, więcej bitow
+na głośne rzeczy</strong>. Ta sama rodzina co <code>--side-bias</code>,
+ale stosowana do obu kanałów i zakotwiczona na energii-vs-średnia
+zamiast progu MS. Subtelny na gęstym materiale (rusza tylko najcichsze
+pasma); najbardziej słyszalny na rzadkiej/pogłosowej treści. Rozsądny
+zakres <strong>±6 .. ±12</strong>. 0 = off.</td>
+</tr>
+<tr class="even">
 <td><code>--is &lt;n&gt;</code></td>
 <td>-1 auto, 0 off, 1 on</td>
 <td>-1</td>
 <td>Intensity stereo globalnie wł/wył.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--isbands &lt;n&gt;</code></td>
 <td>-1 brak limitu, 0..N</td>
 <td>-1</td>
 <td>Maksymalna liczba SFB, które mogą użyć intensity. Powyżej — kodowane
 normalnie.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--is-aggression &lt;0..100&gt;</code></td>
 <td>0..100</td>
 <td>-1 (off)</td>
 <td>KONSUMENCKI suwak: jak bardzo enkoder ma isc w intensity stereo.
 Zaczynaj tu, zaawansowane <code>--is-*</code> zostaw.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--is-min-sfbs &lt;n&gt;</code></td>
 <td>-1 def(6), 0..N</td>
 <td>-1</td>
 <td>(zaawansowane) Min. liczba ciaglych SFB, zanim IS sie włączy.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--is-corr-thresh &lt;n&gt;</code></td>
 <td>-1 def(243), Q8</td>
 <td>-1</td>
 <td>(zaawansowane) Prog korelacji L/R dla IS w Q8 (256=1.0).</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--is-lr-ratio &lt;n&gt;</code></td>
 <td>-1 def(179), Q8</td>
 <td>-1</td>
 <td>(zaawansowane) Prog balansu energii L/R dla IS w Q8 (256=1.0).</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--is-lo &lt;sfb&gt;</code></td>
 <td>-1 off, 0..N</td>
 <td>-1</td>
@@ -2133,7 +2258,7 @@ Zaczynaj tu, zaawansowane <code>--is-*</code> zostaw.</td>
 zostają czyste L/R. Tylko OGRANICZA gdzie FDK może użyć IS — nigdy go
 nie wymusza.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--is-hi &lt;sfb&gt;</code></td>
 <td>-1 off, 0..N</td>
 <td>-1</td>
@@ -2142,7 +2267,7 @@ nie wymusza.</td>
 pasmach przy niskim bitrate, więc skanuj małe wartości, by zobaczyć
 efekt.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--is-force-lo &lt;sfb&gt;</code></td>
 <td>-1 off, 0..N</td>
 <td>-1</td>
@@ -2151,7 +2276,7 @@ min-sfbs / głośności. Tryb laboratoryjny: może celowo rozbić obraz
 stereo (IS jest stratne i kierunkowe — prawy kanał zostaje wyzerowany,
 zostaje tylko współczynnik panoramy). Strumien pozostaje legalny.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--is-force-hi &lt;sfb&gt;</code></td>
 <td>-1 off, 0..N</td>
 <td>-1</td>
@@ -2638,8 +2763,8 @@ wystawiony:</p>
 (więcej detalu za bity).</li>
 <li><code>--spread-mask &lt;256</code> — mniej maskowania
 międzypasmowego (więcej pasm kodowanych).</li>
-<li><code>--ms-precision &gt;256</code> — płytsze dziury w pasmach
-MS.</li>
+<li><code>--side-bias &gt;0</code> — więcej bitow do kanału side
+(czystsza szerokość stereo).</li>
 <li><code>--is-aggression</code> — steruj intensity stereo (kluczowe
 przy niskim bitrate).</li>
 <li><code>--force-pns</code> + <code>--pns-start</code> — kontrola szumu
@@ -2698,9 +2823,11 @@ decyzji MS (uczciwie: narzędzie o SŁABYM efekcie)</h2>
 <td><code>--ms-bias &lt;n&gt;</code></td>
 <td>0..255 (Q8)</td>
 <td>-1 (off)</td>
-<td>Przesuwa prog decyzji L/R vs MS. Q8, 128 = +0.5 w jednostkach ld64
-FDK. &gt;0 = MS chętniejsze. Reaguje juz od ~32 (po rekalibracji
-skali).</td>
+<td><em>(Bardzo eksperymentalny — raczej niepotrzebny, użyj
+<code>--side-bias</code>.)</em> Przesuwa prog decyzji L/R vs MS. Q8, 128
+= +0.5 w jednostkach ld64 FDK. &gt;0 = MS chętniejsze. Reaguje juz od
+~32 (po rekalibracji skali). Do realnego strojenia balansu stereo
+właściwym narzędziem jest <code>--side-bias</code>, nie ten bias.</td>
 </tr>
 </tbody>
 </table>

@@ -57,7 +57,7 @@ test_exe(){
 
   # 1) help kompletny - franken switche obecne
   local hn
-  hn=$("$exe" --help 2>&1 | grep -cE '^ --(msmask|msbands|is|isbands|is-min-sfbs|is-corr-thresh|is-lr-ratio|is-lo|is-hi|is-force-lo|is-force-hi|core-cutoff|sbr-start|sbr-stop|sbr-freqscale|sbr-alterscale|sbr-noise-bands|sbr-amp-res|sbr-data-extra|sbr-header-period|ps|ps-iid-quant|tns-mask|tns-order|pns|pns-start|pns-gain|pns-tonality|pns-refpower|pns-gapfill|pns-min-width|ath-scale|minsnr-scale|minsnr-clamp-hi|minsnr-clamp-lo|reduce-clamp|mid-bias|block-bias|vbr-reservoir|peak-bitrate|max-bits-frame|min-bits-frame|bitres-mode|ms-bias|verbose)')
+  hn=$("$exe" --help 2>&1 | grep -cE '^ --(msmask|msbands|is|isbands|is-min-sfbs|is-corr-thresh|is-lr-ratio|is-lo|is-hi|is-force-lo|is-force-hi|core-cutoff|sbr-start|sbr-stop|sbr-freqscale|sbr-alterscale|sbr-noise-bands|sbr-amp-res|sbr-data-extra|sbr-header-period|ps|ps-iid-quant|tns-mask|tns-order|pns|pns-start|pns-gain|pns-tonality|pns-refpower|pns-gapfill|pns-min-width|ath-scale|minsnr-scale|minsnr-clamp-hi|minsnr-clamp-lo|reduce-clamp|mid-bias|side-bias|side-knee|mask-slope|block-bias|vbr-reservoir|peak-bitrate|max-bits-frame|min-bits-frame|bitres-mode|ms-bias|verbose)')
   [ "$hn" -ge 40 ] && ok "help: $hn franken switchy" || bad "help: tylko $hn switchy (oczekiwano >=40)"
 
   # 2) baseline + rozny bitstream per switch, wszystko dekodowalne
@@ -75,6 +75,11 @@ test_exe(){
                 "speech:-p5 -b32000 --speech" "spread-mask:-b128000 --spread-mask 64"
  "ms-prec-hi:--ms-precision 1024"
  "mid-bias:-b96000 --mid-bias 384"
+ "side-bias:-b96000 --side-bias 6"
+ "side-knee:-b96000 --side-knee 4"
+ "side-bias+knee:-b96000 --side-bias 6 --side-knee 4"
+ "mask-slope-pos:-b96000 --mask-slope 12"
+ "mask-slope-neg:-b96000 --mask-slope -12"
  "minsnr-scale:-b128000 --minsnr-scale 128"
  "minsnr-clamp-hi:-b128000 --minsnr-clamp-hi 512"
  "minsnr-clamp-lo:-b128000 --minsnr-clamp-lo 64"
