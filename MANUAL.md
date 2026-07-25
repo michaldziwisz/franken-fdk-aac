@@ -828,7 +828,95 @@ Wartości w skali Q8 (jak progi IS, `--ms-precision`, `--ms-bias`, `--ath-scale`
 `--spread-mask`) to liczby, gdzie 256 znaczy 1,0 — na przykład 243 to około 0,95.
 
 
-# Część VIII. Słownik pojęć
+# Część VIII. Radio cyfrowe DAB+
+
+## 27. Wyjście DAB+ (`--dab`, `--dab-label`)
+
+Do tej pory robiliśmy pliki — MP4/M4A dla odtwarzaczy, ADTS do streamingu. DAB+ to
+coś innego: to format naziemnego radia cyfrowego (standard ETSI TS 102 563), a ten
+enkoder potrafi wyprodukować gotowy strumień DAB+ bezpośrednio, bez żadnego
+zewnętrznego przepakowywania.
+
+Dlaczego nie można po prostu wziąć zwykłego pliku AAC i wysłać go w eter? Bo DAB+
+niesie AAC na swój własny sposób. Po pierwsze, transformata jest krótsza — 960
+próbek zamiast typowych 1024 — żeby długość ramki pasowała do siatki czasowej
+radia. Po drugie, dźwięk pakowany jest w **super-ramkę** trwającą dokładnie 120
+milisekund. Po trzecie, i najważniejsze, eter to środowisko wrogie: sygnał zanika,
+samochody wjeżdżają w tunele, zakłócenia przychodzą i odchodzą. Dlatego DAB+
+otula dźwięk dwiema warstwami ochrony: **firecode'em** (CRC Fire) strzegącym
+nagłówka oraz kodowaniem korekcyjnym **Reed-Solomon** — konkretnie RS(120,110) nad
+ciałem Galois GF(256) — które pozwala odbiornikowi odtworzyć dane nawet wtedy, gdy
+część sygnału dotrze uszkodzona. To wszystko enkoder robi za ciebie.
+
+Wychodzi z tego surowy strumień `.dabp`: jedna super-ramka po drugiej, nic więcej.
+To nie jest plik, który odtworzysz w odtwarzaczu multimediów — to surowiec, który
+połyka multiplekser DAB+. W praktyce łańcuch wygląda tak:
+
+    out.dabp → odr-dabmux → ETI → nadajnik (albo programowy odbiornik: welle.io, dablin)
+
+`odr-dabmux` to multiplekser, który łączy kilka stacji w jeden zespół (ensemble) i
+produkuje strumień ETI, a ten idzie potem albo do prawdziwego nadajnika, albo do
+programowego odbiornika do testów.
+
+### Włączenie: `--dab`
+
+    fdkaac --dab -b 96 -o out.dabp input.wav
+
+Przełącznik `--dab` przestawia enkoder w tryb wyjścia DAB+. Kilka reguł, które
+narzuca standard, a których enkoder pilnuje:
+
+- Częstotliwość próbkowania MUSI wynosić 32000 lub 48000 Hz. Nic innego nie jest
+  w DAB+ legalne.
+- Bitrate musi być wielokrotnością 8 kbps, od 8 do 192 kbps.
+- Mono i stereo są dozwolone.
+
+Ciekawe jest to, że zwykle NIE wybierasz profilu samodzielnie. Praktyka DAB+ (i
+narzędzie referencyjne `odr-audioenc`) polega na wyprowadzeniu profilu AAC z
+bitrate i liczby kanałów, tak aby niskie bitrate automatycznie sięgały po
+oszczędniejsze narzędzia:
+
+- stereo przy 48 kbps lub niżej → **HE-AAC v2** (z Parametric Stereo),
+- mono do 64k, albo stereo do 80k → **HE-AAC** (z SBR),
+- powyżej → **AAC-LC** (zwykły, pełnopasmowy profil).
+
+Więc `-b 96` na pliku stereo trafi na AAC-LC, `-b 64` na HE-AAC, a `-b 32` na
+HE-AAC v2 — nie musisz o tym myśleć. Jeśli się upierasz, profil nadal wymusisz
+przełącznikiem `-p` (2 = LC, 5 = HE-AAC, 29 = HE-AAC v2), tak samo jak w każdym
+innym trybie tego enkodera.
+
+    fdkaac --dab -b 64 -o out.dabp input.wav    # → HE-AAC automatycznie
+    fdkaac --dab -b 32 -o out.dabp input.wav    # → HE-AAC v2 automatycznie
+
+### Etykieta stacji: `--dab-label`
+
+Odbiornik DAB+ pokazuje na wyświetlaczu tekst — nazwę stacji, a często i tytuł
+tego, co gra. W DAB+ ten tekst podróżuje kanałem zwanym DLS (Dynamic Label
+Segment), wetkniętym jako dane X-PAD wewnątrz super-ramki. Ten enkoder potrafi
+nieść etykietę STATYCZNĄ — jeden stały napis przez cały plik:
+
+    fdkaac --dab -b 96 --dab-label "Radio DHT" -o out.dabp input.wav
+
+Mieści się do około 48 znaków (trzy segmenty upakowane w jeden PAD). "Statyczna" to
+słowo klucz: tekst nie zmienia się w trakcie pliku. Prawdziwie dynamiczna etykieta,
+aktualizowana utwór po utworze, oraz pokaz slajdów MOT wrzucający okładkę albumu na
+ekran (zadanie `ODR-PadEnc` w świecie OpenDigitalRadio) są w planach, ale jeszcze
+ich tu nie ma. I uwaga: `--dab-label` bez `--dab` nic nie robi — etykieta jest po
+prostu ignorowana, bo nie ma super-ramki, do której można by ją wstawić.
+
+### Słowo o zaufaniu
+
+Wszystko powyżej sprawdzono niezależnymi narzędziami, nie tylko na zasadzie "się
+skompilowało". Strumienie dekodują się czysto w faad2 (dekoder stojący za dablin),
+etykieta DLS odczytuje się poprawnie po stronie odbiornika, a wyjście AAC-LC jest
+bit-identyczne z tym, co z tego samego wejścia produkuje referencyjny
+`odr-audioenc`. Przetestowano dziewięć kombinacji — 48 i 32 kHz, mono i stereo,
+we wszystkich trzech profilach — i każda dekoduje się samodzielnie. Jak wszędzie w
+tym enkoderze: jeśli nie podasz `--dab`, nic się nie zmienia, a zwykłe wyjście do
+pliku pozostaje bit-identyczne ze stockowym FDK.
+
+---
+
+# Część IX. Słownik pojęć
 
 Dla szybkiego przypomnienia — wszystkie terminy z tego manuala, wyjaśnione
 jednym–dwoma zdaniami, językiem dźwiękowca.

@@ -10,4 +10,5 @@ check test:
 	@bash tests/check.sh
 
 clean-test:
-	@rm -f _check_in.wav _check_out*.m4a _check_out*.aac _check_out*.txt
+	@rm -f _check_in.wav _check_dab_in.wav _check_out*.m4a _check_out*.aac _check_out*.txt _check_out*.dabp _check_out*.bin
+	@rm -rf _check_dabtmp

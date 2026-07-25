@@ -13,6 +13,17 @@
 #include <string.h>
 #include "aacenc.h"
 
+/* DAB+ static DLS X-PAD, injected as ancillary data on every audio frame.
+   Set once by aacenc_set_dab_pad(); see dab_pad.c for the byte layout. */
+static const unsigned char *g_dab_pad = 0;
+static int g_dab_pad_len = 0;
+
+void aacenc_set_dab_pad(const unsigned char *pad, int len)
+{
+    g_dab_pad = pad;
+    g_dab_pad_len = len;
+}
+
 int aacenc_is_explicit_bw_compatible_sbr_signaling_available()
 {
     LIB_INFO lib_info;
@@ -36,6 +47,7 @@ int aacenc_is_sbr_active(const aacenc_param_t *params)
     switch (params->profile) {
     case AOT_SBR: case AOT_PS:
     case AOT_DRM_SBR: case AOT_DRM_MPEG_PS:
+    case AOT_DABPLUS_SBR: case AOT_DABPLUS_PS:
         return 1;
     }
     if (params->profile == AOT_ER_AAC_ELD && params->lowdelay_sbr)
@@ -45,9 +57,9 @@ int aacenc_is_sbr_active(const aacenc_param_t *params)
 
 int aacenc_is_dual_rate_sbr(const aacenc_param_t *params)
 {
-    if (params->profile == AOT_PS)
+    if (params->profile == AOT_PS || params->profile == AOT_DABPLUS_PS)
         return 1;
-    else if (params->profile == AOT_SBR)
+    else if (params->profile == AOT_SBR || params->profile == AOT_DABPLUS_SBR)
         return params->sbr_ratio == 0 || params->sbr_ratio == 2;
     else if (params->profile == AOT_ER_AAC_ELD && params->lowdelay_sbr)
         return params->sbr_ratio == 2;
@@ -217,6 +229,11 @@ int aacenc_init(HANDLE_AACENCODER *encoder, const aacenc_param_t *params,
     if (aacEncoder_SetParam(*encoder, AACENC_TRANSMUX,
                             params->transport_format) != AACENC_OK) {
         fprintf(stderr, "ERROR: unsupported transport format\n");
+        goto FAIL;
+    }
+    if (params->fr_dab &&
+        aacEncoder_SetParam(*encoder, AACENC_GRANULE_LENGTH, 960) != AACENC_OK) {
+        fprintf(stderr, "ERROR: failed to set DAB+ granule length 960\n");
         goto FAIL;
     }
     if (aacEncoder_SetParam(*encoder, AACENC_SIGNALING_MODE,
@@ -541,19 +558,26 @@ int aac_encode_frame(HANDLE_AACENCODER encoder,
     AACENC_BufDesc ibdesc = { 0 }, obdesc = { 0 };
     AACENC_InArgs iargs = { 0 };
     AACENC_OutArgs oargs = { 0 };
-    void *ibufs[] = { (void*)input };
+    void *ibufs[2];
     void *obufs[1];
-    INT ibuf_ids[] = { IN_AUDIO_DATA };
+    INT ibuf_ids[] = { IN_AUDIO_DATA, IN_ANCILLRY_DATA };
     INT obuf_ids[] = { OUT_BITSTREAM_DATA };
-    INT ibuf_sizes[] = { ilen * sizeof(INT_PCM) };
+    INT ibuf_sizes[2];
     INT obuf_sizes[1];
-    INT ibuf_el_sizes[] = { sizeof(INT_PCM) };
+    INT ibuf_el_sizes[] = { sizeof(INT_PCM), 1 };
     INT obuf_el_sizes[] = { 1 };
     AACENC_ERROR err;
     unsigned channel_mode, obytes;
 
     channel_mode = aacEncoder_GetParam(encoder, AACENC_CHANNELMODE);
     obytes = 6144 / 8 * channel_mode;
+    /* DAB+ hands back a whole superframe. The encoder internally re-tunes the
+       AAC bitrate to fit the RS data area, so GetParam(BITRATE) no longer maps to
+       subchannel_index. Just size for the max possible superframe (subch<=24 ->
+       24*120 = 2880 B) — cheap and always sufficient. */
+    if (aacEncoder_GetParam(encoder, AACENC_TRANSMUX) == TT_DABPLUS) {
+        if (obytes < 24 * 120) obytes = 24 * 120;
+    }
     if (!output->data || output->capacity < obytes) {
         uint8_t *p = realloc(output->data, obytes);
         if (!p) return -1;
@@ -564,11 +588,25 @@ int aac_encode_frame(HANDLE_AACENCODER encoder,
     obuf_sizes[0] = obytes;
 
     iargs.numInSamples = ilen ? ilen : -1; /* -1 for signaling EOF */
+
+    ibufs[0] = (void*)input;
+    ibuf_sizes[0] = ilen * sizeof(INT_PCM);
     ibdesc.numBufs = 1;
     ibdesc.bufs = ibufs;
     ibdesc.bufferIdentifiers = ibuf_ids;
     ibdesc.bufSizes = ibuf_sizes;
     ibdesc.bufElSizes = ibuf_el_sizes;
+
+    /* DAB+ static DLS: inject the X-PAD as ancillary data on every audio frame.
+       g_dab_pad/g_dab_pad_len are set once by aacenc_set_dab_pad(). The library
+       carries it as a data stream element (DSE) inside the AAC frame. */
+    if (ilen && g_dab_pad_len > 0) {
+        ibufs[1] = (void*)g_dab_pad;
+        ibuf_sizes[1] = g_dab_pad_len;
+        ibdesc.numBufs = 2;
+        iargs.numAncBytes = g_dab_pad_len;
+    }
+
     obdesc.numBufs = 1;
     obdesc.bufs = obufs;
     obdesc.bufferIdentifiers = obuf_ids;

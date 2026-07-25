@@ -3,6 +3,23 @@
 This is a **Third-Party Modified Version of the Fraunhofer FDK AAC Codec
 Library** (per section 2 of the FDK AAC license, see `NOTICE.fdk-aac`).
 
+## Releases
+
+### v1.2.0 — DAB+ digital-radio output
+
+- **New `--dab` output mode** (ETSI TS 102 563): emits a DAB+ super-frame stream
+  (960-sample transform, 120 ms super frame, firecode + Reed-Solomon RS(120,110)
+  over GF(256)) as a raw `.dabp` stream for multiplexers such as `odr-dabmux`.
+- Profile **auto-selected** from bitrate and channel count (AAC-LC / HE-AAC /
+  HE-AAC v2), like `odr-audioenc`; override with `-p`. Supports 32/48 kHz,
+  mono/stereo, bitrate 8..192 kbps in 8 kbps steps.
+- **`--dab-label "<text>"`** — static DLS (Dynamic Label Segment) carried as
+  X-PAD in the super frame; shown by DAB+ receivers as the station name / title.
+- Verified against an independent faad2 decoder (dablin) across all nine
+  sr×channel×profile combinations; LC output is bit-identical to `odr-audioenc`.
+- Windows x64 + x86 binaries build unchanged (mingw-w64). Without `--dab` the
+  encoder is bit-identical to the previous release.
+
 ## Modifications
 
 Modified by **Michał Dziwisz** in 2026 (subject-matter consultant: Patryk
@@ -28,6 +45,14 @@ stock FDK):
 - Frontend (`nu774/fdkaac`: `main.c`, `aacenc.c`, `aacenc.h`) — CLI switches,
   parsing, `--verbose` dump, encoder-identifier tag rebranded to "PompAAC based on…",
   MP4 metadata switches (`--no-tool-tag`, `--minimal-moov`).
+- DAB+ output (`--dab`, `--dab-label`) — new digital-radio output mode per ETSI TS
+  102 563: 960-sample transform, 120 ms super frame with firecode (Fire CRC) and
+  Reed-Solomon RS(120,110) over GF(256), raw `.dabp` stream for `odr-dabmux`.
+  Profile (AAC-LC / HE-AAC / HE-AAC v2) auto-selected from bitrate and channel
+  count (like `odr-audioenc`); 32/48 kHz, mono/stereo, bitrate 8..192 kbps in 8k
+  steps. `--dab-label` carries a static DLS (Dynamic Label Segment) as X-PAD.
+  Streams verified against an independent faad2 decoder (dablin); LC output
+  bit-identical to `odr-audioenc`. Gated: without `--dab` behavior is unchanged.
 
 The term "Fraunhofer FDK AAC Codec Library for Android" is, per the license,
 replaced by "Third-Party Modified Version of the Fraunhofer FDK AAC Codec

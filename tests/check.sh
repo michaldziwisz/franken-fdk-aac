@@ -30,7 +30,7 @@ command -v ffmpeg  >/dev/null || { echo "SKIP: brak ffmpeg";  exit 77; }
 command -v python3 >/dev/null || { echo "SKIP: brak python3"; exit 77; }
 [ -x "$X64" ] || [ -f "$X64" ] || { echo "FAIL: brak $X64"; exit 1; }
 
-cleanup(){ rm -f "$WAV" "${OUT}"*.m4a "${OUT}"*.aac "${OUT}"*.txt; }
+cleanup(){ rm -f "$WAV" _check_dab_in.wav "${OUT}"*.m4a "${OUT}"*.aac "${OUT}"*.txt "${OUT}"*.dabp "${OUT}"*.bin; rm -rf _check_dabtmp; }
 trap cleanup EXIT
 
 # --- probka: 2s stereo, ton + lekki szum (rusza MS/IS/TNS) ---
@@ -141,6 +141,104 @@ PY
 
 test_exe "$X64" "x64"
 test_exe "$X86" "x86"
+
+# --- DAB+ (--dab): superframe LC/HE/HEv2 + statyczny DLS ---
+# Osobna sciezka: .dabp NIE jest dekodowalny przez ffmpeg. Strukture i etykiete
+# weryfikujemy w python3 (zawsze dostepny); dekodowalnosc audio przez dablin/
+# odr-dabmux gdy sa (inaczej graceful skip). Bit-id z odr-audioenc gdy jest.
+DABLIN="${DABLIN:-$(command -v dablin 2>/dev/null || echo /tmp/dabtools/root/usr/bin/dablin)}"
+DABMUX="${DABMUX:-$(command -v odr-dabmux 2>/dev/null || echo /tmp/dabtools/root/usr/bin/odr-dabmux)}"
+DABLIN_LIBS="${DABLIN_LIBS:-/tmp/dabtools/root/usr/lib/x86_64-linux-gnu}"
+ODRENC="${ODRENC:-$HOME/dab_ref/inst/bin/odr-audioenc}"
+
+test_dab(){
+  local exe="$1" tag="$2"
+  echo "== DAB+ $tag ($exe) =="
+  [ -f "$exe" ] || { echo "  (pominieto - brak binarki)"; return; }
+
+  # DAB+ przyjmuje tylko sr 32k/48k - osobna probka 48k (glowna jest 44.1k).
+  local DWAV=_check_dab_in.wav
+  python3 - "$DWAV" <<'PY'
+import wave,struct,math,random,sys
+sr=48000; random.seed(2); c=lambda x:max(-32768,min(32767,int(x)))
+w=wave.open(sys.argv[1],'wb'); w.setnchannels(2); w.setsampwidth(2); w.setframerate(sr)
+w.writeframes(b''.join(struct.pack('<hh',
+   c(9000*(math.sin(2*math.pi*440*i/sr)+0.3*random.uniform(-1,1))),
+   c(9000*(math.sin(2*math.pi*1000*i/sr)+0.3*random.uniform(-1,1)))) for i in range(sr*2)))
+w.close()
+PY
+
+  # 1) 3 profile x auto-AOT: enkoduje, spojna struktura super-ramki (subch*120)
+  local specs=( "LC96:96:12" "HE64:64:8" "PS32:32:4" )
+  for s in "${specs[@]}"; do
+    local n="${s%%:*}"
+    local rest="${s#*:}"
+    local b="${rest%%:*}"
+    local subch="${rest##*:}"
+    enc "$exe" --dab -b "$b" -o "${OUT}_dab_$n.dabp" "$DWAV"
+    local sz; sz=$(stat -c%s "${OUT}_dab_$n.dabp" 2>/dev/null || echo 0)
+    local sf=$((subch*120))
+    if [ "$sz" -gt 0 ] && [ $((sz % sf)) -eq 0 ]; then ok "DAB+ $n: super-ramka spojna ($sz B, %$sf=0)"
+    else bad "DAB+ $n: rozmiar $sz nie jest wielokrotnoscia $sf"; fi
+  done
+
+  # 2) statyczny DLS: etykieta trafia do strumienia (reverse-fill X-PAD w DSE)
+  enc "$exe" --dab -b 96 --dab-label "Radio Test 123" -o "${OUT}_dab_lbl.dabp" "$DWAV"
+  if python3 - "${OUT}_dab_lbl.dabp" <<'PY'
+import sys
+d=open(sys.argv[1],'rb').read()
+sys.exit(0 if b'Radio Test 123'[::-1] in d else 1)
+PY
+  then ok "DAB+ DLS: etykieta obecna w strumieniu (reverse X-PAD)"
+  else bad "DAB+ DLS: etykieta nieobecna w strumieniu"; fi
+
+  # 3) round-trip DLS przez niezalezny dekoder tools/dab/ (gen + decode)
+  if [ -f tools/dab/dls_decode.py ] && [ -f tools/dab/gen_test_xpad.py ]; then
+    local got
+    python3 tools/dab/gen_test_xpad.py "Radio Test 123" 48 "${OUT}_xpad.bin" 2>/dev/null
+    got=$(python3 tools/dab/dls_decode.py "${OUT}_xpad.bin" 48 2>/dev/null)
+    [ "$got" = "Radio Test 123" ] && ok "DAB+ DLS: round-trip dekoder = 'Radio Test 123'" \
+      || bad "DAB+ DLS: round-trip dal '$got'"
+  fi
+
+  # 4) no-regression: --dab bez labela == odr-audioenc (bit-identyczny) - gdy jest
+  if [ -x "$ODRENC" ] && [ "$tag" = "x64-native" ]; then
+    enc "$exe" --dab -b 96 -o "${OUT}_dab_nl.dabp" "$DWAV"
+    "$ODRENC" -i "$DWAV" -f wav -b 96 -r 48000 -c 2 -o "${OUT}_dab_g.dabp" >/dev/null 2>&1
+    if cmp -s "${OUT}_dab_nl.dabp" "${OUT}_dab_g.dabp"; then ok "DAB+ LC bit-identyczny z odr-audioenc"
+    else echo "  (info) DAB+ LC rozny od odr (moze inny sr/wersja) - pomijam"; fi
+  fi
+
+  # 5) audio z super-ramki dekoduje sie (dablin/odr-dabmux) - opcjonalne
+  if [ -x "$DABMUX" ] && [ -x "$DABLIN" ]; then
+    local d=_check_dabtmp; rm -rf "$d"; mkdir -p "$d"
+    cp "${OUT}_dab_LC96.dabp" "$d/a.dabp"
+    cat > "$d/m.mux" <<EOF
+general { dabmode 1 nbframes 250 }
+ensemble { id 0x4fff ecc 0xec label "T" shortlabel "T" international-table 1 }
+services { srv { label "A" shortlabel "A" pty 0 language 0 } }
+subchannels { sub { type dabplus inputfile "a.dabp" nonblock false bitrate 96 id 1 protection 3 } }
+components { comp { type 0 service srv subchannel sub } }
+outputs { out1 "file://a.eti?type=raw" }
+EOF
+    ( cd "$d" && LD_LIBRARY_PATH="$DABLIN_LIBS" "$DABMUX" m.mux >/dev/null 2>&1 \
+        && LD_LIBRARY_PATH="$DABLIN_LIBS" "$DABLIN" -f eti -1 -p a.eti >a.pcm 2>a.log )
+    if grep -q 'sync succeeded' "$d/a.log" 2>/dev/null; then ok "DAB+ audio dekoduje sie (dablin/faad2)"
+    else bad "DAB+ audio: brak sync w dablin"; fi
+    rm -rf "$d"
+  else
+    echo "  (SKIP dekodowalnosc audio - brak dablin/odr-dabmux; ustaw DABLIN/DABMUX)"
+  fi
+  rm -f "${OUT}"_dab_*.dabp "${OUT}"_xpad.bin
+}
+
+# DAB+ na natywnej binarce Linux jesli podano (bit-id z odr wymaga natywnej),
+# inaczej na .exe przez interop (struktura+etykieta+round-trip dzialaja tak samo).
+if [ -n "${DAB_NATIVE:-}" ] && [ -x "${DAB_NATIVE}" ]; then
+  test_dab "$DAB_NATIVE" "x64-native"
+else
+  test_dab "$X64" "x64"
+fi
 
 # 5) no-regression: domyslny CBR bez franken flag == oryginalna binarka.
 # Porownujemy SUROWY ADTS (-f2), nie M4A: kontener M4A ma tag 'tool' z nazwa

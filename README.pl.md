@@ -53,6 +53,7 @@ poniżej:
   `--pns`, `--pns-start`, `--force-pns` — sekcje 5, 6.
 - **E. Bloki i bitrate:** `--block-bias`, `--vbr-reservoir`, `--peak-bitrate`,
   `--max-bits-frame`, `--min-bits-frame`, `--bitres-mode` — sekcje 7, 9.
+- **F. Radio cyfrowe DAB+:** `--dab`, `--dab-label` — sekcja 14.
 
 Wskazowka: `--verbose` na koncu wypisuje sekcje "franken overrides applied" —
 dokładnie te przełączniki, które w danym uruchomieniu odbiegają od czystego FDK.
@@ -540,6 +541,76 @@ Uwaga: ta tablica jest WSPOLNA dla 32/44.1/48 kHz i wyższych — FDK indeksuje 
 bitratem na kanał, nie samplerate (samplerate wpływa tylko na górny limit =
 Nyquist). Dla LC bez SBR realny sufit to ~17 kHz z auto; wyżej tylko przez `-w`
 (z zapasem bitow) lub `--uncap-bandwidth` przy sr≥96k.
+
+---
+
+## 14. Wyjście DAB+ (`--dab`, `--dab-label`)
+
+Dedykowany tryb wyjściowy, który zamiast pliku MP4/M4A czy surowego strumienia
+ADTS emituje strumień radia cyfrowego DAB+. Enkoder przygotowuje dźwięk AAC
+dokładnie tak, jak wymaga tego system DAB+ (transformata 960 próbek, super-ramka
+120 ms, zabezpieczenie przed błędami), więc strumień można podać wprost do
+multipleksera takiego jak `odr-dabmux` → ETI → nadajnik (albo do programowego
+odbiornika w rodzaju welle.io / dablin).
+
+DAB+ to nie jest "AAC w innym pudełku": używa transformaty MDCT na 960 próbkach
+(nie 1024), pakuje dźwięk w **super-ramki** po 120 ms, strzeże nagłówka
+**firecode'em** (CRC Fire) i chroni ładunek kodem **Reed-Solomon RS(120,110)** nad
+GF(256). Wyjściem jest surowy strumień `.dabp` — kolejne super-ramki jedna po
+drugiej — czyli dokładnie to, co połyka multiplekser DAB+.
+
+### `--dab`
+Włącza wyjście super-ramek DAB+. Wynikiem jest surowy strumień `.dabp` (bez MP4,
+bez ADTS). Ograniczenia narzucone przez standard:
+
+| Wymaganie | Wartość |
+|---|---|
+| Częstotliwość próbkowania | MUSI być `32000` lub `48000` Hz |
+| Bitrate | wielokrotność 8 kbps, zakres 8..192 kbps |
+| Kanały | mono lub stereo |
+| Profile | AAC-LC, HE-AAC, HE-AAC v2 (wszystkie trzy) |
+
+Profil (AOT) dobierany jest AUTOMATYCZNIE z bitrate i liczby kanałów, tak samo jak
+robi to `odr-audioenc` — zwykle nie ustawiasz `-p`:
+
+- stereo ≤48 kbps (subkanał ≤6) → **HE-AAC v2** (PS),
+- mono ≤64k lub stereo ≤80k → **HE-AAC** (SBR),
+- wyżej → **AAC-LC**.
+
+Profil można nadal wymusić przełącznikiem `-p` (`2`=LC, `5`=HE-AAC, `29`=HE-AAC
+v2), jeśli wiesz, czego chcesz.
+
+### `--dab-label <tekst>`
+Statyczna etykieta **DLS** (Dynamic Label Segment) niesiona jako X-PAD wewnątrz
+super-ramki; odbiorniki DAB+ pokazują ją jako nazwę stacji / tytuł. Do ~48 znaków
+(trzy segmenty w jednym PAD). "Statyczna" znaczy jeden stały tekst przez cały plik
+— etykiety zmienne w czasie oraz pokaz slajdów MOT (model `ODR-PadEnc`) to plan na
+przyszłość. Bez `--dab` etykieta jest ignorowana.
+
+### Przykłady
+
+```
+# 48k/32k stereo, ~96k → auto AAC-LC:
+fdkaac --dab -b 96 -o out.dabp input.wav
+
+# → auto HE-AAC (SBR):
+fdkaac --dab -b 64 -o out.dabp input.wav
+
+# → auto HE-AAC v2 (PS):
+fdkaac --dab -b 32 -o out.dabp input.wav
+
+# z etykietą stacji:
+fdkaac --dab -b 96 --dab-label "Radio DHT" -o out.dabp input.wav
+
+# łańcuch nadawczy:
+# out.dabp → odr-dabmux → ETI → nadajnik / dekoder
+```
+
+Uwaga: bez `--dab` enkoder zachowuje się dokładnie jak dotychczas — zero wpływu,
+bit-identycznie ze stockiem. Zweryfikowane: strumienie dekodują się niezależnym
+dekoderem faad2 (dablin), etykieta DLS jest odczytywalna, a wyjście LC jest
+bit-identyczne z referencyjnym `odr-audioenc`. Przetestowano dziewięć kombinacji
+(48/32 kHz × mono/stereo × trzy profile), każda dekodowalna niezależnie.
 
 ---
 

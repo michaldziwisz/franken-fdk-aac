@@ -6,6 +6,8 @@ bin_PROGRAMS = fdkaac
 fdkaac_SOURCES = \
     src/aacenc.c               \
     src/caf_reader.c           \
+    src/dab_rs.c               \
+    src/dab_pad.c              \
     src/extrapolater.c         \
     src/limiter.c              \
     src/lpc.c                  \

@@ -145,7 +145,9 @@ typedef enum {
 
   TT_MP4_LOAS = 10, /**< Audio Sync Stream.         */
 
-  TT_DRM = 12 /**< Digital Radio Mondial (DRM30/DRM+) bitstream format. */
+  TT_DRM = 12, /**< Digital Radio Mondial (DRM30/DRM+) bitstream format. */
+
+  TT_DABPLUS = 13 /**< DAB+ superframe bitstream format (franken --dab). */
 
 } TRANSPORT_TYPE;
 
@@ -215,7 +217,11 @@ typedef enum {
       145, /**< Virtual AOT for DRM (ER-AAC-SCAL with SBR and MPEG-PS) */
   AOT_DRM_SURROUND =
       146, /**< Virtual AOT for DRM Surround (ER-AAC-SCAL (+SBR) +MPS) */
-  AOT_DRM_USAC = 147 /**< Virtual AOT for DRM with USAC */
+  AOT_DRM_USAC = 147, /**< Virtual AOT for DRM with USAC */
+
+  AOT_DABPLUS_AAC_LC = 135, /**< Virtual AOT for DAB+ AAC-LC (franken --dab) */
+  AOT_DABPLUS_SBR = 136,    /**< Virtual AOT for DAB+ HE-AAC (franken --dab) */
+  AOT_DABPLUS_PS = 137      /**< Virtual AOT for DAB+ HE-AAC v2 (franken --dab) */
 
 } AUDIO_OBJECT_TYPE;
 

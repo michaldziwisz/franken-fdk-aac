@@ -35,6 +35,8 @@
 #include "compat.h"
 #include "pcm_reader.h"
 #include "aacenc.h"
+#include "dab_rs.h"
+#include "dab_pad.h"
 #include "m4af.h"
 #include "progress.h"
 #include "version.h"
@@ -359,6 +361,16 @@ PROGNAME " %s\n"
 "    -b 128000 --peak-bitrate 200000 --vbr-reservoir 12000\n"
 "  Cap for all: 6144 bits/channel/frame. Do NOT set max-bits below avg or\n"
 "  min-bits above it - that fights the target and hurts quality.\n"
+"\n== F. DAB+ output ==\n"
+" --dab                       Emit a DAB+ superframe bitstream (ETSI TS 102 563):\n"
+"                               transform 960, superframe + firecode + Reed-Solomon.\n"
+"                               Requires sample rate 32000 or 48000 and bitrate a\n"
+"                               multiple of 8 kbps (8..192). Profile is auto-picked\n"
+"                               from bitrate/channels (AAC-LC / HE-AAC / HE-AAC v2),\n"
+"                               override with -p. Output is a raw .dabp superframe\n"
+"                               stream (feed odr-dabmux etc.).\n"
+" --dab-label <text>          Static Dynamic Label (DLS) carried as X-PAD in the\n"
+"                               superframe (shown by DAB receivers). Up to ~48 chars.\n"
     , fdkaac_version);
 }
 
@@ -474,6 +486,8 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
 #define OPT_FR_PNS_MIN_WIDTH     M4AF_FOURCC('f','p','m','w')
 #define OPT_FR_PEAK_BITRATE      M4AF_FOURCC('f','p','k','b')
 #define OPT_FR_VERBOSE           M4AF_FOURCC('f','v','r','b')
+#define OPT_FR_DAB               M4AF_FOURCC('f','d','a','b')
+#define OPT_FR_DAB_LABEL         M4AF_FOURCC('f','d','a','l')
 
     static const struct option long_options[] = {
         { "help",             no_argument,       0, 'h' },
@@ -585,6 +599,8 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
         { "pns-min-width",       required_argument, 0, OPT_FR_PNS_MIN_WIDTH     },
         { "peak-bitrate",     required_argument, 0, OPT_FR_PEAK_BITRATE    },
         { "verbose",          no_argument,       0, OPT_FR_VERBOSE         },
+        { "dab",              no_argument,       0, OPT_FR_DAB             },
+        { "dab-label",        required_argument, 0, OPT_FR_DAB_LABEL       },
 
         { 0,                  0,                 0, 0                      },
     };
@@ -654,6 +670,8 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
     params->fr_pns_min_width = -1;
     params->fr_peak_bitrate = -1;
     params->fr_verbose = 0;
+    params->fr_dab = 0;
+    params->fr_dab_label = 0;
 
     aacenc_getmainargs(&argc, &argv);
     while ((ch = getopt_long(argc, argv, "hp:b:m:w:a:L:s:f:CP:G:Io:SR",
@@ -1021,6 +1039,10 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
             params->fr_peak_bitrate = n; break;
         case OPT_FR_VERBOSE:
             params->fr_verbose = 1; break;
+        case OPT_FR_DAB:
+            params->fr_dab = 1; break;
+        case OPT_FR_DAB_LABEL:
+            params->fr_dab_label = optarg; break;
 
         default:
             return usage(), -1;
@@ -1032,6 +1054,21 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
     if (!params->bitrate && !params->bitrate_mode) {
         fprintf(stderr, "bitrate or bitrate-mode is mandatory\n");
         return -1;
+    }
+    /* DAB+ mode: DAB+ superframe transport + validate. AOT (LC/HE/HEv2) is
+       auto-selected from bitrate and channel count after the input is opened
+       (see main), unless the user forced one with -p. */
+    if (params->fr_dab) {
+        if (params->bitrate < 8 || params->bitrate > 192 ||
+            params->bitrate % 8 != 0) {
+            fprintf(stderr,
+                    "DAB+: bitrate must be a multiple of 8 kbps in 8..192 "
+                    "(got %u)\n", params->bitrate);
+            return -1;
+        }
+        params->bitrate *= 1000;          /* -b is kbps for DAB+ */
+        params->transport_format = TT_DABPLUS;
+        params->bitrate_mode = 0;         /* CBR */
     }
     if (params->output_filename && !strcmp(params->output_filename, "-") &&
         !params->transport_format) {
@@ -1095,6 +1132,50 @@ int write_sample(FILE *ofp, m4af_ctx_t *m4af, aacenc_frame_t *frame)
     return 0;
 }
 
+/*
+ * DAB+ superframe finalisation: the encoder hands us a superframe whose data
+ * area is subchannel_index*110 bytes (already firecode+au_start+CRC framed).
+ * ETSI TS 102 563 protects it with RS(120,110): view the 110*subch bytes as a
+ * column-major matrix of subch rows x 110 cols, append 10 parity bytes per row,
+ * giving subch*120 bytes. Interleaving is column-major (byte i of AU stream ->
+ * row i%subch, col i/subch), matching the receiver's de-interleaver.
+ */
+static
+int write_sample_dab(FILE *ofp, aacenc_frame_t *frame, int subch)
+{
+    unsigned char row[110], parity[10];
+    int r, c;
+    const int data_len = subch * 110;
+    const int total_len = subch * 120;
+    static unsigned char *sf = NULL;
+    static int sf_cap = 0;
+
+    if (frame->size != (uint32_t)data_len) {
+        fprintf(stderr, "DAB+: unexpected superframe size %u (want %d)\n",
+                frame->size, data_len);
+        return -1;
+    }
+    if (sf_cap < total_len) {
+        unsigned char *p = realloc(sf, total_len);
+        if (!p) return -1;
+        sf = p; sf_cap = total_len;
+    }
+    memcpy(sf, frame->data, data_len);
+    for (r = 0; r < subch; r++) {
+        for (c = 0; c < 110; c++)
+            row[c] = frame->data[subch * c + r];
+        dab_rs_encode(row, parity);
+        for (c = 0; c < 10; c++)
+            sf[subch * (110 + c) + r] = parity[c];
+    }
+    fwrite(sf, 1, total_len, ofp);
+    if (ferror(ofp)) {
+        fprintf(stderr, "ERROR: fwrite(): %s\n", strerror(errno));
+        return -1;
+    }
+    return 0;
+}
+
 static int do_smart_padding(int profile)
 {
     return profile == 2 || profile == 5 || profile == 29;
@@ -1114,7 +1195,8 @@ int encode(aacenc_param_ex_t *params, pcm_reader_t *reader,
     int frames_written = 0, encoded = 0;
     aacenc_progress_t progress = { 0 };
     const pcm_sample_description_t *fmt = pcm_get_format(reader);
-    const int is_padding = do_smart_padding(params->profile);
+    const int is_padding = do_smart_padding(params->profile) && !params->fr_dab;
+    const int dab_subch = params->fr_dab ? (int)(params->bitrate / 8000) : 0;
 
     ibuf = malloc(frame_length * fmt->bytes_per_frame);
     aacenc_progress_init(&progress, pcm_get_length(reader), fmt->sample_rate);
@@ -1156,7 +1238,10 @@ int encode(aacenc_param_ex_t *params, pcm_reader_t *reader,
                 if (encoded == 1 || encoded == 3)
                     continue;
             }
-            if (write_sample(params->output_fp, m4af, &obuf[flip]) < 0)
+            if (dab_subch) {
+                if (write_sample_dab(params->output_fp, &obuf[flip], dab_subch) < 0)
+                    goto END;
+            } else if (write_sample(params->output_fp, m4af, &obuf[flip]) < 0)
                 goto END;
             ++frames_written;
         } while (remaining > 0);
@@ -1394,6 +1479,19 @@ int main(int argc, char **argv)
 
     sample_format = pcm_get_format(reader);
 
+    /* DAB+: auto-select virtual AOT from bitrate + channels (like odr-audioenc),
+       unless the user forced a profile with -p. */
+    if (params.fr_dab && params.profile == 0) {
+        int subch = params.bitrate / 8000;
+        int ch = sample_format->channels_per_frame;
+        if (ch == 2 && subch <= 6)
+            params.profile = AOT_DABPLUS_PS;      /* HE-AAC v2 */
+        else if ((ch == 1 && subch <= 8) || (ch == 2 && subch <= 10))
+            params.profile = AOT_DABPLUS_SBR;     /* HE-AAC */
+        else
+            params.profile = AOT_DABPLUS_AAC_LC;  /* AAC-LC */
+    }
+
     sbr_mode = aacenc_is_sbr_active((aacenc_param_t*)&params);
     if (sbr_mode && !aacenc_is_sbr_ratio_available()) {
         fprintf(stderr, "WARNING: Only dual-rate SBR is available "
@@ -1412,6 +1510,24 @@ int main(int argc, char **argv)
     if (aacenc_init(&encoder, (aacenc_param_t*)&params, sample_format,
                     &aacinfo) < 0)
         goto END;
+
+    /* DAB+ static DLS label: build the X-PAD once and register it for injection.
+       PAD size 16 B (X-PAD payload) fits a single ~14-char DLS segment; larger
+       labels use up to 3 segments in one PAD. */
+    if (params.fr_dab && params.fr_dab_label && params.fr_dab_label[0]) {
+        static unsigned char dab_pad_buf[197];
+        int pad_size = 48;   /* variable-size X-PAD payload incl F-PAD */
+        int n = dab_pad_build_dls(dab_pad_buf, pad_size, params.fr_dab_label, 0);
+        if (n <= 0) {
+            fprintf(stderr, "DAB+: label too long for one PAD (max ~%d chars)\n",
+                    3 * 16);
+            goto END;
+        }
+        aacenc_set_dab_pad(dab_pad_buf, n);
+        if (params.fr_verbose)
+            fprintf(stderr, " DAB+ DLS label       : \"%s\" (%d PAD bytes)\n",
+                    params.fr_dab_label, n);
+    }
 
     if (!params.output_filename) {
         const char *ext = params.transport_format ? ".aac" : ".m4a";

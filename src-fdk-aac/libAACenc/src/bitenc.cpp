@@ -1287,6 +1287,9 @@ AAC_ENCODER_ERROR FDKaacEnc_WriteBitstream(HANDLE_TRANSPORTENC hTpEnc,
   qcOut->extension[n].nPayloadBits = qcOut->totFillBits;
   qcOut->nExtensions++;
 
+  /* DAB+ writes ID_END and byte-alignment itself in dabWrite_EndRawDataBlock. */
+  if (syntaxFlags & AC_DAB) doByteAlign = 0;
+
   /* Write global extension payload and fill data */
   for (n = 0; (n < qcOut->nExtensions) && (n < (2 + 2)); n++) {
     FDKaacEnc_writeExtensionData(hTpEnc, &qcOut->extension[n], 0, alignAnchor,
@@ -1296,7 +1299,7 @@ AAC_ENCODER_ERROR FDKaacEnc_WriteBitstream(HANDLE_TRANSPORTENC hTpEnc,
      */
   }
 
-  if (!(syntaxFlags & (AC_SCALABLE | AC_ER))) {
+  if (!(syntaxFlags & (AC_SCALABLE | AC_ER | AC_DAB))) {
     FDKwriteBits(hBs, ID_END, EL_ID_BITS);
   }
 

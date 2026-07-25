@@ -481,6 +481,27 @@ AAC_ENCODER_ERROR FDKaacEnc_Initialize(
     return AAC_ENC_UNSUPPORTED_BITRATE;
   }
 
+  /* DAB+: tune per-AU bitrate/maxBits so all AUs fit the superframe data area
+     (subchannel_index*110 bytes minus per-AU CRC and superframe header). */
+  if ((config->syntaxFlags & AC_DAB) && hTpEnc) {
+    INT superframe_size = 110 * 8 * (config->bitRate / 8000);
+    INT frames_per_superframe = 6;
+    INT staticBits = transportEnc_GetStaticBits(hTpEnc, 0);
+    switch (config->sampleRate) {
+      case 48000: frames_per_superframe = 6; break;
+      case 32000: frames_per_superframe = 4; break;
+      case 24000: frames_per_superframe = 3; break;
+      case 16000: frames_per_superframe = 2; break;
+      default:    frames_per_superframe = 6;
+    }
+    config->bitRate =
+        (superframe_size - 16 * (frames_per_superframe - 1) - staticBits) * 1000 / 120;
+    config->maxBitsPerFrame =
+        (superframe_size - 16 * (frames_per_superframe - 1) - staticBits) /
+        frames_per_superframe;
+    config->maxBitsPerFrame += 7; /* padding */
+  }
+
   /* check bit rate */
 
   if (FDKaacEnc_LimitBitrate(
@@ -504,6 +525,7 @@ AAC_ENCODER_ERROR FDKaacEnc_Initialize(
   /* check frame length */
   switch (config->framelength) {
     case 1024:
+    case 960:
       if (isLowDelay(config->audioObjectType)) {
         return AAC_ENC_INVALID_FRAME_LENGTH;
       }
@@ -765,10 +787,15 @@ AAC_ENCODER_ERROR FDKaacEnc_Initialize(
   /* Map virtual aot's to intern aot used in bitstream writer. */
   switch (hAacEnc->config->audioObjectType) {
     case AOT_MP2_AAC_LC:
+    case AOT_DABPLUS_AAC_LC:
       hAacEnc->aot = AOT_AAC_LC;
       break;
     case AOT_MP2_SBR:
+    case AOT_DABPLUS_SBR:
       hAacEnc->aot = AOT_SBR;
+      break;
+    case AOT_DABPLUS_PS:
+      hAacEnc->aot = AOT_PS;
       break;
     default:
       hAacEnc->aot = hAacEnc->config->audioObjectType;

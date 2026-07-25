@@ -24,7 +24,8 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\b B. Stereo:} MS ({\f1 --msmask}, {\f1 --msbands}, {\f1 --msbands-lo/-hi}, {\f1 --ms-bias}, {\f1 --ms-precision}), IS ({\f1 --is}, {\f1 --isbands}, {\f1 --is-*}), PS ({\f1 --ps}, {\f1 --ps-iid-quant}, {\f1 --ps-icc}, {\f1 --ps-icc-mode}) \u8212- sections 1, 4, 8.\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\b C. Bandwidth and SBR:} {\f1 --core-cutoff}, {\f1 --sbr-*} \u8212- sections 2, 3.\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\b D. Masking / noise / detail:} {\f1 --ath-scale}, {\f1 --spread-mask}, {\f1 --tns-*}, {\f1 --pns}, {\f1 --pns-start}, {\f1 --force-pns} \u8212- sections 5, 6.\par}
-{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\b E. Blocks and bitrate:} {\f1 --block-bias}, {\f1 --vbr-reservoir}, {\f1 --peak-bitrate}, {\f1 --max-bits-frame}, {\f1 --min-bits-frame}, {\f1 --bitres-mode} \u8212- sections 7, 9.\sa180\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\b E. Blocks and bitrate:} {\f1 --block-bias}, {\f1 --vbr-reservoir}, {\f1 --peak-bitrate}, {\f1 --max-bits-frame}, {\f1 --min-bits-frame}, {\f1 --bitres-mode} \u8212- sections 7, 9.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\b F. DAB+ digital radio:} {\f1 --dab}, {\f1 --dab-label} \u8212- section 14.\sa180\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Tip: at the end, {\f1 --verbose} prints a "franken overrides applied" section \u8212- exactly those switches which, in a given run, deviate from pure FDK.\par}
 {\pard \qc \f0 \sa180 \li0 \fi0 \emdash\emdash\emdash\emdash\emdash\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 0. Diagnostics\par}
@@ -2149,6 +2150,91 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 {\pard \ql \f0 \sa180 \li0 \fi0 \par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Note: this table is SHARED for 32/44.1/48 kHz and higher \u8212- FDK indexes it by bitrate per channel, not samplerate (samplerate only affects the upper limit = Nyquist). For LC without SBR the real ceiling is ~17 kHz with auto; higher only via {\f1 -w} (with spare bits) or {\f1 --uncap-bandwidth} at sr\u8805 ?96k.\par}
 {\pard \qc \f0 \sa180 \li0 \fi0 \emdash\emdash\emdash\emdash\emdash\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 14. DAB+ output ({\f1 --dab}, {\f1 --dab-label})\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 A dedicated output mode that emits a DAB+ digital-radio stream instead of an MP4/M4A file or a bare ADTS stream. The encoder produces the AAC audio exactly as the DAB+ system expects it (960-sample transform, 120 ms super frame, error protection), so the stream can be handed straight to a multiplexer such as {\f1 odr-dabmux} \u8594 ? ETI \u8594 ? transmitter (or a soft receiver like welle.io / dablin).\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 DAB+ is not "AAC in a different box": it uses the 960-sample MDCT (not 1024), packs audio into 120 ms {\b super frames}, guards the header with a {\b firecode} (Fire CRC), and protects the payload with {\b Reed-Solomon RS(120,110)} over GF(256). The output is a raw {\f1 .dabp} stream \u8212- successive super frames back to back \u8212- which is what a DAB+ multiplexer ingests.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel2 \b \fs28 {\f1 --dab}\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Turn on DAB+ super-frame output. The result is a raw {\f1 .dabp} stream (no MP4, no ADTS). Constraints imposed by the standard:\par}
+{
+\trowd \trgaph120
+\clbrdrb\brdrs\cellx4320\clbrdrb\brdrs\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Requirement\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Value\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx4320\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Sample rate\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 MUST be {\f1 32000} or {\f1 48000} Hz\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx4320\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Bitrate\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 multiple of 8 kbps, range 8..192 kbps\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx4320\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Channels\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 mono or stereo\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx4320\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Profiles\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 AAC-LC, HE-AAC, HE-AAC v2 (all three)\par}
+\cell}
+}
+\intbl\row}
+{\pard \ql \f0 \sa180 \li0 \fi0 \par}
+{\pard \ql \f0 \sa180 \li0 \fi0 The profile (AOT) is picked AUTOMATICALLY from bitrate and channel count, the same way {\f1 odr-audioenc} does it \u8212- you normally don't set {\f1 -p}:\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab stereo \u8804 ?48 kbps (subchannel \u8804 ?6) \u8594 ? {\b HE-AAC v2} (PS),\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab mono \u8804 ?64k or stereo \u8804 ?80k \u8594 ? {\b HE-AAC} (SBR),\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab higher \u8594 ? {\b AAC-LC}.\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 You can still force the profile with {\f1 -p} ({\f1 2}=LC, {\f1 5}=HE-AAC, {\f1 29}=HE-AAC v2) if you know what you want.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel2 \b \fs28 {\f1 --dab-label <text>}\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 A static {\b DLS} (Dynamic Label Segment) carried as X-PAD inside the super frame; DAB+ receivers show it as the station name / title. Up to ~48 characters (three segments in one PAD). "Static" means one fixed string for the whole file \u8212- time-varying labels and MOT slideshow (the {\f1 ODR-PadEnc} model) are planned for later. Without {\f1 --dab} the label is ignored.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel2 \b \fs28 Examples\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \f1 # 48k/32k stereo, ~96k \u8594 ? auto AAC-LC:\line
+fdkaac --dab -b 96 -o out.dabp input.wav\line
+\line
+# \u8594 ? auto HE-AAC (SBR):\line
+fdkaac --dab -b 64 -o out.dabp input.wav\line
+\line
+# \u8594 ? auto HE-AAC v2 (PS):\line
+fdkaac --dab -b 32 -o out.dabp input.wav\line
+\line
+# with a station label:\line
+fdkaac --dab -b 96 --dab-label "Radio DHT" -o out.dabp input.wav\line
+\line
+# broadcast chain:\line
+# out.dabp \u8594 ? odr-dabmux \u8594 ? ETI \u8594 ? transmitter / decoder\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Note: without {\f1 --dab} the encoder behaves exactly as before \u8212- zero impact, bit-identical to stock. Verified: the streams decode with an independent faad2 decoder (dablin), the DLS label is readable, and the LC output is bit-identical to the reference {\f1 odr-audioenc}. Nine combinations (48/32 kHz \u215 ? mono/stereo \u215 ? the three profiles) were tested, each independently decodable.\par}
+{\pard \qc \f0 \sa180 \li0 \fi0 \emdash\emdash\emdash\emdash\emdash\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 Examples\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 \f1 # Starting point \u8212- what the encoder set:\line
 fdkaac-franken-x64.exe -p 29 -b 48000 --verbose -o out.m4a in.wav\line
@@ -2243,9 +2329,7 @@ make -j     # -> fdkaac.exe\line
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\f1 libSBRenc/src/sbr_encoder.cpp} \u8212- SBR density/precision override + writing the effective SBR values to g_franken (for verbose).\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\f1 libSBRenc/src/ps_encode.cpp} \u8212- PS override (forcing IID + quantization mode).\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\f1 libAACenc/src/main.c}, {\f1 aacenc.c}, {\f1 aacenc.h} (frontend) \u8212- CLI switches, parsing, passing to SetParam, {\f1 --verbose} dump, help.\sa180\par}
-{\pard \qc \f0 \sa180 \li0 \fi0 \emdash\emdash\emdash\emdash\emdash\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel0 \b \fs36 \u55356 ?\u56821 ?\u55356 ?\u56817 ? Wersja polska (Polish version below)\par}
-{\pard \qc \f0 \sa180 \li0 \fi0 \emdash\emdash\emdash\emdash\emdash\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel0 \b \fs36 Franken FDK AAC \u8212- laboratoryjny/"geekowski" enkoder AAC (FDK)\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Zbudowany na bazie {\b libfdk-aac 2.0.3} (mstorsjo/fdk-aac) + frontendu {\b nu774/fdkaac 1.0.2}, z doklejonymi prze\u322 ?\u261 ?cznikami CLI, kt\u243 ?re odslaniaja normalnie zahardkodowane, wewn\u281 ?trzne decyzj\u281 ? enkodera FDK. Sluzy do ekstremalnego debugowania i eksperyment\u243 ?w z AAC/HE-AAC/HE-AAC v2.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Binarki (statyczne, bez zewn\u281 ?trznych DLL):\par}
@@ -2268,7 +2352,8 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\b B. Stereo:} MS ({\f1 --msmask}, {\f1 --msbands}, {\f1 --msbands-lo/-hi}, {\f1 --side-bias}, {\f1 --side-knee}, {\f1 --mask-slope}), IS ({\f1 --is}, {\f1 --isbands}, {\f1 --is-*}), PS ({\f1 --ps}, {\f1 --ps-iid-quant}, {\f1 --ps-icc}, {\f1 --ps-icc-mode}) \u8212- sekcje 1, 4, 8.\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\b C. Pasmo i SBR:} {\f1 --core-cutoff}, {\f1 --sbr-*} \u8212- sekcje 2, 3.\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\b D. Maskowanie / szum / detal:} {\f1 --ath-scale}, {\f1 --spread-mask}, {\f1 --tns-*}, {\f1 --pns}, {\f1 --pns-start}, {\f1 --force-pns} \u8212- sekcje 5, 6.\par}
-{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\b E. Bloki i bitrate:} {\f1 --block-bias}, {\f1 --vbr-reservoir}, {\f1 --peak-bitrate}, {\f1 --max-bits-frame}, {\f1 --min-bits-frame}, {\f1 --bitres-mode} \u8212- sekcje 7, 9.\sa180\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\b E. Bloki i bitrate:} {\f1 --block-bias}, {\f1 --vbr-reservoir}, {\f1 --peak-bitrate}, {\f1 --max-bits-frame}, {\f1 --min-bits-frame}, {\f1 --bitres-mode} \u8212- sekcje 7, 9.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\b F. Radio cyfrowe DAB+:} {\f1 --dab}, {\f1 --dab-label} \u8212- sekcja 14.\sa180\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Wskazowka: {\f1 --verbose} na koncu wypisuje sekcje "franken overrides applied" \u8212- dok\u322 ?adnie te prze\u322 ?\u261 ?czniki, kt\u243 ?re w danym uruchomieniu odbiegaj\u261 ? od czystego FDK.\par}
 {\pard \qc \f0 \sa180 \li0 \fi0 \emdash\emdash\emdash\emdash\emdash\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 0. Diagnostyka\par}
@@ -4377,6 +4462,91 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 \intbl\row}
 {\pard \ql \f0 \sa180 \li0 \fi0 \par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Uwaga: ta tablica jest WSPOLNA dla 32/44.1/48 kHz i wy\u380 ?szych \u8212- FDK indeksuje ja bitratem na kana\u322 ?, nie samplerate (samplerate wp\u322 ?ywa tylko na g\u243 ?rny limit = Nyquist). Dla LC bez SBR realny sufit to ~17 kHz z auto; wy\u380 ?ej tylko przez {\f1 -w} (z zapasem bitow) lub {\f1 --uncap-bandwidth} przy sr\u8805 ?96k.\par}
+{\pard \qc \f0 \sa180 \li0 \fi0 \emdash\emdash\emdash\emdash\emdash\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 14. Wyj\u347 ?cie DAB+ ({\f1 --dab}, {\f1 --dab-label})\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Dedykowany tryb wyj\u347 ?ciowy, kt\u243 ?ry zamiast pliku MP4/M4A czy surowego strumienia ADTS emituje strumie\u324 ? radia cyfrowego DAB+. Enkoder przygotowuje d\u378 ?wi\u281 ?k AAC dok\u322 ?adnie tak, jak wymaga tego system DAB+ (transformata 960 pr\u243 ?bek, super-ramka 120 ms, zabezpieczenie przed b\u322 ?\u281 ?dami), wi\u281 ?c strumie\u324 ? mo\u380 ?na poda\u263 ? wprost do multipleksera takiego jak {\f1 odr-dabmux} \u8594 ? ETI \u8594 ? nadajnik (albo do programowego odbiornika w rodzaju welle.io / dablin).\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 DAB+ to nie jest "AAC w innym pude\u322 ?ku": u\u380 ?ywa transformaty MDCT na 960 pr\u243 ?bkach (nie 1024), pakuje d\u378 ?wi\u281 ?k w {\b super-ramki} po 120 ms, strze\u380 ?e nag\u322 ?\u243 ?wka {\b firecode'em} (CRC Fire) i chroni \u322 ?adunek kodem {\b Reed-Solomon RS(120,110)} nad GF(256). Wyj\u347 ?ciem jest surowy strumie\u324 ? {\f1 .dabp} \u8212- kolejne super-ramki jedna po drugiej \u8212- czyli dok\u322 ?adnie to, co po\u322 ?yka multiplekser DAB+.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel2 \b \fs28 {\f1 --dab}\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 W\u322 ?\u261 ?cza wyj\u347 ?cie super-ramek DAB+. Wynikiem jest surowy strumie\u324 ? {\f1 .dabp} (bez MP4, bez ADTS). Ograniczenia narzucone przez standard:\par}
+{
+\trowd \trgaph120
+\clbrdrb\brdrs\cellx4320\clbrdrb\brdrs\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Wymaganie\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Warto\u347 ?\u263 ?\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx4320\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Cz\u281 ?stotliwo\u347 ?\u263 ? pr\u243 ?bkowania\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 MUSI by\u263 ? {\f1 32000} lub {\f1 48000} Hz\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx4320\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Bitrate\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 wielokrotno\u347 ?\u263 ? 8 kbps, zakres 8..192 kbps\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx4320\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Kana\u322 ?y\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 mono lub stereo\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx4320\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Profile\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 AAC-LC, HE-AAC, HE-AAC v2 (wszystkie trzy)\par}
+\cell}
+}
+\intbl\row}
+{\pard \ql \f0 \sa180 \li0 \fi0 \par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Profil (AOT) dobierany jest AUTOMATYCZNIE z bitrate i liczby kana\u322 ?\u243 ?w, tak samo jak robi to {\f1 odr-audioenc} \u8212- zwykle nie ustawiasz {\f1 -p}:\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab stereo \u8804 ?48 kbps (subkana\u322 ? \u8804 ?6) \u8594 ? {\b HE-AAC v2} (PS),\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab mono \u8804 ?64k lub stereo \u8804 ?80k \u8594 ? {\b HE-AAC} (SBR),\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab wy\u380 ?ej \u8594 ? {\b AAC-LC}.\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Profil mo\u380 ?na nadal wymusi\u263 ? prze\u322 ?\u261 ?cznikiem {\f1 -p} ({\f1 2}=LC, {\f1 5}=HE-AAC, {\f1 29}=HE-AAC v2), je\u347 ?li wiesz, czego chcesz.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel2 \b \fs28 {\f1 --dab-label <tekst>}\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Statyczna etykieta {\b DLS} (Dynamic Label Segment) niesiona jako X-PAD wewn\u261 ?trz super-ramki; odbiorniki DAB+ pokazuj\u261 ? j\u261 ? jako nazw\u281 ? stacji / tytu\u322 ?. Do ~48 znak\u243 ?w (trzy segmenty w jednym PAD). "Statyczna" znaczy jeden sta\u322 ?y tekst przez ca\u322 ?y plik \u8212- etykiety zmienne w czasie oraz pokaz slajd\u243 ?w MOT (model {\f1 ODR-PadEnc}) to plan na przysz\u322 ?o\u347 ?\u263 ?. Bez {\f1 --dab} etykieta jest ignorowana.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel2 \b \fs28 Przyk\u322 ?ady\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \f1 # 48k/32k stereo, ~96k \u8594 ? auto AAC-LC:\line
+fdkaac --dab -b 96 -o out.dabp input.wav\line
+\line
+# \u8594 ? auto HE-AAC (SBR):\line
+fdkaac --dab -b 64 -o out.dabp input.wav\line
+\line
+# \u8594 ? auto HE-AAC v2 (PS):\line
+fdkaac --dab -b 32 -o out.dabp input.wav\line
+\line
+# z etykiet\u261 ? stacji:\line
+fdkaac --dab -b 96 --dab-label "Radio DHT" -o out.dabp input.wav\line
+\line
+# \u322 ?a\u324 ?cuch nadawczy:\line
+# out.dabp \u8594 ? odr-dabmux \u8594 ? ETI \u8594 ? nadajnik / dekoder\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Uwaga: bez {\f1 --dab} enkoder zachowuje si\u281 ? dok\u322 ?adnie jak dotychczas \u8212- zero wp\u322 ?ywu, bit-identycznie ze stockiem. Zweryfikowane: strumienie dekoduj\u261 ? si\u281 ? niezale\u380 ?nym dekoderem faad2 (dablin), etykieta DLS jest odczytywalna, a wyj\u347 ?cie LC jest bit-identyczne z referencyjnym {\f1 odr-audioenc}. Przetestowano dziewi\u281 ?\u263 ? kombinacji (48/32 kHz \u215 ? mono/stereo \u215 ? trzy profile), ka\u380 ?da dekodowalna niezale\u380 ?nie.\par}
 {\pard \qc \f0 \sa180 \li0 \fi0 \emdash\emdash\emdash\emdash\emdash\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 Przyk\u322 ?ady\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 \f1 # Punkt wyjscia \u8212- co ustawil enkoder:\line

@@ -83,6 +83,8 @@
     int fr_pns_gapfill; \
     int fr_pns_min_width; \
     int fr_peak_bitrate; \
+    int fr_dab; \
+    const char *fr_dab_label; \
     int fr_verbose;
 
 typedef struct aacenc_param_t {
@@ -111,6 +113,8 @@ int aacenc_mp4asc(const aacenc_param_t *params,
 int aacenc_init(HANDLE_AACENCODER *encoder, const aacenc_param_t *params,
                 const pcm_sample_description_t *format,
                 AACENC_InfoStruct *info);
+
+void aacenc_set_dab_pad(const unsigned char *pad, int len);
 
 int aac_encode_frame(HANDLE_AACENCODER encoder,
                      const pcm_sample_description_t *format,

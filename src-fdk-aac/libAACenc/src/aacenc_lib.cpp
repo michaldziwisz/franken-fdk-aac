@@ -369,7 +369,9 @@ static inline INT isSbrActive(const HANDLE_AACENC_CONFIG hAacConfig) {
    * AOT_AAC_LC */
   if ((hAacConfig->audioObjectType == AOT_SBR) ||
       (hAacConfig->audioObjectType == AOT_PS) ||
-      (hAacConfig->audioObjectType == AOT_MP2_SBR)) {
+      (hAacConfig->audioObjectType == AOT_MP2_SBR) ||
+      (hAacConfig->audioObjectType == AOT_DABPLUS_SBR) ||
+      (hAacConfig->audioObjectType == AOT_DABPLUS_PS)) {
     sbrUsed = 1;
   }
   if (hAacConfig->audioObjectType == AOT_ER_AAC_ELD &&
@@ -383,7 +385,7 @@ static inline INT isSbrActive(const HANDLE_AACENC_CONFIG hAacConfig) {
 static inline INT isPsActive(const AUDIO_OBJECT_TYPE audioObjectType) {
   INT psUsed = 0;
 
-  if (audioObjectType == AOT_PS) {
+  if (audioObjectType == AOT_PS || audioObjectType == AOT_DABPLUS_PS) {
     psUsed = 1;
   }
 
@@ -491,11 +493,24 @@ static void FDKaacEnc_MapConfig(CODER_CONFIG *const cc,
   /* Map virtual aot to transport aot. */
   switch (hAacConfig->audioObjectType) {
     case AOT_MP2_AAC_LC:
+    case AOT_DABPLUS_AAC_LC:
       transport_AOT = AOT_AAC_LC;
       break;
     case AOT_MP2_SBR:
+    case AOT_DABPLUS_SBR:
       transport_AOT = AOT_SBR;
       cc->flags |= CC_SBR;
+      break;
+    case AOT_DABPLUS_PS:
+      transport_AOT = AOT_PS;
+      cc->flags |= CC_SBR;
+      break;
+    case AOT_SBR:
+    case AOT_PS:
+      transport_AOT = hAacConfig->audioObjectType;
+      /* DAB+ collapsed its virtual SBR/PS AOT to the real one earlier; keep the
+         superframe SBR flag so the 120 ms frame grid is halved correctly. */
+      if (hAacConfig->syntaxFlags & AC_DAB) cc->flags |= CC_SBR;
       break;
     default:
       transport_AOT = hAacConfig->audioObjectType;
@@ -525,6 +540,12 @@ static void FDKaacEnc_MapConfig(CODER_CONFIG *const cc,
     }
   }
 
+  /* DAB+: the superframe header carries sbr_flag/ps_flag derived from extAOT,
+     so it must always reflect the real SBR/PS AOT (never implicit/NULL). */
+  if (hAacConfig->syntaxFlags & AC_DAB) {
+    cc->extAOT = transport_AOT;
+  }
+
   if ((transport_AOT == AOT_SBR) || (transport_AOT == AOT_PS)) {
     cc->sbrPresent = 1;
     if (transport_AOT == AOT_PS) {
@@ -544,9 +565,23 @@ static void FDKaacEnc_MapConfig(CODER_CONFIG *const cc,
   cc->flags |= CC_IS_BASELAYER;
   cc->channelMode = hAacConfig->channelMode;
 
-  cc->nSubFrames = (hAacConfig->nSubFrames > 1 && extCfg->userTpNsubFrames == 1)
-                       ? hAacConfig->nSubFrames
-                       : extCfg->userTpNsubFrames;
+  if (extCfg->userTpType == TT_DABPLUS && hAacConfig->nSubFrames <= 1) {
+    /* DAB+ superframe = 120 ms => 120ms of AAC core frames of 960 samples each.
+       nSubFrames = coreSamples(120ms)/960 = coreRate/8000. At this point
+       hAacConfig->sampleRate is already the AAC core rate (halved by SBR init
+       for dual-rate HE-AAC/HE-AACv2). So: 48k->6, 32k->4, 24k->3, 16k->2. */
+    switch (hAacConfig->sampleRate) {
+      case 48000: cc->nSubFrames = 6; break;
+      case 32000: cc->nSubFrames = 4; break;
+      case 24000: cc->nSubFrames = 3; break;
+      case 16000: cc->nSubFrames = 2; break;
+      default:    cc->nSubFrames = 1;
+    }
+  } else {
+    cc->nSubFrames = (hAacConfig->nSubFrames > 1 && extCfg->userTpNsubFrames == 1)
+                         ? hAacConfig->nSubFrames
+                         : extCfg->userTpNsubFrames;
+  }
 
   cc->flags |= (extCfg->userTpProtection) ? CC_PROTECTION : 0;
 
@@ -973,6 +1008,22 @@ static AACENC_ERROR FDKaacEnc_AdjustEncSettings(HANDLE_AACENCODER hAacEncoder,
         return AACENC_INVALID_CONFIG;
       }
       break;
+    case AOT_DABPLUS_SBR:
+    case AOT_DABPLUS_PS:
+      hAacConfig->syntaxFlags |= ((config->userSbrEnabled) ? AC_SBR_PRESENT : 0);
+      FDK_FALLTHROUGH;
+    case AOT_DABPLUS_AAC_LC:
+      config->userTpType =
+          (config->userTpType != TT_UNKNOWN) ? config->userTpType : TT_DABPLUS;
+      hAacConfig->framelength =
+          (config->userFramelength != (UINT)-1) ? config->userFramelength : 960;
+      if (hAacConfig->framelength != 960) {
+        return AACENC_INVALID_CONFIG;
+      }
+      if (config->userTpType == TT_DABPLUS) {
+        hAacConfig->syntaxFlags |= AC_DAB;
+      }
+      break;
     case AOT_ER_AAC_LD:
       hAacConfig->epConfig = 0;
       hAacConfig->syntaxFlags |= AC_ER | AC_LD;
@@ -1025,6 +1076,19 @@ static AACENC_ERROR FDKaacEnc_AdjustEncSettings(HANDLE_AACENCODER hAacEncoder,
       break;
     default:
       break;
+  }
+
+  /* DAB+ virtual AOTs (136/137) collapse to the real internal AOT so all
+     downstream SBR/PS init, signalling and meta work unchanged; AC_DAB carries
+     the "this is a DAB+ superframe" semantics. LC (135) is intentionally left
+     as-is: the bitstream writer already maps it (aacenc.cpp), and collapsing it
+     here would perturb the psy/tuning path and break bit-exactness vs stock. */
+  if (hAacConfig->syntaxFlags & AC_DAB) {
+    switch (hAacConfig->audioObjectType) {
+      case AOT_DABPLUS_SBR:    hAacConfig->audioObjectType = AOT_SBR;    break;
+      case AOT_DABPLUS_PS:     hAacConfig->audioObjectType = AOT_PS;     break;
+      default: break;
+    }
   }
 
   /* Initialize SBR parameters */
@@ -2172,12 +2236,14 @@ AACENC_ERROR aacEncoder_SetParam(const HANDLE_AACENCODER hAacEncoder,
       if (settings->userAOT != (AUDIO_OBJECT_TYPE)value) {
         /* check if AOT matches the allocated modules */
         switch (value) {
+          case AOT_DABPLUS_PS:
           case AOT_PS:
             if (!(hAacEncoder->encoder_modis & (ENC_MODE_FLAG_PS))) {
               err = AACENC_INVALID_CONFIG;
               goto bail;
             }
             FDK_FALLTHROUGH;
+          case AOT_DABPLUS_SBR:
           case AOT_SBR:
           case AOT_MP2_SBR:
             if (!(hAacEncoder->encoder_modis & (ENC_MODE_FLAG_SBR))) {
@@ -2185,6 +2251,7 @@ AACENC_ERROR aacEncoder_SetParam(const HANDLE_AACENCODER hAacEncoder,
               goto bail;
             }
             FDK_FALLTHROUGH;
+          case AOT_DABPLUS_AAC_LC:
           case AOT_AAC_LC:
           case AOT_MP2_AAC_LC:
           case AOT_ER_AAC_LD:
@@ -2304,6 +2371,7 @@ AACENC_ERROR aacEncoder_SetParam(const HANDLE_AACENCODER hAacEncoder,
       if (settings->userFramelength != value) {
         switch (value) {
           case 1024:
+          case 960:
           case 512:
           case 480:
           case 256:
@@ -2356,6 +2424,7 @@ AACENC_ERROR aacEncoder_SetParam(const HANDLE_AACENCODER hAacEncoder,
               ((type == TT_MP4_LATM_MCP1) &&
                ((flags & CAPF_LATM) && (flags & CAPF_RAWPACKETS))) ||
               ((type == TT_MP4_LOAS) && (flags & CAPF_LOAS)) ||
+              ((type == TT_DABPLUS) && (flags & CAPF_RAWPACKETS)) ||
               ((type == TT_MP4_RAW) && (flags & CAPF_RAWPACKETS)))) {
           err = AACENC_INVALID_CONFIG;
           break;

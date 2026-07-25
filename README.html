@@ -284,7 +284,10 @@ id="toc-12-legend-for-reading---verbose">12. Legend for reading
 <li><a href="#13-reference-tables-from-the-fdk-tuning-tables"
 id="toc-13-reference-tables-from-the-fdk-tuning-tables">13. Reference
 tables (from the FDK tuning tables)</a></li>
-<li><a href="#examples" id="toc-examples">Examples</a></li>
+<li><a href="#14-dab-output---dab---dab-label"
+id="toc-14-dab-output---dab---dab-label">14. DAB+ output
+(<code>--dab</code>, <code>--dab-label</code>)</a></li>
+<li><a href="#examples-1" id="toc-examples-1">Examples</a></li>
 <li><a href="#default-quality-vs-the-original-binary-fdkaac2exe"
 id="toc-default-quality-vs-the-original-binary-fdkaac2exe">Default
 quality vs the original binary (fdkaac2.exe)</a></li>
@@ -346,7 +349,10 @@ id="toc-12-legenda-odczytu---verbose">12. Legenda odczytu
 <li><a href="#13-tabele-referencyjne-z-tablic-strojenia-fdk"
 id="toc-13-tabele-referencyjne-z-tablic-strojenia-fdk">13. Tabele
 referencyjne (z tablic strojenia FDK)</a></li>
-<li><a href="#przykłady" id="toc-przykłady">Przykłady</a></li>
+<li><a href="#14-wyjście-dab---dab---dab-label"
+id="toc-14-wyjście-dab---dab---dab-label">14. Wyjście DAB+
+(<code>--dab</code>, <code>--dab-label</code>)</a></li>
+<li><a href="#przykłady-1" id="toc-przykłady-1">Przykłady</a></li>
 <li><a href="#jakość-domyślna-vs-oryginalna-binarka-fdkaac2exe"
 id="toc-jakość-domyślna-vs-oryginalna-binarka-fdkaac2exe">Jakość
 domyślna vs oryginalna binarka (fdkaac2.exe)</a></li>
@@ -420,6 +426,8 @@ sections below:</p>
 <code>--vbr-reservoir</code>, <code>--peak-bitrate</code>,
 <code>--max-bits-frame</code>, <code>--min-bits-frame</code>,
 <code>--bitres-mode</code> — sections 7, 9.</li>
+<li><strong>F. DAB+ digital radio:</strong> <code>--dab</code>,
+<code>--dab-label</code> — section 14.</li>
 </ul>
 <p>Tip: at the end, <code>--verbose</code> prints a "franken overrides
 applied" section — exactly those switches which, in a given run, deviate
@@ -1850,7 +1858,93 @@ affects the upper limit = Nyquist). For LC without SBR the real ceiling
 is ~17 kHz with auto; higher only via <code>-w</code> (with spare bits)
 or <code>--uncap-bandwidth</code> at sr≥96k.</p>
 <hr />
-<h2 id="examples">Examples</h2>
+<h2 id="14-dab-output---dab---dab-label">14. DAB+ output
+(<code>--dab</code>, <code>--dab-label</code>)</h2>
+<p>A dedicated output mode that emits a DAB+ digital-radio stream
+instead of an MP4/M4A file or a bare ADTS stream. The encoder produces
+the AAC audio exactly as the DAB+ system expects it (960-sample
+transform, 120 ms super frame, error protection), so the stream can be
+handed straight to a multiplexer such as <code>odr-dabmux</code> → ETI →
+transmitter (or a soft receiver like welle.io / dablin).</p>
+<p>DAB+ is not "AAC in a different box": it uses the 960-sample MDCT
+(not 1024), packs audio into 120 ms <strong>super frames</strong>,
+guards the header with a <strong>firecode</strong> (Fire CRC), and
+protects the payload with <strong>Reed-Solomon RS(120,110)</strong> over
+GF(256). The output is a raw <code>.dabp</code> stream — successive
+super frames back to back — which is what a DAB+ multiplexer
+ingests.</p>
+<h3 id="--dab"><code>--dab</code></h3>
+<p>Turn on DAB+ super-frame output. The result is a raw
+<code>.dabp</code> stream (no MP4, no ADTS). Constraints imposed by the
+standard:</p>
+<table>
+<thead>
+<tr class="header">
+<th>Requirement</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Sample rate</td>
+<td>MUST be <code>32000</code> or <code>48000</code> Hz</td>
+</tr>
+<tr class="even">
+<td>Bitrate</td>
+<td>multiple of 8 kbps, range 8..192 kbps</td>
+</tr>
+<tr class="odd">
+<td>Channels</td>
+<td>mono or stereo</td>
+</tr>
+<tr class="even">
+<td>Profiles</td>
+<td>AAC-LC, HE-AAC, HE-AAC v2 (all three)</td>
+</tr>
+</tbody>
+</table>
+<p>The profile (AOT) is picked AUTOMATICALLY from bitrate and channel
+count, the same way <code>odr-audioenc</code> does it — you normally
+don't set <code>-p</code>:</p>
+<ul>
+<li>stereo ≤48 kbps (subchannel ≤6) → <strong>HE-AAC v2</strong>
+(PS),</li>
+<li>mono ≤64k or stereo ≤80k → <strong>HE-AAC</strong> (SBR),</li>
+<li>higher → <strong>AAC-LC</strong>.</li>
+</ul>
+<p>You can still force the profile with <code>-p</code>
+(<code>2</code>=LC, <code>5</code>=HE-AAC, <code>29</code>=HE-AAC v2) if
+you know what you want.</p>
+<h3 id="--dab-label-text"><code>--dab-label &lt;text&gt;</code></h3>
+<p>A static <strong>DLS</strong> (Dynamic Label Segment) carried as
+X-PAD inside the super frame; DAB+ receivers show it as the station name
+/ title. Up to ~48 characters (three segments in one PAD). "Static"
+means one fixed string for the whole file — time-varying labels and MOT
+slideshow (the <code>ODR-PadEnc</code> model) are planned for later.
+Without <code>--dab</code> the label is ignored.</p>
+<h3 id="examples">Examples</h3>
+<pre><code># 48k/32k stereo, ~96k → auto AAC-LC:
+fdkaac --dab -b 96 -o out.dabp input.wav
+
+# → auto HE-AAC (SBR):
+fdkaac --dab -b 64 -o out.dabp input.wav
+
+# → auto HE-AAC v2 (PS):
+fdkaac --dab -b 32 -o out.dabp input.wav
+
+# with a station label:
+fdkaac --dab -b 96 --dab-label &quot;Radio DHT&quot; -o out.dabp input.wav
+
+# broadcast chain:
+# out.dabp → odr-dabmux → ETI → transmitter / decoder</code></pre>
+<p>Note: without <code>--dab</code> the encoder behaves exactly as
+before — zero impact, bit-identical to stock. Verified: the streams
+decode with an independent faad2 decoder (dablin), the DLS label is
+readable, and the LC output is bit-identical to the reference
+<code>odr-audioenc</code>. Nine combinations (48/32 kHz × mono/stereo ×
+the three profiles) were tested, each independently decodable.</p>
+<hr />
+<h2 id="examples-1">Examples</h2>
 <pre><code># Starting point — what the encoder set:
 fdkaac-franken-x64.exe -p 29 -b 48000 --verbose -o out.m4a in.wav
 
@@ -1934,23 +2028,23 @@ libfdk are wired through a single module
 <code>g_franken</code> block, sentinels = FDK defaults), and the new
 <code>AACENC_PARAM</code>s (range <code>0xF0xx</code>) are exposed in
 <code>aacenc_lib.h</code>.</p>
-<div class="sourceCode" id="cb5"><pre
-class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> apt-get install <span class="at">-y</span> mingw-w64          <span class="co"># + autotools (autoconf/automake/libtool)</span></span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="co"># --- libfdk-aac (x64) ---</span></span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> src-fdk-aac <span class="kw">&amp;&amp;</span> <span class="ex">autoreconf</span> <span class="at">-i</span></span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="ex">./configure</span> <span class="at">--host</span><span class="op">=</span>x86_64-w64-mingw32 <span class="at">--prefix</span><span class="op">=</span><span class="va">$PWD</span>/../inst-x64 <span class="dt">\</span></span>
-<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">--enable-static</span> <span class="at">--disable-shared</span> CFLAGS=-O2 CXXFLAGS=-O2</span>
-<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> <span class="at">-j</span> <span class="kw">&amp;&amp;</span> <span class="fu">make</span> install</span>
-<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="co"># --- frontend (x64) ---</span></span>
-<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> ../src-fdkaac <span class="kw">&amp;&amp;</span> <span class="ex">autoreconf</span> <span class="at">-i</span></span>
-<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a><span class="va">PKG_CONFIG_PATH</span><span class="op">=</span><span class="va">$PWD</span>/../inst-x64/lib/pkgconfig <span class="ex">./configure</span> <span class="dt">\</span></span>
-<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">--host</span><span class="op">=</span>x86_64-w64-mingw32 CFLAGS=<span class="st">&quot;-O2 -I</span><span class="va">$PWD</span><span class="st">/../inst-x64/include&quot;</span> <span class="dt">\</span></span>
-<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>    LDFLAGS=<span class="st">&quot;-static -static-libgcc -L</span><span class="va">$PWD</span><span class="st">/../inst-x64/lib&quot;</span></span>
-<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> <span class="at">-j</span>     <span class="co"># -&gt; fdkaac.exe</span></span>
-<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a><span class="co"># x86: the same with --host=i686-w64-mingw32 and a separate inst-x86 prefix.</span></span></code></pre></div>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> apt-get install <span class="at">-y</span> mingw-w64          <span class="co"># + autotools (autoconf/automake/libtool)</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="co"># --- libfdk-aac (x64) ---</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> src-fdk-aac <span class="kw">&amp;&amp;</span> <span class="ex">autoreconf</span> <span class="at">-i</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="ex">./configure</span> <span class="at">--host</span><span class="op">=</span>x86_64-w64-mingw32 <span class="at">--prefix</span><span class="op">=</span><span class="va">$PWD</span>/../inst-x64 <span class="dt">\</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">--enable-static</span> <span class="at">--disable-shared</span> CFLAGS=-O2 CXXFLAGS=-O2</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> <span class="at">-j</span> <span class="kw">&amp;&amp;</span> <span class="fu">make</span> install</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a><span class="co"># --- frontend (x64) ---</span></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> ../src-fdkaac <span class="kw">&amp;&amp;</span> <span class="ex">autoreconf</span> <span class="at">-i</span></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a><span class="va">PKG_CONFIG_PATH</span><span class="op">=</span><span class="va">$PWD</span>/../inst-x64/lib/pkgconfig <span class="ex">./configure</span> <span class="dt">\</span></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">--host</span><span class="op">=</span>x86_64-w64-mingw32 CFLAGS=<span class="st">&quot;-O2 -I</span><span class="va">$PWD</span><span class="st">/../inst-x64/include&quot;</span> <span class="dt">\</span></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>    LDFLAGS=<span class="st">&quot;-static -static-libgcc -L</span><span class="va">$PWD</span><span class="st">/../inst-x64/lib&quot;</span></span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> <span class="at">-j</span>     <span class="co"># -&gt; fdkaac.exe</span></span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a><span class="co"># x86: the same with --host=i686-w64-mingw32 and a separate inst-x86 prefix.</span></span></code></pre></div>
 <h2 id="list-of-changed-fdk-files-mapped-to-points">List of changed FDK
 files (mapped to points)</h2>
 <ul>
@@ -2001,10 +2095,8 @@ verbose).</li>
 <code>aacenc.h</code> (frontend) — CLI switches, parsing, passing to
 SetParam, <code>--verbose</code> dump, help.</li>
 </ul>
-<hr />
 <h1 id="-wersja-polska-polish-version-below">🇵🇱 Wersja polska (Polish
 version below)</h1>
-<hr />
 <h1 id="franken-fdk-aac--laboratoryjnygeekowski-enkoder-aac-fdk">Franken
 FDK AAC — laboratoryjny/"geekowski" enkoder AAC (FDK)</h1>
 <p>Zbudowany na bazie <strong>libfdk-aac 2.0.3</strong>
@@ -2069,6 +2161,8 @@ najbardziej geekowskich. Ta sama kolejność obowiazuje w
 <code>--vbr-reservoir</code>, <code>--peak-bitrate</code>,
 <code>--max-bits-frame</code>, <code>--min-bits-frame</code>,
 <code>--bitres-mode</code> — sekcje 7, 9.</li>
+<li><strong>F. Radio cyfrowe DAB+:</strong> <code>--dab</code>,
+<code>--dab-label</code> — sekcja 14.</li>
 </ul>
 <p>Wskazowka: <code>--verbose</code> na koncu wypisuje sekcje "franken
 overrides applied" — dokładnie te przełączniki, które w danym
@@ -3486,7 +3580,94 @@ na górny limit = Nyquist). Dla LC bez SBR realny sufit to ~17 kHz z
 auto; wyżej tylko przez <code>-w</code> (z zapasem bitow) lub
 <code>--uncap-bandwidth</code> przy sr≥96k.</p>
 <hr />
-<h2 id="przykłady">Przykłady</h2>
+<h2 id="14-wyjście-dab---dab---dab-label">14. Wyjście DAB+
+(<code>--dab</code>, <code>--dab-label</code>)</h2>
+<p>Dedykowany tryb wyjściowy, który zamiast pliku MP4/M4A czy surowego
+strumienia ADTS emituje strumień radia cyfrowego DAB+. Enkoder
+przygotowuje dźwięk AAC dokładnie tak, jak wymaga tego system DAB+
+(transformata 960 próbek, super-ramka 120 ms, zabezpieczenie przed
+błędami), więc strumień można podać wprost do multipleksera takiego jak
+<code>odr-dabmux</code> → ETI → nadajnik (albo do programowego
+odbiornika w rodzaju welle.io / dablin).</p>
+<p>DAB+ to nie jest "AAC w innym pudełku": używa transformaty MDCT na
+960 próbkach (nie 1024), pakuje dźwięk w <strong>super-ramki</strong> po
+120 ms, strzeże nagłówka <strong>firecode'em</strong> (CRC Fire) i
+chroni ładunek kodem <strong>Reed-Solomon RS(120,110)</strong> nad
+GF(256). Wyjściem jest surowy strumień <code>.dabp</code> — kolejne
+super-ramki jedna po drugiej — czyli dokładnie to, co połyka
+multiplekser DAB+.</p>
+<h3 id="--dab-1"><code>--dab</code></h3>
+<p>Włącza wyjście super-ramek DAB+. Wynikiem jest surowy strumień
+<code>.dabp</code> (bez MP4, bez ADTS). Ograniczenia narzucone przez
+standard:</p>
+<table>
+<thead>
+<tr class="header">
+<th>Wymaganie</th>
+<th>Wartość</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Częstotliwość próbkowania</td>
+<td>MUSI być <code>32000</code> lub <code>48000</code> Hz</td>
+</tr>
+<tr class="even">
+<td>Bitrate</td>
+<td>wielokrotność 8 kbps, zakres 8..192 kbps</td>
+</tr>
+<tr class="odd">
+<td>Kanały</td>
+<td>mono lub stereo</td>
+</tr>
+<tr class="even">
+<td>Profile</td>
+<td>AAC-LC, HE-AAC, HE-AAC v2 (wszystkie trzy)</td>
+</tr>
+</tbody>
+</table>
+<p>Profil (AOT) dobierany jest AUTOMATYCZNIE z bitrate i liczby kanałów,
+tak samo jak robi to <code>odr-audioenc</code> — zwykle nie ustawiasz
+<code>-p</code>:</p>
+<ul>
+<li>stereo ≤48 kbps (subkanał ≤6) → <strong>HE-AAC v2</strong>
+(PS),</li>
+<li>mono ≤64k lub stereo ≤80k → <strong>HE-AAC</strong> (SBR),</li>
+<li>wyżej → <strong>AAC-LC</strong>.</li>
+</ul>
+<p>Profil można nadal wymusić przełącznikiem <code>-p</code>
+(<code>2</code>=LC, <code>5</code>=HE-AAC, <code>29</code>=HE-AAC v2),
+jeśli wiesz, czego chcesz.</p>
+<h3 id="--dab-label-tekst"><code>--dab-label &lt;tekst&gt;</code></h3>
+<p>Statyczna etykieta <strong>DLS</strong> (Dynamic Label Segment)
+niesiona jako X-PAD wewnątrz super-ramki; odbiorniki DAB+ pokazują ją
+jako nazwę stacji / tytuł. Do ~48 znaków (trzy segmenty w jednym PAD).
+"Statyczna" znaczy jeden stały tekst przez cały plik — etykiety zmienne
+w czasie oraz pokaz slajdów MOT (model <code>ODR-PadEnc</code>) to plan
+na przyszłość. Bez <code>--dab</code> etykieta jest ignorowana.</p>
+<h3 id="przykłady">Przykłady</h3>
+<pre><code># 48k/32k stereo, ~96k → auto AAC-LC:
+fdkaac --dab -b 96 -o out.dabp input.wav
+
+# → auto HE-AAC (SBR):
+fdkaac --dab -b 64 -o out.dabp input.wav
+
+# → auto HE-AAC v2 (PS):
+fdkaac --dab -b 32 -o out.dabp input.wav
+
+# z etykietą stacji:
+fdkaac --dab -b 96 --dab-label &quot;Radio DHT&quot; -o out.dabp input.wav
+
+# łańcuch nadawczy:
+# out.dabp → odr-dabmux → ETI → nadajnik / dekoder</code></pre>
+<p>Uwaga: bez <code>--dab</code> enkoder zachowuje się dokładnie jak
+dotychczas — zero wpływu, bit-identycznie ze stockiem. Zweryfikowane:
+strumienie dekodują się niezależnym dekoderem faad2 (dablin), etykieta
+DLS jest odczytywalna, a wyjście LC jest bit-identyczne z referencyjnym
+<code>odr-audioenc</code>. Przetestowano dziewięć kombinacji (48/32 kHz
+× mono/stereo × trzy profile), każda dekodowalna niezależnie.</p>
+<hr />
+<h2 id="przykłady-1">Przykłady</h2>
 <pre><code># Punkt wyjscia — co ustawil enkoder:
 fdkaac-franken-x64.exe -p 29 -b 48000 --verbose -o out.m4a in.wav
 
@@ -3568,23 +3749,23 @@ jeden modul <code>libAACenc/src/franken.{h,cpp}</code> (globalny blok
 <code>g_franken</code>, sentinele = domyślne FDK), a nowe
 <code>AACENC_PARAM</code> (zakres <code>0xF0xx</code>) są wystawione w
 <code>aacenc_lib.h</code>.</p>
-<div class="sourceCode" id="cb10"><pre
-class="sourceCode bash"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> apt-get install <span class="at">-y</span> mingw-w64          <span class="co"># + autotools (autoconf/automake/libtool)</span></span>
-<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a><span class="co"># --- libfdk-aac (x64) ---</span></span>
-<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> src-fdk-aac <span class="kw">&amp;&amp;</span> <span class="ex">autoreconf</span> <span class="at">-i</span></span>
-<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a><span class="ex">./configure</span> <span class="at">--host</span><span class="op">=</span>x86_64-w64-mingw32 <span class="at">--prefix</span><span class="op">=</span><span class="va">$PWD</span>/../inst-x64 <span class="dt">\</span></span>
-<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">--enable-static</span> <span class="at">--disable-shared</span> CFLAGS=-O2 CXXFLAGS=-O2</span>
-<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> <span class="at">-j</span> <span class="kw">&amp;&amp;</span> <span class="fu">make</span> install</span>
-<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a><span class="co"># --- frontend (x64) ---</span></span>
-<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> ../src-fdkaac <span class="kw">&amp;&amp;</span> <span class="ex">autoreconf</span> <span class="at">-i</span></span>
-<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a><span class="va">PKG_CONFIG_PATH</span><span class="op">=</span><span class="va">$PWD</span>/../inst-x64/lib/pkgconfig <span class="ex">./configure</span> <span class="dt">\</span></span>
-<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">--host</span><span class="op">=</span>x86_64-w64-mingw32 CFLAGS=<span class="st">&quot;-O2 -I</span><span class="va">$PWD</span><span class="st">/../inst-x64/include&quot;</span> <span class="dt">\</span></span>
-<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a>    LDFLAGS=<span class="st">&quot;-static -static-libgcc -L</span><span class="va">$PWD</span><span class="st">/../inst-x64/lib&quot;</span></span>
-<span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> <span class="at">-j</span>     <span class="co"># -&gt; fdkaac.exe</span></span>
-<span id="cb10-15"><a href="#cb10-15" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-16"><a href="#cb10-16" aria-hidden="true" tabindex="-1"></a><span class="co"># x86: to samo z --host=i686-w64-mingw32 i osobnym prefixem inst-x86.</span></span></code></pre></div>
+<div class="sourceCode" id="cb12"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> apt-get install <span class="at">-y</span> mingw-w64          <span class="co"># + autotools (autoconf/automake/libtool)</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a><span class="co"># --- libfdk-aac (x64) ---</span></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> src-fdk-aac <span class="kw">&amp;&amp;</span> <span class="ex">autoreconf</span> <span class="at">-i</span></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a><span class="ex">./configure</span> <span class="at">--host</span><span class="op">=</span>x86_64-w64-mingw32 <span class="at">--prefix</span><span class="op">=</span><span class="va">$PWD</span>/../inst-x64 <span class="dt">\</span></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">--enable-static</span> <span class="at">--disable-shared</span> CFLAGS=-O2 CXXFLAGS=-O2</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> <span class="at">-j</span> <span class="kw">&amp;&amp;</span> <span class="fu">make</span> install</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a><span class="co"># --- frontend (x64) ---</span></span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> ../src-fdkaac <span class="kw">&amp;&amp;</span> <span class="ex">autoreconf</span> <span class="at">-i</span></span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a><span class="va">PKG_CONFIG_PATH</span><span class="op">=</span><span class="va">$PWD</span>/../inst-x64/lib/pkgconfig <span class="ex">./configure</span> <span class="dt">\</span></span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">--host</span><span class="op">=</span>x86_64-w64-mingw32 CFLAGS=<span class="st">&quot;-O2 -I</span><span class="va">$PWD</span><span class="st">/../inst-x64/include&quot;</span> <span class="dt">\</span></span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>    LDFLAGS=<span class="st">&quot;-static -static-libgcc -L</span><span class="va">$PWD</span><span class="st">/../inst-x64/lib&quot;</span></span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> <span class="at">-j</span>     <span class="co"># -&gt; fdkaac.exe</span></span>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a><span class="co"># x86: to samo z --host=i686-w64-mingw32 i osobnym prefixem inst-x86.</span></span></code></pre></div>
 <h2 id="lista-zmienionych-plikow-fdk-mapa-na-punkty">Lista zmienionych
 plikow FDK (mapa na punkty)</h2>
 <ul>

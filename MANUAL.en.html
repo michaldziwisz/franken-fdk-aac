@@ -290,7 +290,14 @@ id="toc-25-table-3--aac-lc-automatic-band-cutoff-by-bitrate">25. Table 3
 id="toc-26-how-to-read---verbose">26. How to read
 <code>--verbose</code></a></li>
 </ul></li>
-<li><a href="#part-viii-glossary" id="toc-part-viii-glossary">Part VIII.
+<li><a href="#part-viii-dab-digital-radio"
+id="toc-part-viii-dab-digital-radio">Part VIII. DAB+ Digital Radio</a>
+<ul>
+<li><a href="#27-dab-output---dab---dab-label"
+id="toc-27-dab-output---dab---dab-label">27. DAB+ output
+(<code>--dab</code>, <code>--dab-label</code>)</a></li>
+</ul></li>
+<li><a href="#part-ix-glossary" id="toc-part-ix-glossary">Part IX.
 Glossary</a></li>
 </ul>
 </nav>
@@ -1385,7 +1392,94 @@ deviate from pure FDK (or "none," when you changed nothing).</li>
 <code>--ms-precision</code>, <code>--ms-bias</code>,
 <code>--ath-scale</code>, <code>--spread-mask</code>) are numbers where
 256 means 1.0 — for example 243 is about 0.95.</p>
-<h1 id="part-viii-glossary">Part VIII. Glossary</h1>
+<h1 id="part-viii-dab-digital-radio">Part VIII. DAB+ Digital Radio</h1>
+<h2 id="27-dab-output---dab---dab-label">27. DAB+ output
+(<code>--dab</code>, <code>--dab-label</code>)</h2>
+<p>So far we've been making files — MP4/M4A for players, ADTS for
+streaming. DAB+ is something else: it's the format of terrestrial
+digital radio (the standard is ETSI TS 102 563), and this encoder can
+produce a ready DAB+ stream directly, without any external
+re-packing.</p>
+<p>Why can't you just take an ordinary AAC file and send it over the
+air? Because DAB+ carries AAC in a way of its own. First, the transform
+is shorter — 960 samples instead of the usual 1024 — so the frame length
+fits the radio timing grid. Second, the audio is packed into a
+<strong>super frame</strong> that lasts exactly 120 milliseconds. Third,
+and most importantly, the air is a hostile place: the signal fades, cars
+drive through tunnels, interference comes and goes. So DAB+ wraps the
+sound in two layers of protection: a <strong>firecode</strong> (a Fire
+CRC) guarding the header, and <strong>Reed-Solomon</strong>
+error-correction coding — specifically RS(120,110) over the Galois field
+GF(256) — which lets the receiver rebuild data even when part of the
+signal arrives damaged. The encoder does all of this for you.</p>
+<p>What comes out is a raw <code>.dabp</code> stream: one super frame
+after another, nothing else. This is not a file you play in a media
+player — it's the raw material a DAB+ multiplexer eats. In practice the
+chain looks like this:</p>
+<pre><code>out.dabp → odr-dabmux → ETI → transmitter (or a software receiver: welle.io, dablin)</code></pre>
+<p><code>odr-dabmux</code> is the multiplexer that combines several
+stations into one ensemble and produces an ETI stream, which then goes
+either to a real transmitter or to a soft receiver for testing.</p>
+<h3 id="turning-it-on---dab">Turning it on: <code>--dab</code></h3>
+<pre><code>fdkaac --dab -b 96 -o out.dabp input.wav</code></pre>
+<p>The <code>--dab</code> switch flips the encoder into DAB+ output
+mode. A few rules the standard forces on you, and the encoder enforces
+them:</p>
+<ul>
+<li>The sample rate MUST be 32000 or 48000 Hz. Nothing else is legal in
+DAB+.</li>
+<li>The bitrate must be a multiple of 8 kbps, from 8 up to 192
+kbps.</li>
+<li>Mono and stereo are both fine.</li>
+</ul>
+<p>The interesting part is that you usually DON'T pick the profile
+yourself. DAB+ practice (and the reference tool
+<code>odr-audioenc</code>) is to derive the AAC profile from the bitrate
+and the channel count, so that low bitrates automatically use the more
+economical tools:</p>
+<ul>
+<li>stereo at 48 kbps or below → <strong>HE-AAC v2</strong> (with
+Parametric Stereo),</li>
+<li>mono up to 64k, or stereo up to 80k → <strong>HE-AAC</strong> (with
+SBR),</li>
+<li>above that → <strong>AAC-LC</strong> (the plain full-band
+profile).</li>
+</ul>
+<p>So <code>-b 96</code> on a stereo file lands on AAC-LC,
+<code>-b 64</code> on HE-AAC, and <code>-b 32</code> on HE-AAC v2 — you
+don't have to think about it. If you insist, you can still force the
+profile with <code>-p</code> (2 = LC, 5 = HE-AAC, 29 = HE-AAC v2), the
+same as in every other mode of this encoder.</p>
+<pre><code>fdkaac --dab -b 64 -o out.dabp input.wav    # → HE-AAC automatically
+fdkaac --dab -b 32 -o out.dabp input.wav    # → HE-AAC v2 automatically</code></pre>
+<h3 id="the-station-label---dab-label">The station label:
+<code>--dab-label</code></h3>
+<p>A DAB+ receiver shows text on its display — the station name, and
+often the title of what's playing. In DAB+ that text travels in a
+channel called DLS (Dynamic Label Segment), tucked as X-PAD data inside
+the super frame. This encoder can carry a STATIC label — one fixed
+string for the whole file:</p>
+<pre><code>fdkaac --dab -b 96 --dab-label &quot;Radio DHT&quot; -o out.dabp input.wav</code></pre>
+<p>Up to about 48 characters fit (three segments packed into one PAD).
+"Static" is the key word: the text does not change over the course of
+the file. A truly dynamic label that updates track by track, and the MOT
+slideshow that puts album art on the screen (the job of
+<code>ODR-PadEnc</code> in the OpenDigitalRadio world), are on the
+roadmap but not here yet. And note: <code>--dab-label</code> without
+<code>--dab</code> does nothing — the label is simply ignored, because
+there is no super frame to put it in.</p>
+<h3 id="a-word-on-trust">A word on trust</h3>
+<p>Everything above was checked against independent tools, not just "it
+compiled." The streams decode cleanly in faad2 (the decoder behind
+dablin), the DLS label reads back correctly on the receiver side, and
+the AAC-LC output is bit-identical to what the reference
+<code>odr-audioenc</code> produces from the same input. Nine
+combinations were tested — 48 and 32 kHz, mono and stereo, across all
+three profiles — and each one decodes on its own. As everywhere in this
+encoder: if you don't pass <code>--dab</code>, nothing changes, and the
+ordinary file output stays bit-identical to stock FDK.</p>
+<hr />
+<h1 id="part-ix-glossary">Part IX. Glossary</h1>
 <p>For quick recall — all the terms from this manual, explained in one
 or two sentences, in the language of the audio engineer.</p>
 <p>AAC (Advanced Audio Coding). A family of lossy audio codecs from the

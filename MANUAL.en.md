@@ -817,7 +817,93 @@ Values on the Q8 scale (like the IS thresholds, `--ms-precision`, `--ms-bias`, `
 `--spread-mask`) are numbers where 256 means 1.0 — for example 243 is about 0.95.
 
 
-# Part VIII. Glossary
+# Part VIII. DAB+ Digital Radio
+
+## 27. DAB+ output (`--dab`, `--dab-label`)
+
+So far we've been making files — MP4/M4A for players, ADTS for streaming. DAB+ is
+something else: it's the format of terrestrial digital radio (the standard is ETSI
+TS 102 563), and this encoder can produce a ready DAB+ stream directly, without any
+external re-packing.
+
+Why can't you just take an ordinary AAC file and send it over the air? Because DAB+
+carries AAC in a way of its own. First, the transform is shorter — 960 samples
+instead of the usual 1024 — so the frame length fits the radio timing grid.
+Second, the audio is packed into a **super frame** that lasts exactly 120
+milliseconds. Third, and most importantly, the air is a hostile place: the signal
+fades, cars drive through tunnels, interference comes and goes. So DAB+ wraps the
+sound in two layers of protection: a **firecode** (a Fire CRC) guarding the header,
+and **Reed-Solomon** error-correction coding — specifically RS(120,110) over the
+Galois field GF(256) — which lets the receiver rebuild data even when part of the
+signal arrives damaged. The encoder does all of this for you.
+
+What comes out is a raw `.dabp` stream: one super frame after another, nothing
+else. This is not a file you play in a media player — it's the raw material a DAB+
+multiplexer eats. In practice the chain looks like this:
+
+    out.dabp → odr-dabmux → ETI → transmitter (or a software receiver: welle.io, dablin)
+
+`odr-dabmux` is the multiplexer that combines several stations into one ensemble
+and produces an ETI stream, which then goes either to a real transmitter or to a
+soft receiver for testing.
+
+### Turning it on: `--dab`
+
+    fdkaac --dab -b 96 -o out.dabp input.wav
+
+The `--dab` switch flips the encoder into DAB+ output mode. A few rules the
+standard forces on you, and the encoder enforces them:
+
+- The sample rate MUST be 32000 or 48000 Hz. Nothing else is legal in DAB+.
+- The bitrate must be a multiple of 8 kbps, from 8 up to 192 kbps.
+- Mono and stereo are both fine.
+
+The interesting part is that you usually DON'T pick the profile yourself. DAB+
+practice (and the reference tool `odr-audioenc`) is to derive the AAC profile from
+the bitrate and the channel count, so that low bitrates automatically use the more
+economical tools:
+
+- stereo at 48 kbps or below → **HE-AAC v2** (with Parametric Stereo),
+- mono up to 64k, or stereo up to 80k → **HE-AAC** (with SBR),
+- above that → **AAC-LC** (the plain full-band profile).
+
+So `-b 96` on a stereo file lands on AAC-LC, `-b 64` on HE-AAC, and `-b 32` on
+HE-AAC v2 — you don't have to think about it. If you insist, you can still force
+the profile with `-p` (2 = LC, 5 = HE-AAC, 29 = HE-AAC v2), the same as in every
+other mode of this encoder.
+
+    fdkaac --dab -b 64 -o out.dabp input.wav    # → HE-AAC automatically
+    fdkaac --dab -b 32 -o out.dabp input.wav    # → HE-AAC v2 automatically
+
+### The station label: `--dab-label`
+
+A DAB+ receiver shows text on its display — the station name, and often the title
+of what's playing. In DAB+ that text travels in a channel called DLS (Dynamic Label
+Segment), tucked as X-PAD data inside the super frame. This encoder can carry a
+STATIC label — one fixed string for the whole file:
+
+    fdkaac --dab -b 96 --dab-label "Radio DHT" -o out.dabp input.wav
+
+Up to about 48 characters fit (three segments packed into one PAD). "Static" is the
+key word: the text does not change over the course of the file. A truly dynamic
+label that updates track by track, and the MOT slideshow that puts album art on the
+screen (the job of `ODR-PadEnc` in the OpenDigitalRadio world), are on the roadmap
+but not here yet. And note: `--dab-label` without `--dab` does nothing — the label
+is simply ignored, because there is no super frame to put it in.
+
+### A word on trust
+
+Everything above was checked against independent tools, not just "it compiled." The
+streams decode cleanly in faad2 (the decoder behind dablin), the DLS label reads
+back correctly on the receiver side, and the AAC-LC output is bit-identical to what
+the reference `odr-audioenc` produces from the same input. Nine combinations were
+tested — 48 and 32 kHz, mono and stereo, across all three profiles — and each one
+decodes on its own. As everywhere in this encoder: if you don't pass `--dab`,
+nothing changes, and the ordinary file output stays bit-identical to stock FDK.
+
+---
+
+# Part IX. Glossary
 
 For quick recall — all the terms from this manual, explained in
 one or two sentences, in the language of the audio engineer.
