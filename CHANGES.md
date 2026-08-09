@@ -5,6 +5,42 @@ Library** (per section 2 of the FDK AAC license, see `NOTICE.fdk-aac`).
 
 ## Releases
 
+### Unreleased — OPD: the other half of the phase pair (`--ps-opd`)
+
+- **`--ps-opd <0|1>`** (default on with `--ps-ipd 1`) — transmit OPD, the phase of
+  the LEFT channel relative to the MONO downmix. The decoder rotates the
+  downmix-fed paths by `OPD` and the others by `OPD - IPD`; the difference always
+  reduces to IPD, but the placement of that rotation relative to the downmix is
+  set by OPD alone.
+- Derived from existing accumulators, no new analysis and no downmix signal
+  needed: the downmix is `L + R`, so `sum(L*conj(L+R))` has real part
+  `pwrL + pwrCr` and imaginary part `pwrCi`, giving
+  `OPD = atan2(pwrCi, pwrL + pwrCr)`. Reduces analytically to `IPD/2` in the
+  equal-level case, but stays correct when the channels differ in level.
+- **Corrects a wrong verdict in the previous release.** It claimed measurement
+  showed `OPD = IPD/2` did not help. That measurement was scoped to
+  `arg(L) - arg(R)` — a metric structurally blind to OPD, since OPD cancels in the
+  inter-channel difference by construction. Re-measured on each channel's ABSOLUTE
+  phase against the source (60-690 Hz), OPD clearly helps:
+
+  | delay | OPD=0 (L / R) | OPD computed (L / R) |
+  |---|---|---|
+  | 0.25 ms | 14.7 / 20.1 | 14.4 / **17.3** |
+  | 0.4 ms | 23.0 / 28.0 | **15.5** / **17.8** |
+  | 0.7 ms | 48.1 / 56.2 | **40.9** / **36.3** |
+
+  Average gain +6.4 deg, +13 deg at 0.7 ms — including the 0.7 ms case where the
+  plain IPD difference metric showed no benefit at all, because inter-channel phase
+  had already exceeded what a 45 deg grid resolves while absolute phase had not.
+  At `OPD = 0` the channels are always lopsided (14.7 vs 20.1, 48.1 vs 56.2); with
+  OPD they converge, which is precisely the asymmetry the parameter exists to fix.
+- `--ps-opd 0` retained so the two can be A/B'd on identical material.
+- Compatibility unchanged and re-verified: byte-identical with IPD off, clean
+  decode by ffmpeg and faad at 24/32/48/64 kbps with both parameters on.
+- New assertions: `--ps-opd 0` and `1` must produce DIFFERENT streams (proving OPD
+  reaches the bitstream) and both must decode without parser errors.
+- `make check` 143/143 PASS.
+
 ### Unreleased — IPD: inter-channel phase in Parametric Stereo (`--ps-ipd`)
 
 - **`--ps-ipd <0|1>`** — transmit IPD (inter-channel phase difference) in the PS

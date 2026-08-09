@@ -191,11 +191,14 @@ static FDK_PSENC_ERROR InitPSData(HANDLE_PS_DATA hPsData) {
     hPsData->ipdTimeCnt = MAX_TIME_DIFF_FRAMES;
     for (i = 0; i < PS_MAX_BANDS; i++) {
       hPsData->ipdIdxLast[i] = 0;
+      hPsData->opdIdxLast[i] = 0;
     }
     for (env = 0; env < PS_MAX_ENVELOPES; env++) {
       hPsData->ipdDiffMode[env] = PS_DELTA_FREQ;
+      hPsData->opdDiffMode[env] = PS_DELTA_FREQ;
       for (i = 0; i < PS_MAX_BANDS; i++) {
         hPsData->ipdIdx[env][i] = 0;
+        hPsData->opdIdx[env][i] = 0;
       }
     }
     hPsData->iidQuantMode = hPsData->iidQuantModeLast = PS_IID_RES_COARSE;
@@ -746,6 +749,59 @@ static INT getIpdBands(const INT psBands) {
  * parameter the decoder expects (ffmpeg masks the accumulated value with &0x07
  * and looks the angle up in an 8-entry sin/cos table). fixp_atan2 returns Q29
  * over ]-pi .. pi], so index = round(phi / (pi/4)) taken modulo 8. */
+/* Frankenstein: OPD - the phase of the LEFT channel relative to the MONO downmix.
+ *
+ * The decoder applies the two phase parameters like this (ffmpeg aacps.c and
+ * aacpsdsp_template.c ps_stereo_interpolate_ipdopd_c):
+ *     left  = e^{i*OPD}         * (h11*mono + h21*decorrelated)
+ *     right = e^{i*(OPD - IPD)} * (h12*mono + h22*decorrelated)
+ * so the DIFFERENCE arg(left) - arg(right) always comes out as IPD, but where
+ * that rotation sits relative to the downmix is set by OPD. With OPD = 0 the
+ * left channel is pinned to the downmix phase and the entire rotation is dumped
+ * onto the right one - the difference is right, its placement is not.
+ *
+ * Computing it needs NO new data. The downmix is L + R, so
+ *     sum(L * conj(L+R)) = sum(|L|^2) + sum(L * conj(R))
+ * whose real part is (pwrL + pwrCr) and whose imaginary part is exactly pwrCi -
+ * all three accumulators already exist in this loop. Hence
+ *     OPD = atan2(pwrCi, pwrL + pwrCr).
+ * (For the equal-level delay case this reduces analytically to IPD/2, which is a
+ * useful sanity check, but the general form above also handles level-imbalanced
+ * bands correctly, where IPD/2 would be wrong.) */
+static void calculateOpd(FIXP_DBL pwrL[PS_MAX_ENVELOPES][PS_MAX_BANDS],
+                         FIXP_DBL pwrCr[PS_MAX_ENVELOPES][PS_MAX_BANDS],
+                         FIXP_DBL pwrCi[PS_MAX_ENVELOPES][PS_MAX_BANDS],
+                         INT opd[PS_MAX_ENVELOPES][PS_MAX_BANDS],
+                         const INT nEnvelopes, const INT psBands) {
+  const INT opdBands = fixMin(getIpdBands(psBands), psBands);
+  const LONG qStepQ29 = (LONG)((1u << Q_ATAN2OUT) * 0.78539816339744831f);
+  const LONG qHalfQ29 = qStepQ29 >> 1;
+  INT env, band;
+
+  for (env = 0; env < nEnvelopes; env++) {
+    for (band = 0; band < PS_MAX_BANDS; band++) {
+      opd[env][band] = 0;
+    }
+    for (band = 0; band < opdBands; band++) {
+      /* Re{L * conj(L+R)} = |L|^2 + Re{L * conj(R)}. Both terms are already
+       * scaled the same way (they come from the same accumulation loop), so
+       * they can be added directly; >>1 on each keeps the sum from overflowing. */
+      FIXP_DBL re = (pwrL[env][band] >> 1) + (pwrCr[env][band] >> 1);
+      FIXP_DBL im = pwrCi[env][band] >> 1;
+      LONG phi, idx;
+
+      if ((re == (FIXP_DBL)0) && (im == (FIXP_DBL)0)) {
+        continue;
+      }
+      phi = (LONG)fixp_atan2(im, re);
+      idx = (phi >= 0) ? ((phi + qHalfQ29) / qStepQ29)
+                       : -((-phi + qHalfQ29) / qStepQ29);
+      idx &= 0x07;
+      opd[env][band] = (INT)idx;
+    }
+  }
+}
+
 static void calculateIpd(FIXP_DBL pwrCr[PS_MAX_ENVELOPES][PS_MAX_BANDS],
                          FIXP_DBL pwrCi[PS_MAX_ENVELOPES][PS_MAX_BANDS],
                          INT ipd[PS_MAX_ENVELOPES][PS_MAX_BANDS],
@@ -794,6 +850,7 @@ static void calculateIpd(FIXP_DBL pwrCr[PS_MAX_ENVELOPES][PS_MAX_BANDS],
  * each mode would need and keep the cheaper one. */
 static void processIpdData(PS_DATA *psData,
                            INT ipd[PS_MAX_ENVELOPES][PS_MAX_BANDS],
+                           INT opd[PS_MAX_ENVELOPES][PS_MAX_BANDS],
                            const INT psBands, const INT nEnvelopes) {
   const INT ipdBands = fixMin(getIpdBands(psBands), psBands);
   INT env, band, error = 0;
@@ -803,6 +860,20 @@ static void processIpdData(PS_DATA *psData,
 
     for (band = 0; band < PS_MAX_BANDS; band++) {
       psData->ipdIdx[env][band] = ipd[env][band];
+      psData->opdIdx[env][band] = opd[env][band];
+    }
+
+    /* OPD uses the same delta-mode choice as IPD: the two are written back to
+     * back per envelope and follow the same statistics. */
+    {
+      INT of = FDKsbrEnc_EncodeOpd(NULL, psData->opdIdx[env], NULL, ipdBands,
+                                   PS_DELTA_FREQ, &error);
+      INT ot = (psData->ipdTimeCnt >= MAX_TIME_DIFF_FRAMES)
+                   ? DO_NOT_USE_THIS_MODE
+                   : FDKsbrEnc_EncodeOpd(NULL, psData->opdIdx[env],
+                                         psData->opdIdxLast, ipdBands,
+                                         PS_DELTA_TIME, &error);
+      psData->opdDiffMode[env] = (ot < of) ? PS_DELTA_TIME : PS_DELTA_FREQ;
     }
 
     bitsFreq = FDKsbrEnc_EncodeIpd(NULL, psData->ipdIdx[env], NULL, ipdBands,
@@ -998,6 +1069,7 @@ FDK_PSENC_ERROR FDKsbrEnc_PSEncode(
   FIXP_DBL iid[PS_MAX_ENVELOPES][PS_MAX_BANDS];
   FIXP_DBL icc[PS_MAX_ENVELOPES][PS_MAX_BANDS];
   INT ipdQ[PS_MAX_ENVELOPES][PS_MAX_BANDS];
+  INT opdQ[PS_MAX_ENVELOPES][PS_MAX_BANDS];
   int envBorder[PS_MAX_ENVELOPES + 1];
 
   int group, bin, col, subband, band;
@@ -1129,7 +1201,16 @@ FDK_PSENC_ERROR FDKsbrEnc_PSEncode(
   hPsData->ipdEnable = (g_franken.psIpd == 1) ? 1 : 0;
   if (hPsData->ipdEnable) {
     calculateIpd(pwrData->pwrCr, pwrData->pwrCi, ipdQ, nEnvelopes, psBands);
-    processIpdData(hPsData, ipdQ, psBands, nEnvelopes);
+    if (g_franken.psOpd == 0) {
+      /* --ps-opd 0: keep OPD at the neutral zero for A/B comparison. */
+      INT e2, b2;
+      for (e2 = 0; e2 < PS_MAX_ENVELOPES; e2++)
+        for (b2 = 0; b2 < PS_MAX_BANDS; b2++) opdQ[e2][b2] = 0;
+    } else {
+      calculateOpd(pwrData->pwrL, pwrData->pwrCr, pwrData->pwrCi, opdQ,
+                   nEnvelopes, psBands);
+    }
+    processIpdData(hPsData, ipdQ, opdQ, psBands, nEnvelopes);
   } else {
     hPsData->ipdTimeCnt = MAX_TIME_DIFF_FRAMES;
   }
@@ -1199,6 +1280,7 @@ FDK_PSENC_ERROR FDKsbrEnc_PSEncode(
                 PS_MAX_ENVELOPES * PS_MAX_BANDS * sizeof(PS_DELTA));
     FDKmemclear(hPsOut->opd,
                 PS_MAX_ENVELOPES * PS_MAX_BANDS * sizeof(PS_DELTA));
+    /* filled in below when IPD/OPD are active */
     for (env = 0; env < PS_MAX_ENVELOPES; env++) {
       hPsOut->deltaIPD[env] = PS_DELTA_FREQ;
       hPsOut->deltaOPD[env] = PS_DELTA_FREQ;
@@ -1209,18 +1291,15 @@ FDK_PSENC_ERROR FDKsbrEnc_PSEncode(
     if (hPsData->ipdEnable) {
       for (env = 0; env < nEnvelopes; env++) {
         hPsOut->deltaIPD[env] = (PS_DELTA)hPsData->ipdDiffMode[env];
-        hPsOut->deltaOPD[env] = PS_DELTA_FREQ;
+        hPsOut->deltaOPD[env] = (PS_DELTA)hPsData->opdDiffMode[env];
         for (band = 0; band < psBands; band++) {
           hPsOut->ipd[env][band] = hPsData->ipdIdx[env][band];
-          /* OPD stays zero. MEASURED: the decoder couples the two phase
-           * parameters (OPD rotates both downmix paths, IPD only shifts the
-           * second), and neither OPD=0 nor the physically-motivated OPD=IPD/2
-           * reconstructs the source phase correctly - see the verdict in the
-           * docs. Leaving OPD at the defined neutral rather than guessing. */
+          hPsOut->opd[env][band] = hPsData->opdIdx[env][band];
         }
       }
       for (band = 0; band < PS_MAX_BANDS; band++) {
         hPsOut->ipdLast[band] = hPsData->ipdIdxLast[band];
+        hPsOut->opdLast[band] = hPsData->opdIdxLast[band];
       }
     }
 
@@ -1244,6 +1323,7 @@ FDK_PSENC_ERROR FDKsbrEnc_PSEncode(
     if (hPsData->ipdEnable) {
       for (i = 0; i < PS_MAX_BANDS; i++) {
         hPsData->ipdIdxLast[i] = hPsData->ipdIdx[nEnvelopes - 1][i];
+        hPsData->opdIdxLast[i] = hPsData->opdIdx[nEnvelopes - 1][i];
       }
       hPsData->ipdEnableLast = hPsData->ipdEnable;
       hPsData->ipdTimeCnt = 0;

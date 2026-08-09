@@ -151,6 +151,9 @@ typedef struct T_PS_DATA {
   INT ipdIdx[PS_MAX_ENVELOPES][PS_MAX_BANDS];
   INT ipdIdxLast[PS_MAX_BANDS];
   INT ipdTimeCnt;
+  INT opdDiffMode[PS_MAX_ENVELOPES];
+  INT opdIdx[PS_MAX_ENVELOPES][PS_MAX_BANDS];
+  INT opdIdxLast[PS_MAX_BANDS];
 
   INT nEnvelopesLast;
 

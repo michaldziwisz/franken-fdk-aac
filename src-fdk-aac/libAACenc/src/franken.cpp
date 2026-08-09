@@ -80,6 +80,7 @@ extern "C" void frankenResetDefaults(void) {
   g_franken.psEnvelopes = -1;
   g_franken.psEnvReduce = -1;
   g_franken.psIpd = -1;
+  g_franken.psOpd = -1;
   g_franken.psNoEnvSkip = -1;
   g_franken.effPsBands = -1;
   g_franken.effPsEnvelopes = -1;

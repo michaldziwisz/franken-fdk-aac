@@ -282,6 +282,37 @@ nawet kosztem obrazu stereo.
 | `--ps-env-reduce <n>` | 0, 1 | -1 (włączone) | `0` wyłącza automatyczną pętlę połowienia obwiedni (`envelopeReducible`). Domyślnie FDK zwija 4 obwiednie do 2 i do 1, gdy sąsiednie obwiednie wyglądają podobnie według zaszytego progu błędu — więc liczba obwiedni, którą ustawiłeś, często *nie* jest tym, co realnie leci w strumieniu. `0` sprawia, że `--ps-env` działa literalnie. |
 | `--ps-noenv-skip <n>` | 0, 1 | -1 (włączone) | `0` zabrania ramek PS bez parametrów. Domyślnie FDK może wysłać do 10 kolejnych ramek **bez żadnych** parametrów stereo, gdy kolejne zestawy IID/ICC wyglądają podobnie — słychać to jako chwilowe zapadnięcie się obrazu stereo i powrót. `0` = wysyłaj zawsze. |
 | `--ps-ipd <0|1>` | 0, 1 | -1 (wył.) | Wysyłaj **IPD** — międzykanałową różnicę *fazy* — w rozszerzeniu PS. Stock FDK nigdy nie wysyła fazy: liczy zespolone widmo skrośne L/R, zachowuje z niego tylko moduł na potrzeby ICC, a kąt wyrzuca. To pokrętło bierze dokładnie ten kąt (`atan2` na danych już obecnych w pętli), kwantuje go do 8 zdefiniowanych kroków po π/4 i włącza istniejący writer bitstreamu. Kodowane dla dolnych 5 (10 pasm) / 11 (20 pasm) pasm parametrycznych, zgodnie ze składnią MPEG-4 PS. **Kompatybilne:** dane leżą w rozszerzeniu z prefiksem długości, więc dekodery bez syntezy fazy pomijają je po liczbie bajtów — na co ISO/IEC 14496-3 wprost pozwala. Zweryfikowane: przy wyłączonym wyjście bit-identyczne, przy włączonym czysty odczyt w ffmpeg *i* faad przy 24/32/48/64 kbps. |
+| `--ps-opd <0|1>` | 0, 1 | -1 (wł., przy `--ps-ipd 1`) | Ma sens wyłącznie razem z `--ps-ipd 1`. **OPD** to faza lewego kanału względem *monofonicznego downmiksu*, a dekoder potrzebuje obu parametrów: ścieżki karmione downmiksem obraca o `OPD`, a pozostałe o `OPD - IPD`. Różnica zawsze wychodzi więc równa IPD, ale to OPD decyduje, *gdzie* ten obrót leży względem downmiksu. `0` przypina OPD do zera (fabryczna wartość neutralna), przez co błąd fazy rozkłada się nierówno między kanałami. Policzenie go nie kosztuje nic dodatkowego — patrz niżej. |
+
+DLACZEGO OPD NIE JEST OPCJONALNE i dlaczego nic nie kosztuje. Przy `OPD = 0` lewy
+kanał zostaje przyklejony do fazy downmiksu, a cały obrót ląduje na prawym.
+Międzykanałowa *różnica* jest wtedy nadal poprawna, więc pomiar `arg(L) - arg(R)` w
+ogóle tego nie zobaczy — ale faza bezwzględna każdego kanału jest błędna, i to
+niesymetrycznie. Pomiar fazy bezwzględnej każdego kanału względem oryginału w
+zasięgu IPD (60-690 Hz) pokazuje dokładnie to, i pokazuje, jak OPD to naprawia:
+
+| Opóźnienie międzykanałowe | OPD = 0 (L / P) | OPD liczone (L / P) |
+|---|---|---|
+| 0,25 ms | 14,7 / 20,1° | 14,4 / **17,3°** |
+| 0,4 ms | 23,0 / 28,0° | **15,5** / **17,8°** |
+| 0,7 ms | 48,1 / 56,2° | **40,9** / **36,3°** |
+
+Zwróć uwagę na kształt tego: przy `OPD = 0` oba kanały zawsze się rozjeżdżają
+(14,7 wobec 20,1, potem 48,1 wobec 56,2) — i to jest właśnie ta asymetria, dla
+której ten parametr istnieje. Z policzonym OPD para się zbiega, a zysk rośnie wraz z
+opóźnieniem: średnio +6,4 stopnia, przy 0,7 ms sięga +13.
+
+Wyprowadzenie nie wymaga żadnej nowej analizy i to jest w tym najładniejsze.
+Downmiks to `L + R`, więc
+
+    sum(L * conj(L+R)) = sum(|L|²) + sum(L * conj(R))
+
+czego część rzeczywista to `pwrL + pwrCr`, a urojona to `pwrCi` — dokładnie te
+akumulatory, których używamy już do IID, ICC i IPD. Zatem
+`OPD = atan2(pwrCi, pwrL + pwrCr)`, czyli jeszcze jeden `atan2` na danych, które i
+tak tam leżały. Dla przypadku równych poziomów sprowadza się to analitycznie do
+`IPD/2` (bo `arg(1 + e^{-i·φ}) = -φ/2`), co jest wygodnym sprawdzianem — ale postać
+ogólna jest poprawna także wtedy, gdy kanały różnią się poziomem, a `IPD/2` już nie.
 
 UWAGA o tym, co IPD daje i gdzie się kończy. Bez fazy PS ustawia dźwięk w
 przestrzeni wyłącznie różnicami poziomu (IID) i korelacją (ICC). To działa dla

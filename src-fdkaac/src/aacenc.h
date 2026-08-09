@@ -83,6 +83,7 @@
     int fr_sbr_mh_deltatime; \
     int fr_sbr_noise_max; \
     int fr_ps_ipd; \
+    int fr_ps_opd; \
     int fr_is_band_lo; \
     int fr_is_band_hi; \
     int fr_is_force_lo; \

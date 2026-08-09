@@ -312,6 +312,7 @@ int aacenc_init(HANDLE_AACENCODER *encoder, const aacenc_param_t *params,
     FR_SET(params->fr_sbr_mh_deltatime != -1, AACENC_FRANKEN_SBR_MH_DELTATIME, params->fr_sbr_mh_deltatime);
     FR_SET(params->fr_sbr_noise_max != -1, AACENC_FRANKEN_SBR_NOISE_MAX, params->fr_sbr_noise_max);
     FR_SET(params->fr_ps_ipd != -1, AACENC_FRANKEN_PS_IPD, params->fr_ps_ipd);
+    FR_SET(params->fr_ps_opd != -1, AACENC_FRANKEN_PS_OPD, params->fr_ps_opd);
     FR_SET(params->fr_is_band_lo != -1, AACENC_FRANKEN_IS_BAND_LO, params->fr_is_band_lo);
     FR_SET(params->fr_is_band_hi != -1, AACENC_FRANKEN_IS_BAND_HI, params->fr_is_band_hi);
     FR_SET(params->fr_is_force_lo != -1, AACENC_FRANKEN_IS_FORCE_LO, params->fr_is_force_lo);
@@ -523,7 +524,11 @@ int aacenc_init(HANDLE_AACENCODER *encoder, const aacenc_param_t *params,
                     params->fr_ps_noenv_skip == 0 ? "forbidden (always send parameters)"
                                                   : "allowed (default: up to 10 in a row)");
             if (params->fr_ps_ipd == 1)
-                fprintf(stderr, " PS IPD (phase)        : ON - transmitted in ps_extension, lower 5/11 bands, 8 steps of pi/4 (OPD still zero)\n");
+                fprintf(stderr, " PS IPD (phase)        : ON - ps_extension, lower 5/11 bands, 8 steps of pi/4\n");
+            if (params->fr_ps_ipd == 1)
+                fprintf(stderr, " PS OPD (vs downmix)   : %s\n",
+                        params->fr_ps_opd == 0 ? "forced to zero (--ps-opd 0; asymmetric phase split)"
+                                               : "computed as arg(L * conj(L+R)) [default]");
             else
                 fprintf(stderr, " PS IPD/OPD (phase)    : not emitted (stock: cross-spectrum Im part is computed but discarded); enable with --ps-ipd 1\n");
         }

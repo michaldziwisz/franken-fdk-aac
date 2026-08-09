@@ -1045,7 +1045,80 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 \cell}
 }
 \intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 `--ps-opd <0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 1>`\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0, 1\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (on, with {\f1 --ps-ipd 1})\par}
+\cell}
+}
+\intbl\row}
 {\pard \ql \f0 \sa180 \li0 \fi0 \par}
+{\pard \ql \f0 \sa180 \li0 \fi0 WHY OPD IS NOT OPTIONAL, and why it costs nothing. With {\f1 OPD = 0} the left channel is glued to the downmix phase and the whole rotation is dumped onto the right one. The inter-channel {\i difference} is still correct, so a measurement of {\f1 arg(L) - arg(R)} cannot see the problem at all \u8212- but each channel's absolute phase is wrong, and asymmetrically so. Measuring the absolute phase of each channel against the source inside the IPD range (60-690 Hz) shows exactly that, and shows OPD fixing it:\par}
+{
+\trowd \trgaph120
+\clbrdrb\brdrs\cellx2880\clbrdrb\brdrs\cellx5760\clbrdrb\brdrs\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Inter-channel delay\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 OPD = 0 (L / R)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 OPD computed (L / R)\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2880\cellx5760\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0.25 ms\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 14.7 / 20.1 deg\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 14.4 / {\b 17.3} deg\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2880\cellx5760\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0.4 ms\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 23.0 / 28.0 deg\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\b 15.5} / {\b 17.8} deg\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2880\cellx5760\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0.7 ms\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 48.1 / 56.2 deg\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\b 40.9} / {\b 36.3} deg\par}
+\cell}
+}
+\intbl\row}
+{\pard \ql \f0 \sa180 \li0 \fi0 \par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Note the shape of it: at {\f1 OPD = 0} the two channels always disagree (14.7 against 20.1, 48.1 against 56.2), which is the asymmetry the parameter exists to remove. With OPD computed the pair converges, and the gain grows with the delay \u8212- averaging +6.4 degrees, reaching +13 at 0.7 ms.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Deriving it needs no new analysis, which is the neat part. The downmix is {\f1 L + R}, so\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \f1 sum(L * conj(L+R)) = sum(|L|^2) + sum(L * conj(R))\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 whose real part is {\f1 pwrL + pwrCr} and whose imaginary part is {\f1 pwrCi} \u8212- the very accumulators already used for IID, ICC and IPD. So {\f1 OPD = atan2(pwrCi, pwrL + pwrCr)}, one more {\f1 atan2} over data that was already there. For the equal-level delay case this reduces analytically to {\f1 IPD/2} (because {\f1 arg(1 + e^\{-i.phi\}) = -phi/2}), which is a useful sanity check \u8212- but the general form is also correct when the two channels differ in level, where {\f1 IPD/2} would not be.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 NOTE on what IPD buys you, and where it stops. Without phase, PS positions sound using level differences (IID) and correlation (ICC) only. That works for anything panned by level, but not for a source placed by {\i timing} \u8212- a real inter-channel delay, which is how natural low-frequency localisation actually works. Measured on probes built exactly that way (identical signal in both channels, equal level, offset only by an inter-channel delay), comparing the decoded phase profile inside the IPD range (60-690 Hz) against the source:\par}
 {
 \trowd \trgaph120
@@ -3838,7 +3911,80 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 \cell}
 }
 \intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 `--ps-opd <0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 1>`\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0, 1\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (w\u322 ?., przy {\f1 --ps-ipd 1})\par}
+\cell}
+}
+\intbl\row}
 {\pard \ql \f0 \sa180 \li0 \fi0 \par}
+{\pard \ql \f0 \sa180 \li0 \fi0 DLACZEGO OPD NIE JEST OPCJONALNE i dlaczego nic nie kosztuje. Przy {\f1 OPD = 0} lewy kana\u322 ? zostaje przyklejony do fazy downmiksu, a ca\u322 ?y obr\u243 ?t l\u261 ?duje na prawym. Mi\u281 ?dzykana\u322 ?owa {\i r\u243 ?\u380 ?nica} jest wtedy nadal poprawna, wi\u281 ?c pomiar {\f1 arg(L) - arg(R)} w og\u243 ?le tego nie zobaczy \u8212- ale faza bezwzgl\u281 ?dna ka\u380 ?dego kana\u322 ?u jest b\u322 ?\u281 ?dna, i to niesymetrycznie. Pomiar fazy bezwzgl\u281 ?dnej ka\u380 ?dego kana\u322 ?u wzgl\u281 ?dem orygina\u322 ?u w zasi\u281 ?gu IPD (60-690 Hz) pokazuje dok\u322 ?adnie to, i pokazuje, jak OPD to naprawia:\par}
+{
+\trowd \trgaph120
+\clbrdrb\brdrs\cellx2880\clbrdrb\brdrs\cellx5760\clbrdrb\brdrs\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Op\u243 ?\u378 ?nienie mi\u281 ?dzykana\u322 ?owe\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 OPD = 0 (L / P)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 OPD liczone (L / P)\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2880\cellx5760\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0,25 ms\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 14,7 / 20,1\u176 ?\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 14,4 / {\b 17,3\u176 ?}\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2880\cellx5760\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0,4 ms\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 23,0 / 28,0\u176 ?\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\b 15,5} / {\b 17,8\u176 ?}\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2880\cellx5760\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0,7 ms\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 48,1 / 56,2\u176 ?\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\b 40,9} / {\b 36,3\u176 ?}\par}
+\cell}
+}
+\intbl\row}
+{\pard \ql \f0 \sa180 \li0 \fi0 \par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Zwr\u243 ?\u263 ? uwag\u281 ? na kszta\u322 ?t tego: przy {\f1 OPD = 0} oba kana\u322 ?y zawsze si\u281 ? rozje\u380 ?d\u380 ?aj\u261 ? (14,7 wobec 20,1, potem 48,1 wobec 56,2) \u8212- i to jest w\u322 ?a\u347 ?nie ta asymetria, dla kt\u243 ?rej ten parametr istnieje. Z policzonym OPD para si\u281 ? zbiega, a zysk ro\u347 ?nie wraz z op\u243 ?\u378 ?nieniem: \u347 ?rednio +6,4 stopnia, przy 0,7 ms si\u281 ?ga +13.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Wyprowadzenie nie wymaga \u380 ?adnej nowej analizy i to jest w tym naj\u322 ?adniejsze. Downmiks to {\f1 L + R}, wi\u281 ?c\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \f1 sum(L * conj(L+R)) = sum(|L|\u178 ?) + sum(L * conj(R))\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 czego cz\u281 ?\u347 ?\u263 ? rzeczywista to {\f1 pwrL + pwrCr}, a urojona to {\f1 pwrCi} \u8212- dok\u322 ?adnie te akumulatory, kt\u243 ?rych u\u380 ?ywamy ju\u380 ? do IID, ICC i IPD. Zatem {\f1 OPD = atan2(pwrCi, pwrL + pwrCr)}, czyli jeszcze jeden {\f1 atan2} na danych, kt\u243 ?re i tak tam le\u380 ?a\u322 ?y. Dla przypadku r\u243 ?wnych poziom\u243 ?w sprowadza si\u281 ? to analitycznie do {\f1 IPD/2} (bo {\f1 arg(1 + e^\{-i\u183 ?\u966 ?\}) = -\u966 ?/2}), co jest wygodnym sprawdzianem \u8212- ale posta\u263 ? og\u243 ?lna jest poprawna tak\u380 ?e wtedy, gdy kana\u322 ?y r\u243 ?\u380 ?ni\u261 ? si\u281 ? poziomem, a {\f1 IPD/2} ju\u380 ? nie.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 UWAGA o tym, co IPD daje i gdzie si\u281 ? ko\u324 ?czy. Bez fazy PS ustawia d\u378 ?wi\u281 ?k w przestrzeni wy\u322 ?\u261 ?cznie r\u243 ?\u380 ?nicami poziomu (IID) i korelacj\u261 ? (ICC). To dzia\u322 ?a dla wszystkiego, co spanoramowano poziomem, ale nie dla \u378 ?r\u243 ?d\u322 ?a umiejscowionego {\i czasem} \u8212- czyli realnym op\u243 ?\u378 ?nieniem mi\u281 ?dzykana\u322 ?owym, a tak w\u322 ?a\u347 ?nie dzia\u322 ?a naturalna lokalizacja w dole pasma. Pomiar na pr\u243 ?bkach zbudowanych dok\u322 ?adnie w ten spos\u243 ?b (identyczny sygna\u322 ? w obu kana\u322 ?ach, r\u243 ?wny poziom, r\u243 ?\u380 ?nica tylko w op\u243 ?\u378 ?nieniu), por\u243 ?wnuj\u261 ?c profil fazy zdekodowanego materia\u322 ?u w zasi\u281 ?gu IPD (60-690 Hz) z orygina\u322 ?em:\par}
 {
 \trowd \trgaph120

@@ -189,7 +189,68 @@
 \intbl\row}
 {\pard \ql \f0 \sa180 \li0 \fi0 \par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Przy \u263 ?wierci i czterech dziesi\u261 ?tych milisekundy b\u322 ?\u261 ?d fazy spada o ponad po\u322 ?ow\u281 ?, z identycznym wynikiem przy 32 i 48 kbps. Przy 0,7 ms korzy\u347 ?\u263 ? znika \u8212- i jest to reprezentacja dochodz\u261 ?ca do swojej granicy, a nie usterka. Na g\u243 ?rnym kra\u324 ?cu zasi\u281 ?gu IPD op\u243 ?\u378 ?nienie 0,7 ms przebiega ju\u380 ? niemal ca\u322 ?e plus-minus 180 stopni, wi\u281 ?c siatka co 45 stopni nie potrafi jednoznacznie powiedzie\u263 ?, gdzie ono jest. To ten sam sufit niejednoznaczno\u347 ?ci fazowej, przez kt\u243 ?ry s\u322 ?uch cz\u322 ?owieka korzysta z przes\u322 ?anek czasowych g\u322 ?\u243 ?wnie na dole.\par}
-{\pard \ql \f0 \sa180 \li0 \fi0 Dwie uwagi praktyczne. IPD si\u281 ?ga tylko mniej wi\u281 ?cej najni\u380 ?szych 690 Hz, bo jego jedena\u347 ?cie pasm parametrycznych mie\u347 ?ci si\u281 ? w pierwszych trzech pasmach QMF \u8212- s\u322 ?uchanie albo mierzenie powy\u380 ?ej tego zakresu nie poka\u380 ?e zupe\u322 ?nie nic. I OPD zostaje na zerze celowo: dekoder sprz\u281 ?ga oba parametry, przy czym OPD obraca obie \u347 ?cie\u380 ?ki downmiksu, a IPD przesuwa tylko drug\u261 ?, a zero jest zdefiniowan\u261 ? warto\u347 ?ci\u261 ? neutraln\u261 ?. Fizycznie oczywisty strza\u322 ?, OPD = IPD/2, zosta\u322 ? zmierzony i r\u243 ?wnie\u380 ? nie odtwarza\u322 ? fazy \u378 ?r\u243 ?d\u322 ?a, wi\u281 ?c zamiast zgadywa\u263 ? dalej model dekodera, zostawiamy t\u281 ? po\u322 ?ow\u281 ? pary w spokoju.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Jedna uwaga praktyczna, zanim przejdziemy do drugiego parametru: IPD si\u281 ?ga tylko mniej wi\u281 ?cej najni\u380 ?szych 690 Hz, bo jego jedena\u347 ?cie pasm parametrycznych mie\u347 ?ci si\u281 ? w pierwszych trzech pasmach QMF. S\u322 ?uchanie albo mierzenie powy\u380 ?ej tego zakresu nie poka\u380 ?e zupe\u322 ?nie nic.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel2 \b \fs28 OPD: druga po\u322 ?owa pary\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Samo IPD to nie ca\u322 ?a historia i warto rozpisa\u263 ?, dlaczego. IPD to faza lewego kana\u322 ?u wzgl\u281 ?dem prawego; {\b OPD to faza lewego kana\u322 ?u wzgl\u281 ?dem monofonicznego downmiksu.} Dekoder u\u380 ?ywa obu: \u347 ?cie\u380 ?ki karmione downmiksem obraca o {\f1 OPD}, a pozosta\u322 ?e o {\f1 OPD - IPD}. Odejmij jedno od drugiego i {\f1 OPD} si\u281 ? skraca \u8212- wi\u281 ?c mi\u281 ?dzykana\u322 ?owa {\i r\u243 ?\u380 ?nica} zawsze wychodzi r\u243 ?wna IPD, niezale\u380 ?nie od tego, co m\u243 ?wi OPD. Ale to, gdzie ten obr\u243 ?t le\u380 ?y wzgl\u281 ?dem downmiksu, jest ju\u380 ? wy\u322 ?\u261 ?cznie spraw\u261 ? OPD.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Zostaw OPD na zerze i lewy kana\u322 ? zostaje przypi\u281 ?ty do fazy downmiksu, a ca\u322 ?y obr\u243 ?t l\u261 ?duje na prawym. R\u243 ?\u380 ?nica jest nadal poprawna \u8212- i w\u322 ?a\u347 ?nie dlatego \u322 ?atwo to przeoczy\u263 ?: ka\u380 ?dy pomiar {\f1 arg(L) - arg(R)} jest na to \u347 ?lepy. Zmierz zamiast tego faz\u281 ? bezwzgl\u281 ?dn\u261 ? ka\u380 ?dego kana\u322 ?u wzgl\u281 ?dem orygina\u322 ?u, w zasi\u281 ?gu IPD, i asymetria staje si\u281 ? oczywista \u8212- podobnie jak to, \u380 ?e OPD j\u261 ? usuwa:\par}
+{
+\trowd \trgaph120
+\clbrdrb\brdrs\cellx2880\clbrdrb\brdrs\cellx5760\clbrdrb\brdrs\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Op\u243 ?\u378 ?nienie mi\u281 ?dzykana\u322 ?owe\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 OPD = 0 (L / P)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 OPD liczone (L / P)\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2880\cellx5760\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0,25 ms\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 14,7 / 20,1\u176 ?\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 14,4 / {\b 17,3\u176 ?}\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2880\cellx5760\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0,4 ms\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 23,0 / 28,0\u176 ?\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\b 15,5} / {\b 17,8\u176 ?}\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2880\cellx5760\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0,7 ms\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 48,1 / 56,2\u176 ?\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\b 40,9} / {\b 36,3\u176 ?}\par}
+\cell}
+}
+\intbl\row}
+{\pard \ql \f0 \sa180 \li0 \fi0 \par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Przy {\f1 OPD = 0} oba kana\u322 ?y nigdy si\u281 ? nie zgadzaj\u261 ? \u8212- 14,7 wobec 20,1, potem 48,1 wobec 56,2. Z policzonym OPD zbiegaj\u261 ? si\u281 ?, a korzy\u347 ?\u263 ? ro\u347 ?nie wraz z op\u243 ?\u378 ?nieniem: \u347 ?rednio +6,4 stopnia, przy 0,7 ms +13. Zwr\u243 ?\u263 ? uwag\u281 ?, \u380 ?e to jest w\u322 ?a\u347 ?nie ten przypadek, w kt\u243 ?rym {\i zwyk\u322 ?y} pomiar IPD nie pokazywa\u322 ? nic: przy 0,7 ms r\u243 ?\u380 ?nica mi\u281 ?dzykana\u322 ?owa przekracza\u322 ?a ju\u380 ? to, co rozstrzyga siatka 45 stopni, a jednak faza bezwzgl\u281 ?dna ka\u380 ?dego kana\u322 ?u i tak wyra\u378 ?nie si\u281 ? poprawi\u322 ?a.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 A wyprowadzenie nic nie kosztuje. Downmiks to {\f1 L + R}, wi\u281 ?c\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \f1 sum(L * conj(L+R)) = sum(|L|\u178 ?) + sum(L * conj(R))\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 czego cz\u281 ?\u347 ?\u263 ? rzeczywista to {\f1 pwrL + pwrCr}, a urojona to {\f1 pwrCi} \u8212- te same akumulatory, kt\u243 ?re karmi\u261 ? ju\u380 ? IID, ICC i IPD. Zatem {\f1 OPD = atan2(pwrCi, pwrL + pwrCr)}: jeszcze jeden {\f1 atan2} na liczbach, kt\u243 ?re i tak le\u380 ?a\u322 ?y w tej p\u281 ?tli, i nie trzeba przekazywa\u263 ? sygna\u322 ?u downmiksu sk\u261 ?dkolwiek indziej. Dla r\u243 ?wnych poziom\u243 ?w sprowadza si\u281 ? to analitycznie do {\f1 IPD/2}, bo {\f1 arg(1 + e^\{-i\u183 ?\u966 ?\}) = -\u966 ?/2} \u8212- wygodny sprawdzian, cho\u263 ? posta\u263 ? og\u243 ?lna powy\u380 ?ej jest poprawna tak\u380 ?e wtedy, gdy kana\u322 ?y r\u243 ?\u380 ?ni\u261 ? si\u281 ? poziomem, a {\f1 IPD/2} ju\u380 ? nie.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Wcze\u347 ?niejsza wersja tego enkodera wysy\u322 ?a\u322 ?a OPD jako zero i twierdzi\u322 ?a, \u380 ?e pomiar wykaza\u322 ?, i\u380 ? {\f1 IPD/2} nie pomaga. Ten pomiar by\u322 ? zakresowany na {\f1 arg(L) - arg(R)}, a to, jak wyja\u347 ?niono powy\u380 ?ej, w og\u243 ?le nie widzi OPD. Werdykt by\u322 ? b\u322 ?\u281 ?dny i zosta\u322 ? poprawiony; {\f1 --ps-opd 0} pozostaje dost\u281 ?pne do por\u243 ?wna\u324 ? A/B.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Kompatybilno\u347 ?\u263 ? jest bezpieczna z samej konstrukcji. Dane siedz\u261 ? w rozszerzeniu z prefiksem d\u322 ?ugo\u347 ?ci, wi\u281 ?c dekoder, kt\u243 ?ry nie implementuje syntezy fazy \u8212- \u322 ?\u261 ?cznie z w\u322 ?asnym baseline'owym dekoderem PS w FDK \u8212- odczytuje liczb\u281 ? bajt\u243 ?w i je pomija, na co standard wprost pozwala. Zweryfikowane w praktyce: przy wy\u322 ?\u261 ?czonym prze\u322 ?\u261 ?czniku wyj\u347 ?cie jest bit-identyczne z poprzednim, a przy w\u322 ?\u261 ?czonym zar\u243 ?wno ffmpeg, jak i faad dekoduj\u261 ? czysto przy 24, 32, 48 i 64 kbps.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel2 \b \fs28 Detektory SBR: ataki i dorabiane harmoniczne\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 O tym, jak realnie brzmi odtwarzane pasmo g\u243 ?rne, decyduj\u261 ? w SBR g\u322 ?\u243 ?wnie dwa detektory \u8212- i do tej pory \u380 ?adnego z nich nie da\u322 ?o si\u281 ? dotkn\u261 ?\u263 ? z linii polece\u324 ?.\par}

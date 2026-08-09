@@ -930,15 +930,77 @@ swung through nearly the whole plus-or-minus 180 degrees, so a 45-degree
 grid can no longer say unambiguously where it is. This is the same
 phase-ambiguity ceiling that makes human hearing rely on timing cues
 mostly down low.</p>
-<p>Two practical notes. IPD reaches only about the lowest 690 Hz,
-because its eleven parameter bands live inside the first three QMF bands
-— listen or measure above that and you will find nothing at all. And OPD
-stays at zero deliberately: the decoder couples the two parameters, with
-OPD rotating both downmix paths while IPD shifts only the second, and
-zero is the defined neutral. The physically obvious guess, OPD = IPD/2,
-was measured and did not reconstruct the source phase either, so rather
-than guess further at the decoder's model we leave that half of the pair
-alone.</p>
+<p>One practical note before the second parameter: IPD reaches only
+about the lowest 690 Hz, because its eleven parameter bands live inside
+the first three QMF bands. Listen or measure above that and you will
+find nothing at all.</p>
+<h3 id="opd-the-other-half-of-the-pair">OPD: the other half of the
+pair</h3>
+<p>IPD alone is not the whole story, and the reason is worth spelling
+out. IPD is the phase of the left channel relative to the right;
+<strong>OPD is the phase of the left channel relative to the mono
+downmix.</strong> The decoder uses both: it rotates the paths fed from
+the downmix by <code>OPD</code>, and the others by
+<code>OPD - IPD</code>. Subtract those and the <code>OPD</code> cancels,
+so the inter-channel <em>difference</em> always comes out as IPD no
+matter what OPD says — but where that rotation sits relative to the
+downmix is entirely OPD's business.</p>
+<p>Leave OPD at zero and the left channel gets pinned to the downmix
+phase while the whole rotation is dumped onto the right one. The
+difference is still right, which is exactly why this is easy to miss:
+any measurement of <code>arg(L) - arg(R)</code> is blind to it. Measure
+each channel's absolute phase against the source instead, inside the IPD
+range, and the asymmetry is obvious — as is OPD removing it:</p>
+<table>
+<thead>
+<tr class="header">
+<th>Inter-channel delay</th>
+<th>OPD = 0 (L / R)</th>
+<th>OPD computed (L / R)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>0.25 ms</td>
+<td>14.7 / 20.1 deg</td>
+<td>14.4 / <strong>17.3</strong> deg</td>
+</tr>
+<tr class="even">
+<td>0.4 ms</td>
+<td>23.0 / 28.0 deg</td>
+<td><strong>15.5</strong> / <strong>17.8</strong> deg</td>
+</tr>
+<tr class="odd">
+<td>0.7 ms</td>
+<td>48.1 / 56.2 deg</td>
+<td><strong>40.9</strong> / <strong>36.3</strong> deg</td>
+</tr>
+</tbody>
+</table>
+<p>At <code>OPD = 0</code> the two channels never agree — 14.7 against
+20.1, later 48.1 against 56.2. With OPD computed they converge, and the
+benefit grows with the delay: +6.4 degrees on average, +13 at 0.7 ms.
+Note also that this is the case where the <em>plain</em> IPD measurement
+showed nothing: at 0.7 ms the inter-channel difference was already past
+what a 45-degree grid can resolve, yet the absolute phase of each
+channel still improved substantially.</p>
+<p>And it costs nothing to derive. The downmix is <code>L + R</code>,
+so</p>
+<pre><code>sum(L * conj(L+R)) = sum(|L|^2) + sum(L * conj(R))</code></pre>
+<p>whose real part is <code>pwrL + pwrCr</code> and whose imaginary part
+is <code>pwrCi</code> — the same accumulators already feeding IID, ICC
+and IPD. So <code>OPD = atan2(pwrCi, pwrL + pwrCr)</code>: one more
+<code>atan2</code> over numbers that were already sitting in the loop,
+no downmix signal needs to be passed in from elsewhere. For equal-level
+delay this reduces analytically to <code>IPD/2</code>, since
+<code>arg(1 + e^{-i.phi}) = -phi/2</code> — a handy sanity check, though
+the general form above is also correct when the channels differ in
+level, where <code>IPD/2</code> would not be.</p>
+<p>An earlier revision of this encoder shipped OPD at zero and claimed
+measurement showed <code>IPD/2</code> did not help. That measurement was
+scoped to <code>arg(L) - arg(R)</code>, which as explained above cannot
+see OPD at all. The verdict was wrong and has been corrected;
+<code>--ps-opd 0</code> remains available for A/B comparison.</p>
 <p>Compatibility is safe by construction. The data sits in a
 length-prefixed extension, so a decoder that does not implement phase
 synthesis — including FDK's own baseline PS decoder — reads the byte

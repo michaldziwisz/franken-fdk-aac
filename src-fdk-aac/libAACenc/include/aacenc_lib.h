@@ -1601,6 +1601,7 @@ typedef enum {
   AACENC_FRANKEN_SBR_MH_DELTATIME = 0xF067, /*!< MH transient-distance limit, raw (9 AAC / 16 LD, -1 off). */
   AACENC_FRANKEN_SBR_NOISE_MAX = 0xF068,  /*!< SBR injected-noise ceiling: 6, 3 or -3 (-128 = from tuning table). */
   AACENC_FRANKEN_PS_IPD = 0xF069,         /*!< 1 = compute and transmit PS IPD (phase); -1/0 = off (stock). */
+  AACENC_FRANKEN_PS_OPD = 0xF06A,         /*!< 0 = force OPD to zero while IPD is on (-1 = compute it). */
   AACENC_FRANKEN_VERBOSE = 0xF016,     /*!< Verbose init dump 0/1. */
 
   /* Read-only (GetParam) mirrors of internal encoder-chosen values, for --verbose. */

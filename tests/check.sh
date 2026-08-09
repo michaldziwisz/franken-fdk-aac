@@ -57,8 +57,8 @@ test_exe(){
 
   # 1) help kompletny - franken switche obecne
   local hn
-  hn=$("$exe" --help 2>&1 | grep -cE '^ --(msmask|msbands|is|isbands|is-min-sfbs|is-corr-thresh|is-lr-ratio|is-lo|is-hi|is-force-lo|is-force-hi|core-cutoff|sbr-start|sbr-stop|sbr-freqscale|sbr-alterscale|sbr-noise-bands|sbr-amp-res|sbr-data-extra|sbr-header-period|sbr-tran-peak|sbr-tran-quiet|sbr-tran-dom|sbr-tran-thr|sbr-tran-split|sbr-mh-tone|sbr-mh-diff|sbr-mh-decay-orig|sbr-mh-decay-diff|sbr-mh-sfm-sbr|sbr-mh-sfm-orig|sbr-mh-maxcomp|sbr-mh-deltatime|sbr-noise-max|ps|ps-iid-quant|ps-ipd|ps-bands|ps-env|ps-env-reduce|ps-noenv-skip|tns-mask|tns-order|pns|pns-start|pns-gain|pns-tonality|pns-refpower|pns-gapfill|pns-min-width|ath-scale|minsnr-scale|minsnr-clamp-hi|minsnr-clamp-lo|reduce-clamp|mid-bias|side-bias|side-knee|mask-slope|block-bias|vbr-reservoir|peak-bitrate|max-bits-frame|min-bits-frame|bitres-mode|ms-bias|verbose)')
-  [ "$hn" -ge 59 ] && ok "help: $hn franken switchy" || bad "help: tylko $hn switchy (oczekiwano >=59)"
+  hn=$("$exe" --help 2>&1 | grep -cE '^ --(msmask|msbands|is|isbands|is-min-sfbs|is-corr-thresh|is-lr-ratio|is-lo|is-hi|is-force-lo|is-force-hi|core-cutoff|sbr-start|sbr-stop|sbr-freqscale|sbr-alterscale|sbr-noise-bands|sbr-amp-res|sbr-data-extra|sbr-header-period|sbr-tran-peak|sbr-tran-quiet|sbr-tran-dom|sbr-tran-thr|sbr-tran-split|sbr-mh-tone|sbr-mh-diff|sbr-mh-decay-orig|sbr-mh-decay-diff|sbr-mh-sfm-sbr|sbr-mh-sfm-orig|sbr-mh-maxcomp|sbr-mh-deltatime|sbr-noise-max|ps|ps-iid-quant|ps-ipd|ps-opd|ps-bands|ps-env|ps-env-reduce|ps-noenv-skip|tns-mask|tns-order|pns|pns-start|pns-gain|pns-tonality|pns-refpower|pns-gapfill|pns-min-width|ath-scale|minsnr-scale|minsnr-clamp-hi|minsnr-clamp-lo|reduce-clamp|mid-bias|side-bias|side-knee|mask-slope|block-bias|vbr-reservoir|peak-bitrate|max-bits-frame|min-bits-frame|bitres-mode|ms-bias|verbose)')
+  [ "$hn" -ge 60 ] && ok "help: $hn franken switchy" || bad "help: tylko $hn switchy (oczekiwano >=60)"
 
   # 2) baseline + rozny bitstream per switch, wszystko dekodowalne
   enc "$exe" -p2 -b128000 -o "${OUT}_base.m4a" "$WAV"
@@ -92,6 +92,8 @@ test_exe(){
                 "ps-ipd:-p29 -b48000 --ps-ipd 1"
                 "ps-ipd-lowbr:-p29 -b24000 --ps-ipd 1"
                 "ps-ipd-combo:-p29 -b48000 --ps-ipd 1 --ps-env 4 --ps-env-reduce 0"
+                "ps-ipd-opd0:-p29 -b48000 --ps-ipd 1 --ps-opd 0"
+                "ps-ipd-opd1:-p29 -b48000 --ps-ipd 1 --ps-opd 1"
                 "speech:-p5 -b32000 --speech" "spread-mask:-b128000 --spread-mask 64"
  "ms-prec-hi:--ms-precision 1024"
  "mid-bias:-b96000 --mid-bias 384"
@@ -307,6 +309,21 @@ if [ -s "${OUT}_ipd_on.aac" ] && [ "$(derr ${OUT}_ipd_on.aac)" = "0" ]; then
   ok "--ps-ipd 1: strumien dekodowalny bez bledow parsera"
 else
   bad "--ps-ipd 1: dekoder raportuje bledy (rozmiar ps_extension / wyrownanie?)"
+fi
+
+# OPD: --ps-opd 0 vs 1 MUSZA dac ROZNE strumienie (inaczej OPD nie jest wysylane),
+# i OBA musza sie dekodowac bez bledow (drugi zestaw pol fazy w rozszerzeniu).
+enc "$X64" -p29 -b48000 -f2 --ps-ipd 1 --ps-opd 0 -o "${OUT}_opd0.aac" "$WAV"
+enc "$X64" -p29 -b48000 -f2 --ps-ipd 1 --ps-opd 1 -o "${OUT}_opd1.aac" "$WAV"
+if cmp -s "${OUT}_opd0.aac" "${OUT}_opd1.aac"; then
+  bad "--ps-opd 0/1 daja IDENTYCZNY strumien (OPD nie trafia do bitstreamu)"
+else
+  ok "--ps-opd 0/1: roznia sie (OPD realnie kodowane)"
+fi
+if [ "$(derr ${OUT}_opd1.aac)" = "0" ] && [ "$(derr ${OUT}_opd0.aac)" = "0" ]; then
+  ok "--ps-opd 0 i 1: oba strumienie dekodowalne bez bledow"
+else
+  bad "--ps-opd: dekoder raportuje bledy"
 fi
 
 echo "==================================="

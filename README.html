@@ -1136,8 +1136,64 @@ be heard as the stereo image briefly collapsing and snapping back.
 <td>0, 1</td>
 <td>-1 (off)</td>
 </tr>
+<tr class="even">
+<td>`--ps-opd &lt;0</td>
+<td>1&gt;`</td>
+<td>0, 1</td>
+<td>-1 (on, with <code>--ps-ipd 1</code>)</td>
+</tr>
 </tbody>
 </table>
+<p>WHY OPD IS NOT OPTIONAL, and why it costs nothing. With
+<code>OPD = 0</code> the left channel is glued to the downmix phase and
+the whole rotation is dumped onto the right one. The inter-channel
+<em>difference</em> is still correct, so a measurement of
+<code>arg(L) - arg(R)</code> cannot see the problem at all — but each
+channel's absolute phase is wrong, and asymmetrically so. Measuring the
+absolute phase of each channel against the source inside the IPD range
+(60-690 Hz) shows exactly that, and shows OPD fixing it:</p>
+<table>
+<thead>
+<tr class="header">
+<th>Inter-channel delay</th>
+<th>OPD = 0 (L / R)</th>
+<th>OPD computed (L / R)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>0.25 ms</td>
+<td>14.7 / 20.1 deg</td>
+<td>14.4 / <strong>17.3</strong> deg</td>
+</tr>
+<tr class="even">
+<td>0.4 ms</td>
+<td>23.0 / 28.0 deg</td>
+<td><strong>15.5</strong> / <strong>17.8</strong> deg</td>
+</tr>
+<tr class="odd">
+<td>0.7 ms</td>
+<td>48.1 / 56.2 deg</td>
+<td><strong>40.9</strong> / <strong>36.3</strong> deg</td>
+</tr>
+</tbody>
+</table>
+<p>Note the shape of it: at <code>OPD = 0</code> the two channels always
+disagree (14.7 against 20.1, 48.1 against 56.2), which is the asymmetry
+the parameter exists to remove. With OPD computed the pair converges,
+and the gain grows with the delay — averaging +6.4 degrees, reaching +13
+at 0.7 ms.</p>
+<p>Deriving it needs no new analysis, which is the neat part. The
+downmix is <code>L + R</code>, so</p>
+<pre><code>sum(L * conj(L+R)) = sum(|L|^2) + sum(L * conj(R))</code></pre>
+<p>whose real part is <code>pwrL + pwrCr</code> and whose imaginary part
+is <code>pwrCi</code> — the very accumulators already used for IID, ICC
+and IPD. So <code>OPD = atan2(pwrCi, pwrL + pwrCr)</code>, one more
+<code>atan2</code> over data that was already there. For the equal-level
+delay case this reduces analytically to <code>IPD/2</code> (because
+<code>arg(1 + e^{-i.phi}) = -phi/2</code>), which is a useful sanity
+check — but the general form is also correct when the two channels
+differ in level, where <code>IPD/2</code> would not be.</p>
 <p>NOTE on what IPD buys you, and where it stops. Without phase, PS
 positions sound using level differences (IID) and correlation (ICC)
 only. That works for anything panned by level, but not for a source
@@ -2329,23 +2385,23 @@ libfdk are wired through a single module
 <code>g_franken</code> block, sentinels = FDK defaults), and the new
 <code>AACENC_PARAM</code>s (range <code>0xF0xx</code>) are exposed in
 <code>aacenc_lib.h</code>.</p>
-<div class="sourceCode" id="cb6"><pre
-class="sourceCode bash"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> apt-get install <span class="at">-y</span> mingw-w64          <span class="co"># + autotools (autoconf/automake/libtool)</span></span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="co"># --- libfdk-aac (x64) ---</span></span>
-<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> src-fdk-aac <span class="kw">&amp;&amp;</span> <span class="ex">autoreconf</span> <span class="at">-i</span></span>
-<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="ex">./configure</span> <span class="at">--host</span><span class="op">=</span>x86_64-w64-mingw32 <span class="at">--prefix</span><span class="op">=</span><span class="va">$PWD</span>/../inst-x64 <span class="dt">\</span></span>
-<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">--enable-static</span> <span class="at">--disable-shared</span> CFLAGS=-O2 CXXFLAGS=-O2</span>
-<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> <span class="at">-j</span> <span class="kw">&amp;&amp;</span> <span class="fu">make</span> install</span>
-<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a><span class="co"># --- frontend (x64) ---</span></span>
-<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> ../src-fdkaac <span class="kw">&amp;&amp;</span> <span class="ex">autoreconf</span> <span class="at">-i</span></span>
-<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a><span class="va">PKG_CONFIG_PATH</span><span class="op">=</span><span class="va">$PWD</span>/../inst-x64/lib/pkgconfig <span class="ex">./configure</span> <span class="dt">\</span></span>
-<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">--host</span><span class="op">=</span>x86_64-w64-mingw32 CFLAGS=<span class="st">&quot;-O2 -I</span><span class="va">$PWD</span><span class="st">/../inst-x64/include&quot;</span> <span class="dt">\</span></span>
-<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>    LDFLAGS=<span class="st">&quot;-static -static-libgcc -L</span><span class="va">$PWD</span><span class="st">/../inst-x64/lib&quot;</span></span>
-<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> <span class="at">-j</span>     <span class="co"># -&gt; fdkaac.exe</span></span>
-<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a><span class="co"># x86: the same with --host=i686-w64-mingw32 and a separate inst-x86 prefix.</span></span></code></pre></div>
+<div class="sourceCode" id="cb7"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> apt-get install <span class="at">-y</span> mingw-w64          <span class="co"># + autotools (autoconf/automake/libtool)</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="co"># --- libfdk-aac (x64) ---</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> src-fdk-aac <span class="kw">&amp;&amp;</span> <span class="ex">autoreconf</span> <span class="at">-i</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="ex">./configure</span> <span class="at">--host</span><span class="op">=</span>x86_64-w64-mingw32 <span class="at">--prefix</span><span class="op">=</span><span class="va">$PWD</span>/../inst-x64 <span class="dt">\</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">--enable-static</span> <span class="at">--disable-shared</span> CFLAGS=-O2 CXXFLAGS=-O2</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> <span class="at">-j</span> <span class="kw">&amp;&amp;</span> <span class="fu">make</span> install</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a><span class="co"># --- frontend (x64) ---</span></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> ../src-fdkaac <span class="kw">&amp;&amp;</span> <span class="ex">autoreconf</span> <span class="at">-i</span></span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a><span class="va">PKG_CONFIG_PATH</span><span class="op">=</span><span class="va">$PWD</span>/../inst-x64/lib/pkgconfig <span class="ex">./configure</span> <span class="dt">\</span></span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">--host</span><span class="op">=</span>x86_64-w64-mingw32 CFLAGS=<span class="st">&quot;-O2 -I</span><span class="va">$PWD</span><span class="st">/../inst-x64/include&quot;</span> <span class="dt">\</span></span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>    LDFLAGS=<span class="st">&quot;-static -static-libgcc -L</span><span class="va">$PWD</span><span class="st">/../inst-x64/lib&quot;</span></span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> <span class="at">-j</span>     <span class="co"># -&gt; fdkaac.exe</span></span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a><span class="co"># x86: the same with --host=i686-w64-mingw32 and a separate inst-x86 prefix.</span></span></code></pre></div>
 <h2 id="list-of-changed-fdk-files-mapped-to-points">List of changed FDK
 files (mapped to points)</h2>
 <ul>
@@ -3177,8 +3233,64 @@ wysyłaj zawsze.</td>
 <td>0, 1</td>
 <td>-1 (wył.)</td>
 </tr>
+<tr class="even">
+<td>`--ps-opd &lt;0</td>
+<td>1&gt;`</td>
+<td>0, 1</td>
+<td>-1 (wł., przy <code>--ps-ipd 1</code>)</td>
+</tr>
 </tbody>
 </table>
+<p>DLACZEGO OPD NIE JEST OPCJONALNE i dlaczego nic nie kosztuje. Przy
+<code>OPD = 0</code> lewy kanał zostaje przyklejony do fazy downmiksu, a
+cały obrót ląduje na prawym. Międzykanałowa <em>różnica</em> jest wtedy
+nadal poprawna, więc pomiar <code>arg(L) - arg(R)</code> w ogóle tego
+nie zobaczy — ale faza bezwzględna każdego kanału jest błędna, i to
+niesymetrycznie. Pomiar fazy bezwzględnej każdego kanału względem
+oryginału w zasięgu IPD (60-690 Hz) pokazuje dokładnie to, i pokazuje,
+jak OPD to naprawia:</p>
+<table>
+<thead>
+<tr class="header">
+<th>Opóźnienie międzykanałowe</th>
+<th>OPD = 0 (L / P)</th>
+<th>OPD liczone (L / P)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>0,25 ms</td>
+<td>14,7 / 20,1°</td>
+<td>14,4 / <strong>17,3°</strong></td>
+</tr>
+<tr class="even">
+<td>0,4 ms</td>
+<td>23,0 / 28,0°</td>
+<td><strong>15,5</strong> / <strong>17,8°</strong></td>
+</tr>
+<tr class="odd">
+<td>0,7 ms</td>
+<td>48,1 / 56,2°</td>
+<td><strong>40,9</strong> / <strong>36,3°</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Zwróć uwagę na kształt tego: przy <code>OPD = 0</code> oba kanały
+zawsze się rozjeżdżają (14,7 wobec 20,1, potem 48,1 wobec 56,2) — i to
+jest właśnie ta asymetria, dla której ten parametr istnieje. Z
+policzonym OPD para się zbiega, a zysk rośnie wraz z opóźnieniem:
+średnio +6,4 stopnia, przy 0,7 ms sięga +13.</p>
+<p>Wyprowadzenie nie wymaga żadnej nowej analizy i to jest w tym
+najładniejsze. Downmiks to <code>L + R</code>, więc</p>
+<pre><code>sum(L * conj(L+R)) = sum(|L|²) + sum(L * conj(R))</code></pre>
+<p>czego część rzeczywista to <code>pwrL + pwrCr</code>, a urojona to
+<code>pwrCi</code> — dokładnie te akumulatory, których używamy już do
+IID, ICC i IPD. Zatem <code>OPD = atan2(pwrCi, pwrL + pwrCr)</code>,
+czyli jeszcze jeden <code>atan2</code> na danych, które i tak tam
+leżały. Dla przypadku równych poziomów sprowadza się to analitycznie do
+<code>IPD/2</code> (bo <code>arg(1 + e^{-i·φ}) = -φ/2</code>), co jest
+wygodnym sprawdzianem — ale postać ogólna jest poprawna także wtedy, gdy
+kanały różnią się poziomem, a <code>IPD/2</code> już nie.</p>
 <p>UWAGA o tym, co IPD daje i gdzie się kończy. Bez fazy PS ustawia
 dźwięk w przestrzeni wyłącznie różnicami poziomu (IID) i korelacją
 (ICC). To działa dla wszystkiego, co spanoramowano poziomem, ale nie dla
@@ -4358,23 +4470,23 @@ jeden modul <code>libAACenc/src/franken.{h,cpp}</code> (globalny blok
 <code>g_franken</code>, sentinele = domyślne FDK), a nowe
 <code>AACENC_PARAM</code> (zakres <code>0xF0xx</code>) są wystawione w
 <code>aacenc_lib.h</code>.</p>
-<div class="sourceCode" id="cb12"><pre
-class="sourceCode bash"><code class="sourceCode bash"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> apt-get install <span class="at">-y</span> mingw-w64          <span class="co"># + autotools (autoconf/automake/libtool)</span></span>
-<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a><span class="co"># --- libfdk-aac (x64) ---</span></span>
-<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> src-fdk-aac <span class="kw">&amp;&amp;</span> <span class="ex">autoreconf</span> <span class="at">-i</span></span>
-<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a><span class="ex">./configure</span> <span class="at">--host</span><span class="op">=</span>x86_64-w64-mingw32 <span class="at">--prefix</span><span class="op">=</span><span class="va">$PWD</span>/../inst-x64 <span class="dt">\</span></span>
-<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">--enable-static</span> <span class="at">--disable-shared</span> CFLAGS=-O2 CXXFLAGS=-O2</span>
-<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> <span class="at">-j</span> <span class="kw">&amp;&amp;</span> <span class="fu">make</span> install</span>
-<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a><span class="co"># --- frontend (x64) ---</span></span>
-<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> ../src-fdkaac <span class="kw">&amp;&amp;</span> <span class="ex">autoreconf</span> <span class="at">-i</span></span>
-<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a><span class="va">PKG_CONFIG_PATH</span><span class="op">=</span><span class="va">$PWD</span>/../inst-x64/lib/pkgconfig <span class="ex">./configure</span> <span class="dt">\</span></span>
-<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">--host</span><span class="op">=</span>x86_64-w64-mingw32 CFLAGS=<span class="st">&quot;-O2 -I</span><span class="va">$PWD</span><span class="st">/../inst-x64/include&quot;</span> <span class="dt">\</span></span>
-<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>    LDFLAGS=<span class="st">&quot;-static -static-libgcc -L</span><span class="va">$PWD</span><span class="st">/../inst-x64/lib&quot;</span></span>
-<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> <span class="at">-j</span>     <span class="co"># -&gt; fdkaac.exe</span></span>
-<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a><span class="co"># x86: to samo z --host=i686-w64-mingw32 i osobnym prefixem inst-x86.</span></span></code></pre></div>
+<div class="sourceCode" id="cb14"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> apt-get install <span class="at">-y</span> mingw-w64          <span class="co"># + autotools (autoconf/automake/libtool)</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a><span class="co"># --- libfdk-aac (x64) ---</span></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> src-fdk-aac <span class="kw">&amp;&amp;</span> <span class="ex">autoreconf</span> <span class="at">-i</span></span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a><span class="ex">./configure</span> <span class="at">--host</span><span class="op">=</span>x86_64-w64-mingw32 <span class="at">--prefix</span><span class="op">=</span><span class="va">$PWD</span>/../inst-x64 <span class="dt">\</span></span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">--enable-static</span> <span class="at">--disable-shared</span> CFLAGS=-O2 CXXFLAGS=-O2</span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> <span class="at">-j</span> <span class="kw">&amp;&amp;</span> <span class="fu">make</span> install</span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a><span class="co"># --- frontend (x64) ---</span></span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> ../src-fdkaac <span class="kw">&amp;&amp;</span> <span class="ex">autoreconf</span> <span class="at">-i</span></span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a><span class="va">PKG_CONFIG_PATH</span><span class="op">=</span><span class="va">$PWD</span>/../inst-x64/lib/pkgconfig <span class="ex">./configure</span> <span class="dt">\</span></span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">--host</span><span class="op">=</span>x86_64-w64-mingw32 CFLAGS=<span class="st">&quot;-O2 -I</span><span class="va">$PWD</span><span class="st">/../inst-x64/include&quot;</span> <span class="dt">\</span></span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a>    LDFLAGS=<span class="st">&quot;-static -static-libgcc -L</span><span class="va">$PWD</span><span class="st">/../inst-x64/lib&quot;</span></span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> <span class="at">-j</span>     <span class="co"># -&gt; fdkaac.exe</span></span>
+<span id="cb14-15"><a href="#cb14-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-16"><a href="#cb14-16" aria-hidden="true" tabindex="-1"></a><span class="co"># x86: to samo z --host=i686-w64-mingw32 i osobnym prefixem inst-x86.</span></span></code></pre></div>
 <h2 id="lista-zmienionych-plikow-fdk-mapa-na-punkty">Lista zmienionych
 plikow FDK (mapa na punkty)</h2>
 <ul>

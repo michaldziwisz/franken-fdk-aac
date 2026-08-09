@@ -573,13 +573,55 @@ range a 0.7 ms delay has swung through nearly the whole plus-or-minus 180 degree
 a 45-degree grid can no longer say unambiguously where it is. This is the same
 phase-ambiguity ceiling that makes human hearing rely on timing cues mostly down low.
 
-Two practical notes. IPD reaches only about the lowest 690 Hz, because its eleven
-parameter bands live inside the first three QMF bands — listen or measure above that
-and you will find nothing at all. And OPD stays at zero deliberately: the decoder
-couples the two parameters, with OPD rotating both downmix paths while IPD shifts
-only the second, and zero is the defined neutral. The physically obvious guess,
-OPD = IPD/2, was measured and did not reconstruct the source phase either, so rather
-than guess further at the decoder's model we leave that half of the pair alone.
+One practical note before the second parameter: IPD reaches only about the lowest
+690 Hz, because its eleven parameter bands live inside the first three QMF bands.
+Listen or measure above that and you will find nothing at all.
+
+### OPD: the other half of the pair
+
+IPD alone is not the whole story, and the reason is worth spelling out. IPD is the
+phase of the left channel relative to the right; **OPD is the phase of the left
+channel relative to the mono downmix.** The decoder uses both: it rotates the paths
+fed from the downmix by `OPD`, and the others by `OPD - IPD`. Subtract those and the
+`OPD` cancels, so the inter-channel *difference* always comes out as IPD no matter
+what OPD says — but where that rotation sits relative to the downmix is entirely
+OPD's business.
+
+Leave OPD at zero and the left channel gets pinned to the downmix phase while the
+whole rotation is dumped onto the right one. The difference is still right, which is
+exactly why this is easy to miss: any measurement of `arg(L) - arg(R)` is blind to
+it. Measure each channel's absolute phase against the source instead, inside the IPD
+range, and the asymmetry is obvious — as is OPD removing it:
+
+| Inter-channel delay | OPD = 0 (L / R) | OPD computed (L / R) |
+|---|---|---|
+| 0.25 ms | 14.7 / 20.1 deg | 14.4 / **17.3** deg |
+| 0.4 ms | 23.0 / 28.0 deg | **15.5** / **17.8** deg |
+| 0.7 ms | 48.1 / 56.2 deg | **40.9** / **36.3** deg |
+
+At `OPD = 0` the two channels never agree — 14.7 against 20.1, later 48.1 against
+56.2. With OPD computed they converge, and the benefit grows with the delay: +6.4
+degrees on average, +13 at 0.7 ms. Note also that this is the case where the *plain*
+IPD measurement showed nothing: at 0.7 ms the inter-channel difference was already
+past what a 45-degree grid can resolve, yet the absolute phase of each channel still
+improved substantially.
+
+And it costs nothing to derive. The downmix is `L + R`, so
+
+    sum(L * conj(L+R)) = sum(|L|^2) + sum(L * conj(R))
+
+whose real part is `pwrL + pwrCr` and whose imaginary part is `pwrCi` — the same
+accumulators already feeding IID, ICC and IPD. So `OPD = atan2(pwrCi, pwrL + pwrCr)`:
+one more `atan2` over numbers that were already sitting in the loop, no downmix
+signal needs to be passed in from elsewhere. For equal-level delay this reduces
+analytically to `IPD/2`, since `arg(1 + e^{-i.phi}) = -phi/2` — a handy sanity check,
+though the general form above is also correct when the channels differ in level,
+where `IPD/2` would not be.
+
+An earlier revision of this encoder shipped OPD at zero and claimed measurement
+showed `IPD/2` did not help. That measurement was scoped to `arg(L) - arg(R)`, which
+as explained above cannot see OPD at all. The verdict was wrong and has been
+corrected; `--ps-opd 0` remains available for A/B comparison.
 
 Compatibility is safe by construction. The data sits in a length-prefixed extension,
 so a decoder that does not implement phase synthesis — including FDK's own baseline

@@ -129,6 +129,18 @@ typedef struct FRANKEN_CFG {
                          implement phase synthesis (including FDK's own baseline
                          PS decoder) skip the extension by its byte count, which
                          ISO/IEC 14496-3 explicitly permits. */
+  int psOpd;          /* -1 default(1 = on when IPD is on); 0 = force OPD to the
+                         neutral zero even while IPD is transmitted. OPD is the
+                         phase of the LEFT channel relative to the MONO downmix,
+                         and the decoder needs BOTH: it applies e^{i*OPD} to the
+                         paths fed from the downmix and e^{i*(OPD-IPD)} to the
+                         other, so the difference always equals IPD but WHERE
+                         that rotation sits relative to the downmix is set by
+                         OPD. Computing it needs no extra analysis: the downmix
+                         is L+R, so sum(L*conj(L+R)) has real part
+                         (pwrL + pwrCr) and imaginary part pwrCi - all already
+                         accumulated. Exposed mainly so the two can be compared
+                         on identical material. */
   int effPsBands;     /* read-back: effective stereo bands (-1 n/a) */
   int effPsEnvelopes; /* read-back: effective max envelopes (-1 n/a) */
 

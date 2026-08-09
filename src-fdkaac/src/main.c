@@ -293,6 +293,15 @@ PROGNAME " %s\n"
 "                               synthesis skip it (explicitly permitted by the standard).\n"
 "                               OPD is not sent - the decoder derives it from a joint\n"
 "                               model rather than measuring it.\n"
+" --ps-opd <0|1>              Only meaningful with --ps-ipd 1. OPD is the phase of the\n"
+"                               LEFT channel relative to the MONO downmix, and the\n"
+"                               decoder needs both: it rotates the downmix-fed paths by\n"
+"                               OPD and the others by (OPD - IPD), so the DIFFERENCE is\n"
+"                               always IPD but where it sits relative to the downmix is\n"
+"                               set by OPD. Default (1) computes it from the same\n"
+"                               accumulators; 0 pins it to zero, which makes the phase\n"
+"                               error asymmetric between channels. Provided so the two\n"
+"                               can be compared on identical material.\n"
 " --ps-icc-mode <n>           ICC rotation: -1 def, 0 ROT_A, 1 ROT_B. Signalling only --\n"
 "                               same matrix, computed differently by the decoder.\n"
 " --ps-bands <10|20>          PS stereo bands = FREQUENCY resolution of the stereo\n"
@@ -551,6 +560,7 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
 #define OPT_FR_SBR_MH_DELTATIME  M4AF_FOURCC('f','m','d','t')
 #define OPT_FR_SBR_NOISE_MAX     M4AF_FOURCC('f','s','n','m')
 #define OPT_FR_PS_IPD            M4AF_FOURCC('f','p','i','d')
+#define OPT_FR_PS_OPD            M4AF_FOURCC('f','p','o','d')
 #define OPT_FR_IS_BAND_LO        M4AF_FOURCC('f','i','l','o')
 #define OPT_FR_IS_BAND_HI        M4AF_FOURCC('f','i','h','i')
 #define OPT_FR_IS_FORCE_LO       M4AF_FOURCC('f','i','f','l')
@@ -683,6 +693,7 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
         { "sbr-mh-deltatime",      required_argument, 0, OPT_FR_SBR_MH_DELTATIME },
         { "sbr-noise-max",       required_argument, 0, OPT_FR_SBR_NOISE_MAX },
         { "ps-ipd",              required_argument, 0, OPT_FR_PS_IPD            },
+        { "ps-opd",              required_argument, 0, OPT_FR_PS_OPD            },
         { "is-lo",               required_argument, 0, OPT_FR_IS_BAND_LO        },
         { "is-hi",               required_argument, 0, OPT_FR_IS_BAND_HI        },
         { "is-force-lo",         required_argument, 0, OPT_FR_IS_FORCE_LO       },
@@ -773,6 +784,7 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
     params->fr_sbr_mh_deltatime = -1;
     params->fr_sbr_noise_max = -1;
     params->fr_ps_ipd = -1;
+    params->fr_ps_opd = -1;
     params->fr_is_band_lo = -1;
     params->fr_is_band_hi = -1;
     params->fr_is_force_lo = -1;
@@ -1160,6 +1172,9 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
         case OPT_FR_PS_IPD:
             if (sscanf(optarg, "%d", &n) != 1 || n < 0 || n > 1) { fprintf(stderr, "invalid arg for ps-ipd (0,1)\n"); return -1; }
             params->fr_ps_ipd = n; break;
+        case OPT_FR_PS_OPD:
+            if (sscanf(optarg, "%d", &n) != 1 || n < 0 || n > 1) { fprintf(stderr, "invalid arg for ps-opd (0,1)\n"); return -1; }
+            params->fr_ps_opd = n; break;
         case OPT_FR_IS_BAND_LO:
             if (sscanf(optarg, "%d", &n) != 1 || n < 0) { fprintf(stderr, "invalid arg for is-lo (>=0)\n"); return -1; }
             params->fr_is_band_lo = n; break;

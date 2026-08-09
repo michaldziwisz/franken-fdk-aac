@@ -921,15 +921,76 @@ już niemal całe plus-minus 180 stopni, więc siatka co 45 stopni nie
 potrafi jednoznacznie powiedzieć, gdzie ono jest. To ten sam sufit
 niejednoznaczności fazowej, przez który słuch człowieka korzysta z
 przesłanek czasowych głównie na dole.</p>
-<p>Dwie uwagi praktyczne. IPD sięga tylko mniej więcej najniższych 690
-Hz, bo jego jedenaście pasm parametrycznych mieści się w pierwszych
-trzech pasmach QMF — słuchanie albo mierzenie powyżej tego zakresu nie
-pokaże zupełnie nic. I OPD zostaje na zerze celowo: dekoder sprzęga oba
-parametry, przy czym OPD obraca obie ścieżki downmiksu, a IPD przesuwa
-tylko drugą, a zero jest zdefiniowaną wartością neutralną. Fizycznie
-oczywisty strzał, OPD = IPD/2, został zmierzony i również nie odtwarzał
-fazy źródła, więc zamiast zgadywać dalej model dekodera, zostawiamy tę
-połowę pary w spokoju.</p>
+<p>Jedna uwaga praktyczna, zanim przejdziemy do drugiego parametru: IPD
+sięga tylko mniej więcej najniższych 690 Hz, bo jego jedenaście pasm
+parametrycznych mieści się w pierwszych trzech pasmach QMF. Słuchanie
+albo mierzenie powyżej tego zakresu nie pokaże zupełnie nic.</p>
+<h3 id="opd-druga-połowa-pary">OPD: druga połowa pary</h3>
+<p>Samo IPD to nie cała historia i warto rozpisać, dlaczego. IPD to faza
+lewego kanału względem prawego; <strong>OPD to faza lewego kanału
+względem monofonicznego downmiksu.</strong> Dekoder używa obu: ścieżki
+karmione downmiksem obraca o <code>OPD</code>, a pozostałe o
+<code>OPD - IPD</code>. Odejmij jedno od drugiego i <code>OPD</code> się
+skraca — więc międzykanałowa <em>różnica</em> zawsze wychodzi równa IPD,
+niezależnie od tego, co mówi OPD. Ale to, gdzie ten obrót leży względem
+downmiksu, jest już wyłącznie sprawą OPD.</p>
+<p>Zostaw OPD na zerze i lewy kanał zostaje przypięty do fazy downmiksu,
+a cały obrót ląduje na prawym. Różnica jest nadal poprawna — i właśnie
+dlatego łatwo to przeoczyć: każdy pomiar <code>arg(L) - arg(R)</code>
+jest na to ślepy. Zmierz zamiast tego fazę bezwzględną każdego kanału
+względem oryginału, w zasięgu IPD, i asymetria staje się oczywista —
+podobnie jak to, że OPD ją usuwa:</p>
+<table>
+<thead>
+<tr class="header">
+<th>Opóźnienie międzykanałowe</th>
+<th>OPD = 0 (L / P)</th>
+<th>OPD liczone (L / P)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>0,25 ms</td>
+<td>14,7 / 20,1°</td>
+<td>14,4 / <strong>17,3°</strong></td>
+</tr>
+<tr class="even">
+<td>0,4 ms</td>
+<td>23,0 / 28,0°</td>
+<td><strong>15,5</strong> / <strong>17,8°</strong></td>
+</tr>
+<tr class="odd">
+<td>0,7 ms</td>
+<td>48,1 / 56,2°</td>
+<td><strong>40,9</strong> / <strong>36,3°</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Przy <code>OPD = 0</code> oba kanały nigdy się nie zgadzają — 14,7
+wobec 20,1, potem 48,1 wobec 56,2. Z policzonym OPD zbiegają się, a
+korzyść rośnie wraz z opóźnieniem: średnio +6,4 stopnia, przy 0,7 ms
++13. Zwróć uwagę, że to jest właśnie ten przypadek, w którym
+<em>zwykły</em> pomiar IPD nie pokazywał nic: przy 0,7 ms różnica
+międzykanałowa przekraczała już to, co rozstrzyga siatka 45 stopni, a
+jednak faza bezwzględna każdego kanału i tak wyraźnie się poprawiła.</p>
+<p>A wyprowadzenie nic nie kosztuje. Downmiks to <code>L + R</code>,
+więc</p>
+<pre><code>sum(L * conj(L+R)) = sum(|L|²) + sum(L * conj(R))</code></pre>
+<p>czego część rzeczywista to <code>pwrL + pwrCr</code>, a urojona to
+<code>pwrCi</code> — te same akumulatory, które karmią już IID, ICC i
+IPD. Zatem <code>OPD = atan2(pwrCi, pwrL + pwrCr)</code>: jeszcze jeden
+<code>atan2</code> na liczbach, które i tak leżały w tej pętli, i nie
+trzeba przekazywać sygnału downmiksu skądkolwiek indziej. Dla równych
+poziomów sprowadza się to analitycznie do <code>IPD/2</code>, bo
+<code>arg(1 + e^{-i·φ}) = -φ/2</code> — wygodny sprawdzian, choć postać
+ogólna powyżej jest poprawna także wtedy, gdy kanały różnią się
+poziomem, a <code>IPD/2</code> już nie.</p>
+<p>Wcześniejsza wersja tego enkodera wysyłała OPD jako zero i
+twierdziła, że pomiar wykazał, iż <code>IPD/2</code> nie pomaga. Ten
+pomiar był zakresowany na <code>arg(L) - arg(R)</code>, a to, jak
+wyjaśniono powyżej, w ogóle nie widzi OPD. Werdykt był błędny i został
+poprawiony; <code>--ps-opd 0</code> pozostaje dostępne do porównań
+A/B.</p>
 <p>Kompatybilność jest bezpieczna z samej konstrukcji. Dane siedzą w
 rozszerzeniu z prefiksem długości, więc dekoder, który nie implementuje
 syntezy fazy — łącznie z własnym baseline'owym dekoderem PS w FDK —
