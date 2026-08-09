@@ -46,9 +46,49 @@ PY
 
 md5(){ md5sum "$1" 2>/dev/null | cut -c1-12; }
 # liczba bledow dekodera (0 = strumien poprawny)
-derr(){ ffmpeg -y -loglevel error -i "$1" -f null - 2>&1 | grep -icE 'error|invalid|exceeds'; }
+#
+# UWAGA na WSL/drvfs: plik zapisuje binarka WINDOWS, a czyta go ffmpeg z LINUKSA.
+# Na /mnt/... zapis nie zawsze jest natychmiast w pelni widoczny dla procesu Linux,
+# co objawialo sie POJEDYNCZYMI, NIEPOWTARZALNYMI FAILami w losowych przypadkach
+# (raz sbr-tran-thr, raz side-bias, raz sbr-mh-decay-orig) przy w pelni
+# DETERMINISTYCZNYM enkoderze - to samo wejscie i flagi daja bit-identyczne
+# wyjscie 6/6 razy. Dlatego: krotka proba ponowna, zanim uznamy strumien za zly.
+derr(){
+  local f="$1" n
+  n=$(ffmpeg -y -loglevel error -i "$f" -f null - 2>&1 | grep -icE 'error|invalid|exceeds')
+  if [ "$n" != "0" ]; then
+    sync 2>/dev/null
+    sleep 0.3
+    n=$(ffmpeg -y -loglevel error -i "$f" -f null - 2>&1 | grep -icE 'error|invalid|exceeds')
+  fi
+  echo "$n"
+}
 
-enc(){ "$@" 2>/dev/null; }   # $1=exe ... -o plik in.wav
+enc(){
+  # $1=exe ... -o plik in.wav
+  #
+  # WSL interop pod obciazeniem BYWA NIE URUCHAMIA procesu Windows w ogole:
+  # zmierzone 8/60 nieudanych wywolan przy 3 rownoleglych petlach .exe w tle,
+  # objaw = plik wyjsciowy NIE POWSTAJE (rozmiar 0), enkoder nie zglasza bledu.
+  # W izolacji ten sam przypadek przechodzi 40/40. Stad losowe, niepowtarzalne
+  # FAILe w roznych testach przy KAZDYM przebiegu make check, mimo ze enkoder
+  # jest w pelni deterministyczny (6/6 bit-identycznych wyjsc dla tych samych
+  # argumentow). To ograniczenie SRODOWISKA, nie kodu - dlatego ponawiamy.
+  local out="" prev="" a
+  for a in "$@"; do
+    [ "$prev" = "-o" ] && out="$a"
+    prev="$a"
+  done
+
+  local try
+  for try in 1 2 3 4 5; do
+    "$@" 2>/dev/null
+    [ -z "$out" ] && return 0
+    [ -s "$out" ] && return 0
+    sleep 0.4
+  done
+  return 1
+}
 
 test_exe(){
   local exe="$1" tag="$2"
@@ -56,8 +96,14 @@ test_exe(){
   [ -f "$exe" ] || { echo "  (pominieto - brak binarki)"; return; }
 
   # 1) help kompletny - franken switche obecne
-  local hn
-  hn=$("$exe" --help 2>&1 | grep -cE '^ --(msmask|msbands|is|isbands|is-min-sfbs|is-corr-thresh|is-lr-ratio|is-lo|is-hi|is-force-lo|is-force-hi|core-cutoff|sbr-start|sbr-stop|sbr-freqscale|sbr-alterscale|sbr-noise-bands|sbr-amp-res|sbr-data-extra|sbr-header-period|sbr-tran-peak|sbr-tran-quiet|sbr-tran-dom|sbr-tran-thr|sbr-tran-split|sbr-mh-tone|sbr-mh-diff|sbr-mh-decay-orig|sbr-mh-decay-diff|sbr-mh-sfm-sbr|sbr-mh-sfm-orig|sbr-mh-maxcomp|sbr-mh-deltatime|sbr-noise-max|ps|ps-iid-quant|ps-ipd|ps-opd|ps-bands|ps-env|ps-env-reduce|ps-noenv-skip|tns-mask|tns-order|pns|pns-start|pns-gain|pns-tonality|pns-refpower|pns-gapfill|pns-min-width|ath-scale|minsnr-scale|minsnr-clamp-hi|minsnr-clamp-lo|reduce-clamp|mid-bias|side-bias|side-knee|mask-slope|block-bias|vbr-reservoir|peak-bitrate|max-bits-frame|min-bits-frame|bitres-mode|ms-bias|verbose)')
+  local hn _t
+  # retry takze tutaj: pod obciazeniem interop WSL potrafi nie odpalic .exe wcale,
+  # co dawalo falszywe "help: tylko 0 switchy".
+  for _t in 1 2 3 4 5; do
+    hn=$("$exe" --help 2>&1 | grep -cE '^ --(msmask|msbands|is|isbands|is-min-sfbs|is-corr-thresh|is-lr-ratio|is-lo|is-hi|is-force-lo|is-force-hi|core-cutoff|sbr-start|sbr-stop|sbr-freqscale|sbr-alterscale|sbr-noise-bands|sbr-amp-res|sbr-data-extra|sbr-header-period|sbr-tran-peak|sbr-tran-quiet|sbr-tran-dom|sbr-tran-thr|sbr-tran-split|sbr-mh-tone|sbr-mh-diff|sbr-mh-decay-orig|sbr-mh-decay-diff|sbr-mh-sfm-sbr|sbr-mh-sfm-orig|sbr-mh-maxcomp|sbr-mh-deltatime|sbr-noise-max|ps|ps-iid-quant|ps-ipd|ps-opd|ps-bands|ps-env|ps-env-reduce|ps-noenv-skip|tns-mask|tns-order|pns|pns-start|pns-gain|pns-tonality|pns-refpower|pns-gapfill|pns-min-width|ath-scale|minsnr-scale|minsnr-clamp-hi|minsnr-clamp-lo|reduce-clamp|mid-bias|side-bias|side-knee|mask-slope|block-bias|vbr-reservoir|peak-bitrate|max-bits-frame|min-bits-frame|bitres-mode|ms-bias|verbose)')
+  [ "$hn" -ge 60 ] && break
+    sleep 0.4
+  done
   [ "$hn" -ge 60 ] && ok "help: $hn franken switchy" || bad "help: tylko $hn switchy (oczekiwano >=60)"
 
   # 2) baseline + rozny bitstream per switch, wszystko dekodowalne
@@ -149,13 +195,25 @@ PY
   awk "BEGIN{exit !($sr8 < 5)}" && ok "bitres-mode2 sztywny (<5 kbps rozrzut)" || bad "bitres-mode2 nie sztywny ($sr8)"
 
   # 4) verbose: brak literalnego ' -1' w wartosciach (naglowek nie liczony)
-  "$exe" -p2 -b128000 --verbose -o "${OUT}_v.m4a" "$WAV" 2>"${OUT}_v.txt"
+  # te dwa wywolania omijaja enc(), bo przechwytuja stderr do analizy --verbose;
+  # potrzebuja wlasnego retry na te sama usterke interopu WSL (patrz enc()).
+  for _t in 1 2 3 4 5; do
+    "$exe" -p2 -b128000 --verbose -o "${OUT}_v.m4a" "$WAV" 2>"${OUT}_v.txt"
+    grep -qiE 'core bandwidth' "${OUT}_v.txt" && break
+    sleep 0.4
+  done
   local m1
   m1=$(grep -E ':' "${OUT}_v.txt" | grep -vE 'no -1|processed|ETA|%\]' | grep -cE '(: *-1|= *-1)')
   [ "$m1" = "0" ] && ok "verbose bez wartosci -1" || bad "verbose ma $m1 wartosci -1"
 
   # 5) uncap-bandwidth: core-cutoff 24000 realnie przechodzi (verbose > 20000)
-  "$exe" -p2 -b256000 --core-cutoff 24000 --uncap-bandwidth --verbose -o "${OUT}_uc.m4a" "$WAV" 2>"${OUT}_uc.txt"
+  for _t in 1 2 3 4 5; do
+    "$exe" -p2 -b256000 --core-cutoff 24000 --uncap-bandwidth --verbose -o "${OUT}_uc.m4a" "$WAV" 2>"${OUT}_uc.txt"
+    # nie wystarczy niepusty plik: przy nieodpalonym interopie stderr moze zawierac
+    # sam pasek postepu bez linii "core bandwidth" - warunkuj na SZUKANEJ TRESCI
+    grep -qiE 'core bandwidth' "${OUT}_uc.txt" && break
+    sleep 0.4
+  done
   local bw
   bw=$(grep -iE 'core bandwidth' "${OUT}_uc.txt" | grep -oE '[0-9]+' | head -1)
   [ "${bw:-0}" -gt 20000 ] && ok "uncap-bandwidth: cutoff ${bw}Hz > 20000 (cap zdjety)" || bad "uncap-bandwidth: ${bw:-?}Hz (cap nadal 20000?)"
@@ -284,7 +342,9 @@ NEUTRAL_SBR="--sbr-tran-quiet 100 --sbr-tran-thr 100 --sbr-tran-split 100 \
 --sbr-mh-maxcomp 50"
 enc "$X64" -p5 -b64000 -f2 -o "${OUT}_ni_base.aac" "$WAV"
 enc "$X64" -p5 -b64000 -f2 $NEUTRAL_SBR -o "${OUT}_ni_neu.aac" "$WAV"
-if cmp -s "${OUT}_ni_base.aac" "${OUT}_ni_neu.aac"; then
+if [ ! -s "${OUT}_ni_base.aac" ] || [ ! -s "${OUT}_ni_neu.aac" ]; then
+  bad "SBR detector knobs @ neutral: BRAK pliku (interop WSL nie odpalil .exe) - wynik nierozstrzygniety"
+elif cmp -s "${OUT}_ni_base.aac" "${OUT}_ni_neu.aac"; then
   ok "SBR detector knobs @ neutral: bit-identyczne ze stockiem"
 else
   bad "SBR detector knobs @ neutral ZMIENIAJA wyjscie (regresja skali/przepelnienie?)"
@@ -295,7 +355,9 @@ fi
 # wyrownanie strumienia SBR).
 enc "$X64" -p29 -b48000 -f2 -o "${OUT}_ipd_base.aac" "$WAV"
 enc "$X64" -p29 -b48000 -f2 --ps-ipd 0 -o "${OUT}_ipd_zero.aac" "$WAV"
-if cmp -s "${OUT}_ipd_base.aac" "${OUT}_ipd_zero.aac"; then
+if [ ! -s "${OUT}_ipd_base.aac" ] || [ ! -s "${OUT}_ipd_zero.aac" ]; then
+  bad "--ps-ipd 0: BRAK pliku (interop WSL) - wynik nierozstrzygniety"
+elif cmp -s "${OUT}_ipd_base.aac" "${OUT}_ipd_zero.aac"; then
   ok "--ps-ipd 0: bit-identyczne z brakiem flagi"
 else
   bad "--ps-ipd 0 ZMIENIA wyjscie (IPD nie jest czysto opt-in)"
@@ -315,7 +377,9 @@ fi
 # i OBA musza sie dekodowac bez bledow (drugi zestaw pol fazy w rozszerzeniu).
 enc "$X64" -p29 -b48000 -f2 --ps-ipd 1 --ps-opd 0 -o "${OUT}_opd0.aac" "$WAV"
 enc "$X64" -p29 -b48000 -f2 --ps-ipd 1 --ps-opd 1 -o "${OUT}_opd1.aac" "$WAV"
-if cmp -s "${OUT}_opd0.aac" "${OUT}_opd1.aac"; then
+if [ ! -s "${OUT}_opd0.aac" ] || [ ! -s "${OUT}_opd1.aac" ]; then
+  bad "--ps-opd: BRAK pliku (interop WSL) - wynik nierozstrzygniety"
+elif cmp -s "${OUT}_opd0.aac" "${OUT}_opd1.aac"; then
   bad "--ps-opd 0/1 daja IDENTYCZNY strumien (OPD nie trafia do bitstreamu)"
 else
   ok "--ps-opd 0/1: roznia sie (OPD realnie kodowane)"

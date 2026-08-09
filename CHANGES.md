@@ -5,43 +5,78 @@ Library** (per section 2 of the FDK AAC license, see `NOTICE.fdk-aac`).
 
 ## Releases
 
-### Unreleased — OPD: the other half of the phase pair (`--ps-opd`)
+### v1.3.0 — Parametric Stereo phase (IPD/OPD), PS resolution, SBR detectors
 
-- **`--ps-opd <0|1>`** (default on with `--ps-ipd 1`) — transmit OPD, the phase of
-  the LEFT channel relative to the MONO downmix. The decoder rotates the
-  downmix-fed paths by `OPD` and the others by `OPD - IPD`; the difference always
-  reduces to IPD, but the placement of that rotation relative to the downmix is
-  set by OPD alone.
-- Derived from existing accumulators, no new analysis and no downmix signal
-  needed: the downmix is `L + R`, so `sum(L*conj(L+R))` has real part
-  `pwrL + pwrCr` and imaginary part `pwrCi`, giving
-  `OPD = atan2(pwrCi, pwrL + pwrCr)`. Reduces analytically to `IPD/2` in the
-  equal-level case, but stays correct when the channels differ in level.
-- **Corrects a wrong verdict in the previous release.** It claimed measurement
-  showed `OPD = IPD/2` did not help. That measurement was scoped to
-  `arg(L) - arg(R)` — a metric structurally blind to OPD, since OPD cancels in the
-  inter-channel difference by construction. Re-measured on each channel's ABSOLUTE
-  phase against the source (60-690 Hz), OPD clearly helps:
+Four groups of work, all opt-in: with no new switches the output is byte-identical
+to v1.2.0. The headline item is that Parametric Stereo now transmits **phase** —
+something stock FDK never did, despite already computing the data it needs.
 
-  | delay | OPD=0 (L / R) | OPD computed (L / R) |
-  |---|---|---|
-  | 0.25 ms | 14.7 / 20.1 | 14.4 / **17.3** |
-  | 0.4 ms | 23.0 / 28.0 | **15.5** / **17.8** |
-  | 0.7 ms | 48.1 / 56.2 | **40.9** / **36.3** |
+#### Parametric Stereo resolution (bands × envelopes)
 
-  Average gain +6.4 deg, +13 deg at 0.7 ms — including the 0.7 ms case where the
-  plain IPD difference metric showed no benefit at all, because inter-channel phase
-  had already exceeded what a 45 deg grid resolves while absolute phase had not.
-  At `OPD = 0` the channels are always lopsided (14.7 vs 20.1, 48.1 vs 56.2); with
-  OPD they converge, which is precisely the asymmetry the parameter exists to fix.
-- `--ps-opd 0` retained so the two can be A/B'd on identical material.
-- Compatibility unchanged and re-verified: byte-identical with IPD off, clean
-  decode by ffmpeg and faad at 24/32/48/64 kbps with both parameters on.
-- New assertions: `--ps-opd 0` and `1` must produce DIFFERENT streams (proving OPD
-  reaches the bitstream) and both must decode without parser errors.
-- `make check` 143/143 PASS.
+- **`--ps-bands <10|20>`** — number of PS stereo bands, i.e. the *frequency*
+  resolution of the stereo parameters. Stock FDK derives this from the bitrate
+  alone (`psTuningTable`, `sbrenc_rom.cpp:899`), so from 22 kbps upwards only 20
+  bands were ever reachable.
+- **`--ps-env <1|2|4>`** — PS parameter envelopes per frame, i.e. the *time*
+  resolution of the stereo parameters. Above 36 kbps stock FDK always picks 4.
+- **`--ps-env-reduce <0|1>`** — `0` disables the automatic envelope-halving loop
+  (`envelopeReducible`, `ps_encode.cpp:278`), which silently collapses 4
+  envelopes to 1 whenever neighbouring envelopes look similar. Without this,
+  `--ps-env 4` is a no-op at 48 kbps: the output is byte-identical to stock.
+- **`--ps-noenv-skip <0|1>`** — `0` forbids parameter-less PS frames. Stock FDK
+  may emit up to `MAX_NOENV_CNT` (10) consecutive frames carrying no stereo
+  parameters at all when successive IID/ICC sets look similar.
+- `--verbose` now reports the effective PS band count and envelope count, plus
+  the state of both hidden heuristics above.
+- Measured (HE-AAC v2, 48 kbps, 4 s probe with a 0.25 Hz panorama sweep and
+  alternating L/R transients, panorama trajectory vs. source): stock 0.177 RMS
+  error / 0.9655 correlation; `--ps-env 4 --ps-env-reduce 0` 0.117 / 0.9944 — a
+  34 % reduction in panorama error at essentially the same file size.
+- Documentation now states honestly that the ICC rotation mode
+  (`--ps-icc-mode`) is signalling-only, and corrects the previous claim about
+  IPD/OPD: the encoder already computes the imaginary part of the L/R
+  cross-spectrum and discards the phase, and the IPD/OPD Huffman tables and
+  bitstream writers already exist in `ps_bitenc.cpp`.
+- Source areas: `libSBRenc/src/sbr_encoder.cpp` (PS tuning-table override),
+  `libSBRenc/src/ps_encode.cpp` (envelope reduction, parameter-less frames).
+- `make check` 106/106 PASS, no-regression ADTS bit-identical to stock.
 
-### Unreleased — IPD: inter-channel phase in Parametric Stereo (`--ps-ipd`)
+#### SBR transient / missing-harmonics detectors + noise ceiling
+
+- **`--sbr-tran-thr <n>`** — scales the master SBR transient threshold. Measured
+  as the strongest knob in this group: on a 24-attack percussive probe, high-band
+  pre-echo (energy appearing *before* an attack that is absent from the source)
+  drops from 1.610 to **0.041** at 32 kbps and from 1.186 to 0.059 at 64 kbps when
+  set to 40. Monotonic, saturates below 60, byte-identical to stock at 100+.
+- **`--sbr-tran-peak <n>`** — raw x100 replacement for the hardcoded 0.90
+  "peakiness" constant (`tran_det.cpp:699,715`).
+- **`--sbr-tran-split <n>`** — scales the FIXFIX envelope-split threshold.
+- **`--sbr-tran-quiet` / `--sbr-tran-dom`** — exposed for completeness but
+  **no-ops in this build**: they live in the fast transient detector, only reached
+  under AAC-LD/ELD, and `-p 23` / `-p 39` fail to initialise here *including in the
+  stock binary* (inherited limitation). Documented as such rather than advertised.
+- **Missing harmonics detector** (`mh_det.cpp` `paramsAac`/`paramsAacLd`, both
+  `const` — cloned into a writable block only when a knob is set):
+  `--sbr-mh-tone`, `--sbr-mh-diff`, `--sbr-mh-decay-orig`, `--sbr-mh-decay-diff`,
+  `--sbr-mh-sfm-sbr`, `--sbr-mh-sfm-orig`, `--sbr-mh-maxcomp`,
+  `--sbr-mh-deltatime`. These govern whether SBR fabricates synthetic harmonics —
+  too eager gives whistling/metallic artefacts, too conservative dulls bells and
+  cymbals. `invThresHoldTone` is moved inversely to stay consistent with
+  `thresHoldTone`.
+- **`--sbr-noise-max <6|3|-3>`** — ceiling on injected SBR noise (1.0 / 0.5 /
+  0.125), i.e. the "air vs hiss" limit. Already a config field in FDK
+  (`sbr_encoder.cpp:526`), previously only settable from the bitrate tuning table.
+- **Fixed an overflow bug caught by the new test**: computing a x1.00 multiplier as
+  `((INT64)100 << 31) / 100` yields 2^31, which does not fit a signed 32-bit
+  `FIXP_DBL` and wrapped negative — so a "neutral" knob silently altered the audio.
+  Neutral values now return the constant untouched, and multipliers are clamped.
+- **New `make check` section `neutral-identity`**: every knob at its neutral value
+  must produce byte-identical output to no knob at all. This is what caught the
+  overflow above.
+- `--verbose` lists each of these overrides when set.
+- `make check` 129/129 PASS, no-regression ADTS bit-identical to stock.
+
+#### IPD: inter-channel phase in Parametric Stereo (`--ps-ipd`)
 
 - **`--ps-ipd <0|1>`** — transmit IPD (inter-channel phase difference) in the PS
   extension. Stock FDK hardcodes phase to zero ("IPD OPD not supported right
@@ -81,70 +116,41 @@ Library** (per section 2 of the FDK AAC license, see `NOTICE.fdk-aac`).
   without phase synthesis may skip — explicitly permitted by ISO/IEC 14496-3.
 - `make check` 137/137 PASS, including new opt-in and parser-error assertions.
 
-### Unreleased — SBR transient / missing-harmonics detectors + noise ceiling
+#### OPD: the other half of the phase pair (`--ps-opd`)
 
-- **`--sbr-tran-thr <n>`** — scales the master SBR transient threshold. Measured
-  as the strongest knob in this group: on a 24-attack percussive probe, high-band
-  pre-echo (energy appearing *before* an attack that is absent from the source)
-  drops from 1.610 to **0.041** at 32 kbps and from 1.186 to 0.059 at 64 kbps when
-  set to 40. Monotonic, saturates below 60, byte-identical to stock at 100+.
-- **`--sbr-tran-peak <n>`** — raw x100 replacement for the hardcoded 0.90
-  "peakiness" constant (`tran_det.cpp:699,715`).
-- **`--sbr-tran-split <n>`** — scales the FIXFIX envelope-split threshold.
-- **`--sbr-tran-quiet` / `--sbr-tran-dom`** — exposed for completeness but
-  **no-ops in this build**: they live in the fast transient detector, only reached
-  under AAC-LD/ELD, and `-p 23` / `-p 39` fail to initialise here *including in the
-  stock binary* (inherited limitation). Documented as such rather than advertised.
-- **Missing harmonics detector** (`mh_det.cpp` `paramsAac`/`paramsAacLd`, both
-  `const` — cloned into a writable block only when a knob is set):
-  `--sbr-mh-tone`, `--sbr-mh-diff`, `--sbr-mh-decay-orig`, `--sbr-mh-decay-diff`,
-  `--sbr-mh-sfm-sbr`, `--sbr-mh-sfm-orig`, `--sbr-mh-maxcomp`,
-  `--sbr-mh-deltatime`. These govern whether SBR fabricates synthetic harmonics —
-  too eager gives whistling/metallic artefacts, too conservative dulls bells and
-  cymbals. `invThresHoldTone` is moved inversely to stay consistent with
-  `thresHoldTone`.
-- **`--sbr-noise-max <6|3|-3>`** — ceiling on injected SBR noise (1.0 / 0.5 /
-  0.125), i.e. the "air vs hiss" limit. Already a config field in FDK
-  (`sbr_encoder.cpp:526`), previously only settable from the bitrate tuning table.
-- **Fixed an overflow bug caught by the new test**: computing a x1.00 multiplier as
-  `((INT64)100 << 31) / 100` yields 2^31, which does not fit a signed 32-bit
-  `FIXP_DBL` and wrapped negative — so a "neutral" knob silently altered the audio.
-  Neutral values now return the constant untouched, and multipliers are clamped.
-- **New `make check` section `neutral-identity`**: every knob at its neutral value
-  must produce byte-identical output to no knob at all. This is what caught the
-  overflow above.
-- `--verbose` lists each of these overrides when set.
-- `make check` 129/129 PASS, no-regression ADTS bit-identical to stock.
+- **`--ps-opd <0|1>`** (default on with `--ps-ipd 1`) — transmit OPD, the phase of
+  the LEFT channel relative to the MONO downmix. The decoder rotates the
+  downmix-fed paths by `OPD` and the others by `OPD - IPD`; the difference always
+  reduces to IPD, but the placement of that rotation relative to the downmix is
+  set by OPD alone.
+- Derived from existing accumulators, no new analysis and no downmix signal
+  needed: the downmix is `L + R`, so `sum(L*conj(L+R))` has real part
+  `pwrL + pwrCr` and imaginary part `pwrCi`, giving
+  `OPD = atan2(pwrCi, pwrL + pwrCr)`. Reduces analytically to `IPD/2` in the
+  equal-level case, but stays correct when the channels differ in level.
+- **Corrects a wrong verdict in the previous release.** It claimed measurement
+  showed `OPD = IPD/2` did not help. That measurement was scoped to
+  `arg(L) - arg(R)` — a metric structurally blind to OPD, since OPD cancels in the
+  inter-channel difference by construction. Re-measured on each channel's ABSOLUTE
+  phase against the source (60-690 Hz), OPD clearly helps:
 
-### Unreleased — Parametric Stereo resolution (bands × envelopes)
+  | delay | OPD=0 (L / R) | OPD computed (L / R) |
+  |---|---|---|
+  | 0.25 ms | 14.7 / 20.1 | 14.4 / **17.3** |
+  | 0.4 ms | 23.0 / 28.0 | **15.5** / **17.8** |
+  | 0.7 ms | 48.1 / 56.2 | **40.9** / **36.3** |
 
-- **`--ps-bands <10|20>`** — number of PS stereo bands, i.e. the *frequency*
-  resolution of the stereo parameters. Stock FDK derives this from the bitrate
-  alone (`psTuningTable`, `sbrenc_rom.cpp:899`), so from 22 kbps upwards only 20
-  bands were ever reachable.
-- **`--ps-env <1|2|4>`** — PS parameter envelopes per frame, i.e. the *time*
-  resolution of the stereo parameters. Above 36 kbps stock FDK always picks 4.
-- **`--ps-env-reduce <0|1>`** — `0` disables the automatic envelope-halving loop
-  (`envelopeReducible`, `ps_encode.cpp:278`), which silently collapses 4
-  envelopes to 1 whenever neighbouring envelopes look similar. Without this,
-  `--ps-env 4` is a no-op at 48 kbps: the output is byte-identical to stock.
-- **`--ps-noenv-skip <0|1>`** — `0` forbids parameter-less PS frames. Stock FDK
-  may emit up to `MAX_NOENV_CNT` (10) consecutive frames carrying no stereo
-  parameters at all when successive IID/ICC sets look similar.
-- `--verbose` now reports the effective PS band count and envelope count, plus
-  the state of both hidden heuristics above.
-- Measured (HE-AAC v2, 48 kbps, 4 s probe with a 0.25 Hz panorama sweep and
-  alternating L/R transients, panorama trajectory vs. source): stock 0.177 RMS
-  error / 0.9655 correlation; `--ps-env 4 --ps-env-reduce 0` 0.117 / 0.9944 — a
-  34 % reduction in panorama error at essentially the same file size.
-- Documentation now states honestly that the ICC rotation mode
-  (`--ps-icc-mode`) is signalling-only, and corrects the previous claim about
-  IPD/OPD: the encoder already computes the imaginary part of the L/R
-  cross-spectrum and discards the phase, and the IPD/OPD Huffman tables and
-  bitstream writers already exist in `ps_bitenc.cpp`.
-- Source areas: `libSBRenc/src/sbr_encoder.cpp` (PS tuning-table override),
-  `libSBRenc/src/ps_encode.cpp` (envelope reduction, parameter-less frames).
-- `make check` 106/106 PASS, no-regression ADTS bit-identical to stock.
+  Average gain +6.4 deg, +13 deg at 0.7 ms — including the 0.7 ms case where the
+  plain IPD difference metric showed no benefit at all, because inter-channel phase
+  had already exceeded what a 45 deg grid resolves while absolute phase had not.
+  At `OPD = 0` the channels are always lopsided (14.7 vs 20.1, 48.1 vs 56.2); with
+  OPD they converge, which is precisely the asymmetry the parameter exists to fix.
+- `--ps-opd 0` retained so the two can be A/B'd on identical material.
+- Compatibility unchanged and re-verified: byte-identical with IPD off, clean
+  decode by ffmpeg and faad at 24/32/48/64 kbps with both parameters on.
+- New assertions: `--ps-opd 0` and `1` must produce DIFFERENT streams (proving OPD
+  reaches the bitstream) and both must decode without parser errors.
+- `make check` 143/143 PASS.
 
 ### v1.2.0 — DAB+ digital-radio output
 
