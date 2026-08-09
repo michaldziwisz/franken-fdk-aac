@@ -101,6 +101,25 @@ amm-info@iis.fraunhofer.de
 *******************************************************************************/
 
 #include "tran_det.h"
+#include "../../libAACenc/src/franken.h"
+
+/* Frankenstein helpers for the SBR transient detector.
+ * FR_X100() turns a value*100 knob into a fixed-point multiplier applied to a
+ * stock constant; FR_PEAK() substitutes a raw x100 constant outright. Both are
+ * no-ops when the knob is unset, so the stock path stays bit-identical. */
+/* NOTE on the 100 case: a x1.00 knob must be an EXACT no-op, so it returns the
+ * value untouched. Computing the multiplier instead would be both lossy (fMult
+ * rounds) and outright wrong: ((INT64)100 << 31) / 100 == 2^31, which does not
+ * fit in a signed 32-bit FIXP_DBL and wraps negative. Values above 100 are
+ * clamped to the largest representable multiplier for the same reason. */
+#define FR_FIXP_MUL100(knob)                                     \
+  ((FIXP_DBL)(((INT64)(knob) << 31) / 100 > (INT64)MAXVAL_DBL    \
+                  ? (INT64)MAXVAL_DBL                            \
+                  : ((INT64)(knob) << 31) / 100))
+#define FR_TRAN_SCALE(val, knob) \
+  (((knob) > 0 && (knob) != 100) ? fMult((val), FR_FIXP_MUL100(knob)) : (val))
+#define FR_TRAN_RAW100(stock, knob) \
+  (((knob) > 0) ? FR_FIXP_MUL100(knob) : (stock))
 
 #include "fram_gen.h"
 #include "sbrenc_ram.h"
@@ -696,7 +715,8 @@ void FDKsbrEnc_transientDetect(HANDLE_SBR_TRANSIENT_DETECTOR h_sbrTran,
    * values)  */
   for (i = qmfStartSample; i < qmfStartSample + no_cols; i++) {
     cond = (h_sbrTran->transients[i] <
-            fMult(FL2FXCONST_DBL(0.9f), h_sbrTran->transients[i - 1])) &&
+            fMult(FR_TRAN_RAW100(FL2FXCONST_DBL(0.9f), g_franken.sbrTranPeakX100),
+                  h_sbrTran->transients[i - 1])) &&
            (h_sbrTran->transients[i - 1] > h_sbrTran->tran_thr);
 
     if (cond) {
@@ -712,7 +732,8 @@ void FDKsbrEnc_transientDetect(HANDLE_SBR_TRANSIENT_DETECTOR h_sbrTran,
     for (i = qmfStartSample + no_cols;
          i < qmfStartSample + no_cols + h_sbrTran->frameShift; i++) {
       cond = (h_sbrTran->transients[i] <
-              fMult(FL2FXCONST_DBL(0.9f), h_sbrTran->transients[i - 1])) &&
+              fMult(FR_TRAN_RAW100(FL2FXCONST_DBL(0.9f), g_franken.sbrTranPeakX100),
+                    h_sbrTran->transients[i - 1])) &&
              (h_sbrTran->transients[i - 1] > h_sbrTran->tran_thr);
 
       if (cond) {
@@ -773,10 +794,12 @@ int FDKsbrEnc_InitSbrTransientDetector(
   FDK_ASSERT(no_rows <= 64);
 
   h_sbrTransientDetector->no_cols = no_cols;
-  h_sbrTransientDetector->tran_thr =
-      (FIXP_DBL)((params->tran_thr << (32 - 24 - 1)) / no_rows);
+  h_sbrTransientDetector->tran_thr = FR_TRAN_SCALE(
+      (FIXP_DBL)((params->tran_thr << (32 - 24 - 1)) / no_rows),
+      g_franken.sbrTranThrX100);
   h_sbrTransientDetector->tran_fc = tran_fc;
-  h_sbrTransientDetector->split_thr_m = fMult(tmp, bitrateFactor_m);
+  h_sbrTransientDetector->split_thr_m =
+      FR_TRAN_SCALE(fMult(tmp, bitrateFactor_m), g_franken.sbrTranSplitX100);
   h_sbrTransientDetector->split_thr_e = bitrateFactor_e;
   h_sbrTransientDetector->no_rows = no_rows;
   h_sbrTransientDetector->mode = params->tran_det_mode;
@@ -944,7 +967,8 @@ void FDKsbrEnc_fastTransientDetect(
     FIXP_DBL tmpE = FL2FXCONST_DBL(0.0f);
     int headroomEnSlot = DFRACT_BITS - 1;
 
-    FIXP_DBL smallNRG = FL2FXCONST_DBL(1e-2f);
+    FIXP_DBL smallNRG =
+        FR_TRAN_SCALE(FL2FXCONST_DBL(1e-2f), g_franken.sbrTranQuietX100);
     FIXP_DBL denominator;
     INT denominator_scale;
 
@@ -1024,8 +1048,17 @@ void FDKsbrEnc_fastTransientDetect(
 
   FDK_ASSERT(lookahead >= 2);
   for (timeSlot = lookahead; timeSlot < nTimeSlots + lookahead; timeSlot++) {
+    /* Frankenstein: --sbr-tran-dom changes how much louder the current slot must
+     * be than its two predecessors to still count as a transient. Stock 1.4x is
+     * applied as its reciprocal here. */
+    FIXP_DBL fr_dom_recip = FL2FXCONST_DBL(1.0f / 1.4f);
+    if (g_franken.sbrTranDomX100 > 0) {
+      INT64 r = ((INT64)100 << 31) / g_franken.sbrTranDomX100;
+      if (r > (INT64)MAXVAL_DBL) r = (INT64)MAXVAL_DBL;
+      fr_dom_recip = (FIXP_DBL)r;
+    }
     FIXP_DBL energy_cur_slot_weighted =
-        fMult(energy_timeSlots[timeSlot], FL2FXCONST_DBL(1.0f / 1.4f));
+        fMult(energy_timeSlots[timeSlot], fr_dom_recip);
     if (!fIsLessThan(delta_energy[timeSlot], delta_energy_scale[timeSlot], thr,
                      thr_scale) &&
         (((transientCandidates[timeSlot - 2] == 0) &&

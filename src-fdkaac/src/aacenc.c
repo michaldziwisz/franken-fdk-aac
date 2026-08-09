@@ -297,6 +297,20 @@ int aacenc_init(HANDLE_AACENCODER *encoder, const aacenc_param_t *params,
     FR_SET(params->fr_ps_env != -1, AACENC_FRANKEN_PS_ENV, params->fr_ps_env);
     FR_SET(params->fr_ps_env_reduce != -1, AACENC_FRANKEN_PS_ENV_REDUCE, params->fr_ps_env_reduce);
     FR_SET(params->fr_ps_noenv_skip != -1, AACENC_FRANKEN_PS_NOENV_SKIP, params->fr_ps_noenv_skip);
+    FR_SET(params->fr_sbr_tran_peak != -1, AACENC_FRANKEN_SBR_TRAN_PEAK, params->fr_sbr_tran_peak);
+    FR_SET(params->fr_sbr_tran_quiet != -1, AACENC_FRANKEN_SBR_TRAN_QUIET, params->fr_sbr_tran_quiet);
+    FR_SET(params->fr_sbr_tran_dom != -1, AACENC_FRANKEN_SBR_TRAN_DOM, params->fr_sbr_tran_dom);
+    FR_SET(params->fr_sbr_tran_thr != -1, AACENC_FRANKEN_SBR_TRAN_THR, params->fr_sbr_tran_thr);
+    FR_SET(params->fr_sbr_tran_split != -1, AACENC_FRANKEN_SBR_TRAN_SPLIT, params->fr_sbr_tran_split);
+    FR_SET(params->fr_sbr_mh_tone != -1, AACENC_FRANKEN_SBR_MH_TONE, params->fr_sbr_mh_tone);
+    FR_SET(params->fr_sbr_mh_diff != -1, AACENC_FRANKEN_SBR_MH_DIFF, params->fr_sbr_mh_diff);
+    FR_SET(params->fr_sbr_mh_decay_orig != -1, AACENC_FRANKEN_SBR_MH_DECAY_ORIG, params->fr_sbr_mh_decay_orig);
+    FR_SET(params->fr_sbr_mh_decay_diff != -1, AACENC_FRANKEN_SBR_MH_DECAY_DIFF, params->fr_sbr_mh_decay_diff);
+    FR_SET(params->fr_sbr_mh_sfm_sbr != -1, AACENC_FRANKEN_SBR_MH_SFM_SBR, params->fr_sbr_mh_sfm_sbr);
+    FR_SET(params->fr_sbr_mh_sfm_orig != -1, AACENC_FRANKEN_SBR_MH_SFM_ORIG, params->fr_sbr_mh_sfm_orig);
+    FR_SET(params->fr_sbr_mh_maxcomp != -1, AACENC_FRANKEN_SBR_MH_MAXCOMP, params->fr_sbr_mh_maxcomp);
+    FR_SET(params->fr_sbr_mh_deltatime != -1, AACENC_FRANKEN_SBR_MH_DELTATIME, params->fr_sbr_mh_deltatime);
+    FR_SET(params->fr_sbr_noise_max != -1, AACENC_FRANKEN_SBR_NOISE_MAX, params->fr_sbr_noise_max);
     FR_SET(params->fr_is_band_lo != -1, AACENC_FRANKEN_IS_BAND_LO, params->fr_is_band_lo);
     FR_SET(params->fr_is_band_hi != -1, AACENC_FRANKEN_IS_BAND_HI, params->fr_is_band_hi);
     FR_SET(params->fr_is_force_lo != -1, AACENC_FRANKEN_IS_FORCE_LO, params->fr_is_force_lo);
@@ -562,6 +576,20 @@ int aacenc_init(HANDLE_AACENCODER *encoder, const aacenc_param_t *params,
             if (params->fr_max_bits_frame >= 0) { FRV_HDR(); fprintf(stderr, " max-bits-frame        : %d\n", params->fr_max_bits_frame); }
             if (params->fr_min_bits_frame >= 0) { FRV_HDR(); fprintf(stderr, " min-bits-frame        : %d\n", params->fr_min_bits_frame); }
             if (params->fr_bitres_mode >= 0)    { FRV_HDR(); fprintf(stderr, " bitres-mode           : %d (0 full,1 reduced,2 rigid)\n", params->fr_bitres_mode); }
+            if (params->fr_sbr_tran_peak >= 0) { FRV_HDR(); fprintf(stderr, " sbr-tran-peak         : %d raw x100 (90 = stock 0.90 peakiness)\n", params->fr_sbr_tran_peak); }
+            if (params->fr_sbr_tran_quiet >= 0) { FRV_HDR(); fprintf(stderr, " sbr-tran-quiet        : %d x100 on quiet-slot floor\n", params->fr_sbr_tran_quiet); }
+            if (params->fr_sbr_tran_dom >= 0) { FRV_HDR(); fprintf(stderr, " sbr-tran-dom          : %d raw x100 (140 = stock 1.4)\n", params->fr_sbr_tran_dom); }
+            if (params->fr_sbr_tran_thr >= 0) { FRV_HDR(); fprintf(stderr, " sbr-tran-thr          : %d x100 on master transient threshold\n", params->fr_sbr_tran_thr); }
+            if (params->fr_sbr_tran_split >= 0) { FRV_HDR(); fprintf(stderr, " sbr-tran-split        : %d x100 on envelope-split threshold\n", params->fr_sbr_tran_split); }
+            if (params->fr_sbr_mh_tone >= 0) { FRV_HDR(); fprintf(stderr, " sbr-mh-tone           : %d x100 on MH tonality threshold\n", params->fr_sbr_mh_tone); }
+            if (params->fr_sbr_mh_diff >= 0) { FRV_HDR(); fprintf(stderr, " sbr-mh-diff           : %d x100 on MH orig-vs-SBR difference\n", params->fr_sbr_mh_diff); }
+            if (params->fr_sbr_mh_decay_orig >= 0) { FRV_HDR(); fprintf(stderr, " sbr-mh-decay-orig     : %d x100 on MH decay guide (orig)\n", params->fr_sbr_mh_decay_orig); }
+            if (params->fr_sbr_mh_decay_diff >= 0) { FRV_HDR(); fprintf(stderr, " sbr-mh-decay-diff     : %d x100 on MH decay guide (diff)\n", params->fr_sbr_mh_decay_diff); }
+            if (params->fr_sbr_mh_sfm_sbr >= 0) { FRV_HDR(); fprintf(stderr, " sbr-mh-sfm-sbr        : %d x100 on flatness threshold (patched)\n", params->fr_sbr_mh_sfm_sbr); }
+            if (params->fr_sbr_mh_sfm_orig >= 0) { FRV_HDR(); fprintf(stderr, " sbr-mh-sfm-orig       : %d x100 on flatness threshold (original)\n", params->fr_sbr_mh_sfm_orig); }
+            if (params->fr_sbr_mh_maxcomp >= 0) { FRV_HDR(); fprintf(stderr, " sbr-mh-maxcomp        : %d raw (50 = stock compensation cap)\n", params->fr_sbr_mh_maxcomp); }
+            if (params->fr_sbr_mh_deltatime >= 0) { FRV_HDR(); fprintf(stderr, " sbr-mh-deltatime      : %d raw transient-distance limit\n", params->fr_sbr_mh_deltatime); }
+            if (params->fr_sbr_noise_max != -1) { FRV_HDR(); fprintf(stderr, " sbr-noise-max         : %d (6=1.0, 3=0.5, -3=0.125 injected-noise ceiling)\n", params->fr_sbr_noise_max); }
             if (!any) fprintf(stderr, "--- franken overrides applied: none (stock FDK behaviour) ---\n");
             #undef FRV_HDR
         }

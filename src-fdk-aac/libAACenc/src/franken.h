@@ -179,6 +179,64 @@ typedef struct FRANKEN_CFG {
   int pnsGapFillX100; /* -1 default. Scales gapFillThr, value*100. */
   int pnsMinWidth;    /* -1 default; else min SFB width for PNS (raw int). */
 
+  /* ---- 20. SBR transient detector / missing harmonics / noise ceiling ----
+   * Hardcoded detector constants that decide how SBR reacts to attacks and to
+   * tonal content in the replicated band. Multipliers are value*100
+   * (100 = 1.00 = stock); raw fields say so explicitly. */
+  int sbrTranPeakX100;    /* -1 default(0.90). "Peakiness" required to call a slot a
+                             transient: a candidate counts only once the signal drops
+                             below this fraction of the previous slot. Higher = fewer
+                             transients detected (smearing), lower = more. RAW value
+                             (90 = 0.90), not a multiplier. */
+  int sbrTranQuietX100;   /* -1 default(100 = x1.00). Multiplier on the smallNRG floor
+                             (1e-2) below which a slot is too quiet to be considered an
+                             attack at all. Lower = quiet hi-hats/brushes also get their
+                             own envelope; higher = only loud attacks count.
+                             *** DEAD IN PRACTICE, KEPT FOR COMPLETENESS *** - it lives in
+                             the FAST transient detector, which env_est.cpp only calls
+                             under SBR_SYNTAX_LOW_DELAY (AAC-LD/ELD). Measured: no effect
+                             on plain HE-AAC, and -p 23 / -p 39 fail to initialise in this
+                             build even in the STOCK binary (an inherited FDK/frontend
+                             limitation, not caused by these knobs), so this cannot be
+                             exercised or verified here at all. Do not advertise it. */
+  int sbrTranDomX100;     /* -1 default(140 = 1.40). How much louder the current slot
+                             must be than the previous two to win as a transient when
+                             those were transients too. RAW ratio (140 = 1.4x).
+                             *** DEAD IN PRACTICE *** - same unreachable fast-detector
+                             path as sbrTranQuietX100 above. */
+  int sbrTranThrX100;     /* -1 default(100 = x1.00). Multiplier on the master transient
+                             threshold (tran_thr, from the tuning table). Lower = the
+                             detector fires more readily overall. */
+  int sbrTranSplitX100;   /* -1 default(100 = x1.00). Multiplier on the FIXFIX split
+                             threshold: how eagerly a frame without a detected transient
+                             is still split into 2 envelopes. Lower = split more often
+                             (better time resolution, more bits). */
+  int sbrMhToneX100;      /* -1 default(100). Multiplier on thresHoldTone (15.0) - how
+                             tonal a band must be before SBR adds a synthetic harmonic.
+                             Lower = more added tones (risk of whistling), higher =
+                             fewer (risk of dull/missing partials on bells, cymbals). */
+  int sbrMhDiffX100;      /* -1 default(100). Multiplier on thresHoldDiff (20.0) - the
+                             tonality DIFFERENCE between original and patched band that
+                             triggers compensation. */
+  int sbrMhDecayOrigX100; /* -1 default(100). Multiplier on decayGuideOrig (0.3) - how
+                             long the detector keeps tracking an already-found tone as it
+                             decays. Very audible on glockenspiel/bells/cymbal tails. */
+  int sbrMhDecayDiffX100; /* -1 default(100). Multiplier on decayGuideDiff (0.5). */
+  int sbrMhSfmSbrX100;    /* -1 default(100). Multiplier on sfmThresSbr (0.3) - spectral
+                             flatness of the PATCHED band above which it is treated as
+                             noise-like rather than tonal. */
+  int sbrMhSfmOrigX100;   /* -1 default(100). Multiplier on sfmThresOrig (0.1) - same for
+                             the ORIGINAL band. Together these separate "one strong tone
+                             in the original became several after patching". */
+  int sbrMhMaxComp;       /* -1 default(50). RAW cap on envelope compensation applied
+                             around a synthetic harmonic (affects neighbouring bands and
+                             how much noise sits next to the added tone). */
+  int sbrMhDeltaTime;     /* -1 default(9 for AAC, 16 for LD). RAW max transient distance
+                             for a frame to count as a transient frame in the MH detector. */
+  int sbrNoiseMaxLevel;   /* -128 default(from tuning table); else 6, 3 or -3 = ceiling on
+                             the level of noise SBR may inject (1.0 / 0.5 / 0.125). This is
+                             the "air vs hiss" limit in the high band. */
+
   /* ---- Read-back: effective values chosen by the encoder (for --verbose) ----
    * Populated by the encoder during init regardless of overrides. -1 = unknown. */
   int effSbrActive;

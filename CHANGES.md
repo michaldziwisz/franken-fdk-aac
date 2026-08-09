@@ -5,6 +5,41 @@ Library** (per section 2 of the FDK AAC license, see `NOTICE.fdk-aac`).
 
 ## Releases
 
+### Unreleased — SBR transient / missing-harmonics detectors + noise ceiling
+
+- **`--sbr-tran-thr <n>`** — scales the master SBR transient threshold. Measured
+  as the strongest knob in this group: on a 24-attack percussive probe, high-band
+  pre-echo (energy appearing *before* an attack that is absent from the source)
+  drops from 1.610 to **0.041** at 32 kbps and from 1.186 to 0.059 at 64 kbps when
+  set to 40. Monotonic, saturates below 60, byte-identical to stock at 100+.
+- **`--sbr-tran-peak <n>`** — raw x100 replacement for the hardcoded 0.90
+  "peakiness" constant (`tran_det.cpp:699,715`).
+- **`--sbr-tran-split <n>`** — scales the FIXFIX envelope-split threshold.
+- **`--sbr-tran-quiet` / `--sbr-tran-dom`** — exposed for completeness but
+  **no-ops in this build**: they live in the fast transient detector, only reached
+  under AAC-LD/ELD, and `-p 23` / `-p 39` fail to initialise here *including in the
+  stock binary* (inherited limitation). Documented as such rather than advertised.
+- **Missing harmonics detector** (`mh_det.cpp` `paramsAac`/`paramsAacLd`, both
+  `const` — cloned into a writable block only when a knob is set):
+  `--sbr-mh-tone`, `--sbr-mh-diff`, `--sbr-mh-decay-orig`, `--sbr-mh-decay-diff`,
+  `--sbr-mh-sfm-sbr`, `--sbr-mh-sfm-orig`, `--sbr-mh-maxcomp`,
+  `--sbr-mh-deltatime`. These govern whether SBR fabricates synthetic harmonics —
+  too eager gives whistling/metallic artefacts, too conservative dulls bells and
+  cymbals. `invThresHoldTone` is moved inversely to stay consistent with
+  `thresHoldTone`.
+- **`--sbr-noise-max <6|3|-3>`** — ceiling on injected SBR noise (1.0 / 0.5 /
+  0.125), i.e. the "air vs hiss" limit. Already a config field in FDK
+  (`sbr_encoder.cpp:526`), previously only settable from the bitrate tuning table.
+- **Fixed an overflow bug caught by the new test**: computing a x1.00 multiplier as
+  `((INT64)100 << 31) / 100` yields 2^31, which does not fit a signed 32-bit
+  `FIXP_DBL` and wrapped negative — so a "neutral" knob silently altered the audio.
+  Neutral values now return the constant untouched, and multipliers are clamped.
+- **New `make check` section `neutral-identity`**: every knob at its neutral value
+  must produce byte-identical output to no knob at all. This is what caught the
+  overflow above.
+- `--verbose` lists each of these overrides when set.
+- `make check` 129/129 PASS, no-regression ADTS bit-identical to stock.
+
 ### Unreleased — Parametric Stereo resolution (bands × envelopes)
 
 - **`--ps-bands <10|20>`** — number of PS stereo bands, i.e. the *frequency*

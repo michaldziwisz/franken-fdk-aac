@@ -1586,6 +1586,20 @@ typedef enum {
   AACENC_FRANKEN_PS_ENV = 0xF056,      /*!< PS parameter envelopes per frame: 1, 2 or 4 (-1 = bitrate table). */
   AACENC_FRANKEN_PS_ENV_REDUCE = 0xF057, /*!< 0 = disable automatic envelope halving (-1 = default on). */
   AACENC_FRANKEN_PS_NOENV_SKIP = 0xF058, /*!< 0 = never emit parameter-less PS frames (-1 = default on). */
+  AACENC_FRANKEN_SBR_TRAN_PEAK = 0xF05B,  /*!< SBR transient "peakiness", raw x100 (90 = 0.90 stock, -1 off). */
+  AACENC_FRANKEN_SBR_TRAN_QUIET = 0xF05C, /*!< Scale the quiet-slot floor for transients, value*100 (-1 off). */
+  AACENC_FRANKEN_SBR_TRAN_DOM = 0xF05D,   /*!< Dominance ratio over previous slots, raw x100 (140 = 1.4, -1 off). */
+  AACENC_FRANKEN_SBR_TRAN_THR = 0xF05E,   /*!< Scale master transient threshold, value*100 (-1 off). */
+  AACENC_FRANKEN_SBR_TRAN_SPLIT = 0xF05F, /*!< Scale FIXFIX envelope-split threshold, value*100 (-1 off). */
+  AACENC_FRANKEN_SBR_MH_TONE = 0xF060,    /*!< Scale missing-harmonics tonality threshold, value*100 (-1 off). */
+  AACENC_FRANKEN_SBR_MH_DIFF = 0xF061,    /*!< Scale MH orig-vs-SBR tonality difference threshold, value*100 (-1 off). */
+  AACENC_FRANKEN_SBR_MH_DECAY_ORIG = 0xF062, /*!< Scale MH decayGuideOrig, value*100 (-1 off). */
+  AACENC_FRANKEN_SBR_MH_DECAY_DIFF = 0xF063, /*!< Scale MH decayGuideDiff, value*100 (-1 off). */
+  AACENC_FRANKEN_SBR_MH_SFM_SBR = 0xF064, /*!< Scale MH spectral-flatness threshold (patched band), value*100 (-1 off). */
+  AACENC_FRANKEN_SBR_MH_SFM_ORIG = 0xF065,/*!< Scale MH spectral-flatness threshold (original band), value*100 (-1 off). */
+  AACENC_FRANKEN_SBR_MH_MAXCOMP = 0xF066, /*!< MH envelope-compensation cap, raw (50 stock, -1 off). */
+  AACENC_FRANKEN_SBR_MH_DELTATIME = 0xF067, /*!< MH transient-distance limit, raw (9 AAC / 16 LD, -1 off). */
+  AACENC_FRANKEN_SBR_NOISE_MAX = 0xF068,  /*!< SBR injected-noise ceiling: 6, 3 or -3 (-128 = from tuning table). */
   AACENC_FRANKEN_VERBOSE = 0xF016,     /*!< Verbose init dump 0/1. */
 
   /* Read-only (GetParam) mirrors of internal encoder-chosen values, for --verbose. */

@@ -886,6 +886,65 @@ are also already present and complete. So the missing piece is not
 that are already there, quantising it, and enabling the existing writer.
 Whether that is worth doing is a separate question from whether it is
 hard.</p>
+<h3 id="sbr-detectors-attacks-and-fabricated-harmonics">SBR detectors:
+attacks and fabricated harmonics</h3>
+<p>Two detectors inside SBR decide most of what the replicated high band
+actually sounds like, and until now neither was reachable from the
+command line.</p>
+<p>The <strong>transient detector</strong> decides whether an attack
+gets its own envelope or is averaged into a longer stretch. When it
+misses an attack, the energy of the hit gets spread backwards in time —
+you hear a short burst of high-frequency hiss just <em>before</em> the
+hi-hat, not after it. That is pre-echo, and in the SBR band it is one of
+the more recognisable coding artefacts.</p>
+<p><code>--sbr-tran-thr &lt;n&gt;</code> scales the master threshold
+that decides how easily the detector fires (value*100, so 100 is
+unchanged). This turned out to be the single most effective knob in the
+group. Measured on a signal of 24 percussive attacks plus decaying tones
+between 8 and 13 kHz, counting high-band energy that appears before an
+attack but is absent from the source: stock scores 1.610 at 32 kbps, and
+lowering the threshold to 40 drops that to 0.041 — pre-echo essentially
+gone. The same thing happens at 64 kbps (1.186 to 0.059). The effect
+saturates below 60 and disappears entirely at 100 and above, where
+output is byte-identical to stock. On percussive material
+<code>--sbr-tran-thr 40</code> is the place to start.</p>
+<p><code>--sbr-tran-peak &lt;n&gt;</code> controls how <em>peaky</em> a
+candidate must be to count as an attack — the raw 0.90 constant, entered
+as 90. <code>--sbr-tran-split &lt;n&gt;</code> governs how readily a
+frame with no detected transient is still split into two envelopes,
+which buys time resolution at the cost of bits. Two further knobs,
+<code>--sbr-tran-quiet</code> and <code>--sbr-tran-dom</code>, exist for
+completeness but do nothing in this build: they live in the fast
+transient detector, which is only used for AAC-LD and ELD, and those
+profiles fail to initialise here — in the stock binary too, so it is an
+inherited limitation rather than something these knobs broke.</p>
+<p>The <strong>missing harmonics detector</strong> handles the opposite
+problem. When SBR copies a low band upwards, a tone that existed in the
+original can land in the wrong place or vanish. The detector notices
+this and fabricates a synthetic harmonic to put it back. Set it too
+eagerly and you get whistling and metallic artefacts that were never in
+the recording; set it too conservatively and bells, glockenspiel and
+cymbals go dull as their partials quietly disappear.</p>
+<p><code>--sbr-mh-tone &lt;n&gt;</code> scales how tonal a band must be
+before a harmonic is added, and is the main control here.
+<code>--sbr-mh-diff &lt;n&gt;</code> scales the tonality
+<em>difference</em> between the original and the patched band that
+triggers compensation. <code>--sbr-mh-decay-orig</code> and
+<code>--sbr-mh-decay-diff</code> change how long an already-found tone
+keeps being tracked as it fades, which is what you hear on cymbal and
+bell tails. <code>--sbr-mh-sfm-sbr</code> and
+<code>--sbr-mh-sfm-orig</code> move the spectral-flatness line between
+"this is a tone" and "this is noise", for the patched and the original
+band respectively. <code>--sbr-mh-maxcomp</code> caps how much envelope
+compensation is applied around an added harmonic, which affects how much
+noise sits next to it.</p>
+<p>Finally, <code>--sbr-noise-max &lt;6|3|-3&gt;</code> sets the ceiling
+on how loud the noise SBR injects may get — 1.0, 0.5 or 0.125
+respectively. This is the straightest control over "air versus hiss" in
+the top end. It was already a configuration field inside FDK, chosen
+from the bitrate tuning table and never exposed.</p>
+<p>All of these are opt-in: at their neutral values the output is
+bit-identical to stock, and the test suite enforces that.</p>
 <h2 id="17-tns-pns-and-the-afterburner">17. TNS, PNS, and the
 afterburner</h2>
 <p><code>--tns-mask &lt;n&gt;</code> /

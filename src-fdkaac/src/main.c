@@ -298,6 +298,45 @@ PROGNAME " %s\n"
 "                               successive IID/ICC sets look similar (can be heard as the\n"
 "                               image briefly collapsing). 0 = always send.\n"
 "\n== C. Bandwidth & SBR (high band) ==\n"
+" --sbr-tran-peak <n>         SBR transient detector: how PEAKY an attack must be, raw\n"
+"                               x100 (90 = stock 0.90). A slot counts as a transient only\n"
+"                               once the signal drops below this fraction of the previous\n"
+"                               slot. Higher = fewer transients (attacks smear across the\n"
+"                               frame), lower = more. -1 = default.\n"
+" --sbr-tran-quiet <n>        NO-OP HERE, kept for completeness. Scales the quiet-slot\n"
+"                               floor in the FAST transient detector, which is only\n"
+"                               reached under AAC-LD/ELD - and -p 23 / -p 39 fail to\n"
+"                               initialise in this build (also in the stock binary), so\n"
+"                               this knob cannot currently affect any output. Measured.\n"
+" --sbr-tran-dom <n>          NO-OP HERE, kept for completeness. Same unreachable\n"
+"                               fast-detector path as --sbr-tran-quiet.\n"
+" --sbr-tran-thr <n>          Scale the master transient threshold, value*100. Lower =\n"
+"                               detector fires more readily overall.\n"
+" --sbr-tran-split <n>        Scale the envelope-split threshold, value*100. Lower = split\n"
+"                               a transient-free frame into 2 envelopes more often (better\n"
+"                               time resolution, costs bits).\n"
+" --sbr-mh-tone <n>           Missing harmonics: scale how TONAL a band must be before SBR\n"
+"                               adds a synthetic harmonic, value*100. Lower = more added\n"
+"                               tones (risk of whistling); higher = fewer (dull bells and\n"
+"                               cymbals, lost partials).\n"
+" --sbr-mh-diff <n>           Scale the orig-vs-patched tonality DIFFERENCE that triggers\n"
+"                               harmonic compensation, value*100.\n"
+" --sbr-mh-decay-orig <n>     Scale how long an already-found tone keeps being tracked as\n"
+"                               it decays, value*100. Audible on bell/cymbal tails.\n"
+" --sbr-mh-decay-diff <n>     Same, for the difference guide, value*100.\n"
+" --sbr-mh-sfm-sbr <n>        Scale the spectral-flatness threshold above which the PATCHED\n"
+"                               band counts as noise-like rather than tonal, value*100.\n"
+" --sbr-mh-sfm-orig <n>       Same for the ORIGINAL band, value*100. Together these two\n"
+"                               catch \"one tone in the original became several after\n"
+"                               patching\".\n"
+" --sbr-mh-maxcomp <n>        Cap on envelope compensation around a synthetic harmonic,\n"
+"                               raw (50 = stock). Affects neighbouring bands and how much\n"
+"                               noise sits next to the added tone.\n"
+" --sbr-mh-deltatime <n>      Max transient distance for a frame to count as transient in\n"
+"                               the MH detector, raw (9 for AAC, 16 for LD).\n"
+" --sbr-noise-max <6|3|-3>    Ceiling on how loud the noise SBR injects may get: 6 = 1.0,\n"
+"                               3 = 0.5, -3 = 0.125. The \"air vs hiss\" limit up top.\n"
+
 " --core-cutoff <hz>          Force core bandwidth in Hz even under SBR (where -w is\n"
 "                               ignored). 0=default, max sr/2. See also --uncap-bandwidth.\n"
 " --sbr-start <n>             SBR bs_start_freq index: -1 def, 0..15. (Validated by FDK;\n"
@@ -485,6 +524,20 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
 #define OPT_FR_PS_ENV            M4AF_FOURCC('f','p','e','v')
 #define OPT_FR_PS_ENV_REDUCE     M4AF_FOURCC('f','p','e','r')
 #define OPT_FR_PS_NOENV_SKIP     M4AF_FOURCC('f','p','n','v')
+#define OPT_FR_SBR_TRAN_PEAK     M4AF_FOURCC('f','t','p','k')
+#define OPT_FR_SBR_TRAN_QUIET    M4AF_FOURCC('f','t','q','t')
+#define OPT_FR_SBR_TRAN_DOM      M4AF_FOURCC('f','t','d','m')
+#define OPT_FR_SBR_TRAN_THR      M4AF_FOURCC('f','t','t','h')
+#define OPT_FR_SBR_TRAN_SPLIT    M4AF_FOURCC('f','t','s','p')
+#define OPT_FR_SBR_MH_TONE       M4AF_FOURCC('f','m','t','n')
+#define OPT_FR_SBR_MH_DIFF       M4AF_FOURCC('f','m','d','f')
+#define OPT_FR_SBR_MH_DECAY_ORIG M4AF_FOURCC('f','m','d','o')
+#define OPT_FR_SBR_MH_DECAY_DIFF M4AF_FOURCC('f','m','d','d')
+#define OPT_FR_SBR_MH_SFM_SBR    M4AF_FOURCC('f','m','f','s')
+#define OPT_FR_SBR_MH_SFM_ORIG   M4AF_FOURCC('f','m','s','o')
+#define OPT_FR_SBR_MH_MAXCOMP    M4AF_FOURCC('f','m','m','c')
+#define OPT_FR_SBR_MH_DELTATIME  M4AF_FOURCC('f','m','d','t')
+#define OPT_FR_SBR_NOISE_MAX     M4AF_FOURCC('f','s','n','m')
 #define OPT_FR_IS_BAND_LO        M4AF_FOURCC('f','i','l','o')
 #define OPT_FR_IS_BAND_HI        M4AF_FOURCC('f','i','h','i')
 #define OPT_FR_IS_FORCE_LO       M4AF_FOURCC('f','i','f','l')
@@ -602,6 +655,20 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
         { "ps-env",              required_argument, 0, OPT_FR_PS_ENV            },
         { "ps-env-reduce",       required_argument, 0, OPT_FR_PS_ENV_REDUCE     },
         { "ps-noenv-skip",       required_argument, 0, OPT_FR_PS_NOENV_SKIP     },
+        { "sbr-tran-peak",         required_argument, 0, OPT_FR_SBR_TRAN_PEAK },
+        { "sbr-tran-quiet",        required_argument, 0, OPT_FR_SBR_TRAN_QUIET },
+        { "sbr-tran-dom",          required_argument, 0, OPT_FR_SBR_TRAN_DOM },
+        { "sbr-tran-thr",          required_argument, 0, OPT_FR_SBR_TRAN_THR },
+        { "sbr-tran-split",        required_argument, 0, OPT_FR_SBR_TRAN_SPLIT },
+        { "sbr-mh-tone",           required_argument, 0, OPT_FR_SBR_MH_TONE },
+        { "sbr-mh-diff",           required_argument, 0, OPT_FR_SBR_MH_DIFF },
+        { "sbr-mh-decay-orig",     required_argument, 0, OPT_FR_SBR_MH_DECAY_ORIG },
+        { "sbr-mh-decay-diff",     required_argument, 0, OPT_FR_SBR_MH_DECAY_DIFF },
+        { "sbr-mh-sfm-sbr",        required_argument, 0, OPT_FR_SBR_MH_SFM_SBR },
+        { "sbr-mh-sfm-orig",       required_argument, 0, OPT_FR_SBR_MH_SFM_ORIG },
+        { "sbr-mh-maxcomp",        required_argument, 0, OPT_FR_SBR_MH_MAXCOMP },
+        { "sbr-mh-deltatime",      required_argument, 0, OPT_FR_SBR_MH_DELTATIME },
+        { "sbr-noise-max",         required_argument, 0, OPT_FR_SBR_NOISE_MAX },
         { "is-lo",               required_argument, 0, OPT_FR_IS_BAND_LO        },
         { "is-hi",               required_argument, 0, OPT_FR_IS_BAND_HI        },
         { "is-force-lo",         required_argument, 0, OPT_FR_IS_FORCE_LO       },
@@ -677,6 +744,20 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
     params->fr_ps_env = -1;
     params->fr_ps_env_reduce = -1;
     params->fr_ps_noenv_skip = -1;
+    params->fr_sbr_tran_peak = -1;
+    params->fr_sbr_tran_quiet = -1;
+    params->fr_sbr_tran_dom = -1;
+    params->fr_sbr_tran_thr = -1;
+    params->fr_sbr_tran_split = -1;
+    params->fr_sbr_mh_tone = -1;
+    params->fr_sbr_mh_diff = -1;
+    params->fr_sbr_mh_decay_orig = -1;
+    params->fr_sbr_mh_decay_diff = -1;
+    params->fr_sbr_mh_sfm_sbr = -1;
+    params->fr_sbr_mh_sfm_orig = -1;
+    params->fr_sbr_mh_maxcomp = -1;
+    params->fr_sbr_mh_deltatime = -1;
+    params->fr_sbr_noise_max = -1;
     params->fr_is_band_lo = -1;
     params->fr_is_band_hi = -1;
     params->fr_is_force_lo = -1;
@@ -1019,6 +1100,48 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
         case OPT_FR_PS_NOENV_SKIP:
             if (sscanf(optarg, "%d", &n) != 1 || n < 0 || n > 1) { fprintf(stderr, "invalid arg for ps-noenv-skip (0,1)\n"); return -1; }
             params->fr_ps_noenv_skip = n; break;
+        case OPT_FR_SBR_TRAN_PEAK:
+            if (sscanf(optarg, "%d", &n) != 1 || !(n>=1 && n<=200)) { fprintf(stderr, "invalid arg for sbr-tran-peak: peak (1..200, 90=stock 0.90)\n"); return -1; }
+            params->fr_sbr_tran_peak = n; break;
+        case OPT_FR_SBR_TRAN_QUIET:
+            if (sscanf(optarg, "%d", &n) != 1 || !(n>=1 && n<=10000)) { fprintf(stderr, "invalid arg for sbr-tran-quiet: quiet (1..10000, 100=1.00)\n"); return -1; }
+            params->fr_sbr_tran_quiet = n; break;
+        case OPT_FR_SBR_TRAN_DOM:
+            if (sscanf(optarg, "%d", &n) != 1 || !(n>=100 && n<=500)) { fprintf(stderr, "invalid arg for sbr-tran-dom: dom (100..500, 140=stock 1.4)\n"); return -1; }
+            params->fr_sbr_tran_dom = n; break;
+        case OPT_FR_SBR_TRAN_THR:
+            if (sscanf(optarg, "%d", &n) != 1 || !(n>=1 && n<=10000)) { fprintf(stderr, "invalid arg for sbr-tran-thr: thr (1..10000, 100=1.00)\n"); return -1; }
+            params->fr_sbr_tran_thr = n; break;
+        case OPT_FR_SBR_TRAN_SPLIT:
+            if (sscanf(optarg, "%d", &n) != 1 || !(n>=1 && n<=10000)) { fprintf(stderr, "invalid arg for sbr-tran-split: split (1..10000, 100=1.00)\n"); return -1; }
+            params->fr_sbr_tran_split = n; break;
+        case OPT_FR_SBR_MH_TONE:
+            if (sscanf(optarg, "%d", &n) != 1 || !(n>=1 && n<=10000)) { fprintf(stderr, "invalid arg for sbr-mh-tone: tone (1..10000, 100=1.00)\n"); return -1; }
+            params->fr_sbr_mh_tone = n; break;
+        case OPT_FR_SBR_MH_DIFF:
+            if (sscanf(optarg, "%d", &n) != 1 || !(n>=1 && n<=10000)) { fprintf(stderr, "invalid arg for sbr-mh-diff: diff (1..10000, 100=1.00)\n"); return -1; }
+            params->fr_sbr_mh_diff = n; break;
+        case OPT_FR_SBR_MH_DECAY_ORIG:
+            if (sscanf(optarg, "%d", &n) != 1 || !(n>=1 && n<=10000)) { fprintf(stderr, "invalid arg for sbr-mh-decay-orig: decay-orig (1..10000, 100=1.00)\n"); return -1; }
+            params->fr_sbr_mh_decay_orig = n; break;
+        case OPT_FR_SBR_MH_DECAY_DIFF:
+            if (sscanf(optarg, "%d", &n) != 1 || !(n>=1 && n<=10000)) { fprintf(stderr, "invalid arg for sbr-mh-decay-diff: decay-diff (1..10000, 100=1.00)\n"); return -1; }
+            params->fr_sbr_mh_decay_diff = n; break;
+        case OPT_FR_SBR_MH_SFM_SBR:
+            if (sscanf(optarg, "%d", &n) != 1 || !(n>=1 && n<=10000)) { fprintf(stderr, "invalid arg for sbr-mh-sfm-sbr: sfm-sbr (1..10000, 100=1.00)\n"); return -1; }
+            params->fr_sbr_mh_sfm_sbr = n; break;
+        case OPT_FR_SBR_MH_SFM_ORIG:
+            if (sscanf(optarg, "%d", &n) != 1 || !(n>=1 && n<=10000)) { fprintf(stderr, "invalid arg for sbr-mh-sfm-orig: sfm-orig (1..10000, 100=1.00)\n"); return -1; }
+            params->fr_sbr_mh_sfm_orig = n; break;
+        case OPT_FR_SBR_MH_MAXCOMP:
+            if (sscanf(optarg, "%d", &n) != 1 || !(n>=0 && n<=200)) { fprintf(stderr, "invalid arg for sbr-mh-maxcomp: maxcomp (0..200, 50=stock)\n"); return -1; }
+            params->fr_sbr_mh_maxcomp = n; break;
+        case OPT_FR_SBR_MH_DELTATIME:
+            if (sscanf(optarg, "%d", &n) != 1 || !(n>=0 && n<=64)) { fprintf(stderr, "invalid arg for sbr-mh-deltatime: deltatime (0..64)\n"); return -1; }
+            params->fr_sbr_mh_deltatime = n; break;
+        case OPT_FR_SBR_NOISE_MAX:
+            if (sscanf(optarg, "%d", &n) != 1 || !(n==6 || n==3 || n==-3)) { fprintf(stderr, "invalid arg for sbr-noise-max: noise-max (6, 3 or -3)\n"); return -1; }
+            params->fr_sbr_noise_max = n; break;
         case OPT_FR_IS_BAND_LO:
             if (sscanf(optarg, "%d", &n) != 1 || n < 0) { fprintf(stderr, "invalid arg for is-lo (>=0)\n"); return -1; }
             params->fr_is_band_lo = n; break;

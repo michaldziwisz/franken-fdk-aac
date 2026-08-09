@@ -62,6 +62,20 @@ extern "C" void frankenResetDefaults(void) {
 
   g_franken.psIcc = -1;
   g_franken.psIccMode = -1;
+  g_franken.sbrTranPeakX100 = -1;
+  g_franken.sbrTranQuietX100 = -1;
+  g_franken.sbrTranDomX100 = -1;
+  g_franken.sbrTranThrX100 = -1;
+  g_franken.sbrTranSplitX100 = -1;
+  g_franken.sbrMhToneX100 = -1;
+  g_franken.sbrMhDiffX100 = -1;
+  g_franken.sbrMhDecayOrigX100 = -1;
+  g_franken.sbrMhDecayDiffX100 = -1;
+  g_franken.sbrMhSfmSbrX100 = -1;
+  g_franken.sbrMhSfmOrigX100 = -1;
+  g_franken.sbrMhMaxComp = -1;
+  g_franken.sbrMhDeltaTime = -1;
+  g_franken.sbrNoiseMaxLevel = -128;
   g_franken.psBands = -1;
   g_franken.psEnvelopes = -1;
   g_franken.psEnvReduce = -1;

@@ -57,8 +57,8 @@ test_exe(){
 
   # 1) help kompletny - franken switche obecne
   local hn
-  hn=$("$exe" --help 2>&1 | grep -cE '^ --(msmask|msbands|is|isbands|is-min-sfbs|is-corr-thresh|is-lr-ratio|is-lo|is-hi|is-force-lo|is-force-hi|core-cutoff|sbr-start|sbr-stop|sbr-freqscale|sbr-alterscale|sbr-noise-bands|sbr-amp-res|sbr-data-extra|sbr-header-period|ps|ps-iid-quant|ps-bands|ps-env|ps-env-reduce|ps-noenv-skip|tns-mask|tns-order|pns|pns-start|pns-gain|pns-tonality|pns-refpower|pns-gapfill|pns-min-width|ath-scale|minsnr-scale|minsnr-clamp-hi|minsnr-clamp-lo|reduce-clamp|mid-bias|side-bias|side-knee|mask-slope|block-bias|vbr-reservoir|peak-bitrate|max-bits-frame|min-bits-frame|bitres-mode|ms-bias|verbose)')
-  [ "$hn" -ge 44 ] && ok "help: $hn franken switchy" || bad "help: tylko $hn switchy (oczekiwano >=44)"
+  hn=$("$exe" --help 2>&1 | grep -cE '^ --(msmask|msbands|is|isbands|is-min-sfbs|is-corr-thresh|is-lr-ratio|is-lo|is-hi|is-force-lo|is-force-hi|core-cutoff|sbr-start|sbr-stop|sbr-freqscale|sbr-alterscale|sbr-noise-bands|sbr-amp-res|sbr-data-extra|sbr-header-period|sbr-tran-peak|sbr-tran-quiet|sbr-tran-dom|sbr-tran-thr|sbr-tran-split|sbr-mh-tone|sbr-mh-diff|sbr-mh-decay-orig|sbr-mh-decay-diff|sbr-mh-sfm-sbr|sbr-mh-sfm-orig|sbr-mh-maxcomp|sbr-mh-deltatime|sbr-noise-max|ps|ps-iid-quant|ps-bands|ps-env|ps-env-reduce|ps-noenv-skip|tns-mask|tns-order|pns|pns-start|pns-gain|pns-tonality|pns-refpower|pns-gapfill|pns-min-width|ath-scale|minsnr-scale|minsnr-clamp-hi|minsnr-clamp-lo|reduce-clamp|mid-bias|side-bias|side-knee|mask-slope|block-bias|vbr-reservoir|peak-bitrate|max-bits-frame|min-bits-frame|bitres-mode|ms-bias|verbose)')
+  [ "$hn" -ge 58 ] && ok "help: $hn franken switchy" || bad "help: tylko $hn switchy (oczekiwano >=58)"
 
   # 2) baseline + rozny bitstream per switch, wszystko dekodowalne
   enc "$exe" -p2 -b128000 -o "${OUT}_base.m4a" "$WAV"
@@ -78,6 +78,17 @@ test_exe(){
                 "ps-env4-nored:-p29 -b48000 --ps-env 4 --ps-env-reduce 0"
                 "ps-noenv-skip:-p29 -b48000 --ps-noenv-skip 0"
                 "ps-full-matrix:-p29 -b48000 --ps-bands 10 --ps-env 4 --ps-env-reduce 0 --ps-icc-mode 1 --ps-iid-quant 1"
+                "sbr-tran-peak:-p5 -b64000 --sbr-tran-peak 70"
+                "sbr-tran-thr:-p5 -b64000 --sbr-tran-thr 40"
+                "sbr-tran-split:-p5 -b64000 --sbr-tran-split 30"
+                "sbr-mh-tone:-p5 -b64000 --sbr-mh-tone 50"
+                "sbr-mh-diff:-p5 -b64000 --sbr-mh-diff 50"
+                "sbr-mh-decay-orig:-p5 -b64000 --sbr-mh-decay-orig 200"
+                "sbr-mh-sfm-orig:-p5 -b64000 --sbr-mh-sfm-orig 300"
+                "sbr-mh-maxcomp:-p5 -b64000 --sbr-mh-maxcomp 10"
+                "sbr-mh-deltatime:-p5 -b64000 --sbr-mh-deltatime 2"
+                "sbr-noise-max:-p5 -b64000 --sbr-noise-max 3"
+                "sbr-noise-max-lo:-p5 -b64000 --sbr-noise-max -3"
                 "speech:-p5 -b32000 --speech" "spread-mask:-b128000 --spread-mask 64"
  "ms-prec-hi:--ms-precision 1024"
  "mid-bias:-b96000 --mid-bias 384"
@@ -255,6 +266,23 @@ if [ -f "$ORIG" ]; then
   enc "$ORIG" -p2 -b128000 -f2 -o "${OUT}_or.aac" "$WAV"
   if cmp -s "${OUT}_pl.aac" "${OUT}_or.aac"; then ok "CBR bez flag: ADTS bit-identyczny z fdkaac2.exe"
   else bad "REGRESJA: ADTS bez flag rozni sie od oryginalu"; fi
+fi
+
+# 6) NEUTRAL-IDENTITY: pokretla ustawione na wartosc NEUTRALNA musza dawac wyjscie
+# bit-identyczne z brakiem pokretla. Ten test wylapal realny blad (09.08.2026):
+# mnoznik liczony jako ((INT64)100<<31)/100 = 2^31 NIE MIESCI sie w signed 32-bit
+# FIXP_DBL i zawijal sie na wartosc ujemna, wiec "x1.00" cicho psulo dzwiek.
+echo "== neutral-identity (x1.00 == brak pokretla) =="
+NEUTRAL_SBR="--sbr-tran-quiet 100 --sbr-tran-thr 100 --sbr-tran-split 100 \
+--sbr-mh-tone 100 --sbr-mh-diff 100 --sbr-mh-decay-orig 100 --sbr-mh-decay-diff 100 \
+--sbr-mh-sfm-sbr 100 --sbr-mh-sfm-orig 100 --sbr-tran-peak 90 --sbr-tran-dom 140 \
+--sbr-mh-maxcomp 50"
+enc "$X64" -p5 -b64000 -f2 -o "${OUT}_ni_base.aac" "$WAV"
+enc "$X64" -p5 -b64000 -f2 $NEUTRAL_SBR -o "${OUT}_ni_neu.aac" "$WAV"
+if cmp -s "${OUT}_ni_base.aac" "${OUT}_ni_neu.aac"; then
+  ok "SBR detector knobs @ neutral: bit-identyczne ze stockiem"
+else
+  bad "SBR detector knobs @ neutral ZMIENIAJA wyjscie (regresja skali/przepelnienie?)"
 fi
 
 echo "==================================="

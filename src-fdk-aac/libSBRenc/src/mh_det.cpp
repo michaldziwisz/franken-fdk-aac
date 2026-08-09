@@ -101,6 +101,7 @@ amm-info@iis.fraunhofer.de
 *******************************************************************************/
 
 #include "mh_det.h"
+#include "../../libAACenc/src/franken.h"
 
 #include "sbrenc_ram.h"
 #include "sbr_misc.h"
@@ -161,6 +162,80 @@ static const DETECTOR_PARAMETERS_MH paramsAacLd = {
     },
     50 /*!< maxComp */
 };
+
+/* Frankenstein: writable copy of the missing-harmonics detector parameters.
+ * The stock paramsAac/paramsAacLd tables are const, so when any --sbr-mh-*
+ * knob is set we clone the applicable table into this block, scale the
+ * requested thresholds and point mhParams at the clone. With no knobs set
+ * nothing is copied and the const table is used exactly as before, keeping
+ * the unpatched path bit-identical. */
+static DETECTOR_PARAMETERS_MH frankenMhParams;
+
+/* Scale a threshold by a value*100 knob (100 = x1.00 = unchanged). */
+/* x1.00 must be an exact no-op; see the note in tran_det.cpp - the naive
+ * ((INT64)100 << 31) / 100 equals 2^31 and overflows a signed 32-bit FIXP_DBL. */
+static FIXP_DBL frankenMhFixpMul100(int knobX100) {
+  INT64 m = ((INT64)knobX100 << 31) / 100;
+  if (m > (INT64)MAXVAL_DBL) m = (INT64)MAXVAL_DBL;
+  return (FIXP_DBL)m;
+}
+
+static FIXP_DBL frankenMhScale(FIXP_DBL v, int knobX100) {
+  if (knobX100 <= 0 || knobX100 == 100) return v;
+  return fMult(v, frankenMhFixpMul100(knobX100));
+}
+
+static int frankenMhActive(void) {
+  return (g_franken.sbrMhToneX100 > 0) || (g_franken.sbrMhDiffX100 > 0) ||
+         (g_franken.sbrMhDecayOrigX100 > 0) ||
+         (g_franken.sbrMhDecayDiffX100 > 0) ||
+         (g_franken.sbrMhSfmSbrX100 > 0) || (g_franken.sbrMhSfmOrigX100 > 0) ||
+         (g_franken.sbrMhMaxComp >= 0) || (g_franken.sbrMhDeltaTime >= 0);
+}
+
+static const DETECTOR_PARAMETERS_MH *frankenMhOverride(
+    const DETECTOR_PARAMETERS_MH *stock) {
+  THRES_HOLDS *t;
+  if (!frankenMhActive()) return stock;
+
+  frankenMhParams = *stock; /* start from the stock tuning */
+  t = &frankenMhParams.thresHolds;
+
+  /* How tonal a band must be before a synthetic harmonic is added. Lowering
+   * this adds more tones (risk of whistling); raising it drops partials. */
+  t->thresHoldTone = frankenMhScale(t->thresHoldTone, g_franken.sbrMhToneX100);
+  t->thresHoldToneGuide =
+      frankenMhScale(t->thresHoldToneGuide, g_franken.sbrMhToneX100);
+  /* invThresHoldTone is the reciprocal of thresHoldTone, so it must move the
+   * OPPOSITE way to stay consistent with it. */
+  if (g_franken.sbrMhToneX100 > 0 && g_franken.sbrMhToneX100 != 100) {
+    INT64 inv = ((INT64)100 << 31) / g_franken.sbrMhToneX100;
+    if (inv > (INT64)MAXVAL_DBL) inv = (INT64)MAXVAL_DBL;
+    t->invThresHoldTone = fMult(t->invThresHoldTone, (FIXP_DBL)inv);
+  }
+
+  /* Tonality difference between the original and the patched band. */
+  t->thresHoldDiff = frankenMhScale(t->thresHoldDiff, g_franken.sbrMhDiffX100);
+  t->thresHoldDiffGuide =
+      frankenMhScale(t->thresHoldDiffGuide, g_franken.sbrMhDiffX100);
+
+  /* How long an already-detected tone keeps being tracked as it decays. */
+  t->decayGuideOrig =
+      frankenMhScale(t->decayGuideOrig, g_franken.sbrMhDecayOrigX100);
+  t->decayGuideDiff =
+      frankenMhScale(t->decayGuideDiff, g_franken.sbrMhDecayDiffX100);
+
+  /* Spectral flatness: tonal vs noise-like verdict, patched and original. */
+  t->sfmThresSbr = frankenMhScale(t->sfmThresSbr, g_franken.sbrMhSfmSbrX100);
+  t->sfmThresOrig = frankenMhScale(t->sfmThresOrig, g_franken.sbrMhSfmOrigX100);
+
+  if (g_franken.sbrMhMaxComp >= 0)
+    frankenMhParams.maxComp = g_franken.sbrMhMaxComp;
+  if (g_franken.sbrMhDeltaTime >= 0)
+    frankenMhParams.deltaTime = g_franken.sbrMhDeltaTime;
+
+  return &frankenMhParams;
+}
 
 /**************************************************************************/
 /*!
@@ -1209,9 +1284,9 @@ INT FDKsbrEnc_InitSbrMissingHarmonicsDetector(
   }
 
   if (sbrSyntaxFlags & SBR_SYNTAX_LOW_DELAY) {
-    hs->mhParams = &paramsAacLd;
+    hs->mhParams = frankenMhOverride(&paramsAacLd);
   } else
-    hs->mhParams = &paramsAac;
+    hs->mhParams = frankenMhOverride(&paramsAac);
 
   hs->qmfNoChannels = qmfNoChannels;
   hs->sampleFreq = sampleFreq;

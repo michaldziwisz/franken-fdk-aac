@@ -550,6 +550,61 @@ an angle from two numbers that are already there, quantising it, and enabling th
 existing writer. Whether that is worth doing is a separate question from whether it
 is hard.
 
+### SBR detectors: attacks and fabricated harmonics
+
+Two detectors inside SBR decide most of what the replicated high band actually
+sounds like, and until now neither was reachable from the command line.
+
+The **transient detector** decides whether an attack gets its own envelope or is
+averaged into a longer stretch. When it misses an attack, the energy of the hit
+gets spread backwards in time — you hear a short burst of high-frequency hiss
+just *before* the hi-hat, not after it. That is pre-echo, and in the SBR band it
+is one of the more recognisable coding artefacts.
+
+`--sbr-tran-thr <n>` scales the master threshold that decides how easily the
+detector fires (value*100, so 100 is unchanged). This turned out to be the single
+most effective knob in the group. Measured on a signal of 24 percussive attacks
+plus decaying tones between 8 and 13 kHz, counting high-band energy that appears
+before an attack but is absent from the source: stock scores 1.610 at 32 kbps,
+and lowering the threshold to 40 drops that to 0.041 — pre-echo essentially gone.
+The same thing happens at 64 kbps (1.186 to 0.059). The effect saturates below 60
+and disappears entirely at 100 and above, where output is byte-identical to
+stock. On percussive material `--sbr-tran-thr 40` is the place to start.
+
+`--sbr-tran-peak <n>` controls how *peaky* a candidate must be to count as an
+attack — the raw 0.90 constant, entered as 90. `--sbr-tran-split <n>` governs how
+readily a frame with no detected transient is still split into two envelopes,
+which buys time resolution at the cost of bits. Two further knobs,
+`--sbr-tran-quiet` and `--sbr-tran-dom`, exist for completeness but do nothing in
+this build: they live in the fast transient detector, which is only used for
+AAC-LD and ELD, and those profiles fail to initialise here — in the stock binary
+too, so it is an inherited limitation rather than something these knobs broke.
+
+The **missing harmonics detector** handles the opposite problem. When SBR copies
+a low band upwards, a tone that existed in the original can land in the wrong
+place or vanish. The detector notices this and fabricates a synthetic harmonic to
+put it back. Set it too eagerly and you get whistling and metallic artefacts that
+were never in the recording; set it too conservatively and bells, glockenspiel
+and cymbals go dull as their partials quietly disappear.
+
+`--sbr-mh-tone <n>` scales how tonal a band must be before a harmonic is added,
+and is the main control here. `--sbr-mh-diff <n>` scales the tonality *difference*
+between the original and the patched band that triggers compensation.
+`--sbr-mh-decay-orig` and `--sbr-mh-decay-diff` change how long an already-found
+tone keeps being tracked as it fades, which is what you hear on cymbal and bell
+tails. `--sbr-mh-sfm-sbr` and `--sbr-mh-sfm-orig` move the spectral-flatness line
+between "this is a tone" and "this is noise", for the patched and the original
+band respectively. `--sbr-mh-maxcomp` caps how much envelope compensation is
+applied around an added harmonic, which affects how much noise sits next to it.
+
+Finally, `--sbr-noise-max <6|3|-3>` sets the ceiling on how loud the noise SBR
+injects may get — 1.0, 0.5 or 0.125 respectively. This is the straightest control
+over "air versus hiss" in the top end. It was already a configuration field
+inside FDK, chosen from the bitrate tuning table and never exposed.
+
+All of these are opt-in: at their neutral values the output is bit-identical to
+stock, and the test suite enforces that.
+
 ## 17. TNS, PNS, and the afterburner
 
 `--tns-mask <n>` / `--tns-order <n>` — TNS (Temporal Noise Shaping) shapes the

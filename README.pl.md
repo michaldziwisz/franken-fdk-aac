@@ -218,6 +218,48 @@ Nadpisuje ustawienia z tabeli tuningowej SBR (po jej załadowaniu).
 | `--sbr-invf <0..3>` | -1 auto | -1 | Wymuś inverse filtering SBR: 0 off, 1 low, 2 mid, 3 high. Sterowane normalnie estymatorem tonalności. Wyżej = mocniejsze "wybielanie" tonalnego SBR (mniej metaliczności kosztem detalu). |
 | `--sbr-noise-floor-offset <n>` | -128 off | -128 | Offset poziomu szumu SBR (mala l. calkowita). Wieksze = więcej szumu wypełniającego w rekonstrukcji SBR. |
 | `--sbr-header-period <n>` | -1 off, >=1 | -1 | Liczba ramek między nagłówkami SBR = jak szybko górne pasmo SBR \"wchodzi\", gdy dekoder podłącza się do strumienia HE-AAC na żywo (Icecast/Shoutcast). KONFIGURACJA SBR jest w okresowym nagłówku, nie w każdej ramce; dekoder wpięty w środek gra sam rdzeń (przytłumiony) do nadejścia kolejnego nagłówka. `1` = nagłówek w każdej ramce → niemal natychmiastowy sync SBR (~23 ms); wyżej = dłuższy moment core-only. Domyślnie FDK ~10 ramek (~0.23 s HE dual-rate / ~0.46 s LC). FDK kapuje to do maks. raz na sekundę, więc bardzo duże wartości są przycinane (np. 40 → 21 ramek @44.1k). Efektywny okres w ms pokazuje `--verbose`. |
+| `--sbr-noise-max <n>` | 6, 3, -3 | -1 (tabela tuningu) | Sufit tego, jak głośny może być szum wstrzykiwany przez SBR w górne pasmo: `6` = 1,0, `3` = 0,5, `-3` = 0,125. To limit „powietrze kontra syczenie". W FDK jest to pole konfiguracyjne, tylko nigdy nie dostępne z linii poleceń. |
+| `--sbr-tran-peak <n>` | 1..200 | -1 (90 = 0,90) | Detektor transjentów: jak *szpilkowy* musi być atak. Slot liczy się jako transjent tylko wtedy, gdy sygnał spadnie poniżej tego udziału poprzedniego slotu. Surowe x100, więc `90` to fabryczne 0,90. Wyżej = mniej wykrytych transjentów. |
+| `--sbr-tran-thr <n>` | 1..10000 | -1 (100 = x1,00) | Skaluje główny próg transjentów. **Najskuteczniejsze pokrętło w tej grupie** - patrz pomiar pre-echa poniżej. |
+| `--sbr-tran-split <n>` | 1..10000 | -1 (100 = x1,00) | Skaluje próg podziału obwiedni: jak chętnie ramka bez wykrytego transjentu jest i tak dzielona na dwie obwiednie. Niżej = częstszy podział (drobniejsza rozdzielczość czasowa, kosztem bitów). |
+| `--sbr-tran-quiet <n>` | 1..10000 | -1 | **W tym buildzie nie działa.** Siedzi w *szybkim* detektorze transjentów, do którego wchodzi się tylko przy AAC-LD/ELD - a `-p 23` / `-p 39` nie inicjalizują się tutaj (również w oryginalnej binarce). Zostawione wyłącznie dla kompletności. |
+| `--sbr-tran-dom <n>` | 100..500 | -1 (140 = 1,4) | **W tym buildzie nie działa.** Ta sama nieosiągalna ścieżka szybkiego detektora co `--sbr-tran-quiet`. |
+| `--sbr-mh-tone <n>` | 1..10000 | -1 (100 = x1,00) | Missing harmonics: skaluje to, jak *tonalne* musi być pasmo, zanim SBR dorobi syntetyczną harmoniczną. Niżej = więcej dorobionych tonów (ryzyko gwizdów); wyżej = mniej (matowe dzwonki i blachy, zgubione partiale). |
+| `--sbr-mh-diff <n>` | 1..10000 | -1 (100) | Skaluje *różnicę* tonalności między oryginałem a pasmem odtworzonym, która uruchamia kompensację harmonicznych. |
+| `--sbr-mh-decay-orig <n>` | 1..10000 | -1 (100) | Skaluje to, jak długo już znaleziony ton jest dalej śledzony przy wygaszaniu. Słyszalne na wybrzmieniach dzwonków i talerzy. |
+| `--sbr-mh-decay-diff <n>` | 1..10000 | -1 (100) | To samo dla wektora prowadzącego różnicy. |
+| `--sbr-mh-sfm-sbr <n>` | 1..10000 | -1 (100) | Skaluje próg płaskości widmowej, powyżej którego pasmo *odtworzone* jest uznawane za szumowe, nie tonalne. |
+| `--sbr-mh-sfm-orig <n>` | 1..10000 | -1 (100) | To samo dla pasma *oryginalnego*. Razem te dwa wyłapują sytuację „w oryginale był jeden silny ton, po patchingu zrobiło się ich kilka". |
+| `--sbr-mh-maxcomp <n>` | 0..200 | -1 (50) | Ograniczenie kompensacji obwiedni stosowanej wokół syntetycznej harmonicznej. Wpływa na pasma sąsiednie i na to, ile szumu siedzi obok dorobionego tonu. |
+| `--sbr-mh-deltatime <n>` | 0..64 | -1 (9 / 16) | Maksymalna odległość transjentu, przy której ramka liczy się jako transjentowa w detektorze missing harmonics. |
+
+UWAGA o jednostkach: pokrętła opisane jako `x100` to mnożniki fabrycznej stałej,
+gdzie `100` znaczy 1,00 i jest dokładnym brakiem zmiany. Pokrętła opisane jako
+*surowe* x100 podmieniają stałą wprost (`--sbr-tran-peak 90` **jest** fabrycznym
+0,90). `--sbr-mh-maxcomp` i `--sbr-mh-deltatime` to zwykłe liczby całkowite, a
+`--sbr-noise-max` przyjmuje tylko te trzy wartości, które rozumie estymator szumu.
+
+ZMIERZONE - pre-echo w paśmie SBR. To jest ten jeden wynik, na który warto
+zareagować. Sygnał testowy: 24 ataki perkusyjne (charakter hi-hatu/klaśnięcia)
+plus cztery wygaszające się tony między 8 a 13 kHz. Miara: energia powyżej 9 kHz
+pojawiająca się w dwóch okienkach po 5,8 ms *przed* każdym atakiem, której nie ma
+w źródle - czyli słyszalne rozmazanie ataku w tył. Kodowane jako HE-AAC,
+dekodowane ffmpegiem, z wyrównaniem opóźnienia przez korelację:
+
+| `--sbr-tran-thr` | pre-echo @ 32 kbps | pre-echo @ 64 kbps |
+|---|---|---|
+| stock | 1,610 | 1,186 |
+| 20 / 40 / 60 | **0,041** | **0,059** |
+| 80 | 0,661 | 0,502 |
+| 100 i wyżej | 1,610 (= stock) | 1,186 (= stock) |
+
+Obniżenie głównego progu transjentów do 40 praktycznie usuwa pre-echo w paśmie
+odtwarzanym: detektor zauważa wtedy ataki, które wcześniej przegapiał, i daje im
+własną obwiednię zamiast uśredniać przez transjent. Efekt jest monotoniczny,
+powtarzalny na obu przepływnościach i saturuje poniżej 60 - więc
+`--sbr-tran-thr 40` to zalecany punkt startowy na materiale perkusyjnym.
+Wszystko od 100 w górę jest bit-identyczne ze stockiem, co potwierdza też, że
+pokrętło jest czysto opcjonalne.
 
 UWAGA: `--sbr-start`/`--sbr-stop` są walidowane PRZEZ FDK — niepoprawna
 KOMBINACJA start/stop (zła liczba pasm master) da "encoder initialization

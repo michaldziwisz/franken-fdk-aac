@@ -224,6 +224,48 @@ Overrides the settings from the SBR tuning table (after it is loaded).
 | `--sbr-invf <0..3>` | -1 auto | -1 | Force SBR inverse filtering: 0 off, 1 low, 2 mid, 3 high. Normally driven by the tonality estimator. Higher = stronger "whitening" of tonal SBR (less metallicness at the cost of detail). |
 | `--sbr-noise-floor-offset <n>` | -128 off | -128 | SBR noise floor offset (small integer). Larger = more filling noise in the SBR reconstruction. |
 | `--sbr-header-period <n>` | -1 off, >=1 | -1 | Frames between SBR headers = how fast the SBR high band "kicks in" when a decoder tunes into a live HE-AAC stream (Icecast/Shoutcast). The SBR CONFIG lives in a periodic header, not in every frame; a decoder joining mid-stream plays core-only (muffled) until the next header arrives. `1` = header in every frame → near-instant SBR lock (~23 ms); higher = longer core-only moment. FDK default is ~10 frames (~0.23 s HE dual-rate / ~0.46 s LC). FDK caps this to at most once per second, so very large values are clamped (e.g. 40 → 21 frames @44.1k). See `--verbose` for the effective period in ms. |
+| `--sbr-noise-max <n>` | 6, 3, -3 | -1 (tuning table) | Ceiling on how loud the noise SBR injects into the high band may get: `6` = 1.0, `3` = 0.5, `-3` = 0.125. This is the "air versus hiss" limit. Already a config field inside FDK, just never reachable from the command line. |
+| `--sbr-tran-peak <n>` | 1..200 | -1 (90 = 0.90) | Transient detector: how *peaky* an attack must be. A slot counts as a transient only once the signal falls below this fraction of the previous slot. Raw x100, so `90` is the stock 0.90. Higher = fewer transients detected. |
+| `--sbr-tran-thr <n>` | 1..10000 | -1 (100 = x1.00) | Scales the master transient threshold. **The most effective knob in this group** - see the pre-echo measurement below. |
+| `--sbr-tran-split <n>` | 1..10000 | -1 (100 = x1.00) | Scales the envelope-split threshold: how readily a frame with no detected transient is still split into two envelopes. Lower = split more often (finer time resolution, costs bits). |
+| `--sbr-tran-quiet <n>` | 1..10000 | -1 | **No-op in this build.** Lives in the *fast* transient detector, which is only reached under AAC-LD/ELD - and `-p 23` / `-p 39` fail to initialise here (also in the stock binary). Kept for completeness only. |
+| `--sbr-tran-dom <n>` | 100..500 | -1 (140 = 1.4) | **No-op in this build.** Same unreachable fast-detector path as `--sbr-tran-quiet`. |
+| `--sbr-mh-tone <n>` | 1..10000 | -1 (100 = x1.00) | Missing harmonics: scales how *tonal* a band must be before SBR fabricates a synthetic harmonic. Lower = more added tones (risk of whistling artefacts); higher = fewer (dull bells and cymbals, lost partials). |
+| `--sbr-mh-diff <n>` | 1..10000 | -1 (100) | Scales the original-versus-patched tonality *difference* that triggers harmonic compensation. |
+| `--sbr-mh-decay-orig <n>` | 1..10000 | -1 (100) | Scales how long an already-detected tone keeps being tracked as it decays. Audible on bell and cymbal tails. |
+| `--sbr-mh-decay-diff <n>` | 1..10000 | -1 (100) | Same, for the difference guide vector. |
+| `--sbr-mh-sfm-sbr <n>` | 1..10000 | -1 (100) | Scales the spectral-flatness threshold above which the *patched* band is judged noise-like rather than tonal. |
+| `--sbr-mh-sfm-orig <n>` | 1..10000 | -1 (100) | Same for the *original* band. Together these two catch "one strong tone in the original became several after patching". |
+| `--sbr-mh-maxcomp <n>` | 0..200 | -1 (50) | Cap on envelope compensation applied around a synthetic harmonic. Affects neighbouring bands and how much noise sits next to the added tone. |
+| `--sbr-mh-deltatime <n>` | 0..64 | -1 (9 / 16) | Max transient distance for a frame to count as a transient frame in the missing-harmonics detector. |
+
+NOTE on units: knobs documented as `x100` are multipliers on a stock constant,
+where `100` means 1.00 and is an exact no-op. Knobs documented as *raw* x100
+replace the constant outright (`--sbr-tran-peak 90` **is** the stock 0.90).
+`--sbr-mh-maxcomp` and `--sbr-mh-deltatime` are plain integers, and
+`--sbr-noise-max` takes only the three values FDK's noise estimator understands.
+
+MEASURED - pre-echo in the SBR band. This is the one result worth acting on. Test
+signal: 24 percussive attacks (hi-hat/clap character) plus four decaying tones
+between 8 and 13 kHz. Metric: energy above 9 kHz appearing in the two 5.8 ms
+windows *before* each attack that is not present in the source - i.e. audible
+smearing of the attack backwards in time. Encoded as HE-AAC, decoded with ffmpeg,
+lag-aligned by cross-correlation first:
+
+| `--sbr-tran-thr` | pre-echo @ 32 kbps | pre-echo @ 64 kbps |
+|---|---|---|
+| stock | 1.610 | 1.186 |
+| 20 / 40 / 60 | **0.041** | **0.059** |
+| 80 | 0.661 | 0.502 |
+| 100 and above | 1.610 (= stock) | 1.186 (= stock) |
+
+Lowering the master transient threshold to 40 essentially removes pre-echo in the
+replicated band: the detector then notices the attacks it was previously missing
+and gives them their own envelope instead of averaging across the transient. The
+effect is monotonic, reproducible at both bitrates, and saturates below 60 - so
+`--sbr-tran-thr 40` is the recommended starting point on percussive material.
+Everything from 100 upwards is byte-identical to stock, which also confirms the
+knob is cleanly opt-in.
 
 NOTE: `--sbr-start`/`--sbr-stop` are validated BY FDK — an incorrect start/stop
 COMBINATION (wrong number of master bands) will give "encoder initialization

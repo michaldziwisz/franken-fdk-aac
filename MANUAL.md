@@ -557,6 +557,64 @@ więc „analiza fazy od zera"; jest nim wyliczenie kąta z dwóch liczb, które
 leżą, skwantowanie go i włączenie istniejącego writera. Czy warto to robić, to
 pytanie osobne od tego, czy jest to trudne.
 
+### Detektory SBR: ataki i dorabiane harmoniczne
+
+O tym, jak realnie brzmi odtwarzane pasmo górne, decydują w SBR głównie dwa
+detektory — i do tej pory żadnego z nich nie dało się dotknąć z linii poleceń.
+
+**Detektor transjentów** decyduje, czy atak dostanie własną obwiednię, czy
+zostanie uśredniony na dłuższym odcinku. Kiedy przegapi atak, energia uderzenia
+rozlewa się w tył w czasie — słychać krótki wysypek szumu wysokiego tuż *przed*
+hi-hatem, nie po nim. To jest pre-echo i w paśmie SBR należy do bardziej
+rozpoznawalnych artefaktów kodowania.
+
+`--sbr-tran-thr <n>` skaluje główny próg decydujący o tym, jak łatwo detektor
+się odpala (value*100, więc 100 to brak zmiany). Okazało się najskuteczniejszym
+pokrętłem w tej grupie. Pomiar na sygnale z 24 atakami perkusyjnymi i tonami
+wygaszającymi się między 8 a 13 kHz, licząc energię pasma górnego pojawiającą się
+przed atakiem, a nieobecną w źródle: stock daje 1,610 przy 32 kbps, a obniżenie
+progu do 40 zbija to do 0,041 — pre-echo praktycznie znika. To samo dzieje się
+przy 64 kbps (1,186 do 0,059). Efekt saturuje poniżej 60 i zanika zupełnie od 100
+w górę, gdzie wyjście jest bit-identyczne ze stockiem. Na materiale perkusyjnym
+`--sbr-tran-thr 40` to miejsce, od którego warto zacząć.
+
+`--sbr-tran-peak <n>` steruje tym, jak *szpilkowy* musi być kandydat, żeby liczyć
+się jako atak — to surowa stała 0,90, wpisywana jako 90. `--sbr-tran-split <n>`
+rządzi tym, jak chętnie ramka bez wykrytego transjentu jest i tak dzielona na
+dwie obwiednie, co kupuje rozdzielczość czasową kosztem bitów. Dwa kolejne
+pokrętła, `--sbr-tran-quiet` i `--sbr-tran-dom`, istnieją dla kompletności, ale w
+tym buildzie nie robią nic: siedzą w szybkim detektorze transjentów, używanym
+tylko przy AAC-LD i ELD, a te profile nie inicjalizują się tutaj — również w
+oryginalnej binarce, więc to ograniczenie odziedziczone, a nie coś, co te
+pokrętła zepsuły.
+
+**Detektor missing harmonics** zajmuje się problemem odwrotnym. Gdy SBR kopiuje
+pasmo dolne w górę, ton obecny w oryginale może trafić w złe miejsce albo zniknąć.
+Detektor to zauważa i dorabia syntetyczną harmoniczną, żeby go przywrócić.
+Ustawisz go zbyt gorliwie — dostajesz gwizdy i metaliczne artefakty, których w
+nagraniu nigdy nie było; zbyt zachowawczo — dzwonki, glockenspiel i talerze
+matowieją, bo ich partiale po cichu znikają.
+
+`--sbr-mh-tone <n>` skaluje to, jak tonalne musi być pasmo, zanim harmoniczna
+zostanie dorobiona, i jest tu głównym sterem. `--sbr-mh-diff <n>` skaluje
+*różnicę* tonalności między oryginałem a pasmem odtworzonym, która uruchamia
+kompensację. `--sbr-mh-decay-orig` i `--sbr-mh-decay-diff` zmieniają to, jak
+długo znaleziony już ton jest dalej śledzony przy wygasaniu — a to właśnie słychać
+na wybrzmieniach talerzy i dzwonków. `--sbr-mh-sfm-sbr` i `--sbr-mh-sfm-orig`
+przesuwają granicę płaskości widmowej między „to jest ton" a „to jest szum",
+odpowiednio dla pasma odtworzonego i oryginalnego. `--sbr-mh-maxcomp` ogranicza
+kompensację obwiedni wokół dorobionej harmonicznej, co wpływa na to, ile szumu
+siedzi tuż obok niej.
+
+Na koniec `--sbr-noise-max <6|3|-3>` ustawia sufit tego, jak głośny może być szum
+wstrzykiwany przez SBR — odpowiednio 1,0, 0,5 albo 0,125. To najbardziej
+bezpośrednia kontrola nad „powietrzem kontra syczeniem" na samej górze. W FDK było
+to już polem konfiguracyjnym, wybieranym z tabeli tuningu po bitrate i nigdy nie
+wystawionym.
+
+Wszystkie te pokrętła są opcjonalne: przy wartościach neutralnych wyjście jest
+bit-identyczne ze stockiem, a zestaw testów tego pilnuje.
+
 ## 17. TNS, PNS i afterburner
 
 `--tns-mask <n>` / `--tns-order <n>` — TNS (Temporal Noise Shaping) kształtuje

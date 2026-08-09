@@ -2710,6 +2710,62 @@ AACENC_ERROR aacEncoder_SetParam(const HANDLE_AACENCODER hAacEncoder,
       g_franken.psNoEnvSkip = (INT)value;
       hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
       break;
+    case AACENC_FRANKEN_SBR_TRAN_PEAK:
+      g_franken.sbrTranPeakX100 = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_SBR_TRAN_QUIET:
+      g_franken.sbrTranQuietX100 = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_SBR_TRAN_DOM:
+      g_franken.sbrTranDomX100 = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_SBR_TRAN_THR:
+      g_franken.sbrTranThrX100 = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_SBR_TRAN_SPLIT:
+      g_franken.sbrTranSplitX100 = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_SBR_MH_TONE:
+      g_franken.sbrMhToneX100 = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_SBR_MH_DIFF:
+      g_franken.sbrMhDiffX100 = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_SBR_MH_DECAY_ORIG:
+      g_franken.sbrMhDecayOrigX100 = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_SBR_MH_DECAY_DIFF:
+      g_franken.sbrMhDecayDiffX100 = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_SBR_MH_SFM_SBR:
+      g_franken.sbrMhSfmSbrX100 = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_SBR_MH_SFM_ORIG:
+      g_franken.sbrMhSfmOrigX100 = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_SBR_MH_MAXCOMP:
+      g_franken.sbrMhMaxComp = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_SBR_MH_DELTATIME:
+      g_franken.sbrMhDeltaTime = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_SBR_NOISE_MAX:
+      g_franken.sbrNoiseMaxLevel = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
     case AACENC_FRANKEN_IS_BAND_LO:
       g_franken.isBandLo = (INT)value;
       hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;

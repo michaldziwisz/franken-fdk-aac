@@ -524,6 +524,14 @@ static UINT FDKsbrEnc_AdjustSbrSettings(
     config->noiseFloorOffset = sbrTuningTable[idx].noiseFloorOffset;
 
     config->ana_max_level = sbrTuningTable[idx].noiseMaxLevel;
+    /* Frankenstein: --sbr-noise-max overrides the ceiling on how loud the noise
+     * SBR injects into the high band may get. This is the "air vs hiss" limit;
+     * nf_est maps 6 -> 1.0, 3 -> 0.5, -3 -> 0.125 (anything else falls back to
+     * 1.0), so only those three values are accepted by the frontend. */
+    if (g_franken.sbrNoiseMaxLevel == 6 || g_franken.sbrNoiseMaxLevel == 3 ||
+        g_franken.sbrNoiseMaxLevel == -3) {
+      config->ana_max_level = g_franken.sbrNoiseMaxLevel;
+    }
     config->stereoMode = sbrTuningTable[idx].stereoMode;
     config->freqScale = sbrTuningTable[idx].freqScale;
 

@@ -68,6 +68,20 @@
     int fr_ps_env; \
     int fr_ps_env_reduce; \
     int fr_ps_noenv_skip; \
+    int fr_sbr_tran_peak; \
+    int fr_sbr_tran_quiet; \
+    int fr_sbr_tran_dom; \
+    int fr_sbr_tran_thr; \
+    int fr_sbr_tran_split; \
+    int fr_sbr_mh_tone; \
+    int fr_sbr_mh_diff; \
+    int fr_sbr_mh_decay_orig; \
+    int fr_sbr_mh_decay_diff; \
+    int fr_sbr_mh_sfm_sbr; \
+    int fr_sbr_mh_sfm_orig; \
+    int fr_sbr_mh_maxcomp; \
+    int fr_sbr_mh_deltatime; \
+    int fr_sbr_noise_max; \
     int fr_is_band_lo; \
     int fr_is_band_hi; \
     int fr_is_force_lo; \
