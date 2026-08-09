@@ -1582,6 +1582,10 @@ typedef enum {
   AACENC_FRANKEN_PNS_REFPOWER = 0xF04F,/*!< PNS refPower detection scale, value*100 (-1 off). */
   AACENC_FRANKEN_PNS_GAPFILL = 0xF050, /*!< PNS gapFillThr scale, value*100 (-1 off). */
   AACENC_FRANKEN_PNS_MIN_WIDTH = 0xF051, /*!< PNS min SFB width, raw int (-1 off). */
+  AACENC_FRANKEN_PS_BANDS = 0xF055,    /*!< PS stereo bands: 10 or 20 (-1 = bitrate table). */
+  AACENC_FRANKEN_PS_ENV = 0xF056,      /*!< PS parameter envelopes per frame: 1, 2 or 4 (-1 = bitrate table). */
+  AACENC_FRANKEN_PS_ENV_REDUCE = 0xF057, /*!< 0 = disable automatic envelope halving (-1 = default on). */
+  AACENC_FRANKEN_PS_NOENV_SKIP = 0xF058, /*!< 0 = never emit parameter-less PS frames (-1 = default on). */
   AACENC_FRANKEN_VERBOSE = 0xF016,     /*!< Verbose init dump 0/1. */
 
   /* Read-only (GetParam) mirrors of internal encoder-chosen values, for --verbose. */
@@ -1605,6 +1609,8 @@ typedef enum {
   AACENC_FRANKEN_GET_IS_LRRATIO = 0xF02A,    /*!< Effective IS L/R ratio threshold, Q8. */
   AACENC_FRANKEN_GET_SBR_HEADER_PERIOD = 0xF04C, /*!< Effective SBR header repetition (frames). */
   AACENC_FRANKEN_GET_BANDWIDTH_HZ = 0xF052, /*!< Effective core cutoff Hz anchored to SFB boundary. */
+  AACENC_FRANKEN_GET_PS_BANDS = 0xF059,     /*!< Effective PS stereo bands (10/20, -1 n/a). */
+  AACENC_FRANKEN_GET_PS_ENV = 0xF05A,       /*!< Effective PS max envelopes (1/2/4, -1 n/a). */
 
   AACENC_NONE = 0xFFFF /*!< ------ */
 

@@ -64,6 +64,10 @@
     int fr_sbr_noise_floor_offset; \
     int fr_ps_icc; \
     int fr_ps_icc_mode; \
+    int fr_ps_bands; \
+    int fr_ps_env; \
+    int fr_ps_env_reduce; \
+    int fr_ps_noenv_skip; \
     int fr_is_band_lo; \
     int fr_is_band_hi; \
     int fr_is_force_lo; \

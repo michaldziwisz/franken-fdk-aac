@@ -2694,6 +2694,22 @@ AACENC_ERROR aacEncoder_SetParam(const HANDLE_AACENCODER hAacEncoder,
       g_franken.psIccMode = (INT)value;
       hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
       break;
+    case AACENC_FRANKEN_PS_BANDS:
+      g_franken.psBands = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_PS_ENV:
+      g_franken.psEnvelopes = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_PS_ENV_REDUCE:
+      g_franken.psEnvReduce = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_PS_NOENV_SKIP:
+      g_franken.psNoEnvSkip = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
     case AACENC_FRANKEN_IS_BAND_LO:
       g_franken.isBandLo = (INT)value;
       hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
@@ -2941,6 +2957,12 @@ UINT aacEncoder_GetParam(const HANDLE_AACENCODER hAacEncoder,
       break;
     case AACENC_FRANKEN_GET_BANDWIDTH_HZ:
       value = (UINT)g_franken.effBandwidthHz;
+      break;
+    case AACENC_FRANKEN_GET_PS_BANDS:
+      value = (UINT)g_franken.effPsBands;
+      break;
+    case AACENC_FRANKEN_GET_PS_ENV:
+      value = (UINT)g_franken.effPsEnvelopes;
       break;
 
     default:

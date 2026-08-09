@@ -5,6 +5,36 @@ Library** (per section 2 of the FDK AAC license, see `NOTICE.fdk-aac`).
 
 ## Releases
 
+### Unreleased — Parametric Stereo resolution (bands × envelopes)
+
+- **`--ps-bands <10|20>`** — number of PS stereo bands, i.e. the *frequency*
+  resolution of the stereo parameters. Stock FDK derives this from the bitrate
+  alone (`psTuningTable`, `sbrenc_rom.cpp:899`), so from 22 kbps upwards only 20
+  bands were ever reachable.
+- **`--ps-env <1|2|4>`** — PS parameter envelopes per frame, i.e. the *time*
+  resolution of the stereo parameters. Above 36 kbps stock FDK always picks 4.
+- **`--ps-env-reduce <0|1>`** — `0` disables the automatic envelope-halving loop
+  (`envelopeReducible`, `ps_encode.cpp:278`), which silently collapses 4
+  envelopes to 1 whenever neighbouring envelopes look similar. Without this,
+  `--ps-env 4` is a no-op at 48 kbps: the output is byte-identical to stock.
+- **`--ps-noenv-skip <0|1>`** — `0` forbids parameter-less PS frames. Stock FDK
+  may emit up to `MAX_NOENV_CNT` (10) consecutive frames carrying no stereo
+  parameters at all when successive IID/ICC sets look similar.
+- `--verbose` now reports the effective PS band count and envelope count, plus
+  the state of both hidden heuristics above.
+- Measured (HE-AAC v2, 48 kbps, 4 s probe with a 0.25 Hz panorama sweep and
+  alternating L/R transients, panorama trajectory vs. source): stock 0.177 RMS
+  error / 0.9655 correlation; `--ps-env 4 --ps-env-reduce 0` 0.117 / 0.9944 — a
+  34 % reduction in panorama error at essentially the same file size.
+- Documentation now states honestly that the ICC rotation mode
+  (`--ps-icc-mode`) is signalling-only, and corrects the previous claim about
+  IPD/OPD: the encoder already computes the imaginary part of the L/R
+  cross-spectrum and discards the phase, and the IPD/OPD Huffman tables and
+  bitstream writers already exist in `ps_bitenc.cpp`.
+- Source areas: `libSBRenc/src/sbr_encoder.cpp` (PS tuning-table override),
+  `libSBRenc/src/ps_encode.cpp` (envelope reduction, parameter-less frames).
+- `make check` 106/106 PASS, no-regression ADTS bit-identical to stock.
+
 ### v1.2.0 — DAB+ digital-radio output
 
 - **New `--dab` output mode** (ETSI TS 102 563): emits a DAB+ super-frame stream

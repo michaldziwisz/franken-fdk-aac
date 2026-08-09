@@ -288,6 +288,16 @@ static INT envelopeReducible(FIXP_DBL iid[PS_MAX_ENVELOPES][PS_MAX_BANDS],
   FIXP_DBL iidErrThreshold, iccErrThreshold;
   FIXP_DBL iidMeanError, iccMeanError;
 
+  /* Frankenstein: --ps-env-reduce 0 disables this automatic halving loop.
+   * Stock FDK keeps collapsing the envelope count (4 -> 2 -> 1) as long as the
+   * mean IID/ICC error between neighbouring envelopes stays under a hardcoded
+   * threshold, so the number of envelopes actually transmitted is often LOWER
+   * than the configured maximum. Turning the loop off makes --ps-env literal:
+   * the requested time resolution is always spent. */
+  if (g_franken.psEnvReduce == 0) {
+    return 0;
+  }
+
   /* square values to prevent sqrt,
      multiply bands to prevent division; bands shifted DFRACT_BITS instead
      (DFRACT_BITS-1) because fMultDiv2 used*/
@@ -1003,7 +1013,14 @@ FDK_PSENC_ERROR FDKsbrEnc_PSEncode(
   /* nEnvelopes = 0 ? */
   if ((hPsData->noEnvCnt < MAX_NOENV_CNT) &&
       (similarIid(hPsData, psBands, nEnvelopes)) &&
-      (similarIcc(hPsData, psBands, nEnvelopes))) {
+      (similarIcc(hPsData, psBands, nEnvelopes)) &&
+      /* Frankenstein: --ps-noenv-skip 0 forbids parameter-less PS frames.
+       * Stock FDK may emit up to MAX_NOENV_CNT (10) consecutive frames carrying
+       * NO stereo parameters at all whenever successive IID/ICC sets look
+       * "similar" by its quantisation-step heuristic. On material with slowly
+       * drifting panorama that can be heard as the stereo image briefly
+       * collapsing / snapping back. 0 = always transmit parameters. */
+      (g_franken.psNoEnvSkip != 0)) {
     hPsOut->nEnvelopes = nEnvelopes = 0;
     hPsData->noEnvCnt++;
   } else {

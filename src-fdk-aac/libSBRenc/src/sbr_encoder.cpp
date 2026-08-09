@@ -2366,6 +2366,29 @@ INT sbrEncoder_Init(HANDLE_SBR_ENCODER hSbrEncoder,
         psEncConfig.iidQuantErrorThreshold =
             (FIXP_DBL)psTuningTable[psTuningTableIdx].iidQuantErrorThreshold;
 
+        /* Frankenstein: override the PS resolution chosen by the bitrate table.
+         * The MPEG-4 PS baseline allows 10 or 20 stereo bands (frequency
+         * resolution of the stereo parameters) and 1/2/4 parameter envelopes
+         * (time resolution). Stock FDK derives BOTH from the bitrate alone, so
+         * above 36 kbps only 20 bands / 4 envelopes is ever reachable. These
+         * two knobs change how many stereo parameters are actually sent, which
+         * is a far more audible axis than the ICC rotation mode (that one only
+         * re-signals the same matrix). Applied BEFORE the bitrate estimate
+         * below so the SBR bit budget stays consistent. */
+        if (g_franken.psBands == PSENC_STEREO_BANDS_10 ||
+            g_franken.psBands == PSENC_STEREO_BANDS_20) {
+          psEncConfig.nStereoBands =
+              (PSENC_STEREO_BANDS_CONFIG)g_franken.psBands;
+        }
+        if (g_franken.psEnvelopes == PSENC_NENV_1 ||
+            g_franken.psEnvelopes == PSENC_NENV_2 ||
+            g_franken.psEnvelopes == PSENC_NENV_4) {
+          psEncConfig.maxEnvelopes = (PSENC_NENV_CONFIG)g_franken.psEnvelopes;
+        }
+        /* read-back for --verbose */
+        g_franken.effPsBands = (INT)psEncConfig.nStereoBands;
+        g_franken.effPsEnvelopes = (INT)psEncConfig.maxEnvelopes;
+
         /* calculation is not quite linear, increased number of envelopes causes
          * more bits */
         /* assume avg. 50 bits per frame for 10 stereo bands / 1 envelope

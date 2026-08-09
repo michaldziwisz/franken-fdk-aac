@@ -488,12 +488,67 @@ becomes 21 frames at 44.1 kHz). `--verbose` prints the effective period in milli
 `--ps-iid-quant <0|1>` — the precision of IID quantization: 0 coarse, 1 fine.
 
 `--ps-icc <0|1>` — force ICC (Inter-channel Coherence — channel coherence/similarity)
-on/off. `--ps-icc-mode <0|1>` — the ICC rotation mode (ROT_A / ROT_B).
+on/off. `--ps-icc-mode <0|1>` — the ICC rotation mode (ROT_A / ROT_B). Be aware that
+the rotation mode is *signalling only*: both modes describe the same stereo matrix,
+the decoder just derives it differently. It is a compatibility knob, not a quality one.
 
-HONESTLY about IPD/OPD (phase differences): the FDK encoder does NOT compute them. In the code it's
-explicitly marked as "not supported" — the phase fields are always zeroed. Exposing
-them would require writing inter-channel phase analysis from scratch, which is a large,
-risky task. That's why these parameters aren't here and can't be turned on.
+### PS resolution: bands (frequency) and envelopes (time)
+
+The two knobs that genuinely change stereo quality are the ones that decide *how
+many* stereo parameters get sent in the first place. The MPEG-4 PS baseline allows
+two band resolutions and up to four parameter envelopes per frame, and stock FDK
+picks both purely from the bitrate — so at anything above 36 kbps you are locked
+into 20 bands and 4 envelopes with no way to hear the alternatives.
+
+`--ps-bands <10|20>` — the frequency resolution of the stereo parameters. Twenty
+bands describe the stereo image in finer frequency detail; ten describe it more
+coarsely but spend fewer bits. At very low rates the coarse grid can actually sound
+steadier, because each band gets averaged over more spectrum and the parameters
+jitter less between frames.
+
+`--ps-env <1|2|4>` — the time resolution. One envelope means the whole frame gets a
+single stereo snapshot; four means the panorama is sampled four times per frame.
+This is what decides whether a moving pan or a transient keeps its position or
+smears across the frame.
+
+`--ps-env-reduce <0|1>` — and this is the one that matters most, because of a trap.
+Asking for four envelopes does not mean you get four. FDK runs an automatic
+reduction loop that keeps halving the envelope count — four to two to one — as long
+as neighbouring envelopes look similar according to a hardcoded error threshold. On
+ordinary music that threshold is met very often, so the encoder quietly falls back
+to one snapshot per frame. Setting `--ps-env-reduce 0` switches that loop off and
+makes `--ps-env` mean what it says.
+
+The measurement is unusually clear here. On a four-second probe with a panorama
+deliberately swept back and forth at 0.25 Hz plus alternating left/right transients,
+encoded as HE-AAC v2 at 48 kbps, comparing the panorama trajectory of the decoded
+result against the source: the stock encoder lands at 0.177 RMS panorama error
+(0.9655 correlation). Asking for four envelopes on its own changes *nothing at all*
+— the output is byte-for-byte identical to stock, because the reduction loop undoes
+the request immediately. Add `--ps-env-reduce 0` and the error drops to 0.117
+(0.9944 correlation) at essentially the same file size: a third less panorama error,
+for free. If you take one setting from this chapter, take `--ps-env 4
+--ps-env-reduce 0`.
+
+`--ps-noenv-skip <0|1>` — a related piece of hidden behaviour. Beyond thinning out
+envelopes, FDK can also skip stereo parameters *entirely* for a stretch of frames:
+when successive IID/ICC sets look similar it may send up to ten consecutive frames
+carrying no stereo information at all, leaving the decoder to coast on the last
+values it received. On material where the image drifts slowly this is audible as the
+stereo picture briefly flattening and then snapping back. `--ps-noenv-skip 0`
+forbids it and forces parameters into every frame.
+
+HONESTLY about IPD/OPD (phase differences): the FDK encoder does not emit them. The
+phase fields are hardcoded to zero, with the comment "IPD OPD not supported right
+now". It is worth knowing exactly how far from finished that is, though, because it
+is closer than the comment suggests. The encoder already accumulates both the real
+and the imaginary part of the left/right cross-spectrum for every band and envelope,
+and then throws the phase away — only the magnitude is used, to compute ICC. The
+Huffman tables and bitstream writers for IPD and OPD are also already present and
+complete. So the missing piece is not "phase analysis from scratch"; it is deriving
+an angle from two numbers that are already there, quantising it, and enabling the
+existing writer. Whether that is worth doing is a separate question from whether it
+is hard.
 
 ## 17. TNS, PNS, and the afterburner
 

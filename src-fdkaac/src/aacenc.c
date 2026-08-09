@@ -293,6 +293,10 @@ int aacenc_init(HANDLE_AACENCODER *encoder, const aacenc_param_t *params,
     FR_SET(params->fr_sbr_noise_floor_offset != -128, AACENC_FRANKEN_SBR_NOISE_FLOOR_OFFSET, params->fr_sbr_noise_floor_offset);
     FR_SET(params->fr_ps_icc != -1, AACENC_FRANKEN_PS_ICC, params->fr_ps_icc);
     FR_SET(params->fr_ps_icc_mode != -1, AACENC_FRANKEN_PS_ICC_MODE, params->fr_ps_icc_mode);
+    FR_SET(params->fr_ps_bands != -1, AACENC_FRANKEN_PS_BANDS, params->fr_ps_bands);
+    FR_SET(params->fr_ps_env != -1, AACENC_FRANKEN_PS_ENV, params->fr_ps_env);
+    FR_SET(params->fr_ps_env_reduce != -1, AACENC_FRANKEN_PS_ENV_REDUCE, params->fr_ps_env_reduce);
+    FR_SET(params->fr_ps_noenv_skip != -1, AACENC_FRANKEN_PS_NOENV_SKIP, params->fr_ps_noenv_skip);
     FR_SET(params->fr_is_band_lo != -1, AACENC_FRANKEN_IS_BAND_LO, params->fr_is_band_lo);
     FR_SET(params->fr_is_band_hi != -1, AACENC_FRANKEN_IS_BAND_HI, params->fr_is_band_hi);
     FR_SET(params->fr_is_force_lo != -1, AACENC_FRANKEN_IS_FORCE_LO, params->fr_is_force_lo);
@@ -482,7 +486,28 @@ int aacenc_init(HANDLE_AACENCODER *encoder, const aacenc_param_t *params,
             fprintf(stderr, " PS ICC rotation mode  : %s\n",
                     params->fr_ps_icc_mode < 0 ? "auto (default)" :
                     params->fr_ps_icc_mode == 0 ? "ROT_A" : "ROT_B");
-            fprintf(stderr, " PS IPD/OPD (phase)    : not supported by FDK (always 0)\n");
+            {
+                /* Effective PS resolution actually handed to the PS encoder,
+                 * after the bitrate table and any --ps-bands/--ps-env override.
+                 * These are the two axes that change how many stereo parameters
+                 * are transmitted (frequency and time resolution), as opposed to
+                 * the ICC rotation mode which only re-signals the same matrix. */
+                int psb = (int)aacEncoder_GetParam(*encoder, AACENC_FRANKEN_GET_PS_BANDS);
+                int pse = (int)aacEncoder_GetParam(*encoder, AACENC_FRANKEN_GET_PS_ENV);
+                if (psb > 0)
+                    fprintf(stderr, " PS stereo bands       : %d%s\n", psb,
+                            params->fr_ps_bands < 0 ? " (from bitrate table)" : " (forced)");
+                if (pse > 0)
+                    fprintf(stderr, " PS envelopes (max)    : %d%s\n", pse,
+                            params->fr_ps_env < 0 ? " (from bitrate table)" : " (forced)");
+            }
+            fprintf(stderr, " PS envelope reduction : %s\n",
+                    params->fr_ps_env_reduce == 0 ? "disabled (--ps-env honoured literally)"
+                                                  : "on (default: may halve envelopes)");
+            fprintf(stderr, " PS parameter-less frm : %s\n",
+                    params->fr_ps_noenv_skip == 0 ? "forbidden (always send parameters)"
+                                                  : "allowed (default: up to 10 in a row)");
+            fprintf(stderr, " PS IPD/OPD (phase)    : not emitted (FDK sends zeros; cross-spectrum Im part is computed but unused)\n");
         }
         /* Bit-reservoir budget helper: the hard AAC ceiling is 6144 bits per
          * channel per frame; the usable reservoir is that minus the average

@@ -94,6 +94,30 @@ typedef struct FRANKEN_CFG {
   int psIcc;          /* -1 default; 0 force ICC off, 1 force ICC on */
   int psIccMode;      /* -1 default; else ICC rotation mode 0 ROT_A, 1 ROT_B */
 
+  /* ---- 14b. Parametric stereo resolution: bands x envelopes ----
+   * The MPEG-4 PS baseline defines TWO stereo-band resolutions (10 and 20
+   * parameter bands) and up to 4 parameter envelopes per frame. Stock FDK
+   * picks BOTH purely from the bitrate (psTuningTable, sbrenc_rom.cpp), so
+   * above 36 kbps you always get 20 bands / 4 envelopes and can never audition
+   * the other combinations. Unlike the ICC rotation mode -- which only changes
+   * how the SAME matrix is signalled -- these two change how many stereo
+   * parameters are actually transmitted, in frequency (bands) and time
+   * (envelopes) respectively. */
+  int psBands;        /* -1 default(bitrate table); else 10 or 20 stereo bands */
+  int psEnvelopes;    /* -1 default(bitrate table); else 1, 2 or 4 envelopes */
+  int psEnvReduce;    /* -1 default(on); 0 = disable the automatic envelope
+                         HALVING loop (envelopeReducible), which silently
+                         collapses 4 envelopes down to 1 whenever the mean
+                         IID/ICC error stays under a hardcoded threshold.
+                         0 = honour --ps-env literally. */
+  int psNoEnvSkip;    /* -1 default(on); 0 = never emit nEnvelopes=0 frames.
+                         Stock FDK may send up to MAX_NOENV_CNT (10) consecutive
+                         frames with NO stereo parameters at all when successive
+                         IID/ICC sets look "similar" -- audible as a brief
+                         collapse of the stereo image. 0 = always send. */
+  int effPsBands;     /* read-back: effective stereo bands (-1 n/a) */
+  int effPsEnvelopes; /* read-back: effective max envelopes (-1 n/a) */
+
   /* ---- 15. Intensity stereo band range + force (this batch) ---- */
   int isBandLo;       /* -1 default; else lowest SFB index eligible for IS */
   int isBandHi;       /* -1 default; else highest SFB index eligible for IS (inclusive) */

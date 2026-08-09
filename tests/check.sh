@@ -57,8 +57,8 @@ test_exe(){
 
   # 1) help kompletny - franken switche obecne
   local hn
-  hn=$("$exe" --help 2>&1 | grep -cE '^ --(msmask|msbands|is|isbands|is-min-sfbs|is-corr-thresh|is-lr-ratio|is-lo|is-hi|is-force-lo|is-force-hi|core-cutoff|sbr-start|sbr-stop|sbr-freqscale|sbr-alterscale|sbr-noise-bands|sbr-amp-res|sbr-data-extra|sbr-header-period|ps|ps-iid-quant|tns-mask|tns-order|pns|pns-start|pns-gain|pns-tonality|pns-refpower|pns-gapfill|pns-min-width|ath-scale|minsnr-scale|minsnr-clamp-hi|minsnr-clamp-lo|reduce-clamp|mid-bias|side-bias|side-knee|mask-slope|block-bias|vbr-reservoir|peak-bitrate|max-bits-frame|min-bits-frame|bitres-mode|ms-bias|verbose)')
-  [ "$hn" -ge 40 ] && ok "help: $hn franken switchy" || bad "help: tylko $hn switchy (oczekiwano >=40)"
+  hn=$("$exe" --help 2>&1 | grep -cE '^ --(msmask|msbands|is|isbands|is-min-sfbs|is-corr-thresh|is-lr-ratio|is-lo|is-hi|is-force-lo|is-force-hi|core-cutoff|sbr-start|sbr-stop|sbr-freqscale|sbr-alterscale|sbr-noise-bands|sbr-amp-res|sbr-data-extra|sbr-header-period|ps|ps-iid-quant|ps-bands|ps-env|ps-env-reduce|ps-noenv-skip|tns-mask|tns-order|pns|pns-start|pns-gain|pns-tonality|pns-refpower|pns-gapfill|pns-min-width|ath-scale|minsnr-scale|minsnr-clamp-hi|minsnr-clamp-lo|reduce-clamp|mid-bias|side-bias|side-knee|mask-slope|block-bias|vbr-reservoir|peak-bitrate|max-bits-frame|min-bits-frame|bitres-mode|ms-bias|verbose)')
+  [ "$hn" -ge 44 ] && ok "help: $hn franken switchy" || bad "help: tylko $hn switchy (oczekiwano >=44)"
 
   # 2) baseline + rozny bitstream per switch, wszystko dekodowalne
   enc "$exe" -p2 -b128000 -o "${OUT}_base.m4a" "$WAV"
@@ -72,6 +72,12 @@ test_exe(){
                 "msbands-hi:--msbands-lo 20 --msbands-hi 40" "ms-precision:--ms-precision 512"
                 "sbr-invf:-p5 -b64000 --sbr-invf 3" "sbr-stereo:-p5 -b64000 --sbr-stereo-mode 1"
                 "ps-icc:-p29 -b32000 --ps-icc 0" "unlock:-b8000 --unlock-bitrate"
+                "ps-bands10:-p29 -b48000 --ps-bands 10"
+                "ps-bands20:-p29 -b48000 --ps-bands 20 --ps-env 1"
+                "ps-env2:-p29 -b48000 --ps-env 2"
+                "ps-env4-nored:-p29 -b48000 --ps-env 4 --ps-env-reduce 0"
+                "ps-noenv-skip:-p29 -b48000 --ps-noenv-skip 0"
+                "ps-full-matrix:-p29 -b48000 --ps-bands 10 --ps-env 4 --ps-env-reduce 0 --ps-icc-mode 1 --ps-iid-quant 1"
                 "speech:-p5 -b32000 --speech" "spread-mask:-b128000 --spread-mask 64"
  "ms-prec-hi:--ms-precision 1024"
  "mid-bias:-b96000 --mid-bias 384"

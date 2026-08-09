@@ -281,7 +281,22 @@ PROGNAME " %s\n"
 " --ps <n>                    Force PS IID sending: -1 auto(def), 0 off, 1 on.\n"
 " --ps-iid-quant <n>          PS IID quant grid: -1 def, 0 coarse, 1 fine.\n"
 " --ps-icc <n>                Force ICC (channel coherence): -1 auto, 0 off, 1 on.\n"
-" --ps-icc-mode <n>           ICC rotation: -1 def, 0 ROT_A, 1 ROT_B.\n"
+" --ps-icc-mode <n>           ICC rotation: -1 def, 0 ROT_A, 1 ROT_B. Signalling only --\n"
+"                               same matrix, computed differently by the decoder.\n"
+" --ps-bands <10|20>          PS stereo bands = FREQUENCY resolution of the stereo\n"
+"                               parameters. -1 = pick from bitrate (>=22k always 20).\n"
+"                               Fewer bands = coarser image, fewer bits. Audibly more\n"
+"                               significant than the ICC rotation mode.\n"
+" --ps-env <1|2|4>            PS parameter envelopes per frame = TIME resolution of the\n"
+"                               stereo parameters. -1 = pick from bitrate (>=36k gives 4).\n"
+"                               More envelopes track moving panorama/transients better.\n"
+" --ps-env-reduce <0|1>       0 = disable the automatic envelope-halving loop, which\n"
+"                               otherwise silently collapses 4 envelopes to 1 whenever\n"
+"                               successive envelopes look similar. 0 makes --ps-env literal.\n"
+" --ps-noenv-skip <0|1>       0 = never emit parameter-less PS frames. Stock FDK may send\n"
+"                               up to 10 consecutive frames with NO stereo parameters when\n"
+"                               successive IID/ICC sets look similar (can be heard as the\n"
+"                               image briefly collapsing). 0 = always send.\n"
 "\n== C. Bandwidth & SBR (high band) ==\n"
 " --core-cutoff <hz>          Force core bandwidth in Hz even under SBR (where -w is\n"
 "                               ignored). 0=default, max sr/2. See also --uncap-bandwidth.\n"
@@ -466,6 +481,10 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
 #define OPT_FR_SBR_NF_OFFSET     M4AF_FOURCC('f','s','n','f')
 #define OPT_FR_PS_ICC            M4AF_FOURCC('f','p','i','c')
 #define OPT_FR_PS_ICC_MODE       M4AF_FOURCC('f','p','i','m')
+#define OPT_FR_PS_BANDS          M4AF_FOURCC('f','p','b','d')
+#define OPT_FR_PS_ENV            M4AF_FOURCC('f','p','e','v')
+#define OPT_FR_PS_ENV_REDUCE     M4AF_FOURCC('f','p','e','r')
+#define OPT_FR_PS_NOENV_SKIP     M4AF_FOURCC('f','p','n','v')
 #define OPT_FR_IS_BAND_LO        M4AF_FOURCC('f','i','l','o')
 #define OPT_FR_IS_BAND_HI        M4AF_FOURCC('f','i','h','i')
 #define OPT_FR_IS_FORCE_LO       M4AF_FOURCC('f','i','f','l')
@@ -579,6 +598,10 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
         { "sbr-noise-floor-offset",required_argument, 0, OPT_FR_SBR_NF_OFFSET     },
         { "ps-icc",              required_argument, 0, OPT_FR_PS_ICC            },
         { "ps-icc-mode",         required_argument, 0, OPT_FR_PS_ICC_MODE       },
+        { "ps-bands",            required_argument, 0, OPT_FR_PS_BANDS          },
+        { "ps-env",              required_argument, 0, OPT_FR_PS_ENV            },
+        { "ps-env-reduce",       required_argument, 0, OPT_FR_PS_ENV_REDUCE     },
+        { "ps-noenv-skip",       required_argument, 0, OPT_FR_PS_NOENV_SKIP     },
         { "is-lo",               required_argument, 0, OPT_FR_IS_BAND_LO        },
         { "is-hi",               required_argument, 0, OPT_FR_IS_BAND_HI        },
         { "is-force-lo",         required_argument, 0, OPT_FR_IS_FORCE_LO       },
@@ -650,6 +673,10 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
     params->fr_sbr_noise_floor_offset = -128;
     params->fr_ps_icc = -1;
     params->fr_ps_icc_mode = -1;
+    params->fr_ps_bands = -1;
+    params->fr_ps_env = -1;
+    params->fr_ps_env_reduce = -1;
+    params->fr_ps_noenv_skip = -1;
     params->fr_is_band_lo = -1;
     params->fr_is_band_hi = -1;
     params->fr_is_force_lo = -1;
@@ -980,6 +1007,18 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
         case OPT_FR_PS_ICC_MODE:
             if (sscanf(optarg, "%d", &n) != 1 || n < 0 || n > 1) { fprintf(stderr, "invalid arg for ps-icc-mode (0,1)\n"); return -1; }
             params->fr_ps_icc_mode = n; break;
+        case OPT_FR_PS_BANDS:
+            if (sscanf(optarg, "%d", &n) != 1 || (n != 10 && n != 20)) { fprintf(stderr, "invalid arg for ps-bands (10 or 20)\n"); return -1; }
+            params->fr_ps_bands = n; break;
+        case OPT_FR_PS_ENV:
+            if (sscanf(optarg, "%d", &n) != 1 || (n != 1 && n != 2 && n != 4)) { fprintf(stderr, "invalid arg for ps-env (1, 2 or 4)\n"); return -1; }
+            params->fr_ps_env = n; break;
+        case OPT_FR_PS_ENV_REDUCE:
+            if (sscanf(optarg, "%d", &n) != 1 || n < 0 || n > 1) { fprintf(stderr, "invalid arg for ps-env-reduce (0,1)\n"); return -1; }
+            params->fr_ps_env_reduce = n; break;
+        case OPT_FR_PS_NOENV_SKIP:
+            if (sscanf(optarg, "%d", &n) != 1 || n < 0 || n > 1) { fprintf(stderr, "invalid arg for ps-noenv-skip (0,1)\n"); return -1; }
+            params->fr_ps_noenv_skip = n; break;
         case OPT_FR_IS_BAND_LO:
             if (sscanf(optarg, "%d", &n) != 1 || n < 0) { fprintf(stderr, "invalid arg for is-lo (>=0)\n"); return -1; }
             params->fr_is_band_lo = n; break;

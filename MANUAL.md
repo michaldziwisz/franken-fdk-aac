@@ -495,12 +495,67 @@ wypisuje efektywny okres w milisekundach.
 `--ps-iid-quant <0|1>` — dokładność kwantyzacji IID: 0 gruba, 1 dokładna.
 
 `--ps-icc <0|1>` — wymuś ICC (Inter-channel Coherence — spójność/podobieństwo
-kanałów) on/off. `--ps-icc-mode <0|1>` — tryb rotacji ICC (ROT_A / ROT_B).
+kanałów) on/off. `--ps-icc-mode <0|1>` — tryb rotacji ICC (ROT_A / ROT_B). Miej
+świadomość, że tryb rotacji to *wyłącznie sygnalizacja*: oba tryby opisują tę samą
+macierz stereo, dekoder po prostu wylicza ją inaczej. To pokrętło kompatybilności,
+nie jakości.
 
-UCZCIWIE o IPD/OPD (różnice fazy): enkoder FDK ich NIE liczy. W kodzie jest to
-jawnie oznaczone jako "nie wspierane" — pola fazy są zawsze zerowane. Wystawienie
-ich wymagałoby napisania od zera analizy fazy międzykanałowej, co jest dużym,
-ryzykownym zadaniem. Dlatego tych parametrów tu nie ma i nie da się ich włączyć.
+### Rozdzielczość PS: pasma (częstotliwość) i obwiednie (czas)
+
+Dwa pokrętła, które realnie zmieniają jakość stereo, to te decydujące o tym, *ile*
+parametrów stereo w ogóle zostanie wysłanych. Baseline MPEG-4 PS dopuszcza dwie
+rozdzielczości pasmowe i do czterech obwiedni parametrów na ramkę, a stock FDK
+wybiera jedno i drugie wyłącznie na podstawie bitrate — więc powyżej 36 kbps jesteś
+zamknięty w 20 pasmach i 4 obwiedniach, bez możliwości usłyszenia alternatyw.
+
+`--ps-bands <10|20>` — rozdzielczość częstotliwościowa parametrów stereo.
+Dwadzieścia pasm opisuje obraz stereo z drobniejszym podziałem widma; dziesięć
+opisuje go zgrubniej, ale zużywa mniej bitów. Przy bardzo niskich przepływnościach
+zgrubniejsza siatka potrafi brzmieć wręcz spokojniej, bo każde pasmo jest
+uśredniane po większym wycinku widma i parametry mniej „drgają" między ramkami.
+
+`--ps-env <1|2|4>` — rozdzielczość czasowa. Jedna obwiednia oznacza, że cała ramka
+dostaje jedną migawkę stereo; cztery — że panorama jest próbkowana cztery razy w
+ramce. To właśnie decyduje, czy jadąca panorama albo transjent utrzyma swoje
+położenie, czy rozmyje się na całą ramkę.
+
+`--ps-env-reduce <0|1>` — i to jest pokrętło najważniejsze, z powodu pewnej pułapki.
+Poproszenie o cztery obwiednie nie oznacza, że je dostaniesz. FDK uruchamia
+automatyczną pętlę redukcji, która połowi liczbę obwiedni — cztery do dwóch do
+jednej — tak długo, jak sąsiednie obwiednie wyglądają podobnie według zaszytego w
+kodzie progu błędu. Na zwykłej muzyce ten próg spełnia się bardzo często, więc
+enkoder po cichu wraca do jednej migawki na ramkę. Ustawienie `--ps-env-reduce 0`
+wyłącza tę pętlę i sprawia, że `--ps-env` znaczy to, co mówi.
+
+Pomiar jest tu wyjątkowo czytelny. Na czterosekundowej próbce z panoramą celowo
+przeciąganą tam i z powrotem z częstotliwością 0,25 Hz oraz naprzemiennymi
+transjentami lewo/prawo, kodowanej jako HE-AAC v2 przy 48 kbps, porównując
+trajektorię panoramy zdekodowanego wyniku z oryginałem: stock enkoder wychodzi na
+0,177 RMS błędu panoramy (korelacja 0,9655). Samo poproszenie o cztery obwiednie
+nie zmienia *absolutnie nic* — wyjście jest bit w bit identyczne ze stockiem, bo
+pętla redukcji natychmiast wycofuje żądanie. Dodaj `--ps-env-reduce 0` i błąd
+spada do 0,117 (korelacja 0,9944) przy praktycznie tym samym rozmiarze pliku: o
+jedną trzecią mniejszy błąd panoramy, za darmo. Jeśli masz wziąć z tego rozdziału
+jedno ustawienie, weź `--ps-env 4 --ps-env-reduce 0`.
+
+`--ps-noenv-skip <0|1>` — pokrewny fragment ukrytego zachowania. Poza
+przerzedzaniem obwiedni FDK potrafi też pominąć parametry stereo *całkowicie* na
+pewnym odcinku ramek: gdy kolejne zestawy IID/ICC wyglądają podobnie, może wysłać
+do dziesięciu kolejnych ramek bez żadnej informacji stereo, pozostawiając dekoder
+na ostatnich wartościach, jakie dostał. Na materiale, gdzie obraz dryfuje wolno,
+słychać to jako chwilowe spłaszczenie obrazu stereo i powrót. `--ps-noenv-skip 0`
+tego zabrania i wymusza parametry w każdej ramce.
+
+UCZCIWIE o IPD/OPD (różnice fazy): enkoder FDK ich nie wysyła. Pola fazy są zaszyte
+na zero, z komentarzem „IPD OPD not supported right now". Warto jednak wiedzieć
+dokładnie, jak daleko od gotowości to jest — bo jest bliżej, niż ten komentarz
+sugeruje. Enkoder już teraz akumuluje zarówno część rzeczywistą, jak i urojoną
+widma skrośnego lewy/prawy dla każdego pasma i każdej obwiedni, a potem fazę
+wyrzuca — używany jest tylko moduł, do policzenia ICC. Tablice Huffmana i writery
+bitstreamu dla IPD i OPD również już są, kompletne. Brakującym elementem nie jest
+więc „analiza fazy od zera"; jest nim wyliczenie kąta z dwóch liczb, które już tam
+leżą, skwantowanie go i włączenie istniejącego writera. Czy warto to robić, to
+pytanie osobne od tego, czy jest to trudne.
 
 ## 17. TNS, PNS i afterburner
 

@@ -234,12 +234,39 @@ nawet kosztem obrazu stereo.
 | `--ps <n>` | -1 auto, 0 off, 1 on | -1 | Wymuś wysylanie parametru IID PS. `0` = nigdy (spłaszcza obraz stereo), `1` = zawsze. Nadpisuje heurystykę różnicy głośności. |
 | `--ps-iid-quant <n>` | -1 def, 0 coarse, 1 fine | -1 | Siatka kwantyzacji IID: gruba vs. dokładna. |
 | `--ps-icc <n>` | -1 auto, 0 off, 1 on | -1 | Wymuś ICC (Interchannel Coherence — podobieństwo/spójność kanałów) on/off. |
-| `--ps-icc-mode <n>` | -1 def, 0/1 | -1 | Tryb rotacji ICC: 0 = ROT_A, 1 = ROT_B. |
+| `--ps-icc-mode <n>` | -1 def, 0/1 | -1 | Tryb rotacji ICC: 0 = ROT_A, 1 = ROT_B. To wyłącznie sygnalizacja — ta sama macierz, tylko inaczej wyliczana przez dekoder, więc traktuj to jako pokrętło kompatybilności, nie jakości. |
+| `--ps-bands <n>` | 10 albo 20 | -1 (tabela bitrate) | Liczba pasm stereo PS = rozdzielczość **częstotliwościowa** parametrów stereo. Stock FDK wybiera ją wyłącznie z bitrate, więc od 22 kbps w górę zawsze dostajesz 20 i nigdy nie usłyszysz 10. Mniej pasm = zgrubniejszy obraz stereo, mniej bitów na parametry. |
+| `--ps-env <n>` | 1, 2 albo 4 | -1 (tabela bitrate) | Liczba obwiedni parametrów PS na ramkę = rozdzielczość **czasowa** parametrów stereo. Powyżej 36 kbps stock FDK zawsze bierze 4. Więcej obwiedni wierniej nadąża za ruchomą panoramą i transjentami. |
+| `--ps-env-reduce <n>` | 0, 1 | -1 (włączone) | `0` wyłącza automatyczną pętlę połowienia obwiedni (`envelopeReducible`). Domyślnie FDK zwija 4 obwiednie do 2 i do 1, gdy sąsiednie obwiednie wyglądają podobnie według zaszytego progu błędu — więc liczba obwiedni, którą ustawiłeś, często *nie* jest tym, co realnie leci w strumieniu. `0` sprawia, że `--ps-env` działa literalnie. |
+| `--ps-noenv-skip <n>` | 0, 1 | -1 (włączone) | `0` zabrania ramek PS bez parametrów. Domyślnie FDK może wysłać do 10 kolejnych ramek **bez żadnych** parametrów stereo, gdy kolejne zestawy IID/ICC wyglądają podobnie — słychać to jako chwilowe zapadnięcie się obrazu stereo i powrót. `0` = wysyłaj zawsze. |
 
-UWAGA o PS: FDK koduje IID (różnice głośności) i ICC (koherencja). IPD/OPD
-(różnice fazy) NIE są wspierane w enkoderze FDK — kod dosłownie wpisuje zera
-(`ps_encode.cpp: "IPD OPD not supported right now"`). Nie da sie ich wystawić bez
-napisania od zera analizy fazy międzykanałowej.
+UWAGA o rozdzielczości PS: `--ps-bands` i `--ps-env` to dwie osie, które zmieniają
+*ile* parametrów stereo realnie leci w strumieniu — odpowiednio w częstotliwości
+i w czasie. To czyni je znacznie bardziej słyszalnymi niż `--ps-icc-mode`, który
+zmienia tylko sposób sygnalizacji tej samej macierzy. Pomiar na 4-sekundowej
+próbce stereo z celowo ruchomą panoramą (0,25 Hz) i naprzemiennymi transjentami
+L/R, kodowanej jako HE-AAC v2 przy 48 kbps, porównując trajektorię panoramy
+zdekodowanego pliku z oryginałem:
+
+| Ustawienie | Błąd panoramy (RMS) | Korelacja z oryginałem |
+|---|---|---|
+| stock (20 pasm / 4 obwiednie) | 0,177 | 0,9655 |
+| `--ps-env 2 --ps-env-reduce 0` | 0,138 | 0,9896 |
+| `--ps-env 4 --ps-env-reduce 0` | **0,117** | **0,9944** |
+
+Ciekawy jest wynik, że samo zażądanie 4 obwiedni nie daje NIC — wyjście stock i
+`--ps-env 4` są bit-identyczne, bo automatyczna pętla natychmiast je z powrotem
+zwija. Zysk pojawia się dopiero, gdy `--ps-env-reduce 0` tę pętlę zatrzyma: o 34 %
+mniejszy błąd panoramy przy praktycznie tym samym rozmiarze pliku. Jeśli masz
+zapamiętać jedną rzecz z tej grupy — zapamiętaj `--ps-env-reduce 0`.
+
+UWAGA o IPD/OPD: FDK koduje wyłącznie IID (różnice głośności) i ICC (koherencję).
+Parametry *fazy* międzykanałowej nie są wysyłane — `ps_encode.cpp` dosłownie
+wpisuje zera z komentarzem `"IPD OPD not supported right now"`. Warto jednak
+wiedzieć, że enkoder już teraz liczy zarówno część rzeczywistą, jak i urojoną
+widma skrośnego L/R (`pwrCr` / `pwrCi`) i używa tylko ich modułu — informacja o
+fazie jest więc obecna, tylko wyrzucana; tablice Huffmana i writery bitstreamu
+dla IPD/OPD również już istnieją w `ps_bitenc.cpp`.
 
 ## 5. Substytucja/ksztaltowanie szumu — TNS / PNS / afterburner
 

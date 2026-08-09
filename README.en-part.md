@@ -240,12 +240,40 @@ even at the cost of the stereo image.
 | `--ps <n>` | -1 auto, 0 off, 1 on | -1 | Force sending the PS IID parameter. `0` = never (flattens the stereo image), `1` = always. Overrides the loudness-difference heuristic. |
 | `--ps-iid-quant <n>` | -1 def, 0 coarse, 1 fine | -1 | IID quantization grid: coarse vs. fine. |
 | `--ps-icc <n>` | -1 auto, 0 off, 1 on | -1 | Force ICC (Interchannel Coherence — channel similarity/coherence) on/off. |
-| `--ps-icc-mode <n>` | -1 def, 0/1 | -1 | ICC rotation mode: 0 = ROT_A, 1 = ROT_B. |
+| `--ps-icc-mode <n>` | -1 def, 0/1 | -1 | ICC rotation mode: 0 = ROT_A, 1 = ROT_B. Signalling only — the same matrix, derived differently by the decoder, so treat this as a compatibility knob rather than a quality one. |
+| `--ps-bands <n>` | 10 or 20 | -1 (bitrate table) | Number of PS stereo bands = **frequency** resolution of the stereo parameters. Stock FDK derives this from the bitrate alone, so at 22 kbps and above you always get 20 and can never audition 10. Fewer bands = coarser stereo image, fewer parameter bits. |
+| `--ps-env <n>` | 1, 2 or 4 | -1 (bitrate table) | PS parameter envelopes per frame = **time** resolution of the stereo parameters. Above 36 kbps stock FDK always picks 4. More envelopes track a moving panorama and transients more closely. |
+| `--ps-env-reduce <n>` | 0, 1 | -1 (on) | `0` disables the automatic envelope-halving loop (`envelopeReducible`). By default FDK keeps collapsing 4 envelopes to 2 to 1 whenever neighbouring envelopes look similar by a hardcoded error threshold, so the envelope count you configured is often *not* what gets transmitted. `0` makes `--ps-env` literal. |
+| `--ps-noenv-skip <n>` | 0, 1 | -1 (on) | `0` forbids parameter-less PS frames. By default FDK may emit up to 10 consecutive frames carrying **no** stereo parameters at all when successive IID/ICC sets look similar, which can be heard as the stereo image briefly collapsing and snapping back. `0` = always send parameters. |
 
-NOTE about PS: FDK codes IID (loudness differences) and ICC (coherence). IPD/OPD
-(phase differences) are NOT supported in the FDK encoder — the code literally
-writes zeros (`ps_encode.cpp: "IPD OPD not supported right now"`). You cannot
-expose them without writing interchannel phase analysis from scratch.
+NOTE about PS resolution: `--ps-bands` and `--ps-env` are the two axes that
+change *how many* stereo parameters are actually transmitted — in frequency and
+in time respectively. That makes them considerably more audible than
+`--ps-icc-mode`, which only changes how the same matrix is signalled. Measured on
+a 4-second stereo probe with a deliberately moving panorama (0.25 Hz) plus
+alternating L/R transients, encoded as HE-AAC v2 at 48 kbps, comparing the
+panorama trajectory of the decoded file against the source:
+
+| Setting | Panorama error (RMS) | Correlation with source |
+|---|---|---|
+| stock (20 bands / 4 envelopes) | 0.177 | 0.9655 |
+| `--ps-env 2 --ps-env-reduce 0` | 0.138 | 0.9896 |
+| `--ps-env 4 --ps-env-reduce 0` | **0.117** | **0.9944** |
+
+The interesting result is that requesting 4 envelopes alone changes nothing —
+stock output and `--ps-env 4` are byte-identical, because the automatic halving
+loop immediately collapses them again. The gain only appears once
+`--ps-env-reduce 0` stops that loop: a 34 % reduction in panorama error for
+roughly the same file size. If you only take one thing from this group, take
+`--ps-env-reduce 0`.
+
+NOTE about IPD/OPD: FDK codes IID (loudness differences) and ICC (coherence)
+only. The interchannel *phase* parameters are not emitted — `ps_encode.cpp`
+literally writes zeros and comments `"IPD OPD not supported right now"`. Note
+however that the encoder already computes both the real and the imaginary part of
+the L/R cross-spectrum (`pwrCr` / `pwrCi`) and currently uses only their
+magnitude, so the phase information is present but discarded; the Huffman tables
+and bitstream writers for IPD/OPD also already exist in `ps_bitenc.cpp`.
 
 ## 5. Noise substitution/shaping — TNS / PNS / afterburner
 
