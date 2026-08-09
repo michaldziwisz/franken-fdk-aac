@@ -538,17 +538,54 @@ values it received. On material where the image drifts slowly this is audible as
 stereo picture briefly flattening and then snapping back. `--ps-noenv-skip 0`
 forbids it and forces parameters into every frame.
 
-HONESTLY about IPD/OPD (phase differences): the FDK encoder does not emit them. The
-phase fields are hardcoded to zero, with the comment "IPD OPD not supported right
-now". It is worth knowing exactly how far from finished that is, though, because it
-is closer than the comment suggests. The encoder already accumulates both the real
-and the imaginary part of the left/right cross-spectrum for every band and envelope,
-and then throws the phase away — only the magnitude is used, to compute ICC. The
-Huffman tables and bitstream writers for IPD and OPD are also already present and
-complete. So the missing piece is not "phase analysis from scratch"; it is deriving
-an angle from two numbers that are already there, quantising it, and enabling the
-existing writer. Whether that is worth doing is a separate question from whether it
-is hard.
+### IPD: sending the phase (`--ps-ipd 1`)
+
+Stock FDK never transmits inter-channel phase. The fields are hardcoded to zero with
+the comment "IPD OPD not supported right now" — but that comment overstates the
+distance to a working implementation. The encoder already accumulates both the real
+and the imaginary part of the left/right cross-spectrum for every band and envelope;
+it uses only the magnitude, to compute ICC, and discards the angle. That angle *is*
+IPD. The Huffman tables and the bitstream writer were already present too. So the
+missing piece was never "phase analysis from scratch" — it was taking an `atan2` of
+two numbers already sitting in the loop, rounding it onto the 8 defined phase steps,
+and switching on the writer.
+
+Why it matters: without phase, PS places sound using level differences and
+correlation alone. That covers anything panned by level, but not a source positioned
+by *timing*. A real inter-channel delay — the way low-frequency localisation works in
+nature — is invisible to IID and ICC, because both channels carry the same signal at
+the same level and differ only in when it arrives.
+
+The measurement uses probes built exactly that way: identical signal in both
+channels, equal level, offset only by a delay. Comparing the decoded phase profile
+against the source, within the range IPD actually covers (60-690 Hz):
+
+| Inter-channel delay | phase error, IPD off | phase error, IPD on |
+|---|---|---|
+| 0.25 ms | 35.0 deg | **14.9 deg** |
+| 0.4 ms | 56.1 deg | **24.9 deg** |
+| 0.7 ms | 67.4 deg | 71.8 deg |
+
+At a quarter and four tenths of a millisecond the phase error more than halves, with
+identical figures at 32 and 48 kbps. At 0.7 ms the benefit disappears — and that is
+the representation reaching its limit rather than a fault. By the top of the IPD
+range a 0.7 ms delay has swung through nearly the whole plus-or-minus 180 degrees, so
+a 45-degree grid can no longer say unambiguously where it is. This is the same
+phase-ambiguity ceiling that makes human hearing rely on timing cues mostly down low.
+
+Two practical notes. IPD reaches only about the lowest 690 Hz, because its eleven
+parameter bands live inside the first three QMF bands — listen or measure above that
+and you will find nothing at all. And OPD stays at zero deliberately: the decoder
+couples the two parameters, with OPD rotating both downmix paths while IPD shifts
+only the second, and zero is the defined neutral. The physically obvious guess,
+OPD = IPD/2, was measured and did not reconstruct the source phase either, so rather
+than guess further at the decoder's model we leave that half of the pair alone.
+
+Compatibility is safe by construction. The data sits in a length-prefixed extension,
+so a decoder that does not implement phase synthesis — including FDK's own baseline
+PS decoder — reads the byte count and skips it, which the standard explicitly allows.
+Verified in practice: with the switch off the output is byte-identical to before, and
+with it on both ffmpeg and faad decode cleanly at 24, 32, 48 and 64 kbps.
 
 ### SBR detectors: attacks and fabricated harmonics
 

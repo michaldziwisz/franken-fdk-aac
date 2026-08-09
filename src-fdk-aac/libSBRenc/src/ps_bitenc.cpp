@@ -232,6 +232,32 @@ static const UINT opdDeltaTime_Code[] = {0x00000001, 0x00000002, 0x00000001,
                                          0x00000007, 0x00000006, 0000000000,
                                          0x00000002, 0x00000003};
 
+/* Number of IPD/OPD parameter bands for a given iid_mode.
+ * IMPORTANT: this is NOT the same as the number of IID/ICC bands. MPEG-4 PS
+ * transmits phase only for the LOWER part of the spectrum, so the counts are
+ * 5 / 11 / 17 against 10 / 20 / 34 for IID/ICC. Verified against an independent
+ * implementation (ffmpeg libavcodec/aacps_common.c):
+ *     nr_iidicc_par_tab[] = { 10, 20, 34, 10, 20, 34 };
+ *     nr_iidopd_par_tab[] = {  5, 11, 17,  5, 11, 17 };
+ * It also matches the border already used by calculateICC() in ps_encode.cpp,
+ * which switches from the real-part-only coherence to the magnitude form at
+ * band 5 (coarse) / 11 (mid) - i.e. exactly where phase stops being coded. */
+static INT getNoIpdOpdBands(const INT mode) {
+  switch (mode) {
+    case 0:
+    case 3: /* coarse -> 10 IID bands */
+      return 5;
+    case 1:
+    case 4: /* mid -> 20 IID bands */
+      return 11;
+    case 2:
+    case 5: /* fine -> 34 IID bands (not produced by this encoder) */
+      return 17;
+    default:
+      return 5;
+  }
+}
+
 static INT getNoBands(const INT mode) {
   INT noBands = 0;
 
@@ -260,10 +286,16 @@ static INT getIIDRes(INT iidMode) {
     return PS_IID_RES_FINE;
 }
 
+/* cyclicMask: 0 for IID/ICC (plain difference, out-of-range is an error).
+ * For IPD/OPD it is 0x07, because a PHASE difference wraps: the decoder
+ * accumulates the Huffman deltas and masks the running value with &0x07
+ * (see ffmpeg aacps_common.c READ_PAR_DATA(ipdopd, 0x07, ...)), so a step from
+ * index 7 to index 1 is legally coded as +2, not as -6. Without the wrap the
+ * writer would reject every negative phase step as an error. */
 static INT encodeDeltaFreq(HANDLE_FDK_BITSTREAM hBitBuf, const INT *val,
                            const INT nBands, const UINT *codeTable,
                            const UINT *lengthTable, const INT tableOffset,
-                           const INT maxVal, INT *error) {
+                           const INT maxVal, INT *error, const INT cyclicMask) {
   INT bitCnt = 0;
   INT lastVal = 0;
   INT band;
@@ -271,6 +303,7 @@ static INT encodeDeltaFreq(HANDLE_FDK_BITSTREAM hBitBuf, const INT *val,
   for (band = 0; band < nBands; band++) {
     INT delta = (val[band] - lastVal) + tableOffset;
     lastVal = val[band];
+    if (cyclicMask) delta &= cyclicMask;
     if ((delta > maxVal) || (delta < 0)) {
       *error = 1;
       delta = delta > 0 ? maxVal : 0;
@@ -285,13 +318,14 @@ static INT encodeDeltaFreq(HANDLE_FDK_BITSTREAM hBitBuf, const INT *val,
 static INT encodeDeltaTime(HANDLE_FDK_BITSTREAM hBitBuf, const INT *val,
                            const INT *valLast, const INT nBands,
                            const UINT *codeTable, const UINT *lengthTable,
-                           const INT tableOffset, const INT maxVal,
-                           INT *error) {
+                           const INT tableOffset, const INT maxVal, INT *error,
+                           const INT cyclicMask) {
   INT bitCnt = 0;
   INT band;
 
   for (band = 0; band < nBands; band++) {
     INT delta = (val[band] - valLast[band]) + tableOffset;
+    if (cyclicMask) delta &= cyclicMask;
     if ((delta > maxVal) || (delta < 0)) {
       *error = 1;
       delta = delta > 0 ? maxVal : 0;
@@ -321,14 +355,14 @@ INT FDKsbrEnc_EncodeIid(HANDLE_FDK_BITSTREAM hBitBuf, const INT *iidVal,
           lengthTable = iidDeltaFreqCoarse_Length;
           bitCnt += encodeDeltaFreq(hBitBuf, iidVal, nBands, codeTable,
                                     lengthTable, iidDeltaCoarse_Offset,
-                                    iidDeltaCoarse_MaxVal, error);
+                                    iidDeltaCoarse_MaxVal, error, 0);
           break;
         case PS_IID_RES_FINE:
           codeTable = iidDeltaFreqFine_Code;
           lengthTable = iidDeltaFreqFine_Length;
           bitCnt +=
               encodeDeltaFreq(hBitBuf, iidVal, nBands, codeTable, lengthTable,
-                              iidDeltaFine_Offset, iidDeltaFine_MaxVal, error);
+                              iidDeltaFine_Offset, iidDeltaFine_MaxVal, error, 0);
           break;
         default:
           *error = 1;
@@ -342,14 +376,14 @@ INT FDKsbrEnc_EncodeIid(HANDLE_FDK_BITSTREAM hBitBuf, const INT *iidVal,
           lengthTable = iidDeltaTimeCoarse_Length;
           bitCnt += encodeDeltaTime(
               hBitBuf, iidVal, iidValLast, nBands, codeTable, lengthTable,
-              iidDeltaCoarse_Offset, iidDeltaCoarse_MaxVal, error);
+              iidDeltaCoarse_Offset, iidDeltaCoarse_MaxVal, error, 0);
           break;
         case PS_IID_RES_FINE:
           codeTable = iidDeltaTimeFine_Code;
           lengthTable = iidDeltaTimeFine_Length;
           bitCnt += encodeDeltaTime(hBitBuf, iidVal, iidValLast, nBands,
                                     codeTable, lengthTable, iidDeltaFine_Offset,
-                                    iidDeltaFine_MaxVal, error);
+                                    iidDeltaFine_MaxVal, error, 0);
           break;
         default:
           *error = 1;
@@ -375,7 +409,7 @@ INT FDKsbrEnc_EncodeIcc(HANDLE_FDK_BITSTREAM hBitBuf, const INT *iccVal,
       codeTable = iccDeltaFreq_Code;
       lengthTable = iccDeltaFreq_Length;
       bitCnt += encodeDeltaFreq(hBitBuf, iccVal, nBands, codeTable, lengthTable,
-                                iccDelta_Offset, iccDelta_MaxVal, error);
+                                iccDelta_Offset, iccDelta_MaxVal, error, 0);
       break;
 
     case PS_DELTA_TIME:
@@ -384,7 +418,7 @@ INT FDKsbrEnc_EncodeIcc(HANDLE_FDK_BITSTREAM hBitBuf, const INT *iccVal,
 
       bitCnt +=
           encodeDeltaTime(hBitBuf, iccVal, iccValLast, nBands, codeTable,
-                          lengthTable, iccDelta_Offset, iccDelta_MaxVal, error);
+                          lengthTable, iccDelta_Offset, iccDelta_MaxVal, error, 0);
       break;
 
     default:
@@ -406,7 +440,7 @@ INT FDKsbrEnc_EncodeIpd(HANDLE_FDK_BITSTREAM hBitBuf, const INT *ipdVal,
       codeTable = ipdDeltaFreq_Code;
       lengthTable = ipdDeltaFreq_Length;
       bitCnt += encodeDeltaFreq(hBitBuf, ipdVal, nBands, codeTable, lengthTable,
-                                ipdDelta_Offset, ipdDelta_MaxVal, error);
+                                ipdDelta_Offset, ipdDelta_MaxVal, error, 0x07);
       break;
 
     case PS_DELTA_TIME:
@@ -415,7 +449,7 @@ INT FDKsbrEnc_EncodeIpd(HANDLE_FDK_BITSTREAM hBitBuf, const INT *ipdVal,
 
       bitCnt +=
           encodeDeltaTime(hBitBuf, ipdVal, ipdValLast, nBands, codeTable,
-                          lengthTable, ipdDelta_Offset, ipdDelta_MaxVal, error);
+                          lengthTable, ipdDelta_Offset, ipdDelta_MaxVal, error, 0x07);
       break;
 
     default:
@@ -437,7 +471,7 @@ INT FDKsbrEnc_EncodeOpd(HANDLE_FDK_BITSTREAM hBitBuf, const INT *opdVal,
       codeTable = opdDeltaFreq_Code;
       lengthTable = opdDeltaFreq_Length;
       bitCnt += encodeDeltaFreq(hBitBuf, opdVal, nBands, codeTable, lengthTable,
-                                opdDelta_Offset, opdDelta_MaxVal, error);
+                                opdDelta_Offset, opdDelta_MaxVal, error, 0x07);
       break;
 
     case PS_DELTA_TIME:
@@ -446,7 +480,7 @@ INT FDKsbrEnc_EncodeOpd(HANDLE_FDK_BITSTREAM hBitBuf, const INT *opdVal,
 
       bitCnt +=
           encodeDeltaTime(hBitBuf, opdVal, opdValLast, nBands, codeTable,
-                          lengthTable, opdDelta_Offset, opdDelta_MaxVal, error);
+                          lengthTable, opdDelta_Offset, opdDelta_MaxVal, error, 0x07);
       break;
 
     default:
@@ -461,7 +495,14 @@ static INT encodeIpdOpd(HANDLE_PS_OUT psOut, HANDLE_FDK_BITSTREAM hBitBuf) {
   INT error = 0;
   INT env;
 
-  FDKsbrEnc_WriteBits_ps(hBitBuf, psOut->enableIpdOpd, 1);
+  /* BUGFIX (stock FDK): the enable_ipdopd flag was written WITHOUT adding its
+   * bit to bitCnt. Since this function is called twice - once with hBitBuf=NULL
+   * to size the extension, once for real - the returned length was one bit short
+   * of what actually gets written. With IPD permanently disabled upstream the
+   * error was invisible; the moment the extension carries data it desynchronises
+   * encodePSExtension()'s byte count and trips the SBR alignment assertion
+   * (env_bit.cpp:229, "sbrBitbuf % 8 == 4"). */
+  bitCnt += FDKsbrEnc_WriteBits_ps(hBitBuf, psOut->enableIpdOpd, 1);
 
   if (psOut->enableIpdOpd == 1) {
     INT *ipdLast = psOut->ipdLast;
@@ -470,12 +511,12 @@ static INT encodeIpdOpd(HANDLE_PS_OUT psOut, HANDLE_FDK_BITSTREAM hBitBuf) {
     for (env = 0; env < psOut->nEnvelopes; env++) {
       bitCnt += FDKsbrEnc_WriteBits_ps(hBitBuf, psOut->deltaIPD[env], 1);
       bitCnt += FDKsbrEnc_EncodeIpd(hBitBuf, psOut->ipd[env], ipdLast,
-                                    getNoBands(psOut->iidMode),
+                                    getNoIpdOpdBands(psOut->iidMode),
                                     psOut->deltaIPD[env], &error);
 
       bitCnt += FDKsbrEnc_WriteBits_ps(hBitBuf, psOut->deltaOPD[env], 1);
       bitCnt += FDKsbrEnc_EncodeOpd(hBitBuf, psOut->opd[env], opdLast,
-                                    getNoBands(psOut->iidMode),
+                                    getNoIpdOpdBands(psOut->iidMode),
                                     psOut->deltaOPD[env], &error);
     }
     /* reserved bit */
@@ -576,6 +617,18 @@ INT FDKsbrEnc_WritePSBitstream(const HANDLE_PS_OUT psOut,
         psExtEnable = 1;
       }
       bitCnt += FDKsbrEnc_WriteBits_ps(hBitBuf, psExtEnable, 1);
+    }
+
+    /* The ps_extension payload must be written in EVERY frame while IPD is
+     * active, not only in frames that carry a PS header. enable_ext is a header
+     * field, so once it has been signalled the decoder keeps expecting the
+     * extension until a new header says otherwise; emitting it only alongside
+     * headers desynchronises the parser (ffmpeg: "Expected to read N PS bits
+     * actually read M", then "illegal icc" as it resyncs on garbage).
+     * psExtEnable is set inside the header block above for the header frames,
+     * so extend it to the headerless ones here. */
+    if (psOut->enableIpdOpd) {
+      psExtEnable = 1;
     }
 
     /* Frame class, number of envelopes */

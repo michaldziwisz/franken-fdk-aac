@@ -108,6 +108,7 @@ amm-info@iis.fraunhofer.de
 #include "ps_main.h"
 #include "ps_encode.h"
 #include "../../libAACenc/src/franken.h"
+#include "FDK_trigFcts.h"
 #include "qmf.h"
 #include "sbr_misc.h"
 #include "sbrenc_ram.h"
@@ -186,6 +187,17 @@ static FDK_PSENC_ERROR InitPSData(HANDLE_PS_DATA hPsData) {
 
     hPsData->iidEnable = hPsData->iidEnableLast = 0;
     hPsData->iccEnable = hPsData->iccEnableLast = 0;
+    hPsData->ipdEnable = hPsData->ipdEnableLast = 0;
+    hPsData->ipdTimeCnt = MAX_TIME_DIFF_FRAMES;
+    for (i = 0; i < PS_MAX_BANDS; i++) {
+      hPsData->ipdIdxLast[i] = 0;
+    }
+    for (env = 0; env < PS_MAX_ENVELOPES; env++) {
+      hPsData->ipdDiffMode[env] = PS_DELTA_FREQ;
+      for (i = 0; i < PS_MAX_BANDS; i++) {
+        hPsData->ipdIdx[env][i] = 0;
+      }
+    }
     hPsData->iidQuantMode = hPsData->iidQuantModeLast = PS_IID_RES_COARSE;
     hPsData->iccQuantMode = hPsData->iccQuantModeLast = PS_ICC_ROT_A;
 
@@ -703,6 +715,119 @@ static void calculateIID(FIXP_DBL ldPwrL[PS_MAX_ENVELOPES][PS_MAX_BANDS],
   }
 }
 
+/* Number of IPD parameter bands for a given PS band count. MPEG-4 PS codes the
+ * inter-channel PHASE only for the lower part of the spectrum: 5 bands when 10
+ * stereo bands are used, 11 when 20 are used (17 for the 34-band mode, which
+ * this encoder never produces). Verified against ffmpeg's independent decoder
+ * (libavcodec/aacps_common.c: nr_iidopd_par_tab[] = {5, 11, 17, 5, 11, 17}),
+ * and it coincides exactly with the border where calculateICC() below switches
+ * from the signed real-part coherence to the magnitude form. */
+static INT getIpdBands(const INT psBands) {
+  switch (psBands) {
+    case PS_BANDS_COARSE:
+      return 5;
+    case PS_BANDS_MID:
+      return 11;
+    default:
+      return 5;
+  }
+}
+
+/* Frankenstein: derive the Inter-channel Phase Difference from the complex
+ * cross-spectrum the encoder already accumulates.
+ *
+ * pwrCr / pwrCi are the real and imaginary parts of sum(L * conj(R)) per band
+ * and envelope. calculateICC() uses only their MAGNITUDE and throws the angle
+ * away; stock FDK then hardcodes IPD to zero ("IPD OPD not supported right
+ * now"). The angle is exactly what IPD is, so no new signal analysis is needed
+ * here - just atan2 over data that is already sitting in the same loop.
+ *
+ * Quantisation: 8 steps of pi/4 covering the full circle, matching the 3-bit
+ * parameter the decoder expects (ffmpeg masks the accumulated value with &0x07
+ * and looks the angle up in an 8-entry sin/cos table). fixp_atan2 returns Q29
+ * over ]-pi .. pi], so index = round(phi / (pi/4)) taken modulo 8. */
+static void calculateIpd(FIXP_DBL pwrCr[PS_MAX_ENVELOPES][PS_MAX_BANDS],
+                         FIXP_DBL pwrCi[PS_MAX_ENVELOPES][PS_MAX_BANDS],
+                         INT ipd[PS_MAX_ENVELOPES][PS_MAX_BANDS],
+                         const INT nEnvelopes, const INT psBands) {
+  const INT ipdBands = fixMin(getIpdBands(psBands), psBands);
+  INT env, band;
+
+  /* pi/4 in the Q29 output scale of fixp_atan2, and half of it for rounding. */
+  const LONG qStepQ29 = (LONG)((1u << Q_ATAN2OUT) * 0.78539816339744831f);
+  const LONG qHalfQ29 = qStepQ29 >> 1;
+
+  for (env = 0; env < nEnvelopes; env++) {
+    for (band = 0; band < PS_MAX_BANDS; band++) {
+      ipd[env][band] = 0;
+    }
+    for (band = 0; band < ipdBands; band++) {
+      LONG phi, idx;
+
+      /* Both parts zero means no meaningful phase (silent band) -> index 0. */
+      if ((pwrCr[env][band] == (FIXP_DBL)0) &&
+          (pwrCi[env][band] == (FIXP_DBL)0)) {
+        continue;
+      }
+
+      /* The accumulator IS already the L-relative-to-R cross-spectrum:
+       *   pwrCr = sum(Re(L)Re(R) + Im(L)Im(R))
+       *   pwrCi = sum(Re(R)Im(L) - Re(L)Im(R))
+       * which is exactly Re and Im of sum(L * conj(R)), so
+       *   atan2(pwrCi, pwrCr) = arg(L) - arg(R)
+       * i.e. the phase of the left channel relative to the right - the
+       * definition of IPD. No sign flip is needed here (an earlier attempt
+       * negated pwrCi and measurably made the phase error worse). */
+      phi = (LONG)fixp_atan2(pwrCi[env][band], pwrCr[env][band]);
+
+      /* Round to the nearest multiple of pi/4, then wrap into 0..7. */
+      idx = (phi >= 0) ? ((phi + qHalfQ29) / qStepQ29)
+                       : -((-phi + qHalfQ29) / qStepQ29);
+      idx &= 0x07;
+      ipd[env][band] = (INT)idx;
+    }
+  }
+}
+
+/* Decide delta-frequency vs delta-time coding for IPD, mirroring what
+ * processIidData/processIccData do for the other parameters: count the bits
+ * each mode would need and keep the cheaper one. */
+static void processIpdData(PS_DATA *psData,
+                           INT ipd[PS_MAX_ENVELOPES][PS_MAX_BANDS],
+                           const INT psBands, const INT nEnvelopes) {
+  const INT ipdBands = fixMin(getIpdBands(psBands), psBands);
+  INT env, band, error = 0;
+
+  for (env = 0; env < nEnvelopes; env++) {
+    INT bitsFreq, bitsTime;
+
+    for (band = 0; band < PS_MAX_BANDS; band++) {
+      psData->ipdIdx[env][band] = ipd[env][band];
+    }
+
+    bitsFreq = FDKsbrEnc_EncodeIpd(NULL, psData->ipdIdx[env], NULL, ipdBands,
+                                   PS_DELTA_FREQ, &error);
+    /* Delta-time needs a valid previous frame; on the first frame (or right
+     * after a reset) fall back to delta-frequency. */
+    if (psData->ipdTimeCnt >= MAX_TIME_DIFF_FRAMES) {
+      bitsTime = DO_NOT_USE_THIS_MODE;
+    } else {
+      bitsTime = FDKsbrEnc_EncodeIpd(NULL, psData->ipdIdx[env],
+                                     psData->ipdIdxLast, ipdBands,
+                                     PS_DELTA_TIME, &error);
+    }
+
+    psData->ipdDiffMode[env] =
+        (bitsTime < bitsFreq) ? PS_DELTA_TIME : PS_DELTA_FREQ;
+  }
+
+  /* NOTE: ipdIdxLast is deliberately NOT updated here. It must still hold the
+   * PREVIOUS frame's values while the bitstream for this frame is written,
+   * because that is what delta-time coding is relative to (and what the
+   * decoder will have). It is rolled forward at the end of FDKsbrEnc_PSEncode,
+   * together with iidIdxLast/iccIdxLast - same ordering as IID/ICC. */
+}
+
 static void calculateICC(FIXP_DBL pwrL[PS_MAX_ENVELOPES][PS_MAX_BANDS],
                          FIXP_DBL pwrR[PS_MAX_ENVELOPES][PS_MAX_BANDS],
                          FIXP_DBL pwrCr[PS_MAX_ENVELOPES][PS_MAX_BANDS],
@@ -872,6 +997,7 @@ FDK_PSENC_ERROR FDKsbrEnc_PSEncode(
   HANDLE_PS_DATA hPsData = &hPsEncode->psData;
   FIXP_DBL iid[PS_MAX_ENVELOPES][PS_MAX_BANDS];
   FIXP_DBL icc[PS_MAX_ENVELOPES][PS_MAX_BANDS];
+  INT ipdQ[PS_MAX_ENVELOPES][PS_MAX_BANDS];
   int envBorder[PS_MAX_ENVELOPES + 1];
 
   int group, bin, col, subband, band;
@@ -996,6 +1122,18 @@ FDK_PSENC_ERROR FDKsbrEnc_PSEncode(
                  hPsEncode->iidQuantErrorThreshold);
   processIccData(hPsData, icc, psBands, nEnvelopes);
 
+  /* Frankenstein: IPD is derived from the FINAL pwrCr/pwrCi, i.e. after any
+   * envelope reduction above, so the phase matches the envelopes actually
+   * transmitted. Gated on --ps-ipd; when off, nothing is computed and the
+   * bitstream is byte-identical to stock. */
+  hPsData->ipdEnable = (g_franken.psIpd == 1) ? 1 : 0;
+  if (hPsData->ipdEnable) {
+    calculateIpd(pwrData->pwrCr, pwrData->pwrCi, ipdQ, nEnvelopes, psBands);
+    processIpdData(hPsData, ipdQ, psBands, nEnvelopes);
+  } else {
+    hPsData->ipdTimeCnt = MAX_TIME_DIFF_FRAMES;
+  }
+
   /*** Initialize output struct ***/
 
   /* PS Header on/off ? */
@@ -1003,7 +1141,10 @@ FDK_PSENC_ERROR FDKsbrEnc_PSEncode(
       ((hPsData->iidQuantMode == hPsData->iidQuantModeLast) &&
        (hPsData->iccQuantMode == hPsData->iccQuantModeLast)) &&
       ((hPsData->iidEnable == hPsData->iidEnableLast) &&
-       (hPsData->iccEnable == hPsData->iccEnableLast))) {
+       (hPsData->iccEnable == hPsData->iccEnableLast)) &&
+      /* A change in IPD presence flips the ps_extension flag, so the header
+       * must be re-sent for the decoder to pick it up. */
+      (hPsData->ipdEnable == hPsData->ipdEnableLast)) {
     hPsOut->enablePSHeader = 0;
   } else {
     hPsOut->enablePSHeader = 1;
@@ -1048,16 +1189,40 @@ FDK_PSENC_ERROR FDKsbrEnc_PSEncode(
       }
     }
 
-    /* IPD OPD not supported right now */
+    /* IPD: emitted only when --ps-ipd is on. OPD stays zero - the decoder does
+     * not measure it but reconstructs it from a joint IPD/level/coherence model,
+     * so a naive "phase of the downmix" value would be wrong; sending zeros is
+     * the defined neutral. The extension is still well-formed either way. */
+    hPsOut->enableIpdOpd = hPsData->ipdEnable;
+
     FDKmemclear(hPsOut->ipd,
+                PS_MAX_ENVELOPES * PS_MAX_BANDS * sizeof(PS_DELTA));
+    FDKmemclear(hPsOut->opd,
                 PS_MAX_ENVELOPES * PS_MAX_BANDS * sizeof(PS_DELTA));
     for (env = 0; env < PS_MAX_ENVELOPES; env++) {
       hPsOut->deltaIPD[env] = PS_DELTA_FREQ;
       hPsOut->deltaOPD[env] = PS_DELTA_FREQ;
     }
-
     FDKmemclear(hPsOut->ipdLast, PS_MAX_BANDS * sizeof(INT));
     FDKmemclear(hPsOut->opdLast, PS_MAX_BANDS * sizeof(INT));
+
+    if (hPsData->ipdEnable) {
+      for (env = 0; env < nEnvelopes; env++) {
+        hPsOut->deltaIPD[env] = (PS_DELTA)hPsData->ipdDiffMode[env];
+        hPsOut->deltaOPD[env] = PS_DELTA_FREQ;
+        for (band = 0; band < psBands; band++) {
+          hPsOut->ipd[env][band] = hPsData->ipdIdx[env][band];
+          /* OPD stays zero. MEASURED: the decoder couples the two phase
+           * parameters (OPD rotates both downmix paths, IPD only shifts the
+           * second), and neither OPD=0 nor the physically-motivated OPD=IPD/2
+           * reconstructs the source phase correctly - see the verdict in the
+           * docs. Leaving OPD at the defined neutral rather than guessing. */
+        }
+      }
+      for (band = 0; band < PS_MAX_BANDS; band++) {
+        hPsOut->ipdLast[band] = hPsData->ipdIdxLast[band];
+      }
+    }
 
     for (band = 0; band < PS_MAX_BANDS; band++) {
       hPsOut->iidLast[band] = hPsData->iidIdxLast[band];
@@ -1073,6 +1238,15 @@ FDK_PSENC_ERROR FDKsbrEnc_PSEncode(
     for (i = 0; i < psBands; i++) {
       hPsData->iidIdxLast[i] = hPsData->iidIdx[nEnvelopes - 1][i];
       hPsData->iccIdxLast[i] = hPsData->iccIdx[nEnvelopes - 1][i];
+    }
+    /* Same roll-forward for IPD, and only now may ipdTimeCnt report that a
+     * usable previous frame exists. */
+    if (hPsData->ipdEnable) {
+      for (i = 0; i < PS_MAX_BANDS; i++) {
+        hPsData->ipdIdxLast[i] = hPsData->ipdIdx[nEnvelopes - 1][i];
+      }
+      hPsData->ipdEnableLast = hPsData->ipdEnable;
+      hPsData->ipdTimeCnt = 0;
     }
   } /* Envelope > 0 */
 

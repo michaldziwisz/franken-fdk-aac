@@ -131,7 +131,66 @@
 {\pard \ql \f0 \sa180 \li0 \fi0 {\f1 --ps-env-reduce <0|1>} \u8212- i to jest pokr\u281 ?t\u322 ?o najwa\u380 ?niejsze, z powodu pewnej pu\u322 ?apki. Poproszenie o cztery obwiednie nie oznacza, \u380 ?e je dostaniesz. FDK uruchamia automatyczn\u261 ? p\u281 ?tl\u281 ? redukcji, kt\u243 ?ra po\u322 ?owi liczb\u281 ? obwiedni \u8212- cztery do dw\u243 ?ch do jednej \u8212- tak d\u322 ?ugo, jak s\u261 ?siednie obwiednie wygl\u261 ?daj\u261 ? podobnie wed\u322 ?ug zaszytego w kodzie progu b\u322 ?\u281 ?du. Na zwyk\u322 ?ej muzyce ten pr\u243 ?g spe\u322 ?nia si\u281 ? bardzo cz\u281 ?sto, wi\u281 ?c enkoder po cichu wraca do jednej migawki na ramk\u281 ?. Ustawienie {\f1 --ps-env-reduce 0} wy\u322 ?\u261 ?cza t\u281 ? p\u281 ?tl\u281 ? i sprawia, \u380 ?e {\f1 --ps-env} znaczy to, co m\u243 ?wi.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Pomiar jest tu wyj\u261 ?tkowo czytelny. Na czterosekundowej pr\u243 ?bce z panoram\u261 ? celowo przeci\u261 ?gan\u261 ? tam i z powrotem z cz\u281 ?stotliwo\u347 ?ci\u261 ? 0,25 Hz oraz naprzemiennymi transjentami lewo/prawo, kodowanej jako HE-AAC v2 przy 48 kbps, por\u243 ?wnuj\u261 ?c trajektori\u281 ? panoramy zdekodowanego wyniku z orygina\u322 ?em: stock enkoder wychodzi na 0,177 RMS b\u322 ?\u281 ?du panoramy (korelacja 0,9655). Samo poproszenie o cztery obwiednie nie zmienia {\i absolutnie nic} \u8212- wyj\u347 ?cie jest bit w bit identyczne ze stockiem, bo p\u281 ?tla redukcji natychmiast wycofuje \u380 ?\u261 ?danie. Dodaj {\f1 --ps-env-reduce 0} i b\u322 ?\u261 ?d spada do 0,117 (korelacja 0,9944) przy praktycznie tym samym rozmiarze pliku: o jedn\u261 ? trzeci\u261 ? mniejszy b\u322 ?\u261 ?d panoramy, za darmo. Je\u347 ?li masz wzi\u261 ?\u263 ? z tego rozdzia\u322 ?u jedno ustawienie, we\u378 ? {\f1 --ps-env 4 --ps-env-reduce 0}.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 {\f1 --ps-noenv-skip <0|1>} \u8212- pokrewny fragment ukrytego zachowania. Poza przerzedzaniem obwiedni FDK potrafi te\u380 ? pomin\u261 ?\u263 ? parametry stereo {\i ca\u322 ?kowicie} na pewnym odcinku ramek: gdy kolejne zestawy IID/ICC wygl\u261 ?daj\u261 ? podobnie, mo\u380 ?e wys\u322 ?a\u263 ? do dziesi\u281 ?ciu kolejnych ramek bez \u380 ?adnej informacji stereo, pozostawiaj\u261 ?c dekoder na ostatnich warto\u347 ?ciach, jakie dosta\u322 ?. Na materiale, gdzie obraz dryfuje wolno, s\u322 ?ycha\u263 ? to jako chwilowe sp\u322 ?aszczenie obrazu stereo i powr\u243 ?t. {\f1 --ps-noenv-skip 0} tego zabrania i wymusza parametry w ka\u380 ?dej ramce.\par}
-{\pard \ql \f0 \sa180 \li0 \fi0 UCZCIWIE o IPD/OPD (r\u243 ?\u380 ?nice fazy): enkoder FDK ich nie wysy\u322 ?a. Pola fazy s\u261 ? zaszyte na zero, z komentarzem \u8222 ?IPD OPD not supported right now". Warto jednak wiedzie\u263 ? dok\u322 ?adnie, jak daleko od gotowo\u347 ?ci to jest \u8212- bo jest bli\u380 ?ej, ni\u380 ? ten komentarz sugeruje. Enkoder ju\u380 ? teraz akumuluje zar\u243 ?wno cz\u281 ?\u347 ?\u263 ? rzeczywist\u261 ?, jak i urojon\u261 ? widma skro\u347 ?nego lewy/prawy dla ka\u380 ?dego pasma i ka\u380 ?dej obwiedni, a potem faz\u281 ? wyrzuca \u8212- u\u380 ?ywany jest tylko modu\u322 ?, do policzenia ICC. Tablice Huffmana i writery bitstreamu dla IPD i OPD r\u243 ?wnie\u380 ? ju\u380 ? s\u261 ?, kompletne. Brakuj\u261 ?cym elementem nie jest wi\u281 ?c \u8222 ?analiza fazy od zera"; jest nim wyliczenie k\u261 ?ta z dw\u243 ?ch liczb, kt\u243 ?re ju\u380 ? tam le\u380 ?\u261 ?, skwantowanie go i w\u322 ?\u261 ?czenie istniej\u261 ?cego writera. Czy warto to robi\u263 ?, to pytanie osobne od tego, czy jest to trudne.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel2 \b \fs28 IPD: wysy\u322 ?anie fazy ({\f1 --ps-ipd 1})\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Stock FDK nigdy nie wysy\u322 ?a fazy mi\u281 ?dzykana\u322 ?owej. Pola s\u261 ? zaszyte na zero z komentarzem \u8222 ?IPD OPD not supported right now" \u8212- ale ten komentarz zawy\u380 ?a dystans do dzia\u322 ?aj\u261 ?cej implementacji. Enkoder ju\u380 ? teraz akumuluje zar\u243 ?wno cz\u281 ?\u347 ?\u263 ? rzeczywist\u261 ?, jak i urojon\u261 ? widma skro\u347 ?nego lewy/prawy, dla ka\u380 ?dego pasma i ka\u380 ?dej obwiedni; u\u380 ?ywa tylko modu\u322 ?u, do policzenia ICC, a k\u261 ?t wyrzuca. Ten k\u261 ?t {\i jest} IPD. Tablice Huffmana i writer bitstreamu te\u380 ? ju\u380 ? by\u322 ?y na miejscu. Brakuj\u261 ?cym elementem nigdy nie by\u322 ?a wi\u281 ?c \u8222 ?analiza fazy od zera" \u8212- by\u322 ?o nim wzi\u281 ?cie {\f1 atan2} z dw\u243 ?ch liczb le\u380 ?\u261 ?cych ju\u380 ? w tej samej p\u281 ?tli, zaokr\u261 ?glenie do 8 zdefiniowanych krok\u243 ?w fazy i w\u322 ?\u261 ?czenie writera.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Dlaczego to ma znaczenie: bez fazy PS umieszcza d\u378 ?wi\u281 ?k w przestrzeni wy\u322 ?\u261 ?cznie r\u243 ?\u380 ?nicami poziomu i korelacj\u261 ?. To obejmuje wszystko, co spanoramowano poziomem, ale nie \u378 ?r\u243 ?d\u322 ?o umiejscowione {\i czasem}. Realne op\u243 ?\u378 ?nienie mi\u281 ?dzykana\u322 ?owe \u8212- a tak dzia\u322 ?a lokalizacja w dole pasma w naturze \u8212- jest dla IID i ICC niewidzialne, bo oba kana\u322 ?y nios\u261 ? ten sam sygna\u322 ? na tym samym poziomie i r\u243 ?\u380 ?ni\u261 ? si\u281 ? tylko momentem dotarcia.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Pomiar korzysta z pr\u243 ?bek zbudowanych dok\u322 ?adnie w ten spos\u243 ?b: identyczny sygna\u322 ? w obu kana\u322 ?ach, r\u243 ?wny poziom, r\u243 ?\u380 ?nica wy\u322 ?\u261 ?cznie w op\u243 ?\u378 ?nieniu. Por\u243 ?wnanie profilu fazy zdekodowanego materia\u322 ?u z orygina\u322 ?em, w zakresie, kt\u243 ?ry IPD realnie pokrywa (60-690 Hz):\par}
+{
+\trowd \trgaph120
+\clbrdrb\brdrs\cellx2880\clbrdrb\brdrs\cellx5760\clbrdrb\brdrs\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Op\u243 ?\u378 ?nienie mi\u281 ?dzykana\u322 ?owe\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 b\u322 ?\u261 ?d fazy, IPD wy\u322 ?.\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 b\u322 ?\u261 ?d fazy, IPD w\u322 ?.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2880\cellx5760\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0,25 ms\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 35,0\u176 ?\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\b 14,9\u176 ?}\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2880\cellx5760\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0,4 ms\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 56,1\u176 ?\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\b 24,9\u176 ?}\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2880\cellx5760\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0,7 ms\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 67,4\u176 ?\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 71,8\u176 ?\par}
+\cell}
+}
+\intbl\row}
+{\pard \ql \f0 \sa180 \li0 \fi0 \par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Przy \u263 ?wierci i czterech dziesi\u261 ?tych milisekundy b\u322 ?\u261 ?d fazy spada o ponad po\u322 ?ow\u281 ?, z identycznym wynikiem przy 32 i 48 kbps. Przy 0,7 ms korzy\u347 ?\u263 ? znika \u8212- i jest to reprezentacja dochodz\u261 ?ca do swojej granicy, a nie usterka. Na g\u243 ?rnym kra\u324 ?cu zasi\u281 ?gu IPD op\u243 ?\u378 ?nienie 0,7 ms przebiega ju\u380 ? niemal ca\u322 ?e plus-minus 180 stopni, wi\u281 ?c siatka co 45 stopni nie potrafi jednoznacznie powiedzie\u263 ?, gdzie ono jest. To ten sam sufit niejednoznaczno\u347 ?ci fazowej, przez kt\u243 ?ry s\u322 ?uch cz\u322 ?owieka korzysta z przes\u322 ?anek czasowych g\u322 ?\u243 ?wnie na dole.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Dwie uwagi praktyczne. IPD si\u281 ?ga tylko mniej wi\u281 ?cej najni\u380 ?szych 690 Hz, bo jego jedena\u347 ?cie pasm parametrycznych mie\u347 ?ci si\u281 ? w pierwszych trzech pasmach QMF \u8212- s\u322 ?uchanie albo mierzenie powy\u380 ?ej tego zakresu nie poka\u380 ?e zupe\u322 ?nie nic. I OPD zostaje na zerze celowo: dekoder sprz\u281 ?ga oba parametry, przy czym OPD obraca obie \u347 ?cie\u380 ?ki downmiksu, a IPD przesuwa tylko drug\u261 ?, a zero jest zdefiniowan\u261 ? warto\u347 ?ci\u261 ? neutraln\u261 ?. Fizycznie oczywisty strza\u322 ?, OPD = IPD/2, zosta\u322 ? zmierzony i r\u243 ?wnie\u380 ? nie odtwarza\u322 ? fazy \u378 ?r\u243 ?d\u322 ?a, wi\u281 ?c zamiast zgadywa\u263 ? dalej model dekodera, zostawiamy t\u281 ? po\u322 ?ow\u281 ? pary w spokoju.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Kompatybilno\u347 ?\u263 ? jest bezpieczna z samej konstrukcji. Dane siedz\u261 ? w rozszerzeniu z prefiksem d\u322 ?ugo\u347 ?ci, wi\u281 ?c dekoder, kt\u243 ?ry nie implementuje syntezy fazy \u8212- \u322 ?\u261 ?cznie z w\u322 ?asnym baseline'owym dekoderem PS w FDK \u8212- odczytuje liczb\u281 ? bajt\u243 ?w i je pomija, na co standard wprost pozwala. Zweryfikowane w praktyce: przy wy\u322 ?\u261 ?czonym prze\u322 ?\u261 ?czniku wyj\u347 ?cie jest bit-identyczne z poprzednim, a przy w\u322 ?\u261 ?czonym zar\u243 ?wno ffmpeg, jak i faad dekoduj\u261 ? czysto przy 24, 32, 48 i 64 kbps.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel2 \b \fs28 Detektory SBR: ataki i dorabiane harmoniczne\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 O tym, jak realnie brzmi odtwarzane pasmo g\u243 ?rne, decyduj\u261 ? w SBR g\u322 ?\u243 ?wnie dwa detektory \u8212- i do tej pory \u380 ?adnego z nich nie da\u322 ?o si\u281 ? dotkn\u261 ?\u263 ? z linii polece\u324 ?.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 {\b Detektor transjent\u243 ?w} decyduje, czy atak dostanie w\u322 ?asn\u261 ? obwiedni\u281 ?, czy zostanie u\u347 ?redniony na d\u322 ?u\u380 ?szym odcinku. Kiedy przegapi atak, energia uderzenia rozlewa si\u281 ? w ty\u322 ? w czasie \u8212- s\u322 ?ycha\u263 ? kr\u243 ?tki wysypek szumu wysokiego tu\u380 ? {\i przed} hi-hatem, nie po nim. To jest pre-echo i w pa\u347 ?mie SBR nale\u380 ?y do bardziej rozpoznawalnych artefakt\u243 ?w kodowania.\par}

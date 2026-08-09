@@ -2766,6 +2766,10 @@ AACENC_ERROR aacEncoder_SetParam(const HANDLE_AACENCODER hAacEncoder,
       g_franken.sbrNoiseMaxLevel = (INT)value;
       hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
       break;
+    case AACENC_FRANKEN_PS_IPD:
+      g_franken.psIpd = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
     case AACENC_FRANKEN_IS_BAND_LO:
       g_franken.isBandLo = (INT)value;
       hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;

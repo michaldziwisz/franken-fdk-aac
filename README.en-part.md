@@ -287,6 +287,37 @@ even at the cost of the stereo image.
 | `--ps-env <n>` | 1, 2 or 4 | -1 (bitrate table) | PS parameter envelopes per frame = **time** resolution of the stereo parameters. Above 36 kbps stock FDK always picks 4. More envelopes track a moving panorama and transients more closely. |
 | `--ps-env-reduce <n>` | 0, 1 | -1 (on) | `0` disables the automatic envelope-halving loop (`envelopeReducible`). By default FDK keeps collapsing 4 envelopes to 2 to 1 whenever neighbouring envelopes look similar by a hardcoded error threshold, so the envelope count you configured is often *not* what gets transmitted. `0` makes `--ps-env` literal. |
 | `--ps-noenv-skip <n>` | 0, 1 | -1 (on) | `0` forbids parameter-less PS frames. By default FDK may emit up to 10 consecutive frames carrying **no** stereo parameters at all when successive IID/ICC sets look similar, which can be heard as the stereo image briefly collapsing and snapping back. `0` = always send parameters. |
+| `--ps-ipd <0|1>` | 0, 1 | -1 (off) | Transmit **IPD** — the inter-channel *phase* difference — in the PS extension. Stock FDK never sends phase: it computes the complex L/R cross-spectrum, keeps only the magnitude for ICC and discards the angle. This knob takes that same angle (`atan2` over data already in the loop), quantises it to the 8 defined steps of pi/4 and enables the existing bitstream writer. Coded for the lower 5 (10-band) / 11 (20-band) parameter bands, per the MPEG-4 PS syntax. **Compatible:** the payload lives in a length-prefixed extension, so decoders without phase synthesis skip it by its byte count — explicitly permitted by ISO/IEC 14496-3. Verified: byte-identical output when off, clean decode with ffmpeg *and* faad at 24/32/48/64 kbps when on. |
+
+NOTE on what IPD buys you, and where it stops. Without phase, PS positions sound
+using level differences (IID) and correlation (ICC) only. That works for anything
+panned by level, but not for a source placed by *timing* — a real inter-channel
+delay, which is how natural low-frequency localisation actually works. Measured on
+probes built exactly that way (identical signal in both channels, equal level,
+offset only by an inter-channel delay), comparing the decoded phase profile inside
+the IPD range (60-690 Hz) against the source:
+
+| Inter-channel delay | phase error, IPD off | phase error, IPD on |
+|---|---|---|
+| 0.25 ms | 35.0 deg | **14.9 deg** |
+| 0.4 ms | 56.1 deg | **24.9 deg** |
+| 0.7 ms | 67.4 deg | 71.8 deg |
+
+At 0.25 and 0.4 ms the phase error drops by more than half, and the result is
+identical at 32 and 48 kbps. At 0.7 ms it stops helping — and that is a property
+of the representation, not a bug: by the top of the IPD range (~690 Hz) a 0.7 ms
+delay has already run through nearly the full +/-180 deg, so a 45 deg grid can no
+longer track it unambiguously. This is the classic phase-ambiguity limit of ITD,
+and the same reason hearing relies on timing cues mainly at low frequencies.
+
+Two things to keep in mind. First, IPD only covers roughly the lowest 690 Hz
+(11 parameter bands sit inside the first three QMF bands), so measuring or
+listening above that will show nothing — an earlier measurement of ours looked
+like a regression purely because it was scoped to 100-1500 Hz. Second, **OPD is
+deliberately left at zero.** The decoder couples the two: OPD rotates both
+downmix paths while IPD only shifts the second. Sending zero is the defined
+neutral; we also measured the physically-motivated OPD = IPD/2 and it did not
+reconstruct the source phase either, so we are not guessing at their model.
 
 NOTE about PS resolution: `--ps-bands` and `--ps-env` are the two axes that
 change *how many* stereo parameters are actually transmitted — in frequency and

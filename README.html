@@ -1130,8 +1130,65 @@ parameters at all when successive IID/ICC sets look similar, which can
 be heard as the stereo image briefly collapsing and snapping back.
 <code>0</code> = always send parameters.</td>
 </tr>
+<tr class="odd">
+<td>`--ps-ipd &lt;0</td>
+<td>1&gt;`</td>
+<td>0, 1</td>
+<td>-1 (off)</td>
+</tr>
 </tbody>
 </table>
+<p>NOTE on what IPD buys you, and where it stops. Without phase, PS
+positions sound using level differences (IID) and correlation (ICC)
+only. That works for anything panned by level, but not for a source
+placed by <em>timing</em> — a real inter-channel delay, which is how
+natural low-frequency localisation actually works. Measured on probes
+built exactly that way (identical signal in both channels, equal level,
+offset only by an inter-channel delay), comparing the decoded phase
+profile inside the IPD range (60-690 Hz) against the source:</p>
+<table>
+<thead>
+<tr class="header">
+<th>Inter-channel delay</th>
+<th>phase error, IPD off</th>
+<th>phase error, IPD on</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>0.25 ms</td>
+<td>35.0 deg</td>
+<td><strong>14.9 deg</strong></td>
+</tr>
+<tr class="even">
+<td>0.4 ms</td>
+<td>56.1 deg</td>
+<td><strong>24.9 deg</strong></td>
+</tr>
+<tr class="odd">
+<td>0.7 ms</td>
+<td>67.4 deg</td>
+<td>71.8 deg</td>
+</tr>
+</tbody>
+</table>
+<p>At 0.25 and 0.4 ms the phase error drops by more than half, and the
+result is identical at 32 and 48 kbps. At 0.7 ms it stops helping — and
+that is a property of the representation, not a bug: by the top of the
+IPD range (~690 Hz) a 0.7 ms delay has already run through nearly the
+full +/-180 deg, so a 45 deg grid can no longer track it unambiguously.
+This is the classic phase-ambiguity limit of ITD, and the same reason
+hearing relies on timing cues mainly at low frequencies.</p>
+<p>Two things to keep in mind. First, IPD only covers roughly the lowest
+690 Hz (11 parameter bands sit inside the first three QMF bands), so
+measuring or listening above that will show nothing — an earlier
+measurement of ours looked like a regression purely because it was
+scoped to 100-1500 Hz. Second, <strong>OPD is deliberately left at
+zero.</strong> The decoder couples the two: OPD rotates both downmix
+paths while IPD only shifts the second. Sending zero is the defined
+neutral; we also measured the physically-motivated OPD = IPD/2 and it
+did not reconstruct the source phase either, so we are not guessing at
+their model.</p>
 <p>NOTE about PS resolution: <code>--ps-bands</code> and
 <code>--ps-env</code> are the two axes that change <em>how many</em>
 stereo parameters are actually transmitted — in frequency and in time
@@ -3114,8 +3171,66 @@ stereo, gdy kolejne zestawy IID/ICC wyglądają podobnie — słychać to jako
 chwilowe zapadnięcie się obrazu stereo i powrót. <code>0</code> =
 wysyłaj zawsze.</td>
 </tr>
+<tr class="odd">
+<td>`--ps-ipd &lt;0</td>
+<td>1&gt;`</td>
+<td>0, 1</td>
+<td>-1 (wył.)</td>
+</tr>
 </tbody>
 </table>
+<p>UWAGA o tym, co IPD daje i gdzie się kończy. Bez fazy PS ustawia
+dźwięk w przestrzeni wyłącznie różnicami poziomu (IID) i korelacją
+(ICC). To działa dla wszystkiego, co spanoramowano poziomem, ale nie dla
+źródła umiejscowionego <em>czasem</em> — czyli realnym opóźnieniem
+międzykanałowym, a tak właśnie działa naturalna lokalizacja w dole
+pasma. Pomiar na próbkach zbudowanych dokładnie w ten sposób (identyczny
+sygnał w obu kanałach, równy poziom, różnica tylko w opóźnieniu),
+porównując profil fazy zdekodowanego materiału w zasięgu IPD (60-690 Hz)
+z oryginałem:</p>
+<table>
+<thead>
+<tr class="header">
+<th>Opóźnienie międzykanałowe</th>
+<th>błąd fazy, IPD wył.</th>
+<th>błąd fazy, IPD wł.</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>0,25 ms</td>
+<td>35,0°</td>
+<td><strong>14,9°</strong></td>
+</tr>
+<tr class="even">
+<td>0,4 ms</td>
+<td>56,1°</td>
+<td><strong>24,9°</strong></td>
+</tr>
+<tr class="odd">
+<td>0,7 ms</td>
+<td>67,4°</td>
+<td>71,8°</td>
+</tr>
+</tbody>
+</table>
+<p>Przy 0,25 i 0,4 ms błąd fazy spada o ponad połowę, a wynik jest
+identyczny przy 32 i 48 kbps. Przy 0,7 ms przestaje pomagać — i to jest
+właściwość samej reprezentacji, nie błąd: na górnej granicy zasięgu IPD
+(~690 Hz) opóźnienie 0,7 ms przebiega już niemal cały zakres ±180°, więc
+siatka co 45° nie nadąża za nim jednoznacznie. To klasyczna
+niejednoznaczność fazowa ITD i ten sam powód, dla którego słuch korzysta
+z przesłanek czasowych głównie na niskich częstotliwościach.</p>
+<p>Dwie rzeczy warte pamiętania. Po pierwsze, IPD obejmuje mniej więcej
+tylko najniższe 690 Hz (11 pasm parametrycznych mieści się w pierwszych
+trzech pasmach QMF), więc mierzenie albo słuchanie powyżej tego zakresu
+nic nie pokaże — nasz wcześniejszy pomiar wyglądał na regresję wyłącznie
+dlatego, że był zakresowany na 100-1500 Hz. Po drugie, <strong>OPD
+zostaje celowo na zerze.</strong> Dekoder sprzęga oba parametry: OPD
+obraca obie ścieżki downmiksu, a IPD przesuwa tylko drugą. Zero jest
+zdefiniowaną wartością neutralną; zmierzyliśmy też fizycznie umotywowane
+OPD = IPD/2 i ono również nie odtwarzało fazy źródła, więc nie zgadujemy
+ich modelu.</p>
 <p>UWAGA o rozdzielczości PS: <code>--ps-bands</code> i
 <code>--ps-env</code> to dwie osie, które zmieniają <em>ile</em>
 parametrów stereo realnie leci w strumieniu — odpowiednio w

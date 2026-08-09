@@ -281,6 +281,18 @@ PROGNAME " %s\n"
 " --ps <n>                    Force PS IID sending: -1 auto(def), 0 off, 1 on.\n"
 " --ps-iid-quant <n>          PS IID quant grid: -1 def, 0 coarse, 1 fine.\n"
 " --ps-icc <n>                Force ICC (channel coherence): -1 auto, 0 off, 1 on.\n"
+" --ps-ipd <0|1>              Transmit IPD (inter-channel PHASE difference) in the PS\n"
+"                               extension. 0/-1 = off (stock FDK behaviour, phase is\n"
+"                               never sent). PS otherwise reconstructs the stereo image\n"
+"                               from level differences and coherence alone; IPD adds the\n"
+"                               phase relationship, which matters for low/low-mid content,\n"
+"                               wide soft sources, reverb and inter-channel micro-delays.\n"
+"                               Coded for the lower 5 (10-band) / 11 (20-band) parameter\n"
+"                               bands per the MPEG-4 PS syntax. SAFE: the data lives in a\n"
+"                               length-prefixed extension, so decoders without phase\n"
+"                               synthesis skip it (explicitly permitted by the standard).\n"
+"                               OPD is not sent - the decoder derives it from a joint\n"
+"                               model rather than measuring it.\n"
 " --ps-icc-mode <n>           ICC rotation: -1 def, 0 ROT_A, 1 ROT_B. Signalling only --\n"
 "                               same matrix, computed differently by the decoder.\n"
 " --ps-bands <10|20>          PS stereo bands = FREQUENCY resolution of the stereo\n"
@@ -538,6 +550,7 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
 #define OPT_FR_SBR_MH_MAXCOMP    M4AF_FOURCC('f','m','m','c')
 #define OPT_FR_SBR_MH_DELTATIME  M4AF_FOURCC('f','m','d','t')
 #define OPT_FR_SBR_NOISE_MAX     M4AF_FOURCC('f','s','n','m')
+#define OPT_FR_PS_IPD            M4AF_FOURCC('f','p','i','d')
 #define OPT_FR_IS_BAND_LO        M4AF_FOURCC('f','i','l','o')
 #define OPT_FR_IS_BAND_HI        M4AF_FOURCC('f','i','h','i')
 #define OPT_FR_IS_FORCE_LO       M4AF_FOURCC('f','i','f','l')
@@ -668,7 +681,8 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
         { "sbr-mh-sfm-orig",       required_argument, 0, OPT_FR_SBR_MH_SFM_ORIG },
         { "sbr-mh-maxcomp",        required_argument, 0, OPT_FR_SBR_MH_MAXCOMP },
         { "sbr-mh-deltatime",      required_argument, 0, OPT_FR_SBR_MH_DELTATIME },
-        { "sbr-noise-max",         required_argument, 0, OPT_FR_SBR_NOISE_MAX },
+        { "sbr-noise-max",       required_argument, 0, OPT_FR_SBR_NOISE_MAX },
+        { "ps-ipd",              required_argument, 0, OPT_FR_PS_IPD            },
         { "is-lo",               required_argument, 0, OPT_FR_IS_BAND_LO        },
         { "is-hi",               required_argument, 0, OPT_FR_IS_BAND_HI        },
         { "is-force-lo",         required_argument, 0, OPT_FR_IS_FORCE_LO       },
@@ -758,6 +772,7 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
     params->fr_sbr_mh_maxcomp = -1;
     params->fr_sbr_mh_deltatime = -1;
     params->fr_sbr_noise_max = -1;
+    params->fr_ps_ipd = -1;
     params->fr_is_band_lo = -1;
     params->fr_is_band_hi = -1;
     params->fr_is_force_lo = -1;
@@ -1142,6 +1157,9 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
         case OPT_FR_SBR_NOISE_MAX:
             if (sscanf(optarg, "%d", &n) != 1 || !(n==6 || n==3 || n==-3)) { fprintf(stderr, "invalid arg for sbr-noise-max: noise-max (6, 3 or -3)\n"); return -1; }
             params->fr_sbr_noise_max = n; break;
+        case OPT_FR_PS_IPD:
+            if (sscanf(optarg, "%d", &n) != 1 || n < 0 || n > 1) { fprintf(stderr, "invalid arg for ps-ipd (0,1)\n"); return -1; }
+            params->fr_ps_ipd = n; break;
         case OPT_FR_IS_BAND_LO:
             if (sscanf(optarg, "%d", &n) != 1 || n < 0) { fprintf(stderr, "invalid arg for is-lo (>=0)\n"); return -1; }
             params->fr_is_band_lo = n; break;

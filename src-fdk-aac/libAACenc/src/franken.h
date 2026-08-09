@@ -115,6 +115,20 @@ typedef struct FRANKEN_CFG {
                          frames with NO stereo parameters at all when successive
                          IID/ICC sets look "similar" -- audible as a brief
                          collapse of the stereo image. 0 = always send. */
+  int psIpd;          /* -1/0 default (off); 1 = compute and transmit IPD
+                         (inter-channel phase difference) in the PS extension.
+                         The phase is derived from the complex cross-spectrum the
+                         encoder already accumulates (pwrCr/pwrCi), which stock
+                         FDK reduces to a magnitude for ICC and then discards -
+                         so this needs no new signal analysis, only atan2 plus
+                         quantisation to the 8 defined phase steps. Coded for the
+                         lower 5 (10-band) / 11 (20-band) parameter bands, per
+                         the MPEG-4 PS syntax. OPD stays zero: the decoder does
+                         not measure it but reconstructs it from a joint
+                         IPD/level/coherence model. Decoders that do not
+                         implement phase synthesis (including FDK's own baseline
+                         PS decoder) skip the extension by its byte count, which
+                         ISO/IEC 14496-3 explicitly permits. */
   int effPsBands;     /* read-back: effective stereo bands (-1 n/a) */
   int effPsEnvelopes; /* read-back: effective max envelopes (-1 n/a) */
 

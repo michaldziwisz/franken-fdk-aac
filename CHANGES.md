@@ -5,6 +5,46 @@ Library** (per section 2 of the FDK AAC license, see `NOTICE.fdk-aac`).
 
 ## Releases
 
+### Unreleased — IPD: inter-channel phase in Parametric Stereo (`--ps-ipd`)
+
+- **`--ps-ipd <0|1>`** — transmit IPD (inter-channel phase difference) in the PS
+  extension. Stock FDK hardcodes phase to zero ("IPD OPD not supported right
+  now"), yet it already accumulates the full complex L/R cross-spectrum and uses
+  only its magnitude for ICC. IPD is that discarded angle: `fixp_atan2(pwrCi,
+  pwrCr)` (already in libFDK), quantised to the 8 defined pi/4 steps.
+- Coded for the lower **5 / 11 / 17** parameter bands, NOT the 10 / 20 / 34 used
+  by IID/ICC. Verified against ffmpeg's independent decoder
+  (`aacps_common.c: nr_iidopd_par_tab[] = {5, 11, 17, ...}`); it also coincides
+  with the border already used by `calculateICC()`. The writer previously used
+  `getNoBands()` (10/20) — corrected via a dedicated `getNoIpdOpdBands()`.
+- **Fixed two latent stock-FDK bugs** that only surface once the extension carries
+  data: (a) `encodeIpdOpd()` wrote the `enable_ipdopd` flag without counting its
+  bit, so the sizing pass returned one bit less than the write pass, desyncing the
+  extension byte count and tripping the SBR alignment assertion
+  (`env_bit.cpp:229`); (b) the extension was emitted only in frames carrying a PS
+  header, although `enable_ext` is a header field that stays in force — the
+  decoder kept expecting data that was not there ("Expected to read N PS bits
+  actually read M", then "illegal icc").
+- Phase delta-coding now wraps modulo 8, matching the decoder, which accumulates
+  the Huffman deltas and masks with `&0x07`. Without the wrap every negative phase
+  step was rejected as an error.
+- MEASURED on probes where stereo is carried purely by inter-channel delay (equal
+  levels, so IID/ICC cannot represent it), phase error inside the IPD range
+  (60-690 Hz) versus source: 0.25 ms delay 35.0 -> **14.9** deg, 0.4 ms 56.1 ->
+  **24.9** deg, identical at 32 and 48 kbps. At 0.7 ms it stops helping (67.4 ->
+  71.8) because by ~690 Hz that delay has swung through nearly +/-180 deg and a
+  45 deg grid can no longer resolve it — the classic ITD phase ambiguity, a limit
+  of the representation rather than a defect.
+- OPD deliberately left at zero: the decoder couples the pair (OPD rotates both
+  downmix paths, IPD shifts only the second). The physically motivated
+  OPD = IPD/2 was measured and did not reconstruct source phase either, so the
+  defined neutral is kept rather than guessing at the decoder's model.
+- COMPATIBILITY verified, not assumed: byte-identical output with the switch off
+  (and with `--ps-ipd 0`), clean decode by ffmpeg **and** faad at 24/32/48/64 kbps
+  with it on. The payload sits in a length-prefixed extension, which decoders
+  without phase synthesis may skip — explicitly permitted by ISO/IEC 14496-3.
+- `make check` 137/137 PASS, including new opt-in and parser-error assertions.
+
 ### Unreleased — SBR transient / missing-harmonics detectors + noise ceiling
 
 - **`--sbr-tran-thr <n>`** — scales the master SBR transient threshold. Measured

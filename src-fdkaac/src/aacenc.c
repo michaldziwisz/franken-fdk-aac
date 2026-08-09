@@ -311,6 +311,7 @@ int aacenc_init(HANDLE_AACENCODER *encoder, const aacenc_param_t *params,
     FR_SET(params->fr_sbr_mh_maxcomp != -1, AACENC_FRANKEN_SBR_MH_MAXCOMP, params->fr_sbr_mh_maxcomp);
     FR_SET(params->fr_sbr_mh_deltatime != -1, AACENC_FRANKEN_SBR_MH_DELTATIME, params->fr_sbr_mh_deltatime);
     FR_SET(params->fr_sbr_noise_max != -1, AACENC_FRANKEN_SBR_NOISE_MAX, params->fr_sbr_noise_max);
+    FR_SET(params->fr_ps_ipd != -1, AACENC_FRANKEN_PS_IPD, params->fr_ps_ipd);
     FR_SET(params->fr_is_band_lo != -1, AACENC_FRANKEN_IS_BAND_LO, params->fr_is_band_lo);
     FR_SET(params->fr_is_band_hi != -1, AACENC_FRANKEN_IS_BAND_HI, params->fr_is_band_hi);
     FR_SET(params->fr_is_force_lo != -1, AACENC_FRANKEN_IS_FORCE_LO, params->fr_is_force_lo);
@@ -521,7 +522,10 @@ int aacenc_init(HANDLE_AACENCODER *encoder, const aacenc_param_t *params,
             fprintf(stderr, " PS parameter-less frm : %s\n",
                     params->fr_ps_noenv_skip == 0 ? "forbidden (always send parameters)"
                                                   : "allowed (default: up to 10 in a row)");
-            fprintf(stderr, " PS IPD/OPD (phase)    : not emitted (FDK sends zeros; cross-spectrum Im part is computed but unused)\n");
+            if (params->fr_ps_ipd == 1)
+                fprintf(stderr, " PS IPD (phase)        : ON - transmitted in ps_extension, lower 5/11 bands, 8 steps of pi/4 (OPD still zero)\n");
+            else
+                fprintf(stderr, " PS IPD/OPD (phase)    : not emitted (stock: cross-spectrum Im part is computed but discarded); enable with --ps-ipd 1\n");
         }
         /* Bit-reservoir budget helper: the hard AAC ceiling is 6144 bits per
          * channel per frame; the usable reservoir is that minus the average

@@ -142,6 +142,16 @@ typedef struct T_PS_DATA {
   INT iccIdx[PS_MAX_ENVELOPES][PS_MAX_BANDS];
   INT iccIdxLast[PS_MAX_BANDS];
 
+  /* Frankenstein: IPD (inter-channel phase difference) state, mirroring the
+   * IID/ICC members above. Only the lower 5 (10-band) / 11 (20-band) entries
+   * are ever transmitted. */
+  INT ipdEnable;
+  INT ipdEnableLast;
+  INT ipdDiffMode[PS_MAX_ENVELOPES];
+  INT ipdIdx[PS_MAX_ENVELOPES][PS_MAX_BANDS];
+  INT ipdIdxLast[PS_MAX_BANDS];
+  INT ipdTimeCnt;
+
   INT nEnvelopesLast;
 
   INT headerCnt;

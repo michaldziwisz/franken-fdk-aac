@@ -287,6 +287,37 @@ even at the cost of the stereo image.
 | `--ps-env <n>` | 1, 2 or 4 | -1 (bitrate table) | PS parameter envelopes per frame = **time** resolution of the stereo parameters. Above 36 kbps stock FDK always picks 4. More envelopes track a moving panorama and transients more closely. |
 | `--ps-env-reduce <n>` | 0, 1 | -1 (on) | `0` disables the automatic envelope-halving loop (`envelopeReducible`). By default FDK keeps collapsing 4 envelopes to 2 to 1 whenever neighbouring envelopes look similar by a hardcoded error threshold, so the envelope count you configured is often *not* what gets transmitted. `0` makes `--ps-env` literal. |
 | `--ps-noenv-skip <n>` | 0, 1 | -1 (on) | `0` forbids parameter-less PS frames. By default FDK may emit up to 10 consecutive frames carrying **no** stereo parameters at all when successive IID/ICC sets look similar, which can be heard as the stereo image briefly collapsing and snapping back. `0` = always send parameters. |
+| `--ps-ipd <0|1>` | 0, 1 | -1 (off) | Transmit **IPD** — the inter-channel *phase* difference — in the PS extension. Stock FDK never sends phase: it computes the complex L/R cross-spectrum, keeps only the magnitude for ICC and discards the angle. This knob takes that same angle (`atan2` over data already in the loop), quantises it to the 8 defined steps of pi/4 and enables the existing bitstream writer. Coded for the lower 5 (10-band) / 11 (20-band) parameter bands, per the MPEG-4 PS syntax. **Compatible:** the payload lives in a length-prefixed extension, so decoders without phase synthesis skip it by its byte count — explicitly permitted by ISO/IEC 14496-3. Verified: byte-identical output when off, clean decode with ffmpeg *and* faad at 24/32/48/64 kbps when on. |
+
+NOTE on what IPD buys you, and where it stops. Without phase, PS positions sound
+using level differences (IID) and correlation (ICC) only. That works for anything
+panned by level, but not for a source placed by *timing* — a real inter-channel
+delay, which is how natural low-frequency localisation actually works. Measured on
+probes built exactly that way (identical signal in both channels, equal level,
+offset only by an inter-channel delay), comparing the decoded phase profile inside
+the IPD range (60-690 Hz) against the source:
+
+| Inter-channel delay | phase error, IPD off | phase error, IPD on |
+|---|---|---|
+| 0.25 ms | 35.0 deg | **14.9 deg** |
+| 0.4 ms | 56.1 deg | **24.9 deg** |
+| 0.7 ms | 67.4 deg | 71.8 deg |
+
+At 0.25 and 0.4 ms the phase error drops by more than half, and the result is
+identical at 32 and 48 kbps. At 0.7 ms it stops helping — and that is a property
+of the representation, not a bug: by the top of the IPD range (~690 Hz) a 0.7 ms
+delay has already run through nearly the full +/-180 deg, so a 45 deg grid can no
+longer track it unambiguously. This is the classic phase-ambiguity limit of ITD,
+and the same reason hearing relies on timing cues mainly at low frequencies.
+
+Two things to keep in mind. First, IPD only covers roughly the lowest 690 Hz
+(11 parameter bands sit inside the first three QMF bands), so measuring or
+listening above that will show nothing — an earlier measurement of ours looked
+like a regression purely because it was scoped to 100-1500 Hz. Second, **OPD is
+deliberately left at zero.** The decoder couples the two: OPD rotates both
+downmix paths while IPD only shifts the second. Sending zero is the defined
+neutral; we also measured the physically-motivated OPD = IPD/2 and it did not
+reconstruct the source phase either, so we are not guessing at their model.
 
 NOTE about PS resolution: `--ps-bands` and `--ps-env` are the two axes that
 change *how many* stereo parameters are actually transmitted — in frequency and
@@ -1117,6 +1148,38 @@ nawet kosztem obrazu stereo.
 | `--ps-env <n>` | 1, 2 albo 4 | -1 (tabela bitrate) | Liczba obwiedni parametrów PS na ramkę = rozdzielczość **czasowa** parametrów stereo. Powyżej 36 kbps stock FDK zawsze bierze 4. Więcej obwiedni wierniej nadąża za ruchomą panoramą i transjentami. |
 | `--ps-env-reduce <n>` | 0, 1 | -1 (włączone) | `0` wyłącza automatyczną pętlę połowienia obwiedni (`envelopeReducible`). Domyślnie FDK zwija 4 obwiednie do 2 i do 1, gdy sąsiednie obwiednie wyglądają podobnie według zaszytego progu błędu — więc liczba obwiedni, którą ustawiłeś, często *nie* jest tym, co realnie leci w strumieniu. `0` sprawia, że `--ps-env` działa literalnie. |
 | `--ps-noenv-skip <n>` | 0, 1 | -1 (włączone) | `0` zabrania ramek PS bez parametrów. Domyślnie FDK może wysłać do 10 kolejnych ramek **bez żadnych** parametrów stereo, gdy kolejne zestawy IID/ICC wyglądają podobnie — słychać to jako chwilowe zapadnięcie się obrazu stereo i powrót. `0` = wysyłaj zawsze. |
+| `--ps-ipd <0|1>` | 0, 1 | -1 (wył.) | Wysyłaj **IPD** — międzykanałową różnicę *fazy* — w rozszerzeniu PS. Stock FDK nigdy nie wysyła fazy: liczy zespolone widmo skrośne L/R, zachowuje z niego tylko moduł na potrzeby ICC, a kąt wyrzuca. To pokrętło bierze dokładnie ten kąt (`atan2` na danych już obecnych w pętli), kwantuje go do 8 zdefiniowanych kroków po π/4 i włącza istniejący writer bitstreamu. Kodowane dla dolnych 5 (10 pasm) / 11 (20 pasm) pasm parametrycznych, zgodnie ze składnią MPEG-4 PS. **Kompatybilne:** dane leżą w rozszerzeniu z prefiksem długości, więc dekodery bez syntezy fazy pomijają je po liczbie bajtów — na co ISO/IEC 14496-3 wprost pozwala. Zweryfikowane: przy wyłączonym wyjście bit-identyczne, przy włączonym czysty odczyt w ffmpeg *i* faad przy 24/32/48/64 kbps. |
+
+UWAGA o tym, co IPD daje i gdzie się kończy. Bez fazy PS ustawia dźwięk w
+przestrzeni wyłącznie różnicami poziomu (IID) i korelacją (ICC). To działa dla
+wszystkiego, co spanoramowano poziomem, ale nie dla źródła umiejscowionego
+*czasem* — czyli realnym opóźnieniem międzykanałowym, a tak właśnie działa
+naturalna lokalizacja w dole pasma. Pomiar na próbkach zbudowanych dokładnie w ten
+sposób (identyczny sygnał w obu kanałach, równy poziom, różnica tylko w
+opóźnieniu), porównując profil fazy zdekodowanego materiału w zasięgu IPD
+(60-690 Hz) z oryginałem:
+
+| Opóźnienie międzykanałowe | błąd fazy, IPD wył. | błąd fazy, IPD wł. |
+|---|---|---|
+| 0,25 ms | 35,0° | **14,9°** |
+| 0,4 ms | 56,1° | **24,9°** |
+| 0,7 ms | 67,4° | 71,8° |
+
+Przy 0,25 i 0,4 ms błąd fazy spada o ponad połowę, a wynik jest identyczny przy
+32 i 48 kbps. Przy 0,7 ms przestaje pomagać — i to jest właściwość samej
+reprezentacji, nie błąd: na górnej granicy zasięgu IPD (~690 Hz) opóźnienie 0,7 ms
+przebiega już niemal cały zakres ±180°, więc siatka co 45° nie nadąża za nim
+jednoznacznie. To klasyczna niejednoznaczność fazowa ITD i ten sam powód, dla
+którego słuch korzysta z przesłanek czasowych głównie na niskich częstotliwościach.
+
+Dwie rzeczy warte pamiętania. Po pierwsze, IPD obejmuje mniej więcej tylko
+najniższe 690 Hz (11 pasm parametrycznych mieści się w pierwszych trzech pasmach
+QMF), więc mierzenie albo słuchanie powyżej tego zakresu nic nie pokaże — nasz
+wcześniejszy pomiar wyglądał na regresję wyłącznie dlatego, że był zakresowany na
+100-1500 Hz. Po drugie, **OPD zostaje celowo na zerze.** Dekoder sprzęga oba
+parametry: OPD obraca obie ścieżki downmiksu, a IPD przesuwa tylko drugą. Zero
+jest zdefiniowaną wartością neutralną; zmierzyliśmy też fizycznie umotywowane
+OPD = IPD/2 i ono również nie odtwarzało fazy źródła, więc nie zgadujemy ich modelu.
 
 UWAGA o rozdzielczości PS: `--ps-bands` i `--ps-env` to dwie osie, które zmieniają
 *ile* parametrów stereo realnie leci w strumieniu — odpowiednio w częstotliwości

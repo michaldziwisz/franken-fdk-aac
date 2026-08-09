@@ -546,16 +546,58 @@ na ostatnich wartościach, jakie dostał. Na materiale, gdzie obraz dryfuje woln
 słychać to jako chwilowe spłaszczenie obrazu stereo i powrót. `--ps-noenv-skip 0`
 tego zabrania i wymusza parametry w każdej ramce.
 
-UCZCIWIE o IPD/OPD (różnice fazy): enkoder FDK ich nie wysyła. Pola fazy są zaszyte
-na zero, z komentarzem „IPD OPD not supported right now". Warto jednak wiedzieć
-dokładnie, jak daleko od gotowości to jest — bo jest bliżej, niż ten komentarz
-sugeruje. Enkoder już teraz akumuluje zarówno część rzeczywistą, jak i urojoną
-widma skrośnego lewy/prawy dla każdego pasma i każdej obwiedni, a potem fazę
-wyrzuca — używany jest tylko moduł, do policzenia ICC. Tablice Huffmana i writery
-bitstreamu dla IPD i OPD również już są, kompletne. Brakującym elementem nie jest
-więc „analiza fazy od zera"; jest nim wyliczenie kąta z dwóch liczb, które już tam
-leżą, skwantowanie go i włączenie istniejącego writera. Czy warto to robić, to
-pytanie osobne od tego, czy jest to trudne.
+### IPD: wysyłanie fazy (`--ps-ipd 1`)
+
+Stock FDK nigdy nie wysyła fazy międzykanałowej. Pola są zaszyte na zero z
+komentarzem „IPD OPD not supported right now" — ale ten komentarz zawyża dystans do
+działającej implementacji. Enkoder już teraz akumuluje zarówno część rzeczywistą,
+jak i urojoną widma skrośnego lewy/prawy, dla każdego pasma i każdej obwiedni;
+używa tylko modułu, do policzenia ICC, a kąt wyrzuca. Ten kąt *jest* IPD. Tablice
+Huffmana i writer bitstreamu też już były na miejscu. Brakującym elementem nigdy nie
+była więc „analiza fazy od zera" — było nim wzięcie `atan2` z dwóch liczb leżących
+już w tej samej pętli, zaokrąglenie do 8 zdefiniowanych kroków fazy i włączenie
+writera.
+
+Dlaczego to ma znaczenie: bez fazy PS umieszcza dźwięk w przestrzeni wyłącznie
+różnicami poziomu i korelacją. To obejmuje wszystko, co spanoramowano poziomem, ale
+nie źródło umiejscowione *czasem*. Realne opóźnienie międzykanałowe — a tak działa
+lokalizacja w dole pasma w naturze — jest dla IID i ICC niewidzialne, bo oba kanały
+niosą ten sam sygnał na tym samym poziomie i różnią się tylko momentem dotarcia.
+
+Pomiar korzysta z próbek zbudowanych dokładnie w ten sposób: identyczny sygnał w obu
+kanałach, równy poziom, różnica wyłącznie w opóźnieniu. Porównanie profilu fazy
+zdekodowanego materiału z oryginałem, w zakresie, który IPD realnie pokrywa
+(60-690 Hz):
+
+| Opóźnienie międzykanałowe | błąd fazy, IPD wył. | błąd fazy, IPD wł. |
+|---|---|---|
+| 0,25 ms | 35,0° | **14,9°** |
+| 0,4 ms | 56,1° | **24,9°** |
+| 0,7 ms | 67,4° | 71,8° |
+
+Przy ćwierci i czterech dziesiątych milisekundy błąd fazy spada o ponad połowę, z
+identycznym wynikiem przy 32 i 48 kbps. Przy 0,7 ms korzyść znika — i jest to
+reprezentacja dochodząca do swojej granicy, a nie usterka. Na górnym krańcu zasięgu
+IPD opóźnienie 0,7 ms przebiega już niemal całe plus-minus 180 stopni, więc siatka
+co 45 stopni nie potrafi jednoznacznie powiedzieć, gdzie ono jest. To ten sam sufit
+niejednoznaczności fazowej, przez który słuch człowieka korzysta z przesłanek
+czasowych głównie na dole.
+
+Dwie uwagi praktyczne. IPD sięga tylko mniej więcej najniższych 690 Hz, bo jego
+jedenaście pasm parametrycznych mieści się w pierwszych trzech pasmach QMF —
+słuchanie albo mierzenie powyżej tego zakresu nie pokaże zupełnie nic. I OPD zostaje
+na zerze celowo: dekoder sprzęga oba parametry, przy czym OPD obraca obie ścieżki
+downmiksu, a IPD przesuwa tylko drugą, a zero jest zdefiniowaną wartością neutralną.
+Fizycznie oczywisty strzał, OPD = IPD/2, został zmierzony i również nie odtwarzał
+fazy źródła, więc zamiast zgadywać dalej model dekodera, zostawiamy tę połowę pary
+w spokoju.
+
+Kompatybilność jest bezpieczna z samej konstrukcji. Dane siedzą w rozszerzeniu z
+prefiksem długości, więc dekoder, który nie implementuje syntezy fazy — łącznie z
+własnym baseline'owym dekoderem PS w FDK — odczytuje liczbę bajtów i je pomija, na
+co standard wprost pozwala. Zweryfikowane w praktyce: przy wyłączonym przełączniku
+wyjście jest bit-identyczne z poprzednim, a przy włączonym zarówno ffmpeg, jak i
+faad dekodują czysto przy 24, 32, 48 i 64 kbps.
 
 ### Detektory SBR: ataki i dorabiane harmoniczne
 
