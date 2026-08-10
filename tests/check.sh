@@ -30,7 +30,7 @@ command -v ffmpeg  >/dev/null || { echo "SKIP: brak ffmpeg";  exit 77; }
 command -v python3 >/dev/null || { echo "SKIP: brak python3"; exit 77; }
 [ -x "$X64" ] || [ -f "$X64" ] || { echo "FAIL: brak $X64"; exit 1; }
 
-cleanup(){ rm -f "$WAV" _check_dab_in.wav _check_psmulti.wav "${OUT}"*.m4a "${OUT}"*.aac "${OUT}"*.txt "${OUT}"*.dabp "${OUT}"*.bin; rm -rf _check_dabtmp; }
+cleanup(){ rm -f "$WAV" _check_dab_in.wav _check_psmulti.wav _check_psnoiid.wav "${OUT}"*.m4a "${OUT}"*.aac "${OUT}"*.txt "${OUT}"*.dabp "${OUT}"*.bin; rm -rf _check_dabtmp; }
 trap cleanup EXIT
 
 # --- probka: 2s stereo, ton + lekki szum (rusza MS/IS/TNS) ---
@@ -484,6 +484,65 @@ elif cmp -s "${OUT}_psmulti_base.aac" "${OUT}_psmulti_off.aac"; then
   ok "--ps-ipd 0 @ wieloobwiedniowe: bit-identyczne z brakiem flagi"
 else
   bad "--ps-ipd 0 @ wieloobwiedniowe ZMIENIA wyjscie"
+fi
+
+# --- IPD/OPD wymaga zasygnalizowanego IID (bug naprawiony 10.08.2026) ---
+#
+# Liczba pasm IPD/OPD NIE jedzie w rozszerzeniu - dekoder wyciaga ja z iid_mode,
+# i to WYLACZNIE w galezi naglowka bramkowanej przez enable_iid:
+#   if (header) { enable_iid = get_bits1();
+#                 if (enable_iid) { nr_ipdopd_par = nr_iidopd_par_tab[iid_mode]; } }
+# (ffmpeg libavcodec/aacps_common.c). FDK wlacza IID z heurystyki roznicy
+# glosnosci, wiec na materiale o zblizonych poziomach kanalow legalnie wysylal
+# enable_iid = 0 - a wtedy dekoder mial 0 pasm fazy, czytal MNIEJ bitow niz
+# zapisalismy (overflow rozszerzenia, zepsuty parse ICC) i CICHO WYRZUCAL cala
+# przeslana faze. Ta sciezka wychodzila glownie przy wielu obwiedniach.
+#
+# Probka: prawie idealna przeciwfaza (L = x, R = -x) - kanaly maja identyczne
+# poziomy, wiec heurystyka IID zostaje wylaczona i warunek jest realnie testowany.
+PSNOIID="_check_psnoiid.wav"
+python3 - "$PSNOIID" <<'PY'
+import wave, struct, math, random, sys
+sr = 44100
+rnd = random.Random(5)
+c = lambda x: max(-32768, min(32767, int(x)))
+n = sr * 3
+st = 0.0
+fr = []
+for i in range(n):
+    t = i / sr
+    v = (math.sin(2 * math.pi * 70 * t) + 0.8 * math.sin(2 * math.pi * 150 * t)
+         + 0.6 * math.sin(2 * math.pi * 260 * t)
+         + 0.4 * math.sin(2 * math.pi * 480 * t))
+    st = 0.97 * st + 0.03 * rnd.uniform(-1, 1)
+    s = (v + 5.0 * st) * (0.6 + 0.4 * math.sin(2 * math.pi * 0.3 * t))
+    # identyczne poziomy L/P, przeciwna faza -> IID heurystycznie WYLACZONE
+    fr.append(struct.pack('<hh', c(4200 * s), c(-4200 * s)))
+w = wave.open(sys.argv[1], 'wb')
+w.setnchannels(2); w.setsampwidth(2); w.setframerate(sr)
+w.writeframes(b''.join(fr)); w.close()
+PY
+
+for evar in "--ps-env 4 --ps-env-reduce 0" "--ps-env 2 --ps-env-reduce 0"; do
+  lbl=$(echo "$evar" | awk '{print $2}')
+  enc "$X64" -p29 -b48000 -f2 --ps-ipd 1 --ps-opd 1 $evar \
+      -o "${OUT}_psnoiid_${lbl}.aac" "$PSNOIID"
+  if [ ! -s "${OUT}_psnoiid_${lbl}.aac" ]; then
+    bad "IPD bez IID (env $lbl): BRAK pliku - nierozstrzygniete"
+  elif [ "$(derr ${OUT}_psnoiid_${lbl}.aac)" = "0" ]; then
+    ok "IPD+OPD @ przeciwfaza, $lbl obwiedni: dekodowalny (IID sygnalizowane)"
+  else
+    bad "IPD+OPD @ przeciwfaza, $lbl obwiedni: bledy (brak enable_iid dla pasm fazy?)"
+  fi
+done
+
+# Ta probka tez musi zostac bit-identyczna bez flagi IPD.
+enc "$X64" -p29 -b48000 -f2 -o "${OUT}_psnoiid_b.aac" "$PSNOIID"
+enc "$X64" -p29 -b48000 -f2 --ps-ipd 0 -o "${OUT}_psnoiid_o.aac" "$PSNOIID"
+if [ -s "${OUT}_psnoiid_b.aac" ] && cmp -s "${OUT}_psnoiid_b.aac" "${OUT}_psnoiid_o.aac"; then
+  ok "--ps-ipd 0 @ przeciwfaza: bit-identyczne z brakiem flagi"
+else
+  bad "--ps-ipd 0 @ przeciwfaza: ZMIENIA wyjscie lub brak pliku"
 fi
 
 echo "==================================="

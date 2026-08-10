@@ -1262,6 +1262,39 @@ FDK_PSENC_ERROR FDKsbrEnc_PSEncode(
     hPsOut->enableIID = hPsData->iidEnable;
     hPsOut->iidMode = getIIDMode(psBands, hPsData->iidQuantMode);
 
+    /* BUGFIX (ours, 10.08.2026): the phase extension is only decodable when the
+     * stream also signals IID.
+     *
+     * The number of IPD/OPD parameter bands is NOT carried in the extension -
+     * the decoder derives it from iid_mode, and it does so exclusively inside
+     * the header branch that is guarded by enable_iid:
+     *
+     *     if (header) {
+     *         enable_iid = get_bits1();
+     *         if (enable_iid) { iid_mode = get_bits(3);
+     *                           nr_ipdopd_par = nr_iidopd_par_tab[iid_mode]; }
+     *     }
+     *     (ffmpeg libavcodec/aacps_common.c)
+     *
+     * FDK enables IID from a loudness-difference heuristic, so on material with
+     * little level difference between the channels it legitimately sends
+     * enable_iid = 0. Emitting phase data in such a frame left the decoder with
+     * nr_ipdopd_par = 0: it read FEWER bits than we wrote, the extension length
+     * counter went negative ("ps extension overflow -2/-4") and the ICC parse
+     * that follows was corrupted. It also means the phase we spent bits on was
+     * silently discarded, since a zero band count decodes no phase at all.
+     *
+     * Measured: forcing IID on removes the decoder errors in 6/6 affected
+     * cases (multi-envelope paths on near-antiphase material) and changes
+     * nothing where IID was already on. IID is a normal, well-supported
+     * parameter, so signalling it is cheap and always legal - and it is the
+     * only way the band count reaches the decoder.
+     *
+     * Gated on ipdEnable, so without --ps-ipd the bitstream is untouched. */
+    if (hPsData->ipdEnable) {
+      hPsOut->enableIID = 1;
+    }
+
     hPsOut->enableICC = hPsData->iccEnable;
     hPsOut->iccMode = getICCMode(psBands, hPsData->iccQuantMode);
 
