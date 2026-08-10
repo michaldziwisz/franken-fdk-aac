@@ -30,7 +30,7 @@ command -v ffmpeg  >/dev/null || { echo "SKIP: brak ffmpeg";  exit 77; }
 command -v python3 >/dev/null || { echo "SKIP: brak python3"; exit 77; }
 [ -x "$X64" ] || [ -f "$X64" ] || { echo "FAIL: brak $X64"; exit 1; }
 
-cleanup(){ rm -f "$WAV" _check_dab_in.wav "${OUT}"*.m4a "${OUT}"*.aac "${OUT}"*.txt "${OUT}"*.dabp "${OUT}"*.bin; rm -rf _check_dabtmp; }
+cleanup(){ rm -f "$WAV" _check_dab_in.wav _check_psmulti.wav "${OUT}"*.m4a "${OUT}"*.aac "${OUT}"*.txt "${OUT}"*.dabp "${OUT}"*.bin; rm -rf _check_dabtmp; }
 trap cleanup EXIT
 
 # --- probka: 2s stereo, ton + lekki szum (rusza MS/IS/TNS) ---
@@ -55,11 +55,19 @@ md5(){ md5sum "$1" 2>/dev/null | cut -c1-12; }
 # wyjscie 6/6 razy. Dlatego: krotka proba ponowna, zanim uznamy strumien za zly.
 derr(){
   local f="$1" n
-  n=$(ffmpeg -y -loglevel error -i "$f" -f null - 2>&1 | grep -icE 'error|invalid|exceeds')
+  # WZORZEC (rozszerzony 10.08.2026): dokladany 'overflow' i 'illegal', bo
+  # ffmpeg zglasza uszkodzone Parametric Stereo WLASNIE tak:
+  #   "ps extension overflow -4" / "illegal icc"
+  # a stary wzorzec (error|invalid|exceeds) NIE LAPAL ZADNEGO z tych napisow.
+  # Realny skutek: bug odniesienia delta-time w OPD psul bitstream tak, ze
+  # ffmpeg I faad sie wywracaly, a make check pokazywal 143/143 PASS. Test,
+  # ktory nie widzi bledu, ktory sam wywoluje, jest gorszy niz brak testu.
+  local pat='error|invalid|exceeds|overflow|illegal'
+  n=$(ffmpeg -y -loglevel error -i "$f" -f null - 2>&1 | grep -icE "$pat")
   if [ "$n" != "0" ]; then
     sync 2>/dev/null
     sleep 0.3
-    n=$(ffmpeg -y -loglevel error -i "$f" -f null - 2>&1 | grep -icE 'error|invalid|exceeds')
+    n=$(ffmpeg -y -loglevel error -i "$f" -f null - 2>&1 | grep -icE "$pat")
   fi
   echo "$n"
 }
@@ -388,6 +396,94 @@ if [ "$(derr ${OUT}_opd1.aac)" = "0" ] && [ "$(derr ${OUT}_opd0.aac)" = "0" ]; t
   ok "--ps-opd 0 i 1: oba strumienie dekodowalne bez bledow"
 else
   bad "--ps-opd: dekoder raportuje bledy"
+fi
+
+# --- IPD/OPD na materiale WIELOOBWIEDNIOWYM (regresja delta-time, 10.08.2026) ---
+#
+# DLACZEGO OSOBNA PROBKA: w delta-time dekoder rozwiazuje odniesienie jako
+#   e_prev = e ? e-1 : num_env_old-1   (ffmpeg aacps_common.c, READ_PAR_DATA)
+# czyli dla KAZDEJ obwiedni po pierwszej predykuje z POPRZEDNIEJ OBWIEDNI TEJ
+# SAMEJ RAMKI. Nasz writer trzymal odniesienie na poprzedniej RAMCE dla
+# wszystkich obwiedni, co rozjezdzalo enkoder z dekoderem ("ps extension
+# overflow" + zepsuty parse ICC) - ale WYLACZNIE w ramkach o >1 obwiedni.
+#
+# Glowna probka testowa (440/554 Hz + szum) ma statyczny obraz stereo, wiec
+# envelopeReducible() zwija obwiednie do JEDNEJ i ten blad byl NIEWIDOCZNY.
+# Ponizsza probka to czesciowa przeciwfaza z dekorelowana domieszka
+# (L = x, R = -0.4*x + 0.6*d) w zasiegu IPD/OPD. Parametry (eps 0.6, seedy 7/13,
+# 3 s) NIE sa dobrane "na oko" - wyskanowane tak, by test byl DYSKRYMINUJACY:
+# na binarce sprzed naprawy daje blad dekodera, po naprawie 0. Test, ktory
+# przechodzi takze na zepsutym kodzie, nie jest testem - dokladnie tak stary
+# zestaw (ps-ipd-combo) przepuscil ten bug przy 143/143 PASS.
+PSMULTI="_check_psmulti.wav"
+python3 - "$PSMULTI" <<'PY'
+import wave, struct, math, random, sys
+sr = 44100
+c = lambda x: max(-32768, min(32767, int(x)))
+
+
+def lowband(n, seed):
+    """Tresc w zasiegu IPD/OPD (60-690 Hz): tony + szum dolnoprzepustowy."""
+    rnd = random.Random(seed)
+    ph = [rnd.uniform(0, 6.283) for _ in range(5)]
+    out = []
+    st = 0.0
+    for i in range(n):
+        t = i / sr
+        v = (1.0 * math.sin(2 * math.pi * 70 * t + ph[0])
+             + 0.8 * math.sin(2 * math.pi * 130 * t + ph[1])
+             + 0.6 * math.sin(2 * math.pi * 220 * t + ph[2])
+             + 0.5 * math.sin(2 * math.pi * 330 * t + ph[3])
+             + 0.35 * math.sin(2 * math.pi * 520 * t + ph[4]))
+        st = 0.97 * st + 0.03 * rnd.uniform(-1, 1)   # szum LP
+        env = 0.6 + 0.4 * math.sin(2 * math.pi * 0.3 * t)
+        out.append((v + 6.0 * st) * env)
+    return out
+
+
+EPS = 0.6
+n = sr * 3
+x = lowband(n, 7)
+d = lowband(n, 13)
+mx = max(max(abs(a) for a in x), max(abs(a) for a in d)) or 1.0
+g = 0.63 * 32767.0 / mx
+fr = [struct.pack('<hh', c(x[i] * g),
+                  c((-(1.0 - EPS) * x[i] + EPS * d[i]) * g)) for i in range(n)]
+w = wave.open(sys.argv[1], 'wb')
+w.setnchannels(2); w.setsampwidth(2); w.setframerate(sr)
+w.writeframes(b''.join(fr)); w.close()
+PY
+
+# Sciezka DOMYSLNA (z redukcja obwiedni) - tam bug realnie wychodzil, przy
+# zbiegu ramki wieloobwiedniowej z wyborem delta-time.
+enc "$X64" -p29 -b48000 -f2 --ps-ipd 1 --ps-opd 1 -o "${OUT}_psmulti_df.aac" "$PSMULTI"
+if [ ! -s "${OUT}_psmulti_df.aac" ]; then
+  bad "IPD/OPD wieloobwiedniowe: BRAK pliku (interop WSL) - nierozstrzygniete"
+elif [ "$(derr ${OUT}_psmulti_df.aac)" = "0" ]; then
+  ok "IPD+OPD @ wieloobwiedniowe: strumien dekodowalny (delta-time e-1)"
+else
+  bad "IPD+OPD @ wieloobwiedniowe: bledy dekodera (odniesienie delta-time OPD?)"
+fi
+
+# Ta sama probka z wymuszonymi 2 obwiedniami (granica e=1, pierwsza obwiednia
+# ktora w ogole moze siegnac wewnatrz ramki).
+enc "$X64" -p29 -b48000 -f2 --ps-ipd 1 --ps-opd 1 --ps-env 2 --ps-env-reduce 0 \
+    -o "${OUT}_psmulti_e2.aac" "$PSMULTI"
+if [ -s "${OUT}_psmulti_e2.aac" ] && [ "$(derr ${OUT}_psmulti_e2.aac)" = "0" ]; then
+  ok "IPD+OPD @ 2 obwiednie: strumien dekodowalny"
+else
+  bad "IPD+OPD @ 2 obwiednie: bledy dekodera"
+fi
+
+# IPD nadal musi byc czysto OPT-IN takze na tej probce.
+enc "$X64" -p29 -b48000 -f2 -o "${OUT}_psmulti_base.aac" "$PSMULTI"
+enc "$X64" -p29 -b48000 -f2 --ps-ipd 0 -o "${OUT}_psmulti_off.aac" "$PSMULTI"
+if [ ! -s "${OUT}_psmulti_base.aac" ] || [ ! -s "${OUT}_psmulti_off.aac" ]; then
+  bad "IPD opt-in (wieloobwiedniowe): BRAK pliku - nierozstrzygniete"
+elif cmp -s "${OUT}_psmulti_base.aac" "${OUT}_psmulti_off.aac"; then
+  ok "--ps-ipd 0 @ wieloobwiedniowe: bit-identyczne z brakiem flagi"
+else
+  bad "--ps-ipd 0 @ wieloobwiedniowe ZMIENIA wyjscie"
 fi
 
 echo "==================================="

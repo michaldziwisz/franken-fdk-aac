@@ -857,6 +857,17 @@ static void processIpdData(PS_DATA *psData,
 
   for (env = 0; env < nEnvelopes; env++) {
     INT bitsFreq, bitsTime;
+    /* Delta-time predicts from the previous envelope of THIS frame for every
+     * envelope after the first, and only envelope 0 looks back at the previous
+     * frame - this must match the writer (ps_bitenc.cpp) and the decoder
+     * (ffmpeg aacps_common.c: e_prev = e ? e - 1 : num_env_old - 1), otherwise
+     * the mode is chosen against a base that nobody else uses. */
+    const INT *ipdRef = (env > 0) ? psData->ipdIdx[env - 1] : psData->ipdIdxLast;
+    const INT *opdRef = (env > 0) ? psData->opdIdx[env - 1] : psData->opdIdxLast;
+    /* Envelope 0 is the only one that needs a valid PREVIOUS FRAME; later
+     * envelopes reference this frame and are therefore always predictable. */
+    const INT timeUsable =
+        (env > 0) || (psData->ipdTimeCnt < MAX_TIME_DIFF_FRAMES);
 
     for (band = 0; band < PS_MAX_BANDS; band++) {
       psData->ipdIdx[env][band] = ipd[env][band];
@@ -868,11 +879,10 @@ static void processIpdData(PS_DATA *psData,
     {
       INT of = FDKsbrEnc_EncodeOpd(NULL, psData->opdIdx[env], NULL, ipdBands,
                                    PS_DELTA_FREQ, &error);
-      INT ot = (psData->ipdTimeCnt >= MAX_TIME_DIFF_FRAMES)
+      INT ot = (!timeUsable)
                    ? DO_NOT_USE_THIS_MODE
-                   : FDKsbrEnc_EncodeOpd(NULL, psData->opdIdx[env],
-                                         psData->opdIdxLast, ipdBands,
-                                         PS_DELTA_TIME, &error);
+                   : FDKsbrEnc_EncodeOpd(NULL, psData->opdIdx[env], opdRef,
+                                         ipdBands, PS_DELTA_TIME, &error);
       psData->opdDiffMode[env] = (ot < of) ? PS_DELTA_TIME : PS_DELTA_FREQ;
     }
 
@@ -880,12 +890,11 @@ static void processIpdData(PS_DATA *psData,
                                    PS_DELTA_FREQ, &error);
     /* Delta-time needs a valid previous frame; on the first frame (or right
      * after a reset) fall back to delta-frequency. */
-    if (psData->ipdTimeCnt >= MAX_TIME_DIFF_FRAMES) {
+    if (!timeUsable) {
       bitsTime = DO_NOT_USE_THIS_MODE;
     } else {
-      bitsTime = FDKsbrEnc_EncodeIpd(NULL, psData->ipdIdx[env],
-                                     psData->ipdIdxLast, ipdBands,
-                                     PS_DELTA_TIME, &error);
+      bitsTime = FDKsbrEnc_EncodeIpd(NULL, psData->ipdIdx[env], ipdRef,
+                                     ipdBands, PS_DELTA_TIME, &error);
     }
 
     psData->ipdDiffMode[env] =

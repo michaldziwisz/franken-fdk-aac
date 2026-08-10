@@ -17,3 +17,16 @@ inst-x86/
 *.la
 .libs/
 .deps/
+
+# probki i narzedzia diagnostyczne OPD (audio Michala, duze pliki)
+tools/opd/*.wav
+tools/opd/*.flac
+tools/opd/real/
+tools/opd/dumps/
+tools/opd/dec/
+tools/opd/fix/
+tools/opd/cmp/
+tools/opd/disc/
+tools/opd/scan/
+tools/opd/reg/
+_check_psmulti.wav

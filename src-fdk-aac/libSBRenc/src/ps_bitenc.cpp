@@ -518,6 +518,28 @@ static INT encodeIpdOpd(HANDLE_PS_OUT psOut, HANDLE_FDK_BITSTREAM hBitBuf) {
       bitCnt += FDKsbrEnc_EncodeOpd(hBitBuf, psOut->opd[env], opdLast,
                                     getNoIpdOpdBands(psOut->iidMode),
                                     psOut->deltaOPD[env], &error);
+
+      /* BUGFIX (ours, 10.08.2026): advance the delta-time reference to the
+       * envelope just written, exactly as the stock writer already does for
+       * IID and ICC below (iidLast = psOut->iid[env]).
+       *
+       * In delta-time mode the decoder resolves the reference as
+       *     e_prev = e ? e - 1 : num_env_old - 1
+       * (ffmpeg libavcodec/aacps_common.c, READ_PAR_DATA dt branch), i.e. for
+       * every envelope AFTER the first it predicts from the PREVIOUS ENVELOPE
+       * OF THE SAME FRAME, and only envelope 0 refers back to the last
+       * envelope of the previous frame. Keeping ipdLast/opdLast pinned to the
+       * previous FRAME for all envelopes made the encoder and the decoder
+       * disagree the moment a frame carried more than one envelope, so the
+       * Huffman deltas were resolved against the wrong base: the extension
+       * length accounting then ran negative in the decoder ("ps extension
+       * overflow") and corrupted the ICC parse that follows it.
+       *
+       * Single-envelope frames are unaffected (e == 0 for both sides), which is
+       * why this stayed hidden - envelopeReducible() collapses most musical
+       * material to one envelope. */
+      ipdLast = psOut->ipd[env];
+      opdLast = psOut->opd[env];
     }
     /* reserved bit */
     bitCnt += FDKsbrEnc_WriteBits_ps(hBitBuf, 0, 1);
