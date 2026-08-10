@@ -5,6 +5,56 @@ Library** (per section 2 of the FDK AAC license, see `NOTICE.fdk-aac`).
 
 ## Releases
 
+### v1.3.1 — Parametric Stereo phase: two bitstream fixes
+
+Bug-fix release. No new switches, no tuning changes: without `--ps-ipd` the
+output is bit-identical to v1.3.0. If you use `--ps-ipd` / `--ps-opd`, upgrade —
+v1.3.0 could produce streams that decoders reject.
+
+Both defects were in the phase extension added in v1.3.0, and both only showed
+up in frames carrying more than one PS envelope, which is why the v1.3.0 test
+matrix missed them: `envelopeReducible` collapses most musical material to a
+single envelope.
+
+#### The phase extension could produce an undecodable stream
+
+Symptom: ffmpeg reported `ps extension overflow` followed by `illegal icc`, and
+faad truncated its output.
+
+1. **Delta-time referenced the wrong envelope.** In delta-time mode the decoder
+   predicts every envelope after the first from the *previous envelope of the
+   same frame*, and only envelope 0 from the previous frame. The writer kept its
+   reference pinned to the previous frame for all envelopes, so from the second
+   envelope on the Huffman deltas were resolved against a different base than
+   the decoder used. The stock writer already handles this correctly for IID and
+   ICC; IPD/OPD simply missed the step.
+
+2. **Phase data was written without signalling IID.** The number of IPD/OPD
+   parameter bands is not carried in the extension — the decoder derives it from
+   `iid_mode`, and only inside the header branch guarded by `enable_iid`. FDK
+   enables IID from a loudness-difference heuristic, so on material whose
+   channels sit at nearly the same level (near-antiphase content being the
+   extreme case) it legitimately signalled `enable_iid = 0`. The decoder was
+   then left with zero phase bands: it consumed fewer bits than were written,
+   and — worth stating plainly — discarded the transmitted phase entirely, so
+   those bits bought nothing. When IPD is active, IID is now signalled.
+
+#### Verification
+
+- `make check` 149/149 (was 143); three of the new cases are regression tests
+  for the above, each verified to FAIL on the pre-fix binary — a test that also
+  passes on the broken code proves nothing.
+- The decoder-error detector in the test suite was itself blind: it grepped for
+  `error|invalid|exceeds`, which matches NEITHER string ffmpeg prints for a
+  broken PS stream. That is how a corrupt bitstream passed 143/143.
+- Sweep of 1200 combinations (samples × bitrate × `--ps-bands` × envelope modes
+  × `--ps-noenv-skip`): zero decoder errors, checked against ffmpeg and faad.
+- Measured on real material, including recordings with genuine production phase
+  problems: phase accuracy is unchanged by these fixes (they are correctness
+  fixes, not tuning), while OPD itself remains worth having — the absolute phase
+  error of each channel improves by up to 33 degrees on a track with one channel
+  inverted, and by ~9 degrees on material through a cheap radio stereo enhancer.
+
 ### v1.3.0 — Parametric Stereo phase (IPD/OPD), PS resolution, SBR detectors
 
 Four groups of work, all opt-in: with no new switches the output is byte-identical

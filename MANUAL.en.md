@@ -623,6 +623,16 @@ showed `IPD/2` did not help. That measurement was scoped to `arg(L) - arg(R)`, w
 as explained above cannot see OPD at all. The verdict was wrong and has been
 corrected; `--ps-opd 0` remains available for A/B comparison.
 
+One practical consequence, learned the hard way and fixed in v1.3.1: the phase
+extension does not carry the number of phase bands. The decoder derives that from
+`iid_mode`, and only from a header that also signals IID. FDK decides to send IID
+from a loudness-difference heuristic, so on material whose channels sit at nearly
+equal levels — near-antiphase content above all — it would legitimately signal no
+IID, and the decoder would then read a different number of bits than the encoder
+wrote and throw the phase away. Turning on `--ps-ipd` therefore also makes the
+stream signal IID. It is a normal parameter, cheap and always legal, and it is the
+only route by which the band count reaches the decoder.
+
 Compatibility is safe by construction. The data sits in a length-prefixed extension,
 so a decoder that does not implement phase synthesis — including FDK's own baseline
 PS decoder — reads the byte count and skips it, which the standard explicitly allows.

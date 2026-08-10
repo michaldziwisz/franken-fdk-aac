@@ -633,6 +633,16 @@ wykazał, iż `IPD/2` nie pomaga. Ten pomiar był zakresowany na `arg(L) - arg(R
 to, jak wyjaśniono powyżej, w ogóle nie widzi OPD. Werdykt był błędny i został
 poprawiony; `--ps-opd 0` pozostaje dostępne do porównań A/B.
 
+Jedna praktyczna konsekwencja, wyciągnięta z błędu i naprawiona w v1.3.1:
+rozszerzenie fazy NIE niesie liczby pasm fazy. Dekoder wylicza ją z `iid_mode`, i to
+wyłącznie z nagłówka, który sygnalizuje również IID. FDK decyduje o wysłaniu IID na
+podstawie heurystyki różnicy głośności, więc na materiale o niemal równych poziomach
+kanałów — a przede wszystkim na treści bliskiej przeciwfazie — legalnie nie
+sygnalizował IID, a wtedy dekoder odczytywał inną liczbę bitów niż zapisał enkoder
+i fazę wyrzucał. Dlatego włączenie `--ps-ipd` powoduje teraz również
+zasygnalizowanie IID. To parametr zwykły, tani i zawsze legalny, a przy tym jedyna
+droga, którą liczba pasm dociera do dekodera.
+
 Kompatybilność jest bezpieczna z samej konstrukcji. Dane siedzą w rozszerzeniu z
 prefiksem długości, więc dekoder, który nie implementuje syntezy fazy — łącznie z
 własnym baseline'owym dekoderem PS w FDK — odczytuje liczbę bajtów i je pomija, na
