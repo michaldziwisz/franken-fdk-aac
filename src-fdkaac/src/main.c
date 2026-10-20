@@ -365,7 +365,8 @@ PROGNAME " %s\n"
 " --sbr-stop <n>              SBR bs_stop_freq index: -1 def, 0..13.\n"
 " --sbr-freqscale <n>         Freq grouping: -1 def, 0..3 (0=linear).\n"
 " --sbr-alterscale <n>        Alternative scale resolution: -1 def, 0/1.\n"
-" --sbr-noise-bands <n>       SBR noise bands (noise description density): -1 def, 1..5.\n"
+" --sbr-noise-bands <n>       SBR noise-floor density (bs_noise_bands, 2-bit field):\n"
+"                               -1 def, 0 = one band, 1/2/3 = ~1/2/3 bands per octave.\n"
 " --sbr-amp-res <n>           Envelope amplitude res: -1 def, 0=1.5dB, 1=3.0dB.\n"
 " --sbr-data-extra <n>        Write extra SBR header data: -1 def, 0/1.\n"
 " --sbr-num-env <1|2|4>       Envelopes per frame = SBR time resolution. FORCES static\n"
@@ -1024,7 +1025,10 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
             if (sscanf(optarg, "%d", &n) != 1) { fprintf(stderr, "invalid arg for sbr-alterscale\n"); return -1; }
             params->fr_sbr_alterscale = n; break;
         case OPT_FR_SBR_NOISE_BANDS:
-            if (sscanf(optarg, "%d", &n) != 1) { fprintf(stderr, "invalid arg for sbr-noise-bands\n"); return -1; }
+            /* bs_noise_bands is a 2-bit header field: 0..3 only. Larger values
+             * were written truncated (4 -> 0, 5 -> 1) while the encoder used the
+             * full value, so encoder and decoder disagreed on the band count. */
+            if (sscanf(optarg, "%d", &n) != 1 || n < -1 || n > 3) { fprintf(stderr, "invalid arg for sbr-noise-bands (-1, 0..3)\n"); return -1; }
             params->fr_sbr_noise_bands = n; break;
         case OPT_FR_SBR_AMP_RES:
             if (sscanf(optarg, "%d", &n) != 1) { fprintf(stderr, "invalid arg for sbr-amp-res\n"); return -1; }

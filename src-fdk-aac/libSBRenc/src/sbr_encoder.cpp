@@ -634,7 +634,11 @@ static UINT FDKsbrEnc_AdjustSbrSettings(
     if (g_franken.sbrFreqScale >= 0) config->freqScale = g_franken.sbrFreqScale;
     if (g_franken.sbrAlterScale >= 0)
       config->alterScale = g_franken.sbrAlterScale;
-    if (g_franken.sbrNoiseBands >= 0)
+    /* bs_noise_bands is a 2-bit field in the SBR header (0..3). Anything
+     * larger cannot be signalled: FDKwriteBits masks it to 2 bits while the
+     * noise-floor estimator keeps the full value, so the decoder would derive
+     * a different number of noise bands than the encoder writes. */
+    if (g_franken.sbrNoiseBands >= 0 && g_franken.sbrNoiseBands <= 3)
       config->sbr_noise_bands = g_franken.sbrNoiseBands;
     if (g_franken.sbrAmpRes >= 0) {
       config->init_amp_res_FF = g_franken.sbrAmpRes;
