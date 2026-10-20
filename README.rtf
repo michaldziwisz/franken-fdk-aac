@@ -363,6 +363,7 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab You want MS only in the MIDDLE of the band (e.g. 10..30)? {\f1 --msbands-lo 10 --msbands-hi 30}.\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab You want MS on the 6 LOWEST? Simpler {\f1 --msbands 6} (or {\f1 --msbands-lo 0 --msbands-hi 5} \u8212- the same).\sa180\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Mnemonic: {\f1 --msbands} = "from the bottom up to", {\f1 --msbands-lo/-hi} = "from..to". How many bands you actually have for a given mode/samplerate is shown by {\f1 --verbose} (the "active SFBs" field).\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Short blocks: the numbers always mean the frequency band, counted from 0 inside each window group. A short frame has fewer bands (about 14 at 44.1/48 kHz) and every group starts again at band 0, so {\f1 --msbands-lo 0 --msbands-hi 8} keeps bands 0..8 in EVERY group. A range above the short band count simply leaves short frames in pure L/R. Before v1.3.2 only the first group was handled this way and the remaining groups lost MS entirely.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 2. Cutoff of the AAC core when SBR is active\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 The standard {\f1 -w/--bandwidth} in FDK is IGNORED when SBR is active (HE-AAC v1/v2) \u8212- because {\f1 sbrEncoder_Init()} overrides the bandwidth with a value from the SBR table.\par}
 {
@@ -3229,6 +3230,7 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Chcesz MS tylko w SRODKU pasma (np. 10..30)? {\f1 --msbands-lo 10 --msbands-hi 30}.\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Chcesz MS na 6 najNI\u379 ?SZYCH? Pro\u347 ?ciej {\f1 --msbands 6} (albo {\f1 --msbands-lo 0 --msbands-hi 5} \u8212- to samo).\sa180\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Zasada pami\u281 ?ciowa: {\f1 --msbands} = "od do\u322 ?u do", {\f1 --msbands-lo/-hi} = "od..do". Ile masz realnie pasm dla danego trybu/samplerate pokazuje {\f1 --verbose} (pole "active SFBs").\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Bloki kr\u243 ?tkie (short): numer zawsze oznacza pasmo cz\u281 ?stotliwo\u347 ?ci liczone od 0 w obr\u281 ?bie ka\u380 ?dej grupy okien. Ramka short ma mniej pasm (oko\u322 ?o 14 przy 44,1 i 48 kHz), a ka\u380 ?da grupa zaczyna si\u281 ? znowu od pasma 0, wi\u281 ?c {\f1 --msbands-lo 0 --msbands-hi 8} zostawia pasma 0..8 w KA\u379 ?DEJ grupie. Zakres powy\u380 ?ej liczby pasm short po prostu zostawia ramki short w czystym L/R. Przed v1.3.2 tak dzia\u322 ?a\u322 ?a tylko pierwsza grupa, a pozosta\u322 ?e traci\u322 ?y MS w ca\u322 ?o\u347 ?ci.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 2. Cutoff (odci\u281 ?cie) rdzenia AAC gdy dzia\u322 ?a SBR\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Standardowe {\f1 -w/--bandwidth} w FDK jest IGNOROWANE gdy aktywny jest SBR (HE-AAC v1/v2) \u8212- bo {\f1 sbrEncoder_Init()} nadpisuje pasmo warto\u347 ?ci\u261 ? z tabeli SBR.\par}
 {

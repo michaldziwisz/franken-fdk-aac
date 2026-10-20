@@ -1,12 +1,12 @@
 #!/bin/bash
-# Przebudowa crossbuildow Windows (x64 + x86) z naprawa delta-time OPD.
+# Przebudowa crossbuildow Windows (x64 + x86) z aktualnymi zrodlami (lista FILES = zmienione pliki).
 # PULAPKA (ze skilla): tests/check.sh uruchamia specs na .exe z katalogu
 # projektu. Jesli .exe sa starsze niz zmiana w kodzie, testy mierza STARY kod
 # i naprawa wyglada jak nieskuteczna (albo nowe testy failuja bez powodu).
 # Struktura drzew: fdk/ front/ inst-x64|inst-x86 (NIE fdk-aac/).
 set -eu
 P=/mnt/d/projekty/aacfdk
-FILES="libSBRenc/src/ps_encode.cpp libSBRenc/src/ps_bitenc.cpp"
+FILES="libAACenc/src/ms_stereo.cpp libAACenc/src/intensity.cpp"
 
 for pair in "$HOME/aacfdk_win:x86_64-w64-mingw32:x64" \
             "$HOME/aacfdk_win86:i686-w64-mingw32:x86"; do

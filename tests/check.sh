@@ -30,7 +30,7 @@ command -v ffmpeg  >/dev/null || { echo "SKIP: brak ffmpeg";  exit 77; }
 command -v python3 >/dev/null || { echo "SKIP: brak python3"; exit 77; }
 [ -x "$X64" ] || [ -f "$X64" ] || { echo "FAIL: brak $X64"; exit 1; }
 
-cleanup(){ rm -f "$WAV" _check_dab_in.wav _check_psmulti.wav _check_psnoiid.wav "${OUT}"*.m4a "${OUT}"*.aac "${OUT}"*.txt "${OUT}"*.dabp "${OUT}"*.bin; rm -rf _check_dabtmp; }
+cleanup(){ rm -f "$WAV" _check_msshort.wav _check_isalt.wav short_ms.wav is_alt.wav _check_dab_in.wav _check_psmulti.wav _check_psnoiid.wav "${OUT}"*.m4a "${OUT}"*.aac "${OUT}"*.txt "${OUT}"*.dabp "${OUT}"*.bin; rm -rf _check_dabtmp; }
 trap cleanup EXIT
 
 # --- probka: 2s stereo, ton + lekki szum (rusza MS/IS/TNS) ---
@@ -544,6 +544,83 @@ if [ -s "${OUT}_psnoiid_b.aac" ] && cmp -s "${OUT}_psnoiid_b.aac" "${OUT}_psnoii
 else
   bad "--ps-ipd 0 @ przeciwfaza: ZMIENIA wyjscie lub brak pliku"
 fi
+
+# --- MS/IS przy short blocks i promocja MS_MASK_ALL (bugi naprawione 20.10.2026) ---
+#
+# 1) Zakres pasm MS (--msbands, --msbands-lo/-hi) byl porownywany ze
+#    SPLASZCZONYM indeksem grupy (sfb + sfboffs). W bloku short kazda grupa okien
+#    zaczyna sie od czestotliwosciowego SFB 0, wiec grupy 1..n wypadaly poza
+#    zakres i MS znikalo z nich w calosci. Dowod czytamy Z BITSTREAMU
+#    (tools/msis/parse_ms.py): ms_used w grupach >0 musi pojawic sie w zakresie.
+# 2) Zakres --msbands-lo/-hi nie blokowal promocji do MS_MASK_ALL (FDK promuje,
+#    gdy L/R zostaje na <9 pasmach), wiec motylek M/S wracal na pasma, ktore
+#    zakres wylaczal. Liczymy ramki ms_mask_present=2 i pasma poza zakresem.
+# 3) Wymuszony IS (--is-force-lo/-hi) na sasiednich pasmach spanoramowanych
+#    w PRZECIWNE strony dawal delte pozycji IS > 60 i asercje w enkoderze
+#    (kod powrotu != 0, plik uciety).
+MSS="_check_msshort.wav"; ISALT="_check_isalt.wav"
+python3 tools/msis/gen_samples.py . >/dev/null && mv -f short_ms.wav "$MSS" && mv -f is_alt.wav "$ISALT"
+
+ms_json(){ python3 tools/msis/parse_ms.py "$@" --json 2>/dev/null; }
+jget(){ python3 -c "import json,sys; d=json.loads(sys.argv[1]); print(d['$2'] if '$2'!='mmp2' else d['mmp'][2])" "$1"; }
+
+for spec in "lo0hi8:--msbands-lo 0 --msbands-hi 8:--lo 0 --hi 8" \
+            "max9:--msbands 9:--max 9" \
+            "lo3hi10:--msbands-lo 3 --msbands-hi 10:--lo 3 --hi 10"; do
+  lbl="${spec%%:*}"; rest="${spec#*:}"; A="${rest%%:*}"; P="${rest#*:}"
+  enc "$X64" -f2 -b96000 $A -o "${OUT}_mss_${lbl}.aac" "$MSS"
+  if [ ! -s "${OUT}_mss_${lbl}.aac" ]; then
+    bad "MS short ($A): BRAK pliku - nierozstrzygniete"; continue
+  fi
+  j=$(ms_json "${OUT}_mss_${lbl}.aac" $P)
+  gN=$(jget "$j" used_in_range_gN); sh=$(jget "$j" short); vb=$(jget "$j" viol_band); va=$(jget "$j" viol_all)
+  if [ "$sh" -gt 0 ] && [ "$gN" -gt 0 ] && [ "$vb" = "0" ] && [ "$va" = "0" ] \
+     && [ "$(derr ${OUT}_mss_${lbl}.aac)" = "0" ]; then
+    ok "MS short [$A]: zakres dziala w kazdej grupie okien ($gN pasm MS w grupach >0)"
+  else
+    bad "MS short [$A]: short=$sh ms_w_grupach>0=$gN poza_zakresem=$vb mask_all=$va"
+  fi
+done
+
+for hi in 34 38; do
+  enc "$X64" -f2 -b96000 --pns 0 --msbands-hi $hi -o "${OUT}_msp_${hi}.aac" "$MSS"
+  if [ ! -s "${OUT}_msp_${hi}.aac" ]; then
+    bad "MS promocja (hi $hi): BRAK pliku - nierozstrzygniete"; continue
+  fi
+  j=$(ms_json "${OUT}_msp_${hi}.aac" --hi $hi)
+  va=$(jget "$j" viol_all); vb=$(jget "$j" viol_band)
+  if [ "$va" = "0" ] && [ "$vb" = "0" ]; then
+    ok "--msbands-hi $hi: brak promocji do MS_MASK_ALL, zero MS poza zakresem"
+  else
+    bad "--msbands-hi $hi: promocja MS_MASK_ALL w $va ramkach, $vb pasm MS poza zakresem"
+  fi
+done
+
+for b in 48000 96000; do
+  rc=1
+  for _t in 1 2 3 4 5; do
+    rm -f "${OUT}_isalt_${b}.aac"
+    "$X64" -f2 -p2 -b$b --is 1 --is-force-lo 0 --is-force-hi 48 \
+        -o "${OUT}_isalt_${b}.aac" "$ISALT" >/dev/null 2>&1; rc=$?
+    [ -s "${OUT}_isalt_${b}.aac" ] && break
+    sleep 0.4
+  done
+  if [ "$rc" = "0" ] && [ -s "${OUT}_isalt_${b}.aac" ] && [ "$(derr ${OUT}_isalt_${b}.aac)" = "0" ]; then
+    ok "force-IS @ naprzemienna panorama ${b}: enkoduje bez asercji, dekodowalny"
+  else
+    bad "force-IS @ naprzemienna panorama ${b}: rc=$rc (delta pozycji IS poza ksiazka?)"
+  fi
+done
+
+# Bez flag zakresu probka short musi zostac bit-identyczna z samym --msmask -1.
+enc "$X64" -f2 -b96000 -o "${OUT}_mss_base.aac" "$MSS"
+enc "$X64" -f2 -b96000 --msmask -1 -o "${OUT}_mss_auto.aac" "$MSS"
+if [ -s "${OUT}_mss_base.aac" ] && cmp -s "${OUT}_mss_base.aac" "${OUT}_mss_auto.aac"; then
+  ok "--msmask -1 @ short: bit-identyczne z brakiem flagi"
+else
+  bad "--msmask -1 @ short: ZMIENIA wyjscie lub brak pliku"
+fi
+rm -f "$MSS" "$ISALT"
 
 echo "==================================="
 echo "WYNIK: PASS=$PASS FAIL=$FAIL"

@@ -183,6 +183,13 @@ Mnemonic: `--msbands` = "from the bottom up to", `--msbands-lo/-hi` = "from..to"
 How many bands you actually have for a given mode/samplerate is shown by
 `--verbose` (the "active SFBs" field).
 
+Short blocks: the numbers always mean the frequency band, counted from 0 inside
+each window group. A short frame has fewer bands (about 14 at 44.1/48 kHz) and
+every group starts again at band 0, so `--msbands-lo 0 --msbands-hi 8` keeps
+bands 0..8 in EVERY group. A range above the short band count simply leaves
+short frames in pure L/R. Before v1.3.2 only the first group was handled this
+way and the remaining groups lost MS entirely.
+
 ## 2. Cutoff of the AAC core when SBR is active
 
 The standard `-w/--bandwidth` in FDK is IGNORED when SBR is active

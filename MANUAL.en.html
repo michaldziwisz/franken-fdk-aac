@@ -631,6 +631,11 @@ bottom in full stereo): the highest bands are numbers 44–48, so
 <p>How many bands you really have for a given mode and frequency is
 shown by <code>--verbose</code> (the "active SFBs" field) — check the
 top number there before you set <code>--msbands-hi</code>.</p>
+<p>In short blocks the same numbers mean the same frequency bands,
+counted from 0 inside each window group (a short frame has about 14
+bands at 44.1/48 kHz). So <code>--msbands-lo 0 --msbands-hi 8</code>
+keeps bands 0..8 in every group, and a range above the short band count
+leaves short frames in pure L/R.</p>
 <p>STEERING THE STEREO BALANCE (the main knob).
 <code>--side-bias &lt;dB&gt;</code> is the switch to reach for when you
 want to control how much of your bit budget goes into the stereo width.

@@ -740,6 +740,13 @@ are numbers 44..48: <code>--msbands-lo 44 --msbands-hi 48</code>.</li>
 <code>--msbands-lo/-hi</code> = "from..to". How many bands you actually
 have for a given mode/samplerate is shown by <code>--verbose</code> (the
 "active SFBs" field).</p>
+<p>Short blocks: the numbers always mean the frequency band, counted
+from 0 inside each window group. A short frame has fewer bands (about 14
+at 44.1/48 kHz) and every group starts again at band 0, so
+<code>--msbands-lo 0 --msbands-hi 8</code> keeps bands 0..8 in EVERY
+group. A range above the short band count simply leaves short frames in
+pure L/R. Before v1.3.2 only the first group was handled this way and
+the remaining groups lost MS entirely.</p>
 <h2 id="2-cutoff-of-the-aac-core-when-sbr-is-active">2. Cutoff of the
 AAC core when SBR is active</h2>
 <p>The standard <code>-w/--bandwidth</code> in FDK is IGNORED when SBR
@@ -2829,6 +2836,13 @@ dół zostawić w pelnym niezaleznym stereo)? Najwyższe pasma to numery
 <code>--msbands-lo/-hi</code> = "od..do". Ile masz realnie pasm dla
 danego trybu/samplerate pokazuje <code>--verbose</code> (pole "active
 SFBs").</p>
+<p>Bloki krótkie (short): numer zawsze oznacza pasmo częstotliwości
+liczone od 0 w obrębie każdej grupy okien. Ramka short ma mniej pasm
+(około 14 przy 44,1 i 48 kHz), a każda grupa zaczyna się znowu od pasma
+0, więc <code>--msbands-lo 0 --msbands-hi 8</code> zostawia pasma 0..8 w
+KAŻDEJ grupie. Zakres powyżej liczby pasm short po prostu zostawia ramki
+short w czystym L/R. Przed v1.3.2 tak działała tylko pierwsza grupa, a
+pozostałe traciły MS w całości.</p>
 <h2 id="2-cutoff-odcięcie-rdzenia-aac-gdy-działa-sbr">2. Cutoff
 (odcięcie) rdzenia AAC gdy działa SBR</h2>
 <p>Standardowe <code>-w/--bandwidth</code> w FDK jest IGNOROWANE gdy

@@ -622,6 +622,12 @@ w pełnym stereo): najwyższe pasma to numery 44–48, więc
 <p>Ile pasm masz realnie dla danego trybu i częstotliwości pokazuje
 <code>--verbose</code> (pole "active SFBs") — sprawdź tam górny numer,
 zanim ustawisz <code>--msbands-hi</code>.</p>
+<p>W blokach krótkich (short) te same numery oznaczają te same pasma
+częstotliwości, liczone od 0 w obrębie każdej grupy okien (ramka short
+ma około 14 pasm przy 44,1 i 48 kHz). Dlatego
+<code>--msbands-lo 0 --msbands-hi 8</code> zostawia pasma 0..8 w każdej
+grupie, a zakres powyżej liczby pasm short zostawia ramki short w
+czystym L/R.</p>
 <p>STEROWANIE BALANSEM STEREO (główne pokrętło).
 <code>--side-bias &lt;dB&gt;</code> to przełącznik, po który sięgasz,
 gdy chcesz decydować, ile budżetu bitów pójdzie w szerokość stereo.

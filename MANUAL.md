@@ -328,6 +328,11 @@ Jak to zapamiętać: `--msbands` = "od dołu do numeru N"; `--msbands-lo/-hi` =
 Ile pasm masz realnie dla danego trybu i częstotliwości pokazuje `--verbose`
 (pole "active SFBs") — sprawdź tam górny numer, zanim ustawisz `--msbands-hi`.
 
+W blokach krótkich (short) te same numery oznaczają te same pasma częstotliwości,
+liczone od 0 w obrębie każdej grupy okien (ramka short ma około 14 pasm przy 44,1 i
+48 kHz). Dlatego `--msbands-lo 0 --msbands-hi 8` zostawia pasma 0..8 w każdej grupie,
+a zakres powyżej liczby pasm short zostawia ramki short w czystym L/R.
+
 STEROWANIE BALANSEM STEREO (główne pokrętło). `--side-bias <dB>` to przełącznik, po który
 sięgasz, gdy chcesz decydować, ile budżetu bitów pójdzie w szerokość stereo. Przesuwa próg
 maskowania kanału SIDE (L−R) na pasmach kodowanych w MS, dokładnie w tym miejscu, gdzie FDK

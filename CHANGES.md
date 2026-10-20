@@ -5,6 +5,51 @@ Library** (per section 2 of the FDK AAC license, see `NOTICE.fdk-aac`).
 
 ## Releases
 
+### v1.3.2 — MS/IS: short blocks, MS_MASK_ALL promotion, forced IS
+
+Bug-fix release. No new switches, no tuning changes. Without `--msbands`,
+`--msbands-lo/-hi` and `--is-force-lo/-hi` the output is bit-identical to v1.3.1.
+Reported by Patryk (review of the MS/IS band logic), confirmed by reading the
+bitstream back on the decoder side (`tools/msis/parse_ms.py`).
+
+#### MS band range ignored every short-block group but the first
+
+The MS band range compared the flattened grouped index (`sfb + sfboffs`) with
+the switch value. In a short block every window group restarts at frequency
+band 0, so groups 1..n fell outside any range and lost MS completely. The range
+is now compared with the band index inside the group, the same convention the
+IS range (`--is-lo/-hi`) already used. Affects `--msbands`, `--msbands-lo` and
+`--msbands-hi`. Long blocks have a single group, so they are unchanged.
+Measured on a transient-heavy correlated sample: MS in groups >0 went from 0 to
+2256 bands for `--msbands-lo 0 --msbands-hi 8`.
+
+#### `--msbands-lo/-hi` did not stop the MS_MASK_ALL promotion
+
+When L/R stays on fewer than 9 bands, FDK promotes the frame to "MS on all
+bands" and applies the M/S butterfly to every band. `--msmask` and `--msbands`
+blocked that promotion, the lo/hi range did not, so a range that switched off
+a few top bands got MS back on them. Measured: `--pns 0 --msbands-hi 34` gave
+47 of 131 frames with MS on all bands; now 0.
+
+#### Forced IS could abort the encoder
+
+`--is-force-lo/-hi` on neighbouring bands panned hard in OPPOSITE directions
+produced an intensity-position delta above 60, outside the scalefactor
+Huffman book, and the encoder stopped on an assertion (truncated output).
+Stock FDK never gets there because its merging pass smooths the positions;
+forced IS skips that pass. The delta is now clamped to the codable range, which
+only softens the pan in that band. A no-op whenever every delta is in range.
+
+The energy check in forced IS stays `left OR right`: the division uses the L+R
+(or L-R) energy and fails only when BOTH channels are silent. The code comment
+that claimed otherwise is corrected.
+
+#### Tests
+
+`make check` gained 7 checks: the MS range in short-block groups (3), the
+promotion (2), forced IS with alternating panning (2), plus one opt-in identity
+check. All 7 fail on the v1.3.1 binary and pass on v1.3.2.
+
 ### v1.3.1 — Parametric Stereo phase: two bitstream fixes
 
 Bug-fix release. No new switches, no tuning changes: without `--ps-ipd` the

@@ -30,3 +30,7 @@ tools/opd/disc/
 tools/opd/scan/
 tools/opd/reg/
 _check_psmulti.wav
+tools/msis/*.wav
+tools/msis/*.aac
+tools/msis/*.log
+tools/msis/__pycache__/

@@ -178,6 +178,13 @@ Zasada pamięciowa: `--msbands` = "od dołu do", `--msbands-lo/-hi` = "od..do".
 Ile masz realnie pasm dla danego trybu/samplerate pokazuje `--verbose`
 (pole "active SFBs").
 
+Bloki krótkie (short): numer zawsze oznacza pasmo częstotliwości liczone od 0
+w obrębie każdej grupy okien. Ramka short ma mniej pasm (około 14 przy 44,1 i
+48 kHz), a każda grupa zaczyna się znowu od pasma 0, więc `--msbands-lo 0
+--msbands-hi 8` zostawia pasma 0..8 w KAŻDEJ grupie. Zakres powyżej liczby pasm
+short po prostu zostawia ramki short w czystym L/R. Przed v1.3.2 tak działała
+tylko pierwsza grupa, a pozostałe traciły MS w całości.
+
 ## 2. Cutoff (odcięcie) rdzenia AAC gdy działa SBR
 
 Standardowe `-w/--bandwidth` w FDK jest IGNOROWANE gdy aktywny jest SBR
