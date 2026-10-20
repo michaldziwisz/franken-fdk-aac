@@ -1777,7 +1777,25 @@ static INT FDKsbrEnc_EnvInit(HANDLE_SBR_ELEMENT hSbrElement,
       params->downSampleFactor * params->codecSettings.sampleFreq;
 
   hSbrElement->sbrBitstreamData.CountSendHeaderData = 0;
-  if (params->SendHeaderDataTime > 0) {
+  if (params->SendHeaderDataTime > 0 &&
+      (g_franken.sbrHeaderTimeMs > 0 || g_franken.sbrHeaderPeriod >= 1)) {
+    /* Frankenstein: explicit SBR header interval. Stock clamps any frame
+     * count to "at least once per second" (sampleFreq / frameSize frames),
+     * so a streaming operator could not ask for e.g. one header every 3.5 s.
+     * The explicit switches are taken literally, with no 1 s ceiling. A time
+     * value uses the same frames-per-second formula stock uses for its
+     * 1000 ms default, rounded to the nearest frame. */
+    if (g_franken.sbrHeaderTimeMs > 0) {
+      INT64 num = (INT64)g_franken.sbrHeaderTimeMs *
+                      hSbrElement->sbrConfigData.sampleFreq +
+                  (INT64)500 * hSbrElement->sbrConfigData.frameSize;
+      INT64 den = (INT64)1000 * hSbrElement->sbrConfigData.frameSize;
+      hSbrElement->sbrBitstreamData.NrSendHeaderData =
+          fixMax((INT)(num / den), 1);
+    } else {
+      hSbrElement->sbrBitstreamData.NrSendHeaderData = g_franken.sbrHeaderPeriod;
+    }
+  } else if (params->SendHeaderDataTime > 0) {
     if (headerPeriod == -1) {
       hSbrElement->sbrBitstreamData.NrSendHeaderData = (INT)(
           params->SendHeaderDataTime * hSbrElement->sbrConfigData.sampleFreq /

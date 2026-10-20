@@ -102,6 +102,8 @@ extern "C" void frankenResetDefaults(void) {
 
   g_franken.sbrHeaderPeriod = -1;
   g_franken.effSbrHeaderPeriod = -1;
+  g_franken.sbrHeaderTimeMs = -1;
+  g_franken.effTpConfigPeriod = -1;
 
   g_franken.pnsGainX100 = -1;
   g_franken.pnsTonalityX100 = -1;

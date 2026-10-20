@@ -97,6 +97,7 @@
     int fr_side_knee; \
     int fr_mask_slope; \
     int fr_sbr_header_period; \
+    int fr_sbr_header_time; \
     int fr_pns_gain; \
     int fr_pns_tonality; \
     int fr_pns_refpower; \

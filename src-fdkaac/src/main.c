@@ -380,10 +380,16 @@ PROGNAME " %s\n"
 " --sbr-noise-floor-offset <n> SBR noise floor offset (small int). Bigger = more fill\n"
 "                               noise in the reconstruction. off=-128.\n"
 " --sbr-header-period <n>     Frames between SBR headers = how fast SBR locks when a\n"
-"                               decoder tunes into an Icecast/Shoutcast HE-AAC stream.\n"
+"                               decoder tunes into an Icecast/Shoutcast/HLS stream.\n"
 "                               1 = SBR config in every frame => near-instant (no core-\n"
 "                               only moment); higher = longer core-only period. FDK\n"
-"                               default ~10 frames (~0.46 s @44.1k). -1 off. See verbose.\n"
+"                               default ~10 frames (~0.46 s @44.1k). Taken literally, no\n"
+"                               1 s ceiling. -1 off. See verbose.\n"
+" --sbr-header-time <s>       The same as a TIME: seconds between SBR headers, decimal\n"
+"                               (0.01..600, e.g. 3.5). Wins over --sbr-header-period.\n"
+"                               HE-AAC/HEv2: in-band sbr_header. AAC-ELD+SBR: its SBR\n"
+"                               header exists only in the config, so this sets the\n"
+"                               LATM/LOAS StreamMuxConfig period (-f 6/7/10).\n"
 "\n== D. Masking / noise shaping / detail ==\n"
 " --ath-scale <n>             Global masking-threshold scale Q8 (256=x1.0 def). >256 =\n"
 "                               noisier/fewer bits, <256 = cleaner/more detail. min 1,\n"
@@ -575,6 +581,7 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
 #define OPT_FR_SIDE_KNEE         M4AF_FOURCC('f','s','d','k')
 #define OPT_FR_MASK_SLOPE        M4AF_FOURCC('f','m','s','l')
 #define OPT_FR_SBR_HEADER_PERIOD M4AF_FOURCC('f','s','h','p')
+#define OPT_FR_SBR_HEADER_TIME   M4AF_FOURCC('f','s','h','t')
 #define OPT_FR_PNS_GAIN          M4AF_FOURCC('f','p','g','a')
 #define OPT_FR_PNS_TONALITY      M4AF_FOURCC('f','p','t','o')
 #define OPT_FR_PNS_REFPOWER      M4AF_FOURCC('f','p','r','p')
@@ -708,6 +715,7 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
         { "side-knee",           required_argument, 0, OPT_FR_SIDE_KNEE         },
         { "mask-slope",          required_argument, 0, OPT_FR_MASK_SLOPE        },
         { "sbr-header-period",   required_argument, 0, OPT_FR_SBR_HEADER_PERIOD },
+        { "sbr-header-time",     required_argument, 0, OPT_FR_SBR_HEADER_TIME   },
         { "pns-gain",            required_argument, 0, OPT_FR_PNS_GAIN          },
         { "pns-tonality",        required_argument, 0, OPT_FR_PNS_TONALITY      },
         { "pns-refpower",        required_argument, 0, OPT_FR_PNS_REFPOWER      },
@@ -799,6 +807,7 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
     params->fr_side_knee = AACENC_FRANKEN_OFF;
     params->fr_mask_slope = AACENC_FRANKEN_OFF;
     params->fr_sbr_header_period = -1;
+    params->fr_sbr_header_time = -1;
     params->fr_pns_gain = -1;
     params->fr_pns_tonality = -1;
     params->fr_pns_refpower = -1;
@@ -1218,6 +1227,9 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
         case OPT_FR_SBR_HEADER_PERIOD:
             if (sscanf(optarg, "%d", &n) != 1 || n < 1) { fprintf(stderr, "invalid arg for sbr-header-period (>=1; 1=near-instant SBR sync)\n"); return -1; }
             params->fr_sbr_header_period = n; break;
+        case OPT_FR_SBR_HEADER_TIME:
+            { double dv; if (sscanf(optarg, "%lf", &dv) != 1 || dv < 0.01 || dv > 600.0) { fprintf(stderr, "invalid arg for sbr-header-time (0.01..600 s, e.g. 3.5)\n"); return -1; }
+              params->fr_sbr_header_time = (int)(dv * 1000.0 + 0.5); } break;
         case OPT_FR_PNS_GAIN:
             { double dv; if (sscanf(optarg, "%lf", &dv) != 1 || dv < 0.0) { fprintf(stderr, "invalid arg for pns-gain (>=0.0; 1.0=unchanged)\n"); return -1; }
               params->fr_pns_gain = (int)(dv * 100.0 + 0.5); } break;

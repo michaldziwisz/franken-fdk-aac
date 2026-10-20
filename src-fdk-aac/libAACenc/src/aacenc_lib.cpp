@@ -2824,7 +2824,12 @@ AACENC_ERROR aacEncoder_SetParam(const HANDLE_AACENCODER hAacEncoder,
       break;
     case AACENC_FRANKEN_SBR_HEADER_PERIOD:
       g_franken.sbrHeaderPeriod = (INT)value;
-      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      /* TRANSPORT too: for AAC-ELD the SBR header rides in the LOAS config. */
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG | AACENC_INIT_TRANSPORT;
+      break;
+    case AACENC_FRANKEN_SBR_HEADER_TIME:
+      g_franken.sbrHeaderTimeMs = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG | AACENC_INIT_TRANSPORT;
       break;
     case AACENC_FRANKEN_PNS_GAIN:
       g_franken.pnsGainX100 = (INT)value;
@@ -3027,6 +3032,9 @@ UINT aacEncoder_GetParam(const HANDLE_AACENCODER hAacEncoder,
       break;
     case AACENC_FRANKEN_GET_PS_ENV:
       value = (UINT)g_franken.effPsEnvelopes;
+      break;
+    case AACENC_FRANKEN_GET_TP_CONFIG_PERIOD:
+      value = (UINT)g_franken.effTpConfigPeriod;
       break;
 
     default:

@@ -326,6 +326,7 @@ int aacenc_init(HANDLE_AACENCODER *encoder, const aacenc_param_t *params,
     FR_SET(params->fr_side_knee != AACENC_FRANKEN_OFF, AACENC_FRANKEN_SIDE_KNEE, params->fr_side_knee);
     FR_SET(params->fr_mask_slope != AACENC_FRANKEN_OFF, AACENC_FRANKEN_MASK_SLOPE, params->fr_mask_slope);
     FR_SET(params->fr_sbr_header_period != -1, AACENC_FRANKEN_SBR_HEADER_PERIOD, params->fr_sbr_header_period);
+    FR_SET(params->fr_sbr_header_time != -1, AACENC_FRANKEN_SBR_HEADER_TIME, params->fr_sbr_header_time);
     FR_SET(params->fr_pns_gain != -1, AACENC_FRANKEN_PNS_GAIN, params->fr_pns_gain);
     FR_SET(params->fr_pns_tonality != -1, AACENC_FRANKEN_PNS_TONALITY, params->fr_pns_tonality);
     FR_SET(params->fr_pns_refpower != -1, AACENC_FRANKEN_PNS_REFPOWER, params->fr_pns_refpower);
@@ -462,14 +463,25 @@ int aacenc_init(HANDLE_AACENCODER *encoder, const aacenc_param_t *params,
             fprintf(stderr, " sbr noise bands       : %d\n", (int)aacEncoder_GetParam(*encoder, AACENC_FRANKEN_GET_SBR_NOISEBANDS));
             fprintf(stderr, " sbr amp res           : %d\n", (int)aacEncoder_GetParam(*encoder, AACENC_FRANKEN_GET_SBR_AMPRES));
             { int hp = (int)aacEncoder_GetParam(*encoder, AACENC_FRANKEN_GET_SBR_HEADER_PERIOD);
+              int tp = (int)aacEncoder_GetParam(*encoder, AACENC_FRANKEN_GET_TP_CONFIG_PERIOD);
               unsigned sr = aacEncoder_GetParam(*encoder, AACENC_SAMPLERATE);
               unsigned gl = aacEncoder_GetParam(*encoder, AACENC_GRANULE_LENGTH);
-              if (hp > 0 && sr > 0 && gl > 0) {
-                double ms = 1000.0 * (double)hp * (double)gl / (double)sr;
-                fprintf(stderr, " sbr header period      : every %d frame(s) = ~%.0f ms  (SBR sync delay when tuning into a stream)\n", hp, ms);
-                if (params->fr_sbr_header_period >= 1)
-                    fprintf(stderr, "                          [forced via --sbr-header-period %d; 1 = near-instant SBR lock]\n", params->fr_sbr_header_period);
+              unsigned ra = aacEncoder_GetParam(*encoder, AACENC_SBR_RATIO);
+              /* One frame = core granule * SBR ratio OUTPUT samples (dual-rate
+               * HE-AAC: 1024 * 2 = 2048; ELD downsampled SBR: 512 * 1). The
+               * reported samplerate is the output rate. */
+              double fms = (sr > 0 && gl > 0) ? 1000.0 * (double)gl * (double)(ra ? ra : 1) / (double)sr : 0.0;
+              if (hp > 0 && fms > 0.0) {
+                fprintf(stderr, " sbr header period      : every %d frame(s) = ~%.0f ms  (SBR sync delay when tuning into a stream)\n", hp, hp * fms);
+              } else if (aot == 39 && tp > 0 && fms > 0.0) {
+                fprintf(stderr, " sbr header period      : in the LATM/LOAS config, every %d frame(s) = ~%.0f ms  (ELD has no in-band SBR header)\n", tp, tp * fms);
+              } else if (aot == 39) {
+                fprintf(stderr, " sbr header period      : config only, sent once by the container (ELD has no in-band SBR header; -f 6/7/10 repeats it)\n");
               }
+              if (params->fr_sbr_header_time > 0)
+                  fprintf(stderr, "                          [forced via --sbr-header-time %.3f s]\n", params->fr_sbr_header_time / 1000.0);
+              else if (params->fr_sbr_header_period >= 1)
+                  fprintf(stderr, "                          [forced via --sbr-header-period %d; 1 = near-instant SBR lock]\n", params->fr_sbr_header_period);
             }
             fprintf(stderr, " sbr stereo-mode       : %s\n",
                     params->fr_sbr_stereo_mode < 0 ? "auto (default)" :
@@ -575,6 +587,7 @@ int aacenc_init(HANDLE_AACENCODER *encoder, const aacenc_param_t *params,
             if (params->fr_is_band_lo >= 0 || params->fr_is_band_hi >= 0) { FRV_HDR(); fprintf(stderr, " is band range         : lo=%d hi=%d (IS allowed only here)\n", params->fr_is_band_lo, params->fr_is_band_hi); }
             if (params->fr_is_force_lo >= 0 || params->fr_is_force_hi >= 0) { FRV_HDR(); fprintf(stderr, " is FORCE range        : lo=%d hi=%d (IS forced, gates bypassed)\n", params->fr_is_force_lo, params->fr_is_force_hi); }
             if (params->fr_sbr_header_period >= 1) { FRV_HDR(); fprintf(stderr, " sbr-header-period     : %d frame(s) (SBR stream-sync rate)\n", params->fr_sbr_header_period); }
+            if (params->fr_sbr_header_time > 0)   { FRV_HDR(); fprintf(stderr, " sbr-header-time       : %.3f s (SBR stream-sync rate)\n", params->fr_sbr_header_time / 1000.0); }
             if (params->fr_is_aggression >= 0)  { FRV_HDR(); fprintf(stderr, " is-aggression         : %d/100\n", params->fr_is_aggression); }
             if (params->fr_block_bias >= 0)     { FRV_HDR(); fprintf(stderr, " block-bias            : %d (128=default, >128 more short blocks)\n", params->fr_block_bias); }
             if (params->fr_uncap_bw == 1)       { FRV_HDR(); fprintf(stderr, " uncap-bandwidth       : on (20 kHz core cap lifted)\n"); }

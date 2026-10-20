@@ -1602,6 +1602,7 @@ typedef enum {
   AACENC_FRANKEN_SBR_NOISE_MAX = 0xF068,  /*!< SBR injected-noise ceiling: 6, 3 or -3 (-128 = from tuning table). */
   AACENC_FRANKEN_PS_IPD = 0xF069,         /*!< 1 = compute and transmit PS IPD (phase); -1/0 = off (stock). */
   AACENC_FRANKEN_PS_OPD = 0xF06A,         /*!< 0 = force OPD to zero while IPD is on (-1 = compute it). */
+  AACENC_FRANKEN_SBR_HEADER_TIME = 0xF06B, /*!< SBR header interval in ms, uncapped (-1 off). */
   AACENC_FRANKEN_VERBOSE = 0xF016,     /*!< Verbose init dump 0/1. */
 
   /* Read-only (GetParam) mirrors of internal encoder-chosen values, for --verbose. */
@@ -1627,6 +1628,7 @@ typedef enum {
   AACENC_FRANKEN_GET_BANDWIDTH_HZ = 0xF052, /*!< Effective core cutoff Hz anchored to SFB boundary. */
   AACENC_FRANKEN_GET_PS_BANDS = 0xF059,     /*!< Effective PS stereo bands (10/20, -1 n/a). */
   AACENC_FRANKEN_GET_PS_ENV = 0xF05A,       /*!< Effective PS max envelopes (1/2/4, -1 n/a). */
+  AACENC_FRANKEN_GET_TP_CONFIG_PERIOD = 0xF06C, /*!< Effective LATM/LOAS StreamMuxConfig period, frames (-1 n/a). */
 
   AACENC_NONE = 0xFFFF /*!< ------ */
 

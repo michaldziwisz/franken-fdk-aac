@@ -142,10 +142,10 @@ typedef struct {
   int taraBufferFullness; /* state of the bit reservoir */
   int varStreamCnt;
 
-  UCHAR
-  latmFrameCounter;      /* Current frame number. Counts modulo muxConfigPeriod
-                          */
-  UCHAR muxConfigPeriod; /* Distance in frames between MuxConfig */
+  INT latmFrameCounter; /* Current frame number. Counts modulo muxConfigPeriod.
+                          Frankenstein: widened from UCHAR so the StreamMuxConfig
+                          period can exceed 255 frames (ELD SBR header). */
+  INT muxConfigPeriod;  /* Distance in frames between MuxConfig */
 
   UCHAR
   audioMuxVersion; /* AMV1 supports transmission of taraBufferFullness and

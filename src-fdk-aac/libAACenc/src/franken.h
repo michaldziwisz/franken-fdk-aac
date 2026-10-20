@@ -192,6 +192,11 @@ typedef struct FRANKEN_CFG {
                          instantly when tuning into an Icecast/Shoutcast stream;
                          higher = longer core-only period before SBR kicks in. */
   int effSbrHeaderPeriod; /* read-back: effective NrSendHeaderData (-1 n/a) */
+  int sbrHeaderTimeMs;    /* -1 default; else the SBR header interval in ms (time based,
+                             NOT capped at 1 s like FDK caps a frame count). HE-AAC/HEv2:
+                             in-band sbr_header. AAC-ELD+SBR: ld_sbr_header lives only in
+                             the config, so this sets the LATM/LOAS StreamMuxConfig period. */
+  int effTpConfigPeriod;  /* read-back: LATM/LOAS StreamMuxConfig period in frames (-1 n/a) */
 
   /* ---- 19. PNS shaping (loudness / detection width of the fabricated noise) ---- */
   int pnsGainX100;    /* -1 default(off). Scales the CODED PNS noise energy (the

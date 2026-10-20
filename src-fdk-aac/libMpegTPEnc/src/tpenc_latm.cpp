@@ -101,6 +101,7 @@ amm-info@iis.fraunhofer.de
 *******************************************************************************/
 
 #include "tpenc_latm.h"
+#include "../../libAACenc/src/franken.h"
 
 #include "genericStds.h"
 
@@ -794,6 +795,26 @@ TRANSPORTENC_ERROR transportEnc_Latm_Init(HANDLE_LATM_STREAM hAss,
   int prog, layer;
 
   int setupDataDistanceFrames = layerConfig->headerPeriod;
+
+  /* Frankenstein: in AAC-ELD with SBR the SBR header (ld_sbr_header) is part
+   * of the ELD specific config, so the only way to repeat it is to repeat the
+   * StreamMuxConfig. Stock takes that period from a UCHAR (max 254 frames,
+   * 255 is the auto sentinel), i.e. at most ~2.7 s at 48 kHz/512. Honour the
+   * explicit SBR header switches here, in transport frames, uncapped. */
+  if ((layerConfig->aot == AOT_ER_AAC_ELD) && (layerConfig->flags & CC_SBR) &&
+      (setupDataDistanceFrames > 0) &&
+      (g_franken.sbrHeaderTimeMs > 0 || g_franken.sbrHeaderPeriod >= 1)) {
+    if (g_franken.sbrHeaderTimeMs > 0 && layerConfig->samplesPerFrame > 0) {
+      INT64 num = (INT64)g_franken.sbrHeaderTimeMs * layerConfig->samplingRate +
+                  (INT64)500 * layerConfig->samplesPerFrame;
+      INT64 den = (INT64)1000 * layerConfig->samplesPerFrame;
+      setupDataDistanceFrames = (int)(num / den);
+    } else if (g_franken.sbrHeaderPeriod >= 1) {
+      setupDataDistanceFrames = g_franken.sbrHeaderPeriod;
+    }
+    if (setupDataDistanceFrames < 1) setupDataDistanceFrames = 1;
+  }
+  g_franken.effTpConfigPeriod = setupDataDistanceFrames;
 
   FDK_ASSERT(setupDataDistanceFrames >= 0);
 
