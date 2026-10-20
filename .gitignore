@@ -34,3 +34,5 @@ tools/msis/*.wav
 tools/msis/*.aac
 tools/msis/*.log
 tools/msis/__pycache__/
+tools/msis/*.loas
+tools/msis/*.lat
