@@ -30,7 +30,7 @@ command -v ffmpeg  >/dev/null || { echo "SKIP: brak ffmpeg";  exit 77; }
 command -v python3 >/dev/null || { echo "SKIP: brak python3"; exit 77; }
 [ -x "$X64" ] || [ -f "$X64" ] || { echo "FAIL: brak $X64"; exit 1; }
 
-cleanup(){ rm -f "$WAV" _check_msshort.wav _check_isalt.wav short_ms.wav is_alt.wav _check_dab_in.wav _check_psmulti.wav _check_psnoiid.wav "${OUT}"*.m4a "${OUT}"*.aac "${OUT}"*.txt "${OUT}"*.dabp "${OUT}"*.bin; rm -rf _check_dabtmp; }
+cleanup(){ rm -f "$WAV" _check_hdr.wav _check_msshort.wav _check_isalt.wav short_ms.wav is_alt.wav _check_dab_in.wav _check_psmulti.wav _check_psnoiid.wav "${OUT}"*.m4a "${OUT}"*.aac "${OUT}"*.txt "${OUT}"*.dabp "${OUT}"*.bin "${OUT}"*.loas; rm -rf _check_dabtmp; }
 trap cleanup EXIT
 
 # --- probka: 2s stereo, ton + lekki szum (rusza MS/IS/TNS) ---
@@ -643,6 +643,76 @@ for nb in 0 1 2 3; do
     bad "--sbr-noise-bands $nb @ HE-AAC: bledy dekodera lub brak pliku"
   fi
 done
+
+# --- Okres naglowka SBR bez sufitu 1 s (--sbr-header-time, 21.10.2026) ---
+# Stock FDK przycinal kazdy jawny okres naglowka SBR do "najwyzej raz na
+# sekunde", wiec operator strumienia nie mogl zazadac np. 3,5 s miedzy
+# poprawnymi naglowkami. W AAC-ELD naglowek SBR jest tylko w konfiguracji,
+# czyli jego okres to okres StreamMuxConfig w LOAS. Odstep czytamy Z
+# BITSTREAMU (tools/msis/sbr_headers.py, loas_smc.py), nie z deklaracji.
+HDRW="_check_hdr.wav"
+python3 - "$HDRW" <<'PY'
+import wave, struct, math, random, sys
+sr = 48000; rnd = random.Random(3)
+c = lambda x: max(-32768, min(32767, int(x)))
+n = sr * 12
+w = wave.open(sys.argv[1], 'wb'); w.setnchannels(2); w.setsampwidth(2); w.setframerate(sr)
+fr = []
+for i in range(n):
+    t = i / sr
+    v = 3000 * math.sin(2 * math.pi * 330 * t) + 1500 * math.sin(2 * math.pi * 7100 * t) + 2500 * rnd.uniform(-1, 1)
+    fr.append(struct.pack('<hh', c(v), c(0.8 * v + 800 * rnd.uniform(-1, 1))))
+w.writeframes(b''.join(fr)); w.close()
+PY
+
+hdr_gap(){ python3 tools/msis/sbr_headers.py "$1" --sr 48000 --json 2>/dev/null | python3 -c "import json,sys; d=json.load(sys.stdin); print(d['gap_max_s'] if d['gap_max_s'] is not None else -1)"; }
+smc_gap(){ python3 tools/msis/loas_smc.py "$1" --sr 48000 --fl 512 --json 2>/dev/null | python3 -c "import json,sys; d=json.load(sys.stdin); print(d['gap_max_s'] if d['gap_max_s'] is not None else -1)"; }
+in_win(){ python3 -c "import sys; v=float(sys.argv[1]); sys.exit(0 if float(sys.argv[2])<=v<=float(sys.argv[3]) else 1)" "$@"; }
+
+for spec in "p5:-p5 -b48000" "p29:-p29 -b32000"; do
+  lbl="${spec%%:*}"; P="${spec#*:}"
+  enc "$X64" -f2 $P --sbr-header-time 3.5 -o "${OUT}_hdr_${lbl}.aac" "$HDRW"
+  if [ ! -s "${OUT}_hdr_${lbl}.aac" ]; then
+    bad "--sbr-header-time 3.5 @ $lbl: BRAK pliku (przelacznik odrzucony?)"; continue
+  fi
+  g=$(hdr_gap "${OUT}_hdr_${lbl}.aac")
+  if in_win "$g" 3.3 3.6 && [ "$(derr ${OUT}_hdr_${lbl}.aac)" = "0" ]; then
+    ok "--sbr-header-time 3.5 @ $lbl: najdluzszy odstep naglowkow SBR ${g} s, dekodowalny"
+  else
+    bad "--sbr-header-time 3.5 @ $lbl: najdluzszy odstep ${g} s (oczekiwane ~3.5)"
+  fi
+done
+
+enc "$X64" -f2 -p5 -b48000 --sbr-header-period 200 -o "${OUT}_hdr_p200.aac" "$HDRW"
+g=$(hdr_gap "${OUT}_hdr_p200.aac")
+if in_win "$g" 8.0 9.0; then
+  ok "--sbr-header-period 200 @ HE-AAC: brany doslownie (${g} s, bez sufitu 1 s)"
+else
+  bad "--sbr-header-period 200 @ HE-AAC: odstep ${g} s (stary sufit 1 s?)"
+fi
+
+rm -f "${OUT}_hdr_eld.loas"
+enc "$X64" -f10 -p39 -L1 -b48000 --sbr-header-time 3.5 -o "${OUT}_hdr_eld.loas" "$HDRW"
+if [ ! -s "${OUT}_hdr_eld.loas" ]; then
+  bad "--sbr-header-time 3.5 @ ELD+SBR LOAS: BRAK pliku"
+else
+  g=$(smc_gap "${OUT}_hdr_eld.loas")
+  if in_win "$g" 3.3 3.6; then
+    ok "--sbr-header-time 3.5 @ ELD+SBR LOAS: StreamMuxConfig (z naglowkiem LD-SBR) co ${g} s"
+  else
+    bad "--sbr-header-time 3.5 @ ELD+SBR LOAS: odstep konfiguracji ${g} s (oczekiwane ~3.5)"
+  fi
+fi
+
+# Bez nowych przelacznikow: domyslny okres naglowka SBR bez zmian (10 ramek).
+enc "$X64" -f2 -p5 -b48000 -o "${OUT}_hdr_def.aac" "$HDRW"
+g=$(hdr_gap "${OUT}_hdr_def.aac")
+if in_win "$g" 0.40 0.45; then
+  ok "domyslny okres naglowka SBR bez zmian (${g} s = 10 ramek)"
+else
+  bad "domyslny okres naglowka SBR zmieniony: ${g} s"
+fi
+rm -f "$HDRW"
 
 echo "==================================="
 echo "WYNIK: PASS=$PASS FAIL=$FAIL"

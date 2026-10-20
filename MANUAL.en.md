@@ -483,9 +483,21 @@ periodic header, not in every frame. A listener who joins mid-stream hears only 
 core (muffled, no top) until the next header arrives. Set `1` and a header is written in
 every frame, so a decoder locks onto SBR almost instantly (~23 ms) — the right choice for
 a stream people join at random moments. Larger values stretch that core-only stretch.
-FDK's default is about 10 frames (~0.23 s under HE dual-rate, ~0.46 s under LC), and FDK
-caps the period to at most once per second, so very large values are clamped (e.g. 40
-becomes 21 frames at 44.1 kHz). `--verbose` prints the effective period in milliseconds.
+FDK's default is 10 frames, about 0.46 s at 44.1 kHz (an HE-AAC frame is 2048 output
+samples). The value is taken literally, without the one-second ceiling stock FDK applies.
+
+`--sbr-header-time <s>` — the same as a time in seconds, decimal (0.01 to 600, e.g.
+`3.5`). It wins over `--sbr-header-period`. Use it when a stream operator requires a
+specific gap between valid SBR headers, for example 3.5 s. It works in HE-AAC and
+HE-AAC v2 (in-band SBR header, any transport) and in AAC-ELD with SBR (`-p 39 -L 1`).
+ELD has no in-band SBR header: its SBR configuration lives only in the stream config, so
+the switch then sets the StreamMuxConfig repetition period of LATM/LOAS (`-f 6`, `-f 7`,
+`-f 10`). With ELD in ADTS or M4A the config sits only in the container and there is
+nothing to repeat.
+
+`--verbose` prints the effective period in frames and milliseconds. Decoder-side
+measurement with `--sbr-header-time 3.5`: the longest wait for the SBR band after
+joining mid-stream was 3.41 s (HE-AAC), 3.46 s (HE-AAC v2) and 3.52 s (ELD).
 
 ## 16. Parametric Stereo (HE-AAC v2)
 

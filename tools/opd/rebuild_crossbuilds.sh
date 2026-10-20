@@ -13,10 +13,13 @@ for pair in "$HOME/aacfdk_win:x86_64-w64-mingw32:x64" \
   d="${pair%%:*}"; rest="${pair#*:}"; host="${rest%%:*}"; arch="${rest##*:}"
   echo "=== $arch ($d) ==="
   [ -d "$d" ] || { echo "  BRAK drzewa $d - pomijam"; continue; }
-  for f in $FILES; do
-    cp "$P/src-fdk-aac/$f" "$d/fdk/$f"
-  done
-  ( cd "$d/fdk" && touch $FILES && make -j"$(nproc)" >/dev/null 2>&1 \
+  # Synchronizuj CALE zrodla biblioteki (tylko pliki .c/.cpp/.h z lib*/), nie
+  # wybrana liste: lista FILES gubila zmienione naglowki (nowe pole w
+  # franken.h -> build lib padal, a .exe zostawal stary). rsync -c porownuje
+  # tresc, wiec make przebuduje dokladnie to, co sie zmienilo.
+  rsync -rc --include=*/ --include=*.c --include=*.cpp --include=*.h \
+        --exclude=* "$P/src-fdk-aac/" "$d/fdk/"
+  ( cd "$d/fdk" && make -j"$(nproc)" >/dev/null 2>&1 \
       && make install >/dev/null 2>&1 ) || { echo "  BLAD build lib"; continue; }
   # frontend (nu774): zawsze kopiuj zrodla, bo przelaczniki i walidacja zyja tutaj
   cp "$P"/src-fdkaac/src/*.c "$P"/src-fdkaac/src/*.h "$d/front/src/" 2>/dev/null || true

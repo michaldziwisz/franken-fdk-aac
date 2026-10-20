@@ -804,11 +804,26 @@ słyszy najpierw sam rdzeń AAC (przytłumiony, bez góry), aż nadejdzie
 kolejny nagłówek. Ustaw <code>1</code>, a nagłówek zapisze się w każdej
 ramce, więc dekoder złapie SBR niemal natychmiast (~23 ms) — to właściwy
 wybór dla strumienia, do którego ludzie dołączają w losowych momentach.
-Większe wartości wydłużają ten moment "sam rdzeń". Domyślnie FDK daje
-około 10 ramek (~0,23 s przy HE dual-rate, ~0,46 s przy LC), a FDK
-kapuje okres do najwyżej raz na sekundę, więc bardzo duże wartości są
-przycinane (np. 40 staje się 21 ramkami przy 44,1 kHz).
-<code>--verbose</code> wypisuje efektywny okres w milisekundach.</p>
+Większe wartości wydłużają ten moment "sam rdzeń". Domyślnie FDK daje 10
+ramek, czyli około 0,46 s przy 44,1 kHz (ramka HE-AAC to 2048 próbek
+wyjściowych). Wartość jest brana dosłownie, bez sufitu jednej sekundy,
+który ma stock FDK.</p>
+<p><code>--sbr-header-time &lt;s&gt;</code> — to samo, ale w sekundach,
+z częścią dziesiętną (0,01 do 600, np. <code>3.5</code>). Wygrywa z
+<code>--sbr-header-period</code>. Przydaje się, gdy operator strumienia
+wymaga konkretnego odstępu między poprawnymi nagłówkami SBR, np. 3,5 s.
+Działa w HE-AAC i HE-AAC v2 (nagłówek SBR w ramce, każdy transport) oraz
+w AAC-ELD z SBR (<code>-p 39 -L 1</code>). ELD nie ma nagłówka SBR w
+ramce: jego konfiguracja SBR jest tylko w konfiguracji strumienia, więc
+przełącznik ustawia wtedy okres powtarzania StreamMuxConfig w LATM/LOAS
+(<code>-f 6</code>, <code>-f 7</code>, <code>-f 10</code>). Przy ELD w
+ADTS albo w M4A konfiguracja leży tylko w kontenerze i nie ma czego
+powtarzać.</p>
+<p><code>--verbose</code> wypisuje efektywny okres w ramkach i
+milisekundach. Pomiar po stronie dekodera przy
+<code>--sbr-header-time 3.5</code>: najdłuższe czekanie na pasmo SBR po
+wejściu w środek strumienia wyniosło 3,41 s (HE-AAC), 3,46 s (HE-AAC v2)
+i 3,52 s (ELD).</p>
 <h2 id="16-parametric-stereo-he-aac-v2">16. Parametric Stereo (HE-AAC
 v2)</h2>
 <p><code>--ps &lt;0|1&gt;</code> — wymuś wysyłanie parametru IID

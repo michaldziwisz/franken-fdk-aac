@@ -489,10 +489,22 @@ mieszka w okresowym nagłówku, a nie w każdej ramce. Słuchacz, który wpina s
 nadejdzie kolejny nagłówek. Ustaw `1`, a nagłówek zapisze się w każdej ramce, więc
 dekoder złapie SBR niemal natychmiast (~23 ms) — to właściwy wybór dla strumienia,
 do którego ludzie dołączają w losowych momentach. Większe wartości wydłużają ten
-moment "sam rdzeń". Domyślnie FDK daje około 10 ramek (~0,23 s przy HE dual-rate,
-~0,46 s przy LC), a FDK kapuje okres do najwyżej raz na sekundę, więc bardzo duże
-wartości są przycinane (np. 40 staje się 21 ramkami przy 44,1 kHz). `--verbose`
-wypisuje efektywny okres w milisekundach.
+moment "sam rdzeń". Domyślnie FDK daje 10 ramek, czyli około 0,46 s przy 44,1 kHz
+(ramka HE-AAC to 2048 próbek wyjściowych). Wartość jest brana dosłownie, bez
+sufitu jednej sekundy, który ma stock FDK.
+
+`--sbr-header-time <s>` — to samo, ale w sekundach, z częścią dziesiętną (0,01 do
+600, np. `3.5`). Wygrywa z `--sbr-header-period`. Przydaje się, gdy operator
+strumienia wymaga konkretnego odstępu między poprawnymi nagłówkami SBR, np. 3,5 s.
+Działa w HE-AAC i HE-AAC v2 (nagłówek SBR w ramce, każdy transport) oraz w AAC-ELD
+z SBR (`-p 39 -L 1`). ELD nie ma nagłówka SBR w ramce: jego konfiguracja SBR jest
+tylko w konfiguracji strumienia, więc przełącznik ustawia wtedy okres powtarzania
+StreamMuxConfig w LATM/LOAS (`-f 6`, `-f 7`, `-f 10`). Przy ELD w ADTS albo w M4A
+konfiguracja leży tylko w kontenerze i nie ma czego powtarzać.
+
+`--verbose` wypisuje efektywny okres w ramkach i milisekundach. Pomiar po stronie
+dekodera przy `--sbr-header-time 3.5`: najdłuższe czekanie na pasmo SBR po wejściu
+w środek strumienia wyniosło 3,41 s (HE-AAC), 3,46 s (HE-AAC v2) i 3,52 s (ELD).
 
 ## 16. Parametric Stereo (HE-AAC v2)
 

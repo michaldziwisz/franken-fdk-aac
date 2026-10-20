@@ -609,7 +609,22 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 \cell}
 {{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1\par}
 \cell}
-{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Frames between SBR headers = how fast the SBR high band "kicks in" when a decoder tunes into a live HE-AAC stream (Icecast/Shoutcast). The SBR CONFIG lives in a periodic header, not in every frame; a decoder joining mid-stream plays core-only (muffled) until the next header arrives. {\f1 1} = header in every frame \u8594 ? near-instant SBR lock (~23 ms); higher = longer core-only moment. FDK default is ~10 frames (~0.23 s HE dual-rate / ~0.46 s LC). FDK caps this to at most once per second, so very large values are clamped (e.g. 40 \u8594 ? 21 frames @44.1k). See {\f1 --verbose} for the effective period in ms.\par}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Frames between SBR headers = how fast the SBR high band "kicks in" when a decoder tunes into a live HE-AAC stream (Icecast/Shoutcast). The SBR CONFIG lives in a periodic header, not in every frame; a decoder joining mid-stream plays core-only (muffled) until the next header arrives. {\f1 1} = header in every frame \u8594 ? near-instant SBR lock (~23 ms); higher = longer core-only moment. FDK default is 10 frames (~0.46 s at 44.1 kHz HE-AAC). Taken literally, without the one-second ceiling of stock FDK. See {\f1 --verbose} for the effective period in ms.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --sbr-header-time <s>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 off, 0.01..600\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 The same as a time in seconds, decimal (e.g. {\f1 3.5}). Wins over {\f1 --sbr-header-period}. HE-AAC / HE-AAC v2: in-band SBR header. AAC-ELD with SBR: the SBR header exists only in the stream config, so this sets the LATM/LOAS StreamMuxConfig period ({\f1 -f 6/7/10}).\par}
 \cell}
 }
 \intbl\row}
@@ -3476,7 +3491,22 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 \cell}
 {{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1\par}
 \cell}
-{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Liczba ramek mi\u281 ?dzy nag\u322 ?\u243 ?wkami SBR = jak szybko g\u243 ?rne pasmo SBR "wchodzi", gdy dekoder pod\u322 ?\u261 ?cza si\u281 ? do strumienia HE-AAC na \u380 ?ywo (Icecast/Shoutcast). KONFIGURACJA SBR jest w okresowym nag\u322 ?\u243 ?wku, nie w ka\u380 ?dej ramce; dekoder wpi\u281 ?ty w \u347 ?rodek gra sam rdze\u324 ? (przyt\u322 ?umiony) do nadej\u347 ?cia kolejnego nag\u322 ?\u243 ?wka. {\f1 1} = nag\u322 ?\u243 ?wek w ka\u380 ?dej ramce \u8594 ? niemal natychmiastowy sync SBR (~23 ms); wy\u380 ?ej = d\u322 ?u\u380 ?szy moment core-only. Domy\u347 ?lnie FDK ~10 ramek (~0.23 s HE dual-rate / ~0.46 s LC). FDK kapuje to do maks. raz na sekund\u281 ?, wi\u281 ?c bardzo du\u380 ?e warto\u347 ?ci s\u261 ? przycinane (np. 40 \u8594 ? 21 ramek @44.1k). Efektywny okres w ms pokazuje {\f1 --verbose}.\par}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Liczba ramek mi\u281 ?dzy nag\u322 ?\u243 ?wkami SBR = jak szybko g\u243 ?rne pasmo SBR "wchodzi", gdy dekoder pod\u322 ?\u261 ?cza si\u281 ? do strumienia HE-AAC na \u380 ?ywo (Icecast/Shoutcast). KONFIGURACJA SBR jest w okresowym nag\u322 ?\u243 ?wku, nie w ka\u380 ?dej ramce; dekoder wpi\u281 ?ty w \u347 ?rodek gra sam rdze\u324 ? (przyt\u322 ?umiony) do nadej\u347 ?cia kolejnego nag\u322 ?\u243 ?wka. {\f1 1} = nag\u322 ?\u243 ?wek w ka\u380 ?dej ramce \u8594 ? niemal natychmiastowy sync SBR (~23 ms); wy\u380 ?ej = d\u322 ?u\u380 ?szy moment core-only. Domy\u347 ?lnie FDK 10 ramek (oko\u322 ?o 0,46 s przy 44,1 kHz w HE-AAC). Warto\u347 ?\u263 ? brana dos\u322 ?ownie, bez sufitu jednej sekundy ze stocku FDK. Efektywny okres w ms pokazuje {\f1 --verbose}.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --sbr-header-time <s>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 off, 0,01..600\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 To samo jako czas w sekundach, z cz\u281 ?\u347 ?ci\u261 ? dziesi\u281 ?tn\u261 ? (np. {\f1 3.5}). Wygrywa z {\f1 --sbr-header-period}. HE-AAC i HE-AAC v2: nag\u322 ?\u243 ?wek SBR w ramce. AAC-ELD z SBR: nag\u322 ?\u243 ?wek SBR istnieje tylko w konfiguracji strumienia, wi\u281 ?c prze\u322 ?\u261 ?cznik ustawia okres StreamMuxConfig w LATM/LOAS ({\f1 -f 6/7/10}).\par}
 \cell}
 }
 \intbl\row}

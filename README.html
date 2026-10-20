@@ -887,12 +887,22 @@ when a decoder tunes into a live HE-AAC stream (Icecast/Shoutcast). The
 SBR CONFIG lives in a periodic header, not in every frame; a decoder
 joining mid-stream plays core-only (muffled) until the next header
 arrives. <code>1</code> = header in every frame → near-instant SBR lock
-(~23 ms); higher = longer core-only moment. FDK default is ~10 frames
-(~0.23 s HE dual-rate / ~0.46 s LC). FDK caps this to at most once per
-second, so very large values are clamped (e.g. 40 → 21 frames @44.1k).
-See <code>--verbose</code> for the effective period in ms.</td>
+(~23 ms); higher = longer core-only moment. FDK default is 10 frames
+(~0.46 s at 44.1 kHz HE-AAC). Taken literally, without the one-second
+ceiling of stock FDK. See <code>--verbose</code> for the effective
+period in ms.</td>
 </tr>
 <tr class="even">
+<td><code>--sbr-header-time &lt;s&gt;</code></td>
+<td>-1 off, 0.01..600</td>
+<td>-1</td>
+<td>The same as a time in seconds, decimal (e.g. <code>3.5</code>). Wins
+over <code>--sbr-header-period</code>. HE-AAC / HE-AAC v2: in-band SBR
+header. AAC-ELD with SBR: the SBR header exists only in the stream
+config, so this sets the LATM/LOAS StreamMuxConfig period
+(<code>-f 6/7/10</code>).</td>
+</tr>
+<tr class="odd">
 <td><code>--sbr-noise-max &lt;n&gt;</code></td>
 <td>6, 3, -3</td>
 <td>-1 (tuning table)</td>
@@ -901,7 +911,7 @@ get: <code>6</code> = 1.0, <code>3</code> = 0.5, <code>-3</code> =
 0.125. This is the "air versus hiss" limit. Already a config field
 inside FDK, just never reachable from the command line.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--sbr-tran-peak &lt;n&gt;</code></td>
 <td>1..200</td>
 <td>-1 (90 = 0.90)</td>
@@ -910,14 +920,14 @@ counts as a transient only once the signal falls below this fraction of
 the previous slot. Raw x100, so <code>90</code> is the stock 0.90.
 Higher = fewer transients detected.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--sbr-tran-thr &lt;n&gt;</code></td>
 <td>1..10000</td>
 <td>-1 (100 = x1.00)</td>
 <td>Scales the master transient threshold. <strong>The most effective
 knob in this group</strong> - see the pre-echo measurement below.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--sbr-tran-split &lt;n&gt;</code></td>
 <td>1..10000</td>
 <td>-1 (100 = x1.00)</td>
@@ -925,7 +935,7 @@ knob in this group</strong> - see the pre-echo measurement below.</td>
 detected transient is still split into two envelopes. Lower = split more
 often (finer time resolution, costs bits).</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--sbr-tran-quiet &lt;n&gt;</code></td>
 <td>1..10000</td>
 <td>-1</td>
@@ -934,14 +944,14 @@ transient detector, which is only reached under AAC-LD/ELD - and
 <code>-p 23</code> / <code>-p 39</code> fail to initialise here (also in
 the stock binary). Kept for completeness only.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--sbr-tran-dom &lt;n&gt;</code></td>
 <td>100..500</td>
 <td>-1 (140 = 1.4)</td>
 <td><strong>No-op in this build.</strong> Same unreachable fast-detector
 path as <code>--sbr-tran-quiet</code>.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--sbr-mh-tone &lt;n&gt;</code></td>
 <td>1..10000</td>
 <td>-1 (100 = x1.00)</td>
@@ -950,41 +960,41 @@ SBR fabricates a synthetic harmonic. Lower = more added tones (risk of
 whistling artefacts); higher = fewer (dull bells and cymbals, lost
 partials).</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--sbr-mh-diff &lt;n&gt;</code></td>
 <td>1..10000</td>
 <td>-1 (100)</td>
 <td>Scales the original-versus-patched tonality <em>difference</em> that
 triggers harmonic compensation.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--sbr-mh-decay-orig &lt;n&gt;</code></td>
 <td>1..10000</td>
 <td>-1 (100)</td>
 <td>Scales how long an already-detected tone keeps being tracked as it
 decays. Audible on bell and cymbal tails.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--sbr-mh-decay-diff &lt;n&gt;</code></td>
 <td>1..10000</td>
 <td>-1 (100)</td>
 <td>Same, for the difference guide vector.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--sbr-mh-sfm-sbr &lt;n&gt;</code></td>
 <td>1..10000</td>
 <td>-1 (100)</td>
 <td>Scales the spectral-flatness threshold above which the
 <em>patched</em> band is judged noise-like rather than tonal.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--sbr-mh-sfm-orig &lt;n&gt;</code></td>
 <td>1..10000</td>
 <td>-1 (100)</td>
 <td>Same for the <em>original</em> band. Together these two catch "one
 strong tone in the original became several after patching".</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--sbr-mh-maxcomp &lt;n&gt;</code></td>
 <td>0..200</td>
 <td>-1 (50)</td>
@@ -992,7 +1002,7 @@ strong tone in the original became several after patching".</td>
 Affects neighbouring bands and how much noise sits next to the added
 tone.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--sbr-mh-deltatime &lt;n&gt;</code></td>
 <td>0..64</td>
 <td>-1 (9 / 16)</td>
@@ -2989,12 +2999,21 @@ wypełniającego w rekonstrukcji SBR.</td>
 każdej ramce; dekoder wpięty w środek gra sam rdzeń (przytłumiony) do
 nadejścia kolejnego nagłówka. <code>1</code> = nagłówek w każdej ramce →
 niemal natychmiastowy sync SBR (~23 ms); wyżej = dłuższy moment
-core-only. Domyślnie FDK ~10 ramek (~0.23 s HE dual-rate / ~0.46 s LC).
-FDK kapuje to do maks. raz na sekundę, więc bardzo duże wartości są
-przycinane (np. 40 → 21 ramek @44.1k). Efektywny okres w ms pokazuje
-<code>--verbose</code>.</td>
+core-only. Domyślnie FDK 10 ramek (około 0,46 s przy 44,1 kHz w HE-AAC).
+Wartość brana dosłownie, bez sufitu jednej sekundy ze stocku FDK.
+Efektywny okres w ms pokazuje <code>--verbose</code>.</td>
 </tr>
 <tr class="even">
+<td><code>--sbr-header-time &lt;s&gt;</code></td>
+<td>-1 off, 0,01..600</td>
+<td>-1</td>
+<td>To samo jako czas w sekundach, z częścią dziesiętną (np.
+<code>3.5</code>). Wygrywa z <code>--sbr-header-period</code>. HE-AAC i
+HE-AAC v2: nagłówek SBR w ramce. AAC-ELD z SBR: nagłówek SBR istnieje
+tylko w konfiguracji strumienia, więc przełącznik ustawia okres
+StreamMuxConfig w LATM/LOAS (<code>-f 6/7/10</code>).</td>
+</tr>
+<tr class="odd">
 <td><code>--sbr-noise-max &lt;n&gt;</code></td>
 <td>6, 3, -3</td>
 <td>-1 (tabela tuningu)</td>
@@ -3003,7 +3022,7 @@ pasmo: <code>6</code> = 1,0, <code>3</code> = 0,5, <code>-3</code> =
 0,125. To limit „powietrze kontra syczenie". W FDK jest to pole
 konfiguracyjne, tylko nigdy nie dostępne z linii poleceń.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--sbr-tran-peak &lt;n&gt;</code></td>
 <td>1..200</td>
 <td>-1 (90 = 0,90)</td>
@@ -3012,14 +3031,14 @@ liczy się jako transjent tylko wtedy, gdy sygnał spadnie poniżej tego
 udziału poprzedniego slotu. Surowe x100, więc <code>90</code> to
 fabryczne 0,90. Wyżej = mniej wykrytych transjentów.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--sbr-tran-thr &lt;n&gt;</code></td>
 <td>1..10000</td>
 <td>-1 (100 = x1,00)</td>
 <td>Skaluje główny próg transjentów. <strong>Najskuteczniejsze pokrętło
 w tej grupie</strong> - patrz pomiar pre-echa poniżej.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--sbr-tran-split &lt;n&gt;</code></td>
 <td>1..10000</td>
 <td>-1 (100 = x1,00)</td>
@@ -3027,7 +3046,7 @@ w tej grupie</strong> - patrz pomiar pre-echa poniżej.</td>
 transjentu jest i tak dzielona na dwie obwiednie. Niżej = częstszy
 podział (drobniejsza rozdzielczość czasowa, kosztem bitów).</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--sbr-tran-quiet &lt;n&gt;</code></td>
 <td>1..10000</td>
 <td>-1</td>
@@ -3037,14 +3056,14 @@ przy AAC-LD/ELD - a <code>-p 23</code> / <code>-p 39</code> nie
 inicjalizują się tutaj (również w oryginalnej binarce). Zostawione
 wyłącznie dla kompletności.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--sbr-tran-dom &lt;n&gt;</code></td>
 <td>100..500</td>
 <td>-1 (140 = 1,4)</td>
 <td><strong>W tym buildzie nie działa.</strong> Ta sama nieosiągalna
 ścieżka szybkiego detektora co <code>--sbr-tran-quiet</code>.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--sbr-mh-tone &lt;n&gt;</code></td>
 <td>1..10000</td>
 <td>-1 (100 = x1,00)</td>
@@ -3053,34 +3072,34 @@ zanim SBR dorobi syntetyczną harmoniczną. Niżej = więcej dorobionych
 tonów (ryzyko gwizdów); wyżej = mniej (matowe dzwonki i blachy, zgubione
 partiale).</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--sbr-mh-diff &lt;n&gt;</code></td>
 <td>1..10000</td>
 <td>-1 (100)</td>
 <td>Skaluje <em>różnicę</em> tonalności między oryginałem a pasmem
 odtworzonym, która uruchamia kompensację harmonicznych.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--sbr-mh-decay-orig &lt;n&gt;</code></td>
 <td>1..10000</td>
 <td>-1 (100)</td>
 <td>Skaluje to, jak długo już znaleziony ton jest dalej śledzony przy
 wygaszaniu. Słyszalne na wybrzmieniach dzwonków i talerzy.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--sbr-mh-decay-diff &lt;n&gt;</code></td>
 <td>1..10000</td>
 <td>-1 (100)</td>
 <td>To samo dla wektora prowadzącego różnicy.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--sbr-mh-sfm-sbr &lt;n&gt;</code></td>
 <td>1..10000</td>
 <td>-1 (100)</td>
 <td>Skaluje próg płaskości widmowej, powyżej którego pasmo
 <em>odtworzone</em> jest uznawane za szumowe, nie tonalne.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--sbr-mh-sfm-orig &lt;n&gt;</code></td>
 <td>1..10000</td>
 <td>-1 (100)</td>
@@ -3088,7 +3107,7 @@ wygaszaniu. Słyszalne na wybrzmieniach dzwonków i talerzy.</td>
 sytuację „w oryginale był jeden silny ton, po patchingu zrobiło się ich
 kilka".</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--sbr-mh-maxcomp &lt;n&gt;</code></td>
 <td>0..200</td>
 <td>-1 (50)</td>
@@ -3096,7 +3115,7 @@ kilka".</td>
 harmonicznej. Wpływa na pasma sąsiednie i na to, ile szumu siedzi obok
 dorobionego tonu.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--sbr-mh-deltatime &lt;n&gt;</code></td>
 <td>0..64</td>
 <td>-1 (9 / 16)</td>

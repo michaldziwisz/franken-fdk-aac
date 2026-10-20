@@ -5,9 +5,9 @@ Library** (per section 2 of the FDK AAC license, see `NOTICE.fdk-aac`).
 
 ## Releases
 
-### v1.3.2 — MS/IS: short blocks, MS_MASK_ALL promotion, forced IS; SBR noise bands
+### v1.3.2 — MS/IS fixes, SBR noise bands, SBR header interval for streaming
 
-Bug-fix release. No new switches, no tuning changes. Without `--msbands`,
+Bug-fix release plus one streaming switch (`--sbr-header-time`). No tuning changes. Without `--msbands`,
 `--msbands-lo/-hi` and `--is-force-lo/-hi` the output is bit-identical to v1.3.1;
 `--sbr-noise-bands 4|5` is now rejected.
 Reported by Patryk (review of the MS/IS band logic), confirmed by reading the
@@ -57,6 +57,39 @@ misparsed the rest of the SBR data (ffmpeg: `noise_facs_q ... is invalid`,
 frontend now accepts -1 and 0..3, and the library ignores anything above 3
 regardless of the frontend. Reported by Patryk. Values 0..3 are bit-identical
 to v1.3.1; 0 was always legal and is now documented.
+
+#### SBR header interval: no one-second ceiling, new `--sbr-header-time`
+
+Stock FDK clamps any explicit SBR header period to "at least once per second"
+(`sampleFreq / frameSize` frames), so `--sbr-header-period 999` still produced
+a header every ~0.98 s and a stream operator could not ask for, say, one valid
+SBR header every 3.5 s. Measured on the bitstream: before, the longest gap was
+0.981 s whatever the value; now `--sbr-header-period` is taken literally.
+
+New `--sbr-header-time <s>` (decimal seconds, 0.01..600) sets the same
+interval as a time and wins over the frame count. It covers:
+
+- HE-AAC and HE-AAC v2: the in-band `sbr_header`, in every transport (ADTS,
+  LATM/LOAS, M4A).
+- AAC-ELD with SBR (`-p 39 -L 1`): ELD has no in-band SBR header, its
+  `ld_sbr_header` lives only in the stream config. The switch therefore sets
+  the LATM/LOAS StreamMuxConfig repetition period (`-f 6/7/10`), which stock
+  takes from an 8-bit field (at most ~2.7 s at 48 kHz). The LATM frame
+  counter was widened so periods above 255 frames work.
+
+Decoder-side check (join mid-stream at 20-25 random points, measure when the
+SBR band appears): with `--sbr-header-time 3.5` the longest wait was 3.41 s
+(HE-AAC, ffmpeg), 3.46 s (HE-AAC v2, ffmpeg) and 3.52 s (ELD, Fraunhofer
+decoder; ffmpeg cannot decode ELD with SBR).
+
+The encoder can still insert an extra SBR header on its own when the dynamic
+crossover changes; that is a correctness requirement, not a scheduling one, so
+the interval is a maximum gap between scheduled headers, not an exact cadence.
+
+`--verbose` now reports the SBR header period in real milliseconds: it
+ignored the SBR ratio and showed half the true time for dual-rate HE-AAC
+(213 ms instead of 427 ms at 48 kHz). For ELD it reports the config period.
+Without the two switches the output is bit-identical to v1.3.1.
 
 #### Tests
 
