@@ -765,9 +765,11 @@ failed". Dobieraj sprawdzone pary (np. dla 64k stereo działa start=5
 stop=9).</p>
 <p><code>--sbr-freqscale &lt;n&gt;</code> — grupowanie częstotliwości (0
 liniowe, wyżej = drobniejsze logarytmiczne).
-<code>--sbr-noise-bands &lt;n&gt;</code> — gęstość opisu szumu SBR.
-<code>--sbr-amp-res &lt;0|1&gt;</code> — rozdzielczość amplitudy
-obwiedni (0 = 1,5 dB, 1 = 3 dB).</p>
+<code>--sbr-noise-bands &lt;0..3&gt;</code> — gęstość opisu szumu SBR: 0
+to jedno pasmo szumu, 1, 2 i 3 to około 1, 2 i 3 pasm na oktawę. W
+nagłówku SBR to pole ma 2 bity, więc większych wartości nie da się
+przesłać. <code>--sbr-amp-res &lt;0|1&gt;</code> — rozdzielczość
+amplitudy obwiedni (0 = 1,5 dB, 1 = 3 dB).</p>
 <p><code>--sbr-num-env &lt;1|2|4&gt;</code> — liczba obwiedni na ramkę =
 rozdzielczość czasowa SBR. Więcej obwiedni = lepiej oddane zmiany w
 czasie w górnym paśmie, kosztem bitów. WAŻNE: ta opcja WYMUSZA statyczną

@@ -447,7 +447,9 @@ NOTE: FDK validates the combination — a bad pair will give "encoder initializa
 Pick proven pairs (e.g. for 64k stereo start=5 stop=9 works).
 
 `--sbr-freqscale <n>` — frequency grouping (0 linear, higher = finer
-logarithmic). `--sbr-noise-bands <n>` — the density of the SBR noise description.
+logarithmic). `--sbr-noise-bands <0..3>` — the density of the SBR noise
+description: 0 is a single noise band, 1, 2 and 3 are about 1, 2 and 3 bands per octave. The SBR
+header field has 2 bits, so larger values cannot be signalled.
 `--sbr-amp-res <0|1>` — the amplitude resolution of the envelope (0 = 1.5 dB, 1 = 3 dB).
 
 `--sbr-num-env <1|2|4>` — the number of envelopes per frame = the SBR time resolution.

@@ -451,7 +451,9 @@ UWAGA: FDK waliduje kombinację — zła para da "encoder initialization failed"
 Dobieraj sprawdzone pary (np. dla 64k stereo działa start=5 stop=9).
 
 `--sbr-freqscale <n>` — grupowanie częstotliwości (0 liniowe, wyżej = drobniejsze
-logarytmiczne). `--sbr-noise-bands <n>` — gęstość opisu szumu SBR.
+logarytmiczne). `--sbr-noise-bands <0..3>` — gęstość opisu szumu SBR:
+0 to jedno pasmo szumu, 1, 2 i 3 to około 1, 2 i 3 pasm na oktawę. W nagłówku SBR to pole
+ma 2 bity, więc większych wartości nie da się przesłać.
 `--sbr-amp-res <0|1>` — rozdzielczość amplitudy obwiedni (0 = 1,5 dB, 1 = 3 dB).
 
 `--sbr-num-env <1|2|4>` — liczba obwiedni na ramkę = rozdzielczość czasowa SBR.

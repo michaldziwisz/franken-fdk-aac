@@ -622,6 +622,28 @@ else
 fi
 rm -f "$MSS" "$ISALT"
 
+# --- --sbr-noise-bands: pole bs_noise_bands ma 2 bity (bug naprawiony 21.10.2026) ---
+# Wartosci 4 i 5 byly przyjmowane: naglowek zapisywal je obciete do 2 bitow
+# (4 -> 0, 5 -> 1), a estymator szumu liczyl pasma z pelnej wartosci, wiec
+# dekoder czytal inna liczbe wspolczynnikow szumu niz enkoder zapisal.
+for nb in 4 5; do
+  rm -f "${OUT}_nb${nb}.aac"
+  "$X64" -f2 -p5 -b48000 --sbr-noise-bands $nb -o "${OUT}_nb${nb}.aac" "$WAV" >/dev/null 2>&1; rc=$?
+  if [ "$rc" != "0" ] && [ ! -s "${OUT}_nb${nb}.aac" ]; then
+    ok "--sbr-noise-bands $nb odrzucone (pole ma 2 bity)"
+  else
+    bad "--sbr-noise-bands $nb przyjete (rc=$rc) - naglowek SBR tego nie przeniesie"
+  fi
+done
+for nb in 0 1 2 3; do
+  enc "$X64" -f2 -p5 -b48000 --sbr-noise-bands $nb -o "${OUT}_nb${nb}.aac" "$WAV"
+  if [ -s "${OUT}_nb${nb}.aac" ] && [ "$(derr ${OUT}_nb${nb}.aac)" = "0" ]; then
+    ok "--sbr-noise-bands $nb @ HE-AAC: dekodowalny"
+  else
+    bad "--sbr-noise-bands $nb @ HE-AAC: bledy dekodera lub brak pliku"
+  fi
+done
+
 echo "==================================="
 echo "WYNIK: PASS=$PASS FAIL=$FAIL"
 [ "$FAIL" = "0" ] && { echo "ALL PASS"; exit 0; } || { echo "SA BLEDY"; exit 1; }

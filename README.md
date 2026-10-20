@@ -222,7 +222,7 @@ Overrides the settings from the SBR tuning table (after it is loaded).
 | `--sbr-stop <n>` | -1 def, 0..13 | -1 | `bs_stop_freq` index (end of the SBR band). |
 | `--sbr-freqscale <n>` | -1 def, 0..3 | -1 | Frequency grouping (0 = linear, higher = finer log). |
 | `--sbr-alterscale <n>` | -1 def, 0/1 | -1 | Alternative scale resolution. |
-| `--sbr-noise-bands <n>` | -1 def, 1..5 | -1 | Number of SBR noise bands (density of the noise description). |
+| `--sbr-noise-bands <n>` | -1 def, 0..3 | -1 | Density of the SBR noise description (`bs_noise_bands`, a 2-bit header field): 0 = a single noise band, 1/2/3 = about 1/2/3 bands per octave. Not a literal band count. The header cannot carry larger values. |
 | `--sbr-amp-res <n>` | -1 def, 0/1 | -1 | Envelope amplitude resolution: 0 = 1.5 dB, 1 = 3.0 dB. |
 | `--sbr-data-extra <n>` | -1 def, 0/1 | -1 | Write extra SBR header data. |
 | `--sbr-num-env <1\|2\|4>` | -1 off | -1 | Number of envelopes per frame. FORCES a static time grid (ignores the transient detector). More = better temporal resolution of the upper band, worse on attacks. (8 exceeds the standard grid — rejected.) |
@@ -807,7 +807,7 @@ fdkaac-franken-x64.exe -p 2 -b 96000 --block-bias 0 --tns-order 2 -o out.m4a in.
 fdkaac-franken-x64.exe -p 2 -b 80000 --ath-scale 512 --pns 1 --pns-start 4000 -o out.m4a in.wav
 
 # Denser SBR noise description + more precise amplitude:
-fdkaac-franken-x64.exe -p 5 -b 64000 --sbr-noise-bands 5 --sbr-amp-res 0 -o out.m4a in.wav
+fdkaac-franken-x64.exe -p 5 -b 64000 --sbr-noise-bands 3 --sbr-amp-res 0 -o out.m4a in.wav
 
 # HE-AAC v2 with PS disabled (flattened stereo):
 fdkaac-franken-x64.exe -p 29 -b 32000 --ps 0 -o out.m4a in.wav
@@ -1121,7 +1121,7 @@ Nadpisuje ustawienia z tabeli tuningowej SBR (po jej załadowaniu).
 | `--sbr-stop <n>` | -1 def, 0..13 | -1 | Indeks `bs_stop_freq` (koniec pasma SBR). |
 | `--sbr-freqscale <n>` | -1 def, 0..3 | -1 | Grupowanie częstotliwości (0 = liniowe, wyżej = drobniejsze log). |
 | `--sbr-alterscale <n>` | -1 def, 0/1 | -1 | Alternatywna rozdzielczość skali. |
-| `--sbr-noise-bands <n>` | -1 def, 1..5 | -1 | Liczba pasm szumu SBR (gęstość opisu szumu). |
+| `--sbr-noise-bands <n>` | -1 def, 0..3 | -1 | Gęstość opisu szumu SBR (pole `bs_noise_bands` w nagłówku, 2 bity): 0 = jedno pasmo szumu, 1/2/3 = około 1/2/3 pasm na oktawę. To nie jest dosłowna liczba pasm. Większych wartości nagłówek nie przeniesie. |
 | `--sbr-amp-res <n>` | -1 def, 0/1 | -1 | Rozdzielczość amplitudy obwiedni: 0 = 1.5 dB, 1 = 3.0 dB. |
 | `--sbr-data-extra <n>` | -1 def, 0/1 | -1 | Zapis dodatkowych danych nagłówka SBR. |
 | `--sbr-num-env <1\|2\|4>` | -1 off | -1 | Liczba obwiedni na ramke. WYMUSZA statyczna siatke czasowa (ignoruje detektor transientów). Więcej = lepsza rozdzielczość czasowa górnego pasma, gorzej na atakach. (8 przekracza standardowy grid — odrzucone.) |
@@ -1702,7 +1702,7 @@ fdkaac-franken-x64.exe -p 2 -b 96000 --block-bias 0 --tns-order 2 -o out.m4a in.
 fdkaac-franken-x64.exe -p 2 -b 80000 --ath-scale 512 --pns 1 --pns-start 4000 -o out.m4a in.wav
 
 # Gestszy opis szumu SBR + dokladniejsza amplituda:
-fdkaac-franken-x64.exe -p 5 -b 64000 --sbr-noise-bands 5 --sbr-amp-res 0 -o out.m4a in.wav
+fdkaac-franken-x64.exe -p 5 -b 64000 --sbr-noise-bands 3 --sbr-amp-res 0 -o out.m4a in.wav
 
 # HE-AAC v2 z wyłączonym PS (splaszczone stereo):
 fdkaac-franken-x64.exe -p 29 -b 32000 --ps 0 -o out.m4a in.wav

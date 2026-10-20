@@ -6,7 +6,7 @@
 # Struktura drzew: fdk/ front/ inst-x64|inst-x86 (NIE fdk-aac/).
 set -eu
 P=/mnt/d/projekty/aacfdk
-FILES="libAACenc/src/ms_stereo.cpp libAACenc/src/intensity.cpp"
+FILES="libAACenc/src/ms_stereo.cpp libAACenc/src/intensity.cpp libSBRenc/src/sbr_encoder.cpp"
 
 for pair in "$HOME/aacfdk_win:x86_64-w64-mingw32:x64" \
             "$HOME/aacfdk_win86:i686-w64-mingw32:x86"; do
@@ -18,6 +18,8 @@ for pair in "$HOME/aacfdk_win:x86_64-w64-mingw32:x64" \
   done
   ( cd "$d/fdk" && touch $FILES && make -j"$(nproc)" >/dev/null 2>&1 \
       && make install >/dev/null 2>&1 ) || { echo "  BLAD build lib"; continue; }
+  # frontend (nu774): zawsze kopiuj zrodla, bo przelaczniki i walidacja zyja tutaj
+  cp "$P"/src-fdkaac/src/*.c "$P"/src-fdkaac/src/*.h "$d/front/src/" 2>/dev/null || true
   ( cd "$d/front" && make -j"$(nproc)" >/dev/null 2>&1 ) \
       || { echo "  BLAD build front"; continue; }
   exe=$(find "$d/front" -maxdepth 1 -name '*.exe' | head -1)

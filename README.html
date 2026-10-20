@@ -821,9 +821,12 @@ loaded).</p>
 </tr>
 <tr class="odd">
 <td><code>--sbr-noise-bands &lt;n&gt;</code></td>
-<td>-1 def, 1..5</td>
+<td>-1 def, 0..3</td>
 <td>-1</td>
-<td>Number of SBR noise bands (density of the noise description).</td>
+<td>Density of the SBR noise description (<code>bs_noise_bands</code>, a
+2-bit header field): 0 = a single noise band, 1/2/3 = about 1/2/3 bands
+per octave. Not a literal band count. The header cannot carry larger
+values.</td>
 </tr>
 <tr class="even">
 <td><code>--sbr-amp-res &lt;n&gt;</code></td>
@@ -2350,7 +2353,7 @@ fdkaac-franken-x64.exe -p 2 -b 96000 --block-bias 0 --tns-order 2 -o out.m4a in.
 fdkaac-franken-x64.exe -p 2 -b 80000 --ath-scale 512 --pns 1 --pns-start 4000 -o out.m4a in.wav
 
 # Denser SBR noise description + more precise amplitude:
-fdkaac-franken-x64.exe -p 5 -b 64000 --sbr-noise-bands 5 --sbr-amp-res 0 -o out.m4a in.wav
+fdkaac-franken-x64.exe -p 5 -b 64000 --sbr-noise-bands 3 --sbr-amp-res 0 -o out.m4a in.wav
 
 # HE-AAC v2 with PS disabled (flattened stereo):
 fdkaac-franken-x64.exe -p 29 -b 32000 --ps 0 -o out.m4a in.wav</code></pre>
@@ -2918,9 +2921,12 @@ log).</td>
 </tr>
 <tr class="odd">
 <td><code>--sbr-noise-bands &lt;n&gt;</code></td>
-<td>-1 def, 1..5</td>
+<td>-1 def, 0..3</td>
 <td>-1</td>
-<td>Liczba pasm szumu SBR (gęstość opisu szumu).</td>
+<td>Gęstość opisu szumu SBR (pole <code>bs_noise_bands</code> w
+nagłówku, 2 bity): 0 = jedno pasmo szumu, 1/2/3 = około 1/2/3 pasm na
+oktawę. To nie jest dosłowna liczba pasm. Większych wartości nagłówek
+nie przeniesie.</td>
 </tr>
 <tr class="even">
 <td><code>--sbr-amp-res &lt;n&gt;</code></td>
@@ -4444,7 +4450,7 @@ fdkaac-franken-x64.exe -p 2 -b 96000 --block-bias 0 --tns-order 2 -o out.m4a in.
 fdkaac-franken-x64.exe -p 2 -b 80000 --ath-scale 512 --pns 1 --pns-start 4000 -o out.m4a in.wav
 
 # Gestszy opis szumu SBR + dokladniejsza amplituda:
-fdkaac-franken-x64.exe -p 5 -b 64000 --sbr-noise-bands 5 --sbr-amp-res 0 -o out.m4a in.wav
+fdkaac-franken-x64.exe -p 5 -b 64000 --sbr-noise-bands 3 --sbr-amp-res 0 -o out.m4a in.wav
 
 # HE-AAC v2 z wyłączonym PS (splaszczone stereo):
 fdkaac-franken-x64.exe -p 29 -b 32000 --ps 0 -o out.m4a in.wav</code></pre>

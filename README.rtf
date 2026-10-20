@@ -485,11 +485,11 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 {
 {{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --sbr-noise-bands <n>}\par}
 \cell}
-{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 def, 1..5\par}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 def, 0..3\par}
 \cell}
 {{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1\par}
 \cell}
-{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Number of SBR noise bands (density of the noise description).\par}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Density of the SBR noise description ({\f1 bs_noise_bands}, a 2-bit header field): 0 = a single noise band, 1/2/3 = about 1/2/3 bands per octave. Not a literal band count. The header cannot carry larger values.\par}
 \cell}
 }
 \intbl\row}
@@ -2816,7 +2816,7 @@ fdkaac-franken-x64.exe -p 2 -b 96000 --block-bias 0 --tns-order 2 -o out.m4a in.
 fdkaac-franken-x64.exe -p 2 -b 80000 --ath-scale 512 --pns 1 --pns-start 4000 -o out.m4a in.wav\line
 \line
 # Denser SBR noise description + more precise amplitude:\line
-fdkaac-franken-x64.exe -p 5 -b 64000 --sbr-noise-bands 5 --sbr-amp-res 0 -o out.m4a in.wav\line
+fdkaac-franken-x64.exe -p 5 -b 64000 --sbr-noise-bands 3 --sbr-amp-res 0 -o out.m4a in.wav\line
 \line
 # HE-AAC v2 with PS disabled (flattened stereo):\line
 fdkaac-franken-x64.exe -p 29 -b 32000 --ps 0 -o out.m4a in.wav\par}
@@ -3352,11 +3352,11 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 {
 {{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --sbr-noise-bands <n>}\par}
 \cell}
-{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 def, 1..5\par}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 def, 0..3\par}
 \cell}
 {{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1\par}
 \cell}
-{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Liczba pasm szumu SBR (g\u281 ?sto\u347 ?\u263 ? opisu szumu).\par}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 G\u281 ?sto\u347 ?\u263 ? opisu szumu SBR (pole {\f1 bs_noise_bands} w nag\u322 ?\u243 ?wku, 2 bity): 0 = jedno pasmo szumu, 1/2/3 = oko\u322 ?o 1/2/3 pasm na oktaw\u281 ?. To nie jest dos\u322 ?owna liczba pasm. Wi\u281 ?kszych warto\u347 ?ci nag\u322 ?\u243 ?wek nie przeniesie.\par}
 \cell}
 }
 \intbl\row}
@@ -5668,7 +5668,7 @@ fdkaac-franken-x64.exe -p 2 -b 96000 --block-bias 0 --tns-order 2 -o out.m4a in.
 fdkaac-franken-x64.exe -p 2 -b 80000 --ath-scale 512 --pns 1 --pns-start 4000 -o out.m4a in.wav\line
 \line
 # Gestszy opis szumu SBR + dokladniejsza amplituda:\line
-fdkaac-franken-x64.exe -p 5 -b 64000 --sbr-noise-bands 5 --sbr-amp-res 0 -o out.m4a in.wav\line
+fdkaac-franken-x64.exe -p 5 -b 64000 --sbr-noise-bands 3 --sbr-amp-res 0 -o out.m4a in.wav\line
 \line
 # HE-AAC v2 z wy\u322 ?\u261 ?czonym PS (splaszczone stereo):\line
 fdkaac-franken-x64.exe -p 29 -b 32000 --ps 0 -o out.m4a in.wav\par}

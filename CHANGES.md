@@ -5,10 +5,11 @@ Library** (per section 2 of the FDK AAC license, see `NOTICE.fdk-aac`).
 
 ## Releases
 
-### v1.3.2 — MS/IS: short blocks, MS_MASK_ALL promotion, forced IS
+### v1.3.2 — MS/IS: short blocks, MS_MASK_ALL promotion, forced IS; SBR noise bands
 
 Bug-fix release. No new switches, no tuning changes. Without `--msbands`,
-`--msbands-lo/-hi` and `--is-force-lo/-hi` the output is bit-identical to v1.3.1.
+`--msbands-lo/-hi` and `--is-force-lo/-hi` the output is bit-identical to v1.3.1;
+`--sbr-noise-bands 4|5` is now rejected.
 Reported by Patryk (review of the MS/IS band logic), confirmed by reading the
 bitstream back on the decoder side (`tools/msis/parse_ms.py`).
 
@@ -44,11 +45,25 @@ The energy check in forced IS stays `left OR right`: the division uses the L+R
 (or L-R) energy and fails only when BOTH channels are silent. The code comment
 that claimed otherwise is corrected.
 
+#### `--sbr-noise-bands` accepted values the SBR header cannot carry
+
+`bs_noise_bands` is a 2-bit field of the SBR header, so only 0..3 can be
+signalled: 0 = a single noise band, 1/2/3 = about 1/2/3 bands per octave. The
+switch accepted 1..5. For 4 and 5 the header writer masked the value to 2 bits
+(4 -> 0, 5 -> 1) while the noise-floor estimator kept the full value, so the
+decoder derived a different number of noise bands than the encoder wrote and
+misparsed the rest of the SBR data (ffmpeg: `noise_facs_q ... is invalid`,
+`env_facs_q ... is invalid`, around 10 errors per 4 s at 32-48 kbps). The
+frontend now accepts -1 and 0..3, and the library ignores anything above 3
+regardless of the frontend. Reported by Patryk. Values 0..3 are bit-identical
+to v1.3.1; 0 was always legal and is now documented.
+
 #### Tests
 
-`make check` gained 7 checks: the MS range in short-block groups (3), the
-promotion (2), forced IS with alternating panning (2), plus one opt-in identity
-check. All 7 fail on the v1.3.1 binary and pass on v1.3.2.
+`make check` gained 13 checks: the MS range in short-block groups (3), the
+promotion (2), forced IS with alternating panning (2), `--sbr-noise-bands` 4/5
+rejected (2) and 0..3 decodable (4), plus opt-in identity checks. Every
+regression check fails on the v1.3.1 binary and passes on v1.3.2.
 
 ### v1.3.1 — Parametric Stereo phase: two bitstream fixes
 
