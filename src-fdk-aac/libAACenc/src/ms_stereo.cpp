@@ -215,7 +215,13 @@ void FDKaacEnc_MsStereoProcessing(PSY_DATA *RESTRICT psyData[(2)],
          * the L/R->M/S butterfly below stay in sync (post-hoc mask edits would
          * desync spectrum from mask -> decoder plays mid in L, side in R). */
         if (allowMS != 0) {
-          int band = sfb + sfboffs;
+          /* SFB index WITHIN the window group. For short blocks FDK flattens
+           * the groups (group g occupies [g*sfbPerGroup, g*sfbPerGroup +
+           * maxSfbPerGroup)), and every group restarts at frequency SFB 0, so
+           * the band range has to be compared against sfboffs alone - the same
+           * convention intensity.cpp uses for --is-lo/--is-hi. Using
+           * sfb + sfboffs made groups 1..n fall outside any range. */
+          int band = sfboffs;
           if (g_franken.forceMsMask == 1) useMS = 1;      /* force MS everywhere */
           else if (g_franken.forceMsMask == 0) useMS = 0; /* force pure L/R */
           /* Legacy cap: no MS at/above msMaxBands (keeps N lowest bands). */
@@ -307,7 +313,8 @@ void FDKaacEnc_MsStereoProcessing(PSY_DATA *RESTRICT psyData[(2)],
      * every band, ignoring our cap). Keep the explicit per-band mask instead. */
     int frankenMsControl =
         (g_franken.forceMsMask == 0 || g_franken.forceMsMask == 1 ||
-         g_franken.msMaxBands >= 0);
+         g_franken.msMaxBands >= 0 || g_franken.msBandLo >= 0 ||
+         g_franken.msBandHi >= 0);
     if (!frankenMsControl &&
         ((numMsMaskFalse == 0) ||
          ((numMsMaskFalse < maxSfbPerGroup) && (numMsMaskFalse < 9)))) {

@@ -738,8 +738,11 @@ void FDKaacEnc_IntensityStereoProcessing(
       for (sfboffs = 0; sfboffs < maxSfbPerGroup; sfboffs++) {
         INT band = sfboffs;
         if (band >= flo && band <= fhi) {
-          /* Only force where both channels carry energy; forcing IS on a band
-           * with a silent channel would divide by ~0 in the isScale math. */
+          /* Skip only bands where BOTH channels are silent: the isScale
+           * division uses the L+R (or L-R) energy as denominator, which is
+           * non-zero as soon as either channel carries energy. A band with one
+           * silent channel is a hard pan, exactly what IS is meant for, so the
+           * condition is deliberately OR, not AND. */
           if (sfbEnergyLeft[sfb + sfboffs] > FL2FXCONST_DBL(0.0f) ||
               sfbEnergyRight[sfb + sfboffs] > FL2FXCONST_DBL(0.0f))
             isMask[sfb + sfboffs] = 1;
@@ -903,6 +906,31 @@ void FDKaacEnc_IntensityStereoProcessing(
       sfbSpreadEnRight[sfb + sfboffs] = FL2FXCONST_DBL(0.0f);
 
       *msDigest = MS_SOME;
+    }
+  }
+
+  /* Frankenstein: keep the intensity-position chain codable. The bitstream
+   * sends isScale as a delta to the previous IS band (in grouped SFB order,
+   * starting from 0), through the scalefactor Huffman book, which only covers
+   * |delta| <= CODE_BOOK_SCF_LAV (60). A single isScale is already clamped to
+   * +-60, but two neighbouring hard-panned bands in OPPOSITE directions give a
+   * delta of up to 120. Stock never gets there because its merging pass
+   * smooths isScale; forced IS (--is-force-lo/-hi) bypasses that pass and
+   * aborted the encoder on an assertion. Clamping the delta only softens the
+   * pan of the decoded right channel in that band; the stream stays legal and
+   * the step is a no-op whenever every delta is already in range. */
+  {
+    INT lastIs = 0;
+    for (sfb = 0; sfb < sfbCnt; sfb += sfbPerGroup) {
+      for (sfboffs = 0; sfboffs < maxSfbPerGroup; sfboffs++) {
+        INT k = sfb + sfboffs;
+        INT d;
+        if (isBook[k] == 0) continue;
+        d = isScale[k] - lastIs;
+        if (d > CODE_BOOK_SCF_LAV) isScale[k] = lastIs + CODE_BOOK_SCF_LAV;
+        if (d < -CODE_BOOK_SCF_LAV) isScale[k] = lastIs - CODE_BOOK_SCF_LAV;
+        lastIs = isScale[k];
+      }
     }
   }
 }
