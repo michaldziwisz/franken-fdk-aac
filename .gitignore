@@ -36,3 +36,4 @@ tools/msis/*.log
 tools/msis/__pycache__/
 tools/msis/*.loas
 tools/msis/*.lat
+tools/msis/rel/
