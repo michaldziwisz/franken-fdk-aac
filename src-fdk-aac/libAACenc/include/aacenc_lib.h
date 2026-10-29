@@ -1573,9 +1573,9 @@ typedef enum {
   AACENC_FRANKEN_MINSNR_CLAMP_LO = 0xF047, /*!< Scale MIN_SNR floor Q8 (-1 off). */
   AACENC_FRANKEN_REDUCE_CLAMP = 0xF048,/*!< 0 = drop the 29 dB threshold-reduction clamp (-1 default on). */
   AACENC_FRANKEN_MID_BIAS = 0xF04A,    /*!< Mid (L+R) bias Q8, >256 = free bits for side (-1 off). */
-  AACENC_FRANKEN_SIDE_BIAS = 0xF049,   /*!< Shift side (L-R) threshold on MS bands, dB*10; + = more side, - = degrade side (AACENC_FRANKEN_OFF = off). */
-  AACENC_FRANKEN_SIDE_KNEE = 0xF053,   /*!< Shape side SFB-zeroing cliff, dB*10; + = soft knee, - = hard cutoff (AACENC_FRANKEN_OFF = off). */
-  AACENC_FRANKEN_MASK_SLOPE = 0xF054,  /*!< Shift MSA quiet-band starve threshold, dB*10; + = more detail, - = starve harder (AACENC_FRANKEN_OFF = off). */
+  AACENC_FRANKEN_SIDE_BIAS = 0xF049,   /*!< Shift side (L-R) threshold on MS bands, dB*1000 (millidecibels; was dB*10 before 1.4); + = more side, - = degrade side (AACENC_FRANKEN_OFF = off). */
+  AACENC_FRANKEN_SIDE_KNEE = 0xF053,   /*!< Shape side SFB-zeroing cliff, dB*1000 (millidecibels; was dB*10 before 1.4); + = soft knee, - = hard cutoff (AACENC_FRANKEN_OFF = off). */
+  AACENC_FRANKEN_MASK_SLOPE = 0xF054,  /*!< Shift MSA quiet-band starve threshold, dB*1000 (millidecibels; was dB*10 before 1.4); + = more detail, - = starve harder (AACENC_FRANKEN_OFF = off). */
   AACENC_FRANKEN_SBR_HEADER_PERIOD = 0xF04B, /*!< Frames between SBR headers, 1=instant sync (-1 off). */
   AACENC_FRANKEN_PNS_GAIN = 0xF04D,    /*!< PNS fabricated-noise loudness, value*100 (100=unchanged, -1 off). */
   AACENC_FRANKEN_PNS_TONALITY = 0xF04E,/*!< PNS refTonality detection scale, value*100 (-1 off). */
@@ -1615,6 +1615,19 @@ typedef enum {
   AACENC_FRANKEN_SBR_NF_WEIGHT_FROM = 0xF076, /*!< Lowest invf level whose bands get the weight, 1..3 (-1 = stock 3). */
   AACENC_FRANKEN_SBR_NF_SMOOTH = 0xF077,   /*!< Noise-floor time smoothing: 0 none (-1 = stock 4 frames). */
   AACENC_FRANKEN_SBR_SOFTNESS = 0xF078,    /*!< SBR estimator macro 0 hard .. 7 soft (-1 off). */
+  AACENC_FRANKEN_PREECHO_RISE = 0xF079,           /*!< Max rise of the masking threshold per long frame, dB*1000 (FRANKEN_OFF = stock 3.01 dB). */
+  AACENC_FRANKEN_PREECHO_DEPTH = 0xF07A,          /*!< Max lowering by pre-echo control, dB*1000 (FRANKEN_OFF = stock 20 dB). */
+  AACENC_FRANKEN_ATTACK_DECAY = 0xF07B,           /*!< Attack detector running-energy decay x1000 (FRANKEN_OFF = stock 700). */
+  AACENC_FRANKEN_ATTACK_FLOOR = 0xF07C,           /*!< Attack detector minimum energy shift, dB*1000 (FRANKEN_OFF = stock). */
+  AACENC_FRANKEN_TNS_THRESH = 0xF07D,             /*!< Multiplier on TNS switch-on thresholds x1000 (FRANKEN_OFF = stock). */
+  AACENC_FRANKEN_TNS_START = 0xF07E,              /*!< Lowest frequency of the lower TNS filter, Hz (-1 = stock). */
+  AACENC_FRANKEN_WINDOW_SHAPE = 0xF07F,           /*!< AAC-LC window shape: 0 sine, 1 KBD (-1 = stock per block type). */
+  AACENC_FRANKEN_SHORT_GROUPS = 0xF080,           /*!< Short-block grouping: 0 stock, 1 one group, 2 pairs, 3 tight (-1 = stock). */
+  AACENC_FRANKEN_AVOID_HOLES = 0xF081,            /*!< Avoid-holes peak/valley min-SNR shaping: 0 off, 1 on (-1 = stock, on from 20 kbps/ch). */
+  AACENC_FRANKEN_HOLE_START = 0xF082,             /*!< First long SFB where holes may be cut (-1 = stock). */
+  AACENC_FRANKEN_HOLE_START_SHORT = 0xF083,       /*!< First short SFB where holes may be cut (-1 = stock). */
+  AACENC_FRANKEN_HOLE_SPREAD = 0xF084,            /*!< Spread-energy reduction deciding maskable holes, dB*1000 (FRANKEN_OFF = stock 3/2 dB). */
+  AACENC_FRANKEN_HOLE_LADDER = 0xF085,            /*!< Energy steps of the hole cutting 1..8 (-1 = stock 8). */
   AACENC_FRANKEN_VERBOSE = 0xF016,     /*!< Verbose init dump 0/1. */
 
   /* Read-only (GetParam) mirrors of internal encoder-chosen values, for --verbose. */

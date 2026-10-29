@@ -88,6 +88,19 @@ extern "C" void frankenResetDefaults(void) {
   g_franken.sbrNfWeightFrom = -1;
   g_franken.sbrNfSmooth = -1;
   g_franken.sbrSoftness = -1;
+  g_franken.preEchoRiseDbX1000 = FRANKEN_OFF;
+  g_franken.preEchoDepthDbX1000 = FRANKEN_OFF;
+  g_franken.attackDecayX1000 = FRANKEN_OFF;
+  g_franken.attackFloorDbX1000 = FRANKEN_OFF;
+  g_franken.tnsThreshX1000 = FRANKEN_OFF;
+  g_franken.tnsStartHz = -1;
+  g_franken.windowShape = -1;
+  g_franken.shortGroups = -1;
+  g_franken.avoidHoles = -1;
+  g_franken.holeStartLong = -1;
+  g_franken.holeStartShort = -1;
+  g_franken.holeSpreadDbX1000 = FRANKEN_OFF;
+  g_franken.holeLadder = -1;
   g_franken.psBands = -1;
   g_franken.psEnvelopes = -1;
   g_franken.psEnvReduce = -1;
@@ -108,9 +121,9 @@ extern "C" void frankenResetDefaults(void) {
   g_franken.reduceClamp = -1;
 
   g_franken.midBiasQ8 = -1;
-  g_franken.sideBiasDbX10 = FRANKEN_OFF;
-  g_franken.sideKneeDbX10 = FRANKEN_OFF;
-  g_franken.msaSlopeDbX10 = FRANKEN_OFF;
+  g_franken.sideBiasDbX1000 = FRANKEN_OFF;
+  g_franken.sideKneeDbX1000 = FRANKEN_OFF;
+  g_franken.msaSlopeDbX1000 = FRANKEN_OFF;
 
   g_franken.sbrHeaderPeriod = -1;
   g_franken.effSbrHeaderPeriod = -1;

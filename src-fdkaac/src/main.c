@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <math.h>
 #include <locale.h>
 #include <errno.h>
 #include <sys/stat.h>
@@ -45,6 +46,60 @@
 #define PROGNAME "fdkaac"
 
 static volatile int g_interrupted = 0;
+
+/* Strict integer parser for the Frankenstein switches: sscanf("%d") silently
+ * read "128,5" or "3x" as 128 / 3. Rejects anything that is not a whole
+ * decimal number that fits in an int. Returns 1 on success (drop-in for the
+ * old "sscanf(...) != 1" test). */
+static int fr_scan_int(const char *arg, int *out)
+{
+    char *end;
+    long v;
+    if (!arg || !*arg || isspace((unsigned char)*arg)) return 0;
+    errno = 0;
+    v = strtol(arg, &end, 10);
+    if (errno || end == arg || *end || v > 2147483647L || v < -2147483647L)
+        return 0;
+    *out = (int)v;
+    return 1;
+}
+
+/* Frankenstein: strict decimal parser for every fractional switch.
+ * Accepts '.' or ',' as the decimal separator (a Polish/European keyboard
+ * habit: "-0,23" used to be read by sscanf as "-0" and silently turned the
+ * knob OFF, "-1,5" as "-1"). Rejects trailing junk, exponents, NaN/Inf and
+ * values that would overflow an int. Extra fractional digits are not an
+ * error: the value is rounded half-away-from-zero to 1/scale, and the RANGE
+ * IS CHECKED ON THE ROUNDED VALUE, so what is accepted is exactly what the
+ * encoder gets. Returns 0 on success. */
+static int fr_parse_dec(const char *arg, double lo, double hi, int scale,
+                        int *out)
+{
+    char buf[64], *end;
+    size_t i, len;
+    double v, r;
+    if (!arg) return -1;
+    len = strlen(arg);
+    if (len == 0 || len >= sizeof(buf)) return -1;
+    for (i = 0; i < len; ++i) {
+        char c = arg[i];
+        if (c == ',') c = '.';
+        if (!(isdigit((unsigned char)c) || c == '.' || c == '-' || c == '+'))
+            return -1; /* no exponents, spaces, "nan", "inf" */
+        buf[i] = c;
+    }
+    buf[len] = 0;
+    if (strchr(buf, '.') != strrchr(buf, '.')) return -1; /* "1.2.3" */
+    errno = 0;
+    v = strtod(buf, &end);
+    if (errno || end == buf || *end) return -1;
+    r = v * scale;
+    r = (r < 0) ? -floor(-r + 0.5) : floor(r + 0.5);
+    if (r > 2000000000.0 || r < -2000000000.0) return -1; /* int overflow */
+    if (r / scale < lo - 1e-9 || r / scale > hi + 1e-9) return -1;
+    *out = (int)r;
+    return 0;
+}
 
 #if HAVE_SIGACTION
 static void signal_handler(int signum)
@@ -461,6 +516,48 @@ PROGNAME " %s\n"
 " --pns-refpower <x>          Scales the PNS reference-power detection threshold. 1.0=def.\n"
 " --pns-gapfill <x>           Scales the PNS gap-fill threshold. 1.0=default.\n"
 " --pns-min-width <n>         Minimum SFB width for PNS (raw). Lower = PNS on narrower bands.\n"
+"\n== E2. Core transients, pre-echo and spectral holes (LC/LD/ELD core) ==\n"
+"   All decimal knobs take '.' or ',' and up to 3 places; out of range = error.\n"
+" --preecho-rise <dB>         0.0..24.0. How far a band's masking threshold may RISE\n"
+"                               from one long frame to the next. Stock 3.01 (x2).\n"
+"                               Lower = quantisation noise cannot run ahead of an\n"
+"                               attack inside a long block (less pre-echo, more bits).\n"
+"                               Above 3.01 = looser. Off by default.\n"
+" --preecho-depth <dB>        0.0..60.0. How far pre-echo control may LOWER a threshold\n"
+"                               at most. Stock 20.0. Pairs with --preecho-rise.\n"
+" --attack-decay <x>          0.0..0.99. Memory of the attack detector: share of the\n"
+"                               running energy kept per sub-window. Stock 0.70. Lower =\n"
+"                               compares with the very last moment (catches attacks right\n"
+"                               after loud passages), higher = with a longer average.\n"
+" --attack-floor <dB>         -60.0..30.0. Shift of the minimum energy an attack must\n"
+"                               have. - = quiet attacks (brushes, soft hi-hats) also\n"
+"                               switch to short blocks; + = only loud ones. 0 = stock.\n"
+" --tns-thresh <x>            0.5..4.0. Multiplier on the prediction gain TNS needs to\n"
+"                               switch on (stock 1.0). <1 = TNS shapes noise in time on\n"
+"                               more frames (tighter attacks, LD/ELD's main tool, as\n"
+"                               they have no short blocks); >1 = more rarely.\n"
+" --tns-start <Hz>            Lowest frequency of the lower TNS filter in long blocks.\n"
+"                               Stock ~1.4 kHz @48k. Lower = TNS reaches deeper. LC only.\n"
+" --window-shape <0|1>        AAC-LC: 0 = sine window for every block, 1 = KBD for every\n"
+"                               block. Stock: KBD long, sine short. KBD separates distant\n"
+"                               frequencies better, sine is sharper next to a peak.\n"
+" --short-groups <0..3>       How the 8 short windows are grouped (one scalefactor set\n"
+"                               per group). 0 stock table, 1 one group (cheapest), 2 four\n"
+"                               pairs, 3 tight: attack window alone, most bits there.\n"
+" --avoid-holes <0|1>         Peak/valley shaping that keeps narrow bands from being\n"
+"                               zeroed. Stock switches it OFF below 20 kbps per channel,\n"
+"                               i.e. below 40 kbps STEREO. 1 = force on, 0 = force off.\n"
+" --hole-start <sfb>          0..51. First long-block SFB where bands may be cut to\n"
+"                               zero when bits run out. Stock 15 (0 when holes are off).\n"
+"                               Higher = the lower spectrum is protected.\n"
+" --hole-start-short <sfb>    0..15. The same for short blocks. Stock 3.\n"
+" --hole-spread <dB>          0.0..24.0. How much neighbour (spread) energy is lowered\n"
+"                               before a band counts as covered by its neighbours and\n"
+"                               may become a hole. Stock 3.0 long, 2.0 short. Higher =\n"
+"                               fewer bands count as covered = more are protected.\n"
+" --hole-ladder <1..8>         Energy steps of the hole cutting. Stock 8. Fewer = only\n"
+"                               the quietest bands may be cut; the rate loop then gets\n"
+"                               coarser instead of cutting more bands.\n"
 "\n== E. Block switching & bitrate control ==\n"
 " --block-bias <n>            Bias short/long block decision. 128=default(unchanged),\n"
 "                               >128 favours short (transient-like), <128 long, 0=long\n"
@@ -616,6 +713,19 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
 #define OPT_FR_SBR_NF_WFROM      M4AF_FOURCC('f','n','f','f')
 #define OPT_FR_SBR_NF_SMOOTH     M4AF_FOURCC('f','n','f','s')
 #define OPT_FR_SBR_SOFTNESS      M4AF_FOURCC('f','s','s','o')
+#define OPT_FR_PREECHO_RISE       M4AF_FOURCC('f','q','e','r')
+#define OPT_FR_PREECHO_DEPTH      M4AF_FOURCC('f','q','d','p')
+#define OPT_FR_ATTACK_DECAY       M4AF_FOURCC('f','q','a','d')
+#define OPT_FR_ATTACK_FLOOR       M4AF_FOURCC('f','q','a','f')
+#define OPT_FR_TNS_THRESH         M4AF_FOURCC('f','q','t','t')
+#define OPT_FR_TNS_START          M4AF_FOURCC('f','q','t','s')
+#define OPT_FR_WINDOW_SHAPE       M4AF_FOURCC('f','q','w','s')
+#define OPT_FR_SHORT_GROUPS       M4AF_FOURCC('f','q','s','g')
+#define OPT_FR_AVOID_HOLES        M4AF_FOURCC('f','q','a','h')
+#define OPT_FR_HOLE_START         M4AF_FOURCC('f','q','h','l')
+#define OPT_FR_HOLE_START_SHORT   M4AF_FOURCC('f','q','h','s')
+#define OPT_FR_HOLE_SPREAD        M4AF_FOURCC('f','q','h','p')
+#define OPT_FR_HOLE_LADDER        M4AF_FOURCC('f','q','h','d')
 #define OPT_FR_PS_IPD            M4AF_FOURCC('f','p','i','d')
 #define OPT_FR_PS_OPD            M4AF_FOURCC('f','p','o','d')
 #define OPT_FR_IS_BAND_LO        M4AF_FOURCC('f','i','l','o')
@@ -762,6 +872,19 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
         { "sbr-nf-weight-from",  required_argument, 0, OPT_FR_SBR_NF_WFROM },
         { "sbr-nf-smooth",       required_argument, 0, OPT_FR_SBR_NF_SMOOTH },
         { "sbr-softness",        required_argument, 0, OPT_FR_SBR_SOFTNESS },
+        { "preecho-rise",         required_argument, 0, OPT_FR_PREECHO_RISE },
+        { "preecho-depth",        required_argument, 0, OPT_FR_PREECHO_DEPTH },
+        { "attack-decay",         required_argument, 0, OPT_FR_ATTACK_DECAY },
+        { "attack-floor",         required_argument, 0, OPT_FR_ATTACK_FLOOR },
+        { "tns-thresh",           required_argument, 0, OPT_FR_TNS_THRESH },
+        { "tns-start",            required_argument, 0, OPT_FR_TNS_START },
+        { "window-shape",         required_argument, 0, OPT_FR_WINDOW_SHAPE },
+        { "short-groups",         required_argument, 0, OPT_FR_SHORT_GROUPS },
+        { "avoid-holes",          required_argument, 0, OPT_FR_AVOID_HOLES },
+        { "hole-start",           required_argument, 0, OPT_FR_HOLE_START },
+        { "hole-start-short",     required_argument, 0, OPT_FR_HOLE_START_SHORT },
+        { "hole-spread",          required_argument, 0, OPT_FR_HOLE_SPREAD },
+        { "hole-ladder",          required_argument, 0, OPT_FR_HOLE_LADDER },
         { "ps-ipd",              required_argument, 0, OPT_FR_PS_IPD            },
         { "ps-opd",              required_argument, 0, OPT_FR_PS_OPD            },
         { "is-lo",               required_argument, 0, OPT_FR_IS_BAND_LO        },
@@ -866,6 +989,19 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
     params->fr_sbr_nf_weight_from = -1;
     params->fr_sbr_nf_smooth = -1;
     params->fr_sbr_softness = -1;
+    params->fr_preecho_rise = AACENC_FRANKEN_OFF;
+    params->fr_preecho_depth = AACENC_FRANKEN_OFF;
+    params->fr_attack_decay = AACENC_FRANKEN_OFF;
+    params->fr_attack_floor = AACENC_FRANKEN_OFF;
+    params->fr_tns_thresh = AACENC_FRANKEN_OFF;
+    params->fr_tns_start = -1;
+    params->fr_window_shape = -1;
+    params->fr_short_groups = -1;
+    params->fr_avoid_holes = -1;
+    params->fr_hole_start = -1;
+    params->fr_hole_start_short = -1;
+    params->fr_hole_spread = AACENC_FRANKEN_OFF;
+    params->fr_hole_ladder = -1;
     params->fr_ps_ipd = -1;
     params->fr_ps_opd = -1;
     params->fr_is_band_lo = -1;
@@ -1072,96 +1208,96 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
 
         /* ---- Frankenstein debug switches ---- */
         case OPT_FR_MS_MASK:
-            if (sscanf(optarg, "%d", &n) != 1) { fprintf(stderr, "invalid arg for msmask\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1) { fprintf(stderr, "invalid arg for msmask\n"); return -1; }
             params->fr_ms_mask = n; break;
         case OPT_FR_MS_BANDS:
-            if (sscanf(optarg, "%d", &n) != 1) { fprintf(stderr, "invalid arg for msbands\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1) { fprintf(stderr, "invalid arg for msbands\n"); return -1; }
             params->fr_ms_bands = n; break;
         case OPT_FR_IS:
-            if (sscanf(optarg, "%d", &n) != 1) { fprintf(stderr, "invalid arg for is\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1) { fprintf(stderr, "invalid arg for is\n"); return -1; }
             params->fr_is = n; break;
         case OPT_FR_IS_BANDS:
-            if (sscanf(optarg, "%d", &n) != 1) { fprintf(stderr, "invalid arg for isbands\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1) { fprintf(stderr, "invalid arg for isbands\n"); return -1; }
             params->fr_is_bands = n; break;
         case OPT_FR_IS_MINSFBS:
-            if (sscanf(optarg, "%d", &n) != 1) { fprintf(stderr, "invalid arg for is-min-sfbs\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1) { fprintf(stderr, "invalid arg for is-min-sfbs\n"); return -1; }
             params->fr_is_minsfbs = n; break;
         case OPT_FR_IS_CORR:
-            if (sscanf(optarg, "%d", &n) != 1) { fprintf(stderr, "invalid arg for is-corr-thresh\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1) { fprintf(stderr, "invalid arg for is-corr-thresh\n"); return -1; }
             params->fr_is_corr = n; break;
         case OPT_FR_IS_LRRATIO:
-            if (sscanf(optarg, "%d", &n) != 1) { fprintf(stderr, "invalid arg for is-lr-ratio\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1) { fprintf(stderr, "invalid arg for is-lr-ratio\n"); return -1; }
             params->fr_is_lrratio = n; break;
         case OPT_FR_CORE_CUTOFF:
-            if (sscanf(optarg, "%d", &n) != 1) { fprintf(stderr, "invalid arg for core-cutoff\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1) { fprintf(stderr, "invalid arg for core-cutoff\n"); return -1; }
             params->fr_core_cutoff = n; break;
         case OPT_FR_SBR_START:
-            if (sscanf(optarg, "%d", &n) != 1) { fprintf(stderr, "invalid arg for sbr-start\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1) { fprintf(stderr, "invalid arg for sbr-start\n"); return -1; }
             params->fr_sbr_start = n; break;
         case OPT_FR_SBR_STOP:
-            if (sscanf(optarg, "%d", &n) != 1) { fprintf(stderr, "invalid arg for sbr-stop\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1) { fprintf(stderr, "invalid arg for sbr-stop\n"); return -1; }
             params->fr_sbr_stop = n; break;
         case OPT_FR_SBR_FREQSCALE:
-            if (sscanf(optarg, "%d", &n) != 1) { fprintf(stderr, "invalid arg for sbr-freqscale\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1) { fprintf(stderr, "invalid arg for sbr-freqscale\n"); return -1; }
             params->fr_sbr_freqscale = n; break;
         case OPT_FR_SBR_ALTERSCALE:
-            if (sscanf(optarg, "%d", &n) != 1) { fprintf(stderr, "invalid arg for sbr-alterscale\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1) { fprintf(stderr, "invalid arg for sbr-alterscale\n"); return -1; }
             params->fr_sbr_alterscale = n; break;
         case OPT_FR_SBR_NOISE_BANDS:
             /* bs_noise_bands is a 2-bit header field: 0..3 only. Larger values
              * were written truncated (4 -> 0, 5 -> 1) while the encoder used the
              * full value, so encoder and decoder disagreed on the band count. */
-            if (sscanf(optarg, "%d", &n) != 1 || n < -1 || n > 3) { fprintf(stderr, "invalid arg for sbr-noise-bands (-1, 0..3)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || n < -1 || n > 3) { fprintf(stderr, "invalid arg for sbr-noise-bands (-1, 0..3)\n"); return -1; }
             params->fr_sbr_noise_bands = n; break;
         case OPT_FR_SBR_AMP_RES:
-            if (sscanf(optarg, "%d", &n) != 1) { fprintf(stderr, "invalid arg for sbr-amp-res\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1) { fprintf(stderr, "invalid arg for sbr-amp-res\n"); return -1; }
             params->fr_sbr_amp_res = n; break;
         case OPT_FR_SBR_DATA_EXTRA:
-            if (sscanf(optarg, "%d", &n) != 1) { fprintf(stderr, "invalid arg for sbr-data-extra\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1) { fprintf(stderr, "invalid arg for sbr-data-extra\n"); return -1; }
             params->fr_sbr_data_extra = n; break;
         case OPT_FR_PS:
-            if (sscanf(optarg, "%d", &n) != 1) { fprintf(stderr, "invalid arg for ps\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1) { fprintf(stderr, "invalid arg for ps\n"); return -1; }
             params->fr_ps = n; break;
         case OPT_FR_PS_IID_QUANT:
-            if (sscanf(optarg, "%d", &n) != 1) { fprintf(stderr, "invalid arg for ps-iid-quant\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1) { fprintf(stderr, "invalid arg for ps-iid-quant\n"); return -1; }
             params->fr_ps_iid_quant = n; break;
         case OPT_FR_TNS_MASK:
-            if (sscanf(optarg, "%d", &n) != 1) { fprintf(stderr, "invalid arg for tns-mask\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1) { fprintf(stderr, "invalid arg for tns-mask\n"); return -1; }
             params->fr_tns_mask = n; break;
         case OPT_FR_TNS_ORDER:
-            if (sscanf(optarg, "%d", &n) != 1) { fprintf(stderr, "invalid arg for tns-order\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1) { fprintf(stderr, "invalid arg for tns-order\n"); return -1; }
             params->fr_tns_order = n; break;
         case OPT_FR_PNS:
-            if (sscanf(optarg, "%d", &n) != 1) { fprintf(stderr, "invalid arg for pns\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1) { fprintf(stderr, "invalid arg for pns\n"); return -1; }
             params->fr_pns = n; break;
         case OPT_FR_PNS_START:
-            if (sscanf(optarg, "%d", &n) != 1) { fprintf(stderr, "invalid arg for pns-start\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1) { fprintf(stderr, "invalid arg for pns-start\n"); return -1; }
             params->fr_pns_start = n; break;
         case OPT_FR_ATH_SCALE:
-            if (sscanf(optarg, "%d", &n) != 1) { fprintf(stderr, "invalid arg for ath-scale\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1) { fprintf(stderr, "invalid arg for ath-scale\n"); return -1; }
             params->fr_ath_scale = n; break;
         case OPT_FR_BLOCK_BIAS:
-            if (sscanf(optarg, "%d", &n) != 1 || n < 0 || n > 255) { fprintf(stderr, "invalid arg for block-bias (0..255)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || n < 0 || n > 255) { fprintf(stderr, "invalid arg for block-bias (0..255)\n"); return -1; }
             params->fr_block_bias = n; break;
         case OPT_FR_VBR_RESERVOIR:
-            if (sscanf(optarg, "%d", &n) != 1 || n < 0) { fprintf(stderr, "invalid arg for vbr-reservoir\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || n < 0) { fprintf(stderr, "invalid arg for vbr-reservoir\n"); return -1; }
             params->fr_vbr_reservoir = n; break;
         case OPT_FR_MAX_BITS_FRAME:
-            if (sscanf(optarg, "%d", &n) != 1 || n < 0) { fprintf(stderr, "invalid arg for max-bits-frame\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || n < 0) { fprintf(stderr, "invalid arg for max-bits-frame\n"); return -1; }
             params->fr_max_bits_frame = n; break;
         case OPT_FR_MIN_BITS_FRAME:
-            if (sscanf(optarg, "%d", &n) != 1 || n < 0) { fprintf(stderr, "invalid arg for min-bits-frame\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || n < 0) { fprintf(stderr, "invalid arg for min-bits-frame\n"); return -1; }
             params->fr_min_bits_frame = n; break;
         case OPT_FR_BITRES_MODE:
-            if (sscanf(optarg, "%d", &n) != 1 || n < 0 || n > 2) { fprintf(stderr, "invalid arg for bitres-mode (0..2)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || n < 0 || n > 2) { fprintf(stderr, "invalid arg for bitres-mode (0..2)\n"); return -1; }
             params->fr_bitres_mode = n; break;
         case OPT_FR_MS_BIAS:
-            if (sscanf(optarg, "%d", &n) != 1 || n < 0) { fprintf(stderr, "invalid arg for ms-bias\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || n < 0) { fprintf(stderr, "invalid arg for ms-bias\n"); return -1; }
             params->fr_ms_bias = n; break;
         case OPT_FR_UNCAP_BW:
             params->fr_uncap_bw = 1; break;
         case OPT_FR_IS_AGGRESSION:
-            if (sscanf(optarg, "%d", &n) != 1 || n < 0 || n > 100) { fprintf(stderr, "invalid arg for is-aggression (0..100)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || n < 0 || n > 100) { fprintf(stderr, "invalid arg for is-aggression (0..100)\n"); return -1; }
             params->fr_is_aggression = n; break;
         case OPT_FR_FORCE_PNS:
             params->fr_force_pns = 1; break;
@@ -1170,193 +1306,232 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
         case OPT_FR_SPEECH:
             params->fr_speech = 1; break;
         case OPT_FR_SPREAD_MASK:
-            if (sscanf(optarg, "%d", &n) != 1 || n < 0) { fprintf(stderr, "invalid arg for spread-mask (>=0, 256=neutral)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || n < 0) { fprintf(stderr, "invalid arg for spread-mask (>=0, 256=neutral)\n"); return -1; }
             params->fr_spread_mask = n; break;
         case OPT_FR_MS_BAND_LO:
-            if (sscanf(optarg, "%d", &n) != 1 || n < 0) { fprintf(stderr, "invalid arg for msbands-lo\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || n < 0) { fprintf(stderr, "invalid arg for msbands-lo\n"); return -1; }
             params->fr_ms_band_lo = n; break;
         case OPT_FR_MS_BAND_HI:
-            if (sscanf(optarg, "%d", &n) != 1 || n < 0) { fprintf(stderr, "invalid arg for msbands-hi\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || n < 0) { fprintf(stderr, "invalid arg for msbands-hi\n"); return -1; }
             params->fr_ms_band_hi = n; break;
         case OPT_FR_MS_PRECISION:
-            if (sscanf(optarg, "%d", &n) != 1 || n < 256) { fprintf(stderr, "invalid arg for ms-precision (>=256)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || n < 256) { fprintf(stderr, "invalid arg for ms-precision (>=256)\n"); return -1; }
             params->fr_ms_precision = n; break;
         case OPT_FR_SBR_NUM_ENV:
-            if (sscanf(optarg, "%d", &n) != 1 || (n!=1 && n!=2 && n!=4)) { fprintf(stderr, "invalid arg for sbr-num-env (1,2,4; 8 exceeds standard frame grid)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || (n!=1 && n!=2 && n!=4)) { fprintf(stderr, "invalid arg for sbr-num-env (1,2,4; 8 exceeds standard frame grid)\n"); return -1; }
             params->fr_sbr_num_env = n; break;
         case OPT_FR_SBR_FREQRES_FIXFIX:
-            if (sscanf(optarg, "%d", &n) != 1 || n < 0 || n > 1) { fprintf(stderr, "invalid arg for sbr-freqres-fixfix (0,1)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || n < 0 || n > 1) { fprintf(stderr, "invalid arg for sbr-freqres-fixfix (0,1)\n"); return -1; }
             params->fr_sbr_freqres_fixfix = n; break;
         case OPT_FR_SBR_STEREO_MODE:
-            if (sscanf(optarg, "%d", &n) != 1 || n < 0 || n > 3) { fprintf(stderr, "invalid arg for sbr-stereo-mode (0..3)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || n < 0 || n > 3) { fprintf(stderr, "invalid arg for sbr-stereo-mode (0..3)\n"); return -1; }
             params->fr_sbr_stereo_mode = n; break;
         case OPT_FR_SBR_INVF:
-            if (sscanf(optarg, "%d", &n) != 1 || n < 0 || n > 3) { fprintf(stderr, "invalid arg for sbr-invf (0..3)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || n < 0 || n > 3) { fprintf(stderr, "invalid arg for sbr-invf (0..3)\n"); return -1; }
             params->fr_sbr_invf = n; break;
         case OPT_FR_SBR_NF_OFFSET:
-            if (sscanf(optarg, "%d", &n) != 1) { fprintf(stderr, "invalid arg for sbr-noise-floor-offset\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1) { fprintf(stderr, "invalid arg for sbr-noise-floor-offset\n"); return -1; }
             params->fr_sbr_noise_floor_offset = n; break;
         case OPT_FR_PS_ICC:
-            if (sscanf(optarg, "%d", &n) != 1 || n < 0 || n > 1) { fprintf(stderr, "invalid arg for ps-icc (0,1)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || n < 0 || n > 1) { fprintf(stderr, "invalid arg for ps-icc (0,1)\n"); return -1; }
             params->fr_ps_icc = n; break;
         case OPT_FR_PS_ICC_MODE:
-            if (sscanf(optarg, "%d", &n) != 1 || n < 0 || n > 1) { fprintf(stderr, "invalid arg for ps-icc-mode (0,1)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || n < 0 || n > 1) { fprintf(stderr, "invalid arg for ps-icc-mode (0,1)\n"); return -1; }
             params->fr_ps_icc_mode = n; break;
         case OPT_FR_PS_BANDS:
-            if (sscanf(optarg, "%d", &n) != 1 || (n != 10 && n != 20)) { fprintf(stderr, "invalid arg for ps-bands (10 or 20)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || (n != 10 && n != 20)) { fprintf(stderr, "invalid arg for ps-bands (10 or 20)\n"); return -1; }
             params->fr_ps_bands = n; break;
         case OPT_FR_PS_ENV:
-            if (sscanf(optarg, "%d", &n) != 1 || (n != 1 && n != 2 && n != 4)) { fprintf(stderr, "invalid arg for ps-env (1, 2 or 4)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || (n != 1 && n != 2 && n != 4)) { fprintf(stderr, "invalid arg for ps-env (1, 2 or 4)\n"); return -1; }
             params->fr_ps_env = n; break;
         case OPT_FR_PS_ENV_REDUCE:
-            if (sscanf(optarg, "%d", &n) != 1 || n < 0 || n > 1) { fprintf(stderr, "invalid arg for ps-env-reduce (0,1)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || n < 0 || n > 1) { fprintf(stderr, "invalid arg for ps-env-reduce (0,1)\n"); return -1; }
             params->fr_ps_env_reduce = n; break;
         case OPT_FR_PS_NOENV_SKIP:
-            if (sscanf(optarg, "%d", &n) != 1 || n < 0 || n > 1) { fprintf(stderr, "invalid arg for ps-noenv-skip (0,1)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || n < 0 || n > 1) { fprintf(stderr, "invalid arg for ps-noenv-skip (0,1)\n"); return -1; }
             params->fr_ps_noenv_skip = n; break;
         case OPT_FR_SBR_TRAN_PEAK:
-            if (sscanf(optarg, "%d", &n) != 1 || !(n>=1 && n<=200)) { fprintf(stderr, "invalid arg for sbr-tran-peak: peak (1..200, 90=stock 0.90)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || !(n>=1 && n<=200)) { fprintf(stderr, "invalid arg for sbr-tran-peak: peak (1..200, 90=stock 0.90)\n"); return -1; }
             params->fr_sbr_tran_peak = n; break;
         case OPT_FR_SBR_TRAN_QUIET:
-            if (sscanf(optarg, "%d", &n) != 1 || !(n>=1 && n<=10000)) { fprintf(stderr, "invalid arg for sbr-tran-quiet: quiet (1..10000, 100=1.00)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || !(n>=1 && n<=10000)) { fprintf(stderr, "invalid arg for sbr-tran-quiet: quiet (1..10000, 100=1.00)\n"); return -1; }
             params->fr_sbr_tran_quiet = n; break;
         case OPT_FR_SBR_TRAN_DOM:
-            if (sscanf(optarg, "%d", &n) != 1 || !(n>=100 && n<=500)) { fprintf(stderr, "invalid arg for sbr-tran-dom: dom (100..500, 140=stock 1.4)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || !(n>=100 && n<=500)) { fprintf(stderr, "invalid arg for sbr-tran-dom: dom (100..500, 140=stock 1.4)\n"); return -1; }
             params->fr_sbr_tran_dom = n; break;
         case OPT_FR_SBR_TRAN_THR:
-            if (sscanf(optarg, "%d", &n) != 1 || !(n>=1 && n<=10000)) { fprintf(stderr, "invalid arg for sbr-tran-thr: thr (1..10000, 100=1.00)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || !(n>=1 && n<=10000)) { fprintf(stderr, "invalid arg for sbr-tran-thr: thr (1..10000, 100=1.00)\n"); return -1; }
             params->fr_sbr_tran_thr = n; break;
         case OPT_FR_SBR_TRAN_SPLIT:
-            if (sscanf(optarg, "%d", &n) != 1 || !(n>=1 && n<=10000)) { fprintf(stderr, "invalid arg for sbr-tran-split: split (1..10000, 100=1.00)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || !(n>=1 && n<=10000)) { fprintf(stderr, "invalid arg for sbr-tran-split: split (1..10000, 100=1.00)\n"); return -1; }
             params->fr_sbr_tran_split = n; break;
         case OPT_FR_SBR_MH_TONE:
-            if (sscanf(optarg, "%d", &n) != 1 || !(n>=1 && n<=10000)) { fprintf(stderr, "invalid arg for sbr-mh-tone: tone (1..10000, 100=1.00)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || !(n>=1 && n<=10000)) { fprintf(stderr, "invalid arg for sbr-mh-tone: tone (1..10000, 100=1.00)\n"); return -1; }
             params->fr_sbr_mh_tone = n; break;
         case OPT_FR_SBR_MH_DIFF:
-            if (sscanf(optarg, "%d", &n) != 1 || !(n>=1 && n<=10000)) { fprintf(stderr, "invalid arg for sbr-mh-diff: diff (1..10000, 100=1.00)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || !(n>=1 && n<=10000)) { fprintf(stderr, "invalid arg for sbr-mh-diff: diff (1..10000, 100=1.00)\n"); return -1; }
             params->fr_sbr_mh_diff = n; break;
         case OPT_FR_SBR_MH_DECAY_ORIG:
-            if (sscanf(optarg, "%d", &n) != 1 || !(n>=1 && n<=10000)) { fprintf(stderr, "invalid arg for sbr-mh-decay-orig: decay-orig (1..10000, 100=1.00)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || !(n>=1 && n<=10000)) { fprintf(stderr, "invalid arg for sbr-mh-decay-orig: decay-orig (1..10000, 100=1.00)\n"); return -1; }
             params->fr_sbr_mh_decay_orig = n; break;
         case OPT_FR_SBR_MH_DECAY_DIFF:
-            if (sscanf(optarg, "%d", &n) != 1 || !(n>=1 && n<=10000)) { fprintf(stderr, "invalid arg for sbr-mh-decay-diff: decay-diff (1..10000, 100=1.00)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || !(n>=1 && n<=10000)) { fprintf(stderr, "invalid arg for sbr-mh-decay-diff: decay-diff (1..10000, 100=1.00)\n"); return -1; }
             params->fr_sbr_mh_decay_diff = n; break;
         case OPT_FR_SBR_MH_SFM_SBR:
-            if (sscanf(optarg, "%d", &n) != 1 || !(n>=1 && n<=10000)) { fprintf(stderr, "invalid arg for sbr-mh-sfm-sbr: sfm-sbr (1..10000, 100=1.00)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || !(n>=1 && n<=10000)) { fprintf(stderr, "invalid arg for sbr-mh-sfm-sbr: sfm-sbr (1..10000, 100=1.00)\n"); return -1; }
             params->fr_sbr_mh_sfm_sbr = n; break;
         case OPT_FR_SBR_MH_SFM_ORIG:
-            if (sscanf(optarg, "%d", &n) != 1 || !(n>=1 && n<=10000)) { fprintf(stderr, "invalid arg for sbr-mh-sfm-orig: sfm-orig (1..10000, 100=1.00)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || !(n>=1 && n<=10000)) { fprintf(stderr, "invalid arg for sbr-mh-sfm-orig: sfm-orig (1..10000, 100=1.00)\n"); return -1; }
             params->fr_sbr_mh_sfm_orig = n; break;
         case OPT_FR_SBR_MH_MAXCOMP:
-            if (sscanf(optarg, "%d", &n) != 1 || !(n>=0 && n<=200)) { fprintf(stderr, "invalid arg for sbr-mh-maxcomp: maxcomp (0..200, 50=stock)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || !(n>=0 && n<=200)) { fprintf(stderr, "invalid arg for sbr-mh-maxcomp: maxcomp (0..200, 50=stock)\n"); return -1; }
             params->fr_sbr_mh_maxcomp = n; break;
         case OPT_FR_SBR_MH_DELTATIME:
-            if (sscanf(optarg, "%d", &n) != 1 || !(n>=0 && n<=64)) { fprintf(stderr, "invalid arg for sbr-mh-deltatime: deltatime (0..64)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || !(n>=0 && n<=64)) { fprintf(stderr, "invalid arg for sbr-mh-deltatime: deltatime (0..64)\n"); return -1; }
             params->fr_sbr_mh_deltatime = n; break;
         case OPT_FR_SBR_NOISE_MAX:
-            if (sscanf(optarg, "%d", &n) != 1 || !(n==6 || n==3 || n==-3)) { fprintf(stderr, "invalid arg for sbr-noise-max: noise-max (6, 3 or -3)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || !(n==6 || n==3 || n==-3)) { fprintf(stderr, "invalid arg for sbr-noise-max: noise-max (6, 3 or -3)\n"); return -1; }
             params->fr_sbr_noise_max = n; break;
         case OPT_FR_SBR_INVF_MIN:
-            if (sscanf(optarg, "%d", &n) != 1 || n < 0 || n > 3) { fprintf(stderr, "invalid arg for sbr-invf-min (0..3)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || n < 0 || n > 3) { fprintf(stderr, "invalid arg for sbr-invf-min (0..3)\n"); return -1; }
             params->fr_sbr_invf_min = n; break;
         case OPT_FR_SBR_INVF_MAX:
-            if (sscanf(optarg, "%d", &n) != 1 || n < 0 || n > 3) { fprintf(stderr, "invalid arg for sbr-invf-max (0..3)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || n < 0 || n > 3) { fprintf(stderr, "invalid arg for sbr-invf-max (0..3)\n"); return -1; }
             params->fr_sbr_invf_max = n; break;
         case OPT_FR_SBR_INVF_BIAS:
-            if (sscanf(optarg, "%d", &n) != 1 || n < -3 || n > 3) { fprintf(stderr, "invalid arg for sbr-invf-bias (-3..3)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || n < -3 || n > 3) { fprintf(stderr, "invalid arg for sbr-invf-bias (-3..3)\n"); return -1; }
             params->fr_sbr_invf_bias = (n == 0) ? AACENC_FRANKEN_OFF : n; break;
         case OPT_FR_SBR_INVF_TABLE:
-            if (sscanf(optarg, "%d", &n) != 1 || n < 0 || n > 1) { fprintf(stderr, "invalid arg for sbr-invf-table (0 music, 1 speech)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || n < 0 || n > 1) { fprintf(stderr, "invalid arg for sbr-invf-table (0 music, 1 speech)\n"); return -1; }
             params->fr_sbr_invf_table = n; break;
         case OPT_FR_SBR_INVF_HYST:
-            { double dv; if (sscanf(optarg, "%lf", &dv) != 1 || dv < 0.0 || dv > 2.0) { fprintf(stderr, "invalid arg for sbr-invf-hyst (0.0..2.0, 1.0 = stock; above 2 the decision borders overlap)\n"); return -1; }
-              params->fr_sbr_invf_hyst = (int)(dv * 100.0 + 0.5); } break;
+            if (fr_parse_dec(optarg, 0.0, 2.0, 100, &params->fr_sbr_invf_hyst)) { fprintf(stderr, "invalid arg for sbr-invf-hyst (0.0..2.0, 1.0 = stock; above 2 the decision borders overlap)\n"); return -1; }
+            break;
         case OPT_FR_SBR_INVF_SBR_THR:
-            { double dv; if (sscanf(optarg, "%lf", &dv) != 1 || dv < -20.0 || dv > 20.0) { fprintf(stderr, "invalid arg for sbr-invf-sbr-thr (-20.0..20.0)\n"); return -1; }
-              params->fr_sbr_invf_sbr_thr = (int)(dv * 100.0 + (dv<0?-0.5:0.5)); } break;
+            if (fr_parse_dec(optarg, -20.0, 20.0, 100, &params->fr_sbr_invf_sbr_thr)) { fprintf(stderr, "invalid arg for sbr-invf-sbr-thr (-20.0..20.0)\n"); return -1; }
+            break;
         case OPT_FR_SBR_INVF_ORIG_THR:
-            { double dv; if (sscanf(optarg, "%lf", &dv) != 1 || dv < -20.0 || dv > 20.0) { fprintf(stderr, "invalid arg for sbr-invf-orig-thr (-20.0..20.0)\n"); return -1; }
-              params->fr_sbr_invf_orig_thr = (int)(dv * 100.0 + (dv<0?-0.5:0.5)); } break;
+            if (fr_parse_dec(optarg, -20.0, 20.0, 100, &params->fr_sbr_invf_orig_thr)) { fprintf(stderr, "invalid arg for sbr-invf-orig-thr (-20.0..20.0)\n"); return -1; }
+            break;
         case OPT_FR_SBR_INVF_SMOOTH:
-            if (sscanf(optarg, "%d", &n) != 1 || n < 0 || n > 2) { fprintf(stderr, "invalid arg for sbr-invf-smooth (0..2, 2 = stock)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || n < 0 || n > 2) { fprintf(stderr, "invalid arg for sbr-invf-smooth (0..2, 2 = stock)\n"); return -1; }
             params->fr_sbr_invf_smooth = n; break;
         case OPT_FR_SBR_NF_WEIGHT:
-            { double dv; if (sscanf(optarg, "%lf", &dv) != 1 || dv < 0.0 || dv > 1.0) { fprintf(stderr, "invalid arg for sbr-nf-weight (0.0..1.0; music 0.25, speech 1.0)\n"); return -1; }
-              params->fr_sbr_nf_weight = (int)(dv * 1000.0 + 0.5); } break;
+            if (fr_parse_dec(optarg, 0.0, 1.0, 1000, &params->fr_sbr_nf_weight)) { fprintf(stderr, "invalid arg for sbr-nf-weight (0.0..1.0; music 0.25, speech 1.0)\n"); return -1; }
+            break;
         case OPT_FR_SBR_NF_WFROM:
-            if (sscanf(optarg, "%d", &n) != 1 || n < 1 || n > 3) { fprintf(stderr, "invalid arg for sbr-nf-weight-from (1..3, 3 = stock)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || n < 1 || n > 3) { fprintf(stderr, "invalid arg for sbr-nf-weight-from (1..3, 3 = stock)\n"); return -1; }
             params->fr_sbr_nf_weight_from = n; break;
         case OPT_FR_SBR_NF_SMOOTH:
-            if (sscanf(optarg, "%d", &n) != 1 || n != 0) { fprintf(stderr, "invalid arg for sbr-nf-smooth (only 0 = off)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || n != 0) { fprintf(stderr, "invalid arg for sbr-nf-smooth (only 0 = off)\n"); return -1; }
             params->fr_sbr_nf_smooth = n; break;
         case OPT_FR_SBR_SOFTNESS:
-            if (sscanf(optarg, "%d", &n) != 1 || n < 0 || n > 7) { fprintf(stderr, "invalid arg for sbr-softness (0 hard .. 7 soft)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || n < 0 || n > 7) { fprintf(stderr, "invalid arg for sbr-softness (0 hard .. 7 soft)\n"); return -1; }
             params->fr_sbr_softness = n; break;
+        case OPT_FR_PREECHO_RISE:
+            if (fr_parse_dec(optarg, 0.0, 24.0, 1000, &params->fr_preecho_rise)) { fprintf(stderr, "invalid arg for preecho-rise (0.0..24.0, decimal, up to 3 places)\n"); return -1; }
+            break;
+        case OPT_FR_PREECHO_DEPTH:
+            if (fr_parse_dec(optarg, 0.0, 60.0, 1000, &params->fr_preecho_depth)) { fprintf(stderr, "invalid arg for preecho-depth (0.0..60.0, decimal, up to 3 places)\n"); return -1; }
+            break;
+        case OPT_FR_ATTACK_DECAY:
+            if (fr_parse_dec(optarg, 0.0, 0.99, 1000, &params->fr_attack_decay)) { fprintf(stderr, "invalid arg for attack-decay (0.0..0.99, decimal, up to 3 places)\n"); return -1; }
+            break;
+        case OPT_FR_ATTACK_FLOOR:
+            if (fr_parse_dec(optarg, -60.0, 30.0, 1000, &params->fr_attack_floor)) { fprintf(stderr, "invalid arg for attack-floor (-60.0..30.0, decimal, up to 3 places)\n"); return -1; }
+            break;
+        case OPT_FR_TNS_THRESH:
+            if (fr_parse_dec(optarg, 0.5, 4.0, 1000, &params->fr_tns_thresh)) { fprintf(stderr, "invalid arg for tns-thresh (0.5..4.0, decimal, up to 3 places)\n"); return -1; }
+            break;
+        case OPT_FR_TNS_START:
+            if (fr_scan_int(optarg, &n) != 1 || n < 0 || n > 24000) { fprintf(stderr, "invalid arg for tns-start (0..24000)\n"); return -1; }
+            params->fr_tns_start = n; break;
+        case OPT_FR_WINDOW_SHAPE:
+            if (fr_scan_int(optarg, &n) != 1 || n < 0 || n > 1) { fprintf(stderr, "invalid arg for window-shape (0..1)\n"); return -1; }
+            params->fr_window_shape = n; break;
+        case OPT_FR_SHORT_GROUPS:
+            if (fr_scan_int(optarg, &n) != 1 || n < 0 || n > 3) { fprintf(stderr, "invalid arg for short-groups (0..3)\n"); return -1; }
+            params->fr_short_groups = n; break;
+        case OPT_FR_AVOID_HOLES:
+            if (fr_scan_int(optarg, &n) != 1 || n < 0 || n > 1) { fprintf(stderr, "invalid arg for avoid-holes (0..1)\n"); return -1; }
+            params->fr_avoid_holes = n; break;
+        case OPT_FR_HOLE_START:
+            if (fr_scan_int(optarg, &n) != 1 || n < 0 || n > 51) { fprintf(stderr, "invalid arg for hole-start (0..51)\n"); return -1; }
+            params->fr_hole_start = n; break;
+        case OPT_FR_HOLE_START_SHORT:
+            if (fr_scan_int(optarg, &n) != 1 || n < 0 || n > 15) { fprintf(stderr, "invalid arg for hole-start-short (0..15)\n"); return -1; }
+            params->fr_hole_start_short = n; break;
+        case OPT_FR_HOLE_SPREAD:
+            if (fr_parse_dec(optarg, 0.0, 24.0, 1000, &params->fr_hole_spread)) { fprintf(stderr, "invalid arg for hole-spread (0.0..24.0, decimal, up to 3 places)\n"); return -1; }
+            break;
+        case OPT_FR_HOLE_LADDER:
+            if (fr_scan_int(optarg, &n) != 1 || n < 1 || n > 8) { fprintf(stderr, "invalid arg for hole-ladder (1..8)\n"); return -1; }
+            params->fr_hole_ladder = n; break;
         case OPT_FR_PS_IPD:
-            if (sscanf(optarg, "%d", &n) != 1 || n < 0 || n > 1) { fprintf(stderr, "invalid arg for ps-ipd (0,1)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || n < 0 || n > 1) { fprintf(stderr, "invalid arg for ps-ipd (0,1)\n"); return -1; }
             params->fr_ps_ipd = n; break;
         case OPT_FR_PS_OPD:
-            if (sscanf(optarg, "%d", &n) != 1 || n < 0 || n > 1) { fprintf(stderr, "invalid arg for ps-opd (0,1)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || n < 0 || n > 1) { fprintf(stderr, "invalid arg for ps-opd (0,1)\n"); return -1; }
             params->fr_ps_opd = n; break;
         case OPT_FR_IS_BAND_LO:
-            if (sscanf(optarg, "%d", &n) != 1 || n < 0) { fprintf(stderr, "invalid arg for is-lo (>=0)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || n < 0) { fprintf(stderr, "invalid arg for is-lo (>=0)\n"); return -1; }
             params->fr_is_band_lo = n; break;
         case OPT_FR_IS_BAND_HI:
-            if (sscanf(optarg, "%d", &n) != 1 || n < 0) { fprintf(stderr, "invalid arg for is-hi (>=0)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || n < 0) { fprintf(stderr, "invalid arg for is-hi (>=0)\n"); return -1; }
             params->fr_is_band_hi = n; break;
         case OPT_FR_IS_FORCE_LO:
-            if (sscanf(optarg, "%d", &n) != 1 || n < 0) { fprintf(stderr, "invalid arg for is-force-lo (>=0)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || n < 0) { fprintf(stderr, "invalid arg for is-force-lo (>=0)\n"); return -1; }
             params->fr_is_force_lo = n; break;
         case OPT_FR_IS_FORCE_HI:
-            if (sscanf(optarg, "%d", &n) != 1 || n < 0) { fprintf(stderr, "invalid arg for is-force-hi (>=0)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || n < 0) { fprintf(stderr, "invalid arg for is-force-hi (>=0)\n"); return -1; }
             params->fr_is_force_hi = n; break;
         case OPT_FR_MINSNR_SCALE:
-            if (sscanf(optarg, "%d", &n) != 1 || n < 1) { fprintf(stderr, "invalid arg for minsnr-scale (>=1, 256=neutral, <256=more detail)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || n < 1) { fprintf(stderr, "invalid arg for minsnr-scale (>=1, 256=neutral, <256=more detail)\n"); return -1; }
             params->fr_minsnr_scale = n; break;
         case OPT_FR_MINSNR_CLAMP_HI:
-            if (sscanf(optarg, "%d", &n) != 1 || n < 1) { fprintf(stderr, "invalid arg for minsnr-clamp-hi (>=1, 256=neutral)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || n < 1) { fprintf(stderr, "invalid arg for minsnr-clamp-hi (>=1, 256=neutral)\n"); return -1; }
             params->fr_minsnr_clamp_hi = n; break;
         case OPT_FR_MINSNR_CLAMP_LO:
-            if (sscanf(optarg, "%d", &n) != 1 || n < 1) { fprintf(stderr, "invalid arg for minsnr-clamp-lo (>=1, 256=neutral)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || n < 1) { fprintf(stderr, "invalid arg for minsnr-clamp-lo (>=1, 256=neutral)\n"); return -1; }
             params->fr_minsnr_clamp_lo = n; break;
         case OPT_FR_REDUCE_CLAMP:
-            if (sscanf(optarg, "%d", &n) != 1 || n < 0 || n > 1) { fprintf(stderr, "invalid arg for reduce-clamp (0 off,1 on)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || n < 0 || n > 1) { fprintf(stderr, "invalid arg for reduce-clamp (0 off,1 on)\n"); return -1; }
             params->fr_reduce_clamp = n; break;
         case OPT_FR_MID_BIAS:
-            if (sscanf(optarg, "%d", &n) != 1 || n < 256) { fprintf(stderr, "invalid arg for mid-bias (>=256, 256=neutral)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || n < 256) { fprintf(stderr, "invalid arg for mid-bias (>=256, 256=neutral)\n"); return -1; }
             params->fr_mid_bias = n; break;
         case OPT_FR_SIDE_BIAS:
-            { double dv; if (sscanf(optarg, "%lf", &dv) != 1 || dv < -24.0 || dv > 50.0) { fprintf(stderr, "invalid arg for side-bias (-24.0..50.0 dB; + = more side, - = destroy side, 0=off)\n"); return -1; }
-              params->fr_side_bias = (int)(dv * 10.0 + (dv<0?-0.5:0.5)); } break;
+            if (fr_parse_dec(optarg, -24.0, 50.0, 1000, &params->fr_side_bias)) { fprintf(stderr, "invalid arg for side-bias (-24.0..50.0 dB; + = more side, - = destroy side, 0=off)\n"); return -1; }
+            break;
         case OPT_FR_SIDE_KNEE:
-            { double dv; if (sscanf(optarg, "%lf", &dv) != 1 || dv < -24.0 || dv > 50.0) { fprintf(stderr, "invalid arg for side-knee (-24.0..50.0 dB; + = soft knee, - = hard cutoff, 0=off)\n"); return -1; }
-              params->fr_side_knee = (int)(dv * 10.0 + (dv<0?-0.5:0.5)); } break;
+            if (fr_parse_dec(optarg, -24.0, 50.0, 1000, &params->fr_side_knee)) { fprintf(stderr, "invalid arg for side-knee (-24.0..50.0 dB; + = soft knee, - = hard cutoff, 0=off)\n"); return -1; }
+            break;
         case OPT_FR_MASK_SLOPE:
-            { double dv; if (sscanf(optarg, "%lf", &dv) != 1 || dv < -24.0 || dv > 50.0) { fprintf(stderr, "invalid arg for mask-slope (-24.0..50.0 dB; + = more detail in quiet bands, - = starve harder, 0=off)\n"); return -1; }
-              params->fr_mask_slope = (int)(dv * 10.0 + (dv<0?-0.5:0.5)); } break;
+            if (fr_parse_dec(optarg, -24.0, 50.0, 1000, &params->fr_mask_slope)) { fprintf(stderr, "invalid arg for mask-slope (-24.0..50.0 dB; + = more detail in quiet bands, - = starve harder, 0=off)\n"); return -1; }
+            break;
         case OPT_FR_SBR_HEADER_PERIOD:
-            if (sscanf(optarg, "%d", &n) != 1 || n < 1) { fprintf(stderr, "invalid arg for sbr-header-period (>=1; 1=near-instant SBR sync)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || n < 1) { fprintf(stderr, "invalid arg for sbr-header-period (>=1; 1=near-instant SBR sync)\n"); return -1; }
             params->fr_sbr_header_period = n; break;
         case OPT_FR_SBR_HEADER_TIME:
-            { double dv; if (sscanf(optarg, "%lf", &dv) != 1 || dv < 0.01 || dv > 600.0) { fprintf(stderr, "invalid arg for sbr-header-time (0.01..600 s, e.g. 3.5)\n"); return -1; }
-              params->fr_sbr_header_time = (int)(dv * 1000.0 + 0.5); } break;
+            if (fr_parse_dec(optarg, 0.01, 600.0, 1000, &params->fr_sbr_header_time)) { fprintf(stderr, "invalid arg for sbr-header-time (0.01..600 s, e.g. 3.5)\n"); return -1; }
+            break;
         case OPT_FR_PNS_GAIN:
-            { double dv; if (sscanf(optarg, "%lf", &dv) != 1 || dv < 0.0) { fprintf(stderr, "invalid arg for pns-gain (>=0.0; 1.0=unchanged)\n"); return -1; }
-              params->fr_pns_gain = (int)(dv * 100.0 + 0.5); } break;
+            if (fr_parse_dec(optarg, 0.0, 1e9, 100, &params->fr_pns_gain)) { fprintf(stderr, "invalid arg for pns-gain (>=0.0; 1.0=unchanged)\n"); return -1; }
+            break;
         case OPT_FR_PNS_TONALITY:
-            { double dv; if (sscanf(optarg, "%lf", &dv) != 1 || dv < 0.0) { fprintf(stderr, "invalid arg for pns-tonality (>=0.0; 1.0=unchanged)\n"); return -1; }
-              params->fr_pns_tonality = (int)(dv * 100.0 + 0.5); } break;
+            if (fr_parse_dec(optarg, 0.0, 1e9, 100, &params->fr_pns_tonality)) { fprintf(stderr, "invalid arg for pns-tonality (>=0.0; 1.0=unchanged)\n"); return -1; }
+            break;
         case OPT_FR_PNS_REFPOWER:
-            { double dv; if (sscanf(optarg, "%lf", &dv) != 1 || dv < 0.0) { fprintf(stderr, "invalid arg for pns-refpower (>=0.0; 1.0=unchanged)\n"); return -1; }
-              params->fr_pns_refpower = (int)(dv * 100.0 + 0.5); } break;
+            if (fr_parse_dec(optarg, 0.0, 1e9, 100, &params->fr_pns_refpower)) { fprintf(stderr, "invalid arg for pns-refpower (>=0.0; 1.0=unchanged)\n"); return -1; }
+            break;
         case OPT_FR_PNS_GAPFILL:
-            { double dv; if (sscanf(optarg, "%lf", &dv) != 1 || dv < 0.0) { fprintf(stderr, "invalid arg for pns-gapfill (>=0.0; 1.0=unchanged)\n"); return -1; }
-              params->fr_pns_gapfill = (int)(dv * 100.0 + 0.5); } break;
+            if (fr_parse_dec(optarg, 0.0, 1e9, 100, &params->fr_pns_gapfill)) { fprintf(stderr, "invalid arg for pns-gapfill (>=0.0; 1.0=unchanged)\n"); return -1; }
+            break;
         case OPT_FR_PNS_MIN_WIDTH:
-            if (sscanf(optarg, "%d", &n) != 1 || n < 1) { fprintf(stderr, "invalid arg for pns-min-width (>=1)\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || n < 1) { fprintf(stderr, "invalid arg for pns-min-width (>=1)\n"); return -1; }
             params->fr_pns_min_width = n; break;
         case OPT_FR_PEAK_BITRATE:
-            if (sscanf(optarg, "%d", &n) != 1 || n < 0) { fprintf(stderr, "invalid arg for peak-bitrate\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || n < 0) { fprintf(stderr, "invalid arg for peak-bitrate\n"); return -1; }
             params->fr_peak_bitrate = n; break;
         case OPT_FR_VERBOSE:
             params->fr_verbose = 1; break;

@@ -102,6 +102,24 @@ amm-info@iis.fraunhofer.de
 
 #include "pre_echo_control.h"
 #include "psy_configuration.h"
+#include "franken.h"
+#include <math.h>
+
+/* Frankenstein --preecho-rise: allowed rise factor in Q16, 0 = stock. */
+static INT frPreEchoRiseQ16(void) {
+  if (g_franken.preEchoRiseDbX1000 == FRANKEN_OFF) return 0;
+  double f = pow(10.0, (g_franken.preEchoRiseDbX1000 / 1000.0) / 10.0);
+  if (f < 1.0) f = 1.0;
+  if (f > 256.0) f = 256.0;
+  return (INT)(f * 65536.0 + 0.5);
+}
+
+/* thrNm1 * rise, saturated; rise in Q16 */
+static FIXP_DBL frScaleRise(FIXP_DBL thr, INT riseQ16) {
+  long long v = ((long long)thr * (long long)riseQ16) >> 16;
+  if (v > (long long)MAXVAL_DBL) v = (long long)MAXVAL_DBL;
+  return (FIXP_DBL)v;
+}
 
 void FDKaacEnc_InitPreEchoControl(FIXP_DBL *RESTRICT pbThresholdNm1,
                                   INT *calcPreEcho, INT numPb,
@@ -123,6 +141,7 @@ void FDKaacEnc_PreEchoControl(FIXP_DBL *RESTRICT pbThresholdNm1,
   int i;
   FIXP_DBL tmpThreshold1, tmpThreshold2;
   int scaling;
+  const INT riseQ16 = frPreEchoRiseQ16();
 
   /* If lastWindowSequence in previous frame was start- or stop-window,
      skip preechocontrol calculation */
@@ -141,7 +160,9 @@ void FDKaacEnc_PreEchoControl(FIXP_DBL *RESTRICT pbThresholdNm1,
       /* multiplication with return data type fract ist equivalent to int
        * multiplication */
       FDK_ASSERT(scaling >= 0);
-      tmpThreshold1 = maxAllowedIncreaseFactor * (pbThresholdNm1[i] >> scaling);
+      tmpThreshold1 =
+          riseQ16 ? frScaleRise(pbThresholdNm1[i] >> scaling, riseQ16)
+                  : maxAllowedIncreaseFactor * (pbThresholdNm1[i] >> scaling);
       tmpThreshold2 = fMult(minRemainingThresholdFactor, pbThreshold[i]);
 
       FIXP_DBL tmp = pbThreshold[i];
@@ -158,7 +179,8 @@ void FDKaacEnc_PreEchoControl(FIXP_DBL *RESTRICT pbThresholdNm1,
     for (i = 0; i < numPb; i++) {
       /* multiplication with return data type fract ist equivalent to int
        * multiplication */
-      tmpThreshold1 = (maxAllowedIncreaseFactor >> 1) * pbThresholdNm1[i];
+      tmpThreshold1 = riseQ16 ? frScaleRise(pbThresholdNm1[i], riseQ16 >> 1)
+                              : (maxAllowedIncreaseFactor >> 1) * pbThresholdNm1[i];
       tmpThreshold2 = fMult(minRemainingThresholdFactor, pbThreshold[i]);
 
       /* copy thresholds to internal memory */

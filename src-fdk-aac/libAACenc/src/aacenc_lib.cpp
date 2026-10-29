@@ -2811,15 +2811,15 @@ AACENC_ERROR aacEncoder_SetParam(const HANDLE_AACENCODER hAacEncoder,
       hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
       break;
     case AACENC_FRANKEN_SIDE_BIAS:
-      g_franken.sideBiasDbX10 = (INT)value;
+      g_franken.sideBiasDbX1000 = (INT)value;
       hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
       break;
     case AACENC_FRANKEN_SIDE_KNEE:
-      g_franken.sideKneeDbX10 = (INT)value;
+      g_franken.sideKneeDbX1000 = (INT)value;
       hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
       break;
     case AACENC_FRANKEN_MASK_SLOPE:
-      g_franken.msaSlopeDbX10 = (INT)value;
+      g_franken.msaSlopeDbX1000 = (INT)value;
       hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
       break;
     case AACENC_FRANKEN_SBR_HEADER_PERIOD:
@@ -2877,6 +2877,58 @@ AACENC_ERROR aacEncoder_SetParam(const HANDLE_AACENCODER hAacEncoder,
       break;
     case AACENC_FRANKEN_SBR_SOFTNESS:
       g_franken.sbrSoftness = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_PREECHO_RISE:
+      g_franken.preEchoRiseDbX1000 = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_PREECHO_DEPTH:
+      g_franken.preEchoDepthDbX1000 = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_ATTACK_DECAY:
+      g_franken.attackDecayX1000 = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_ATTACK_FLOOR:
+      g_franken.attackFloorDbX1000 = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_TNS_THRESH:
+      g_franken.tnsThreshX1000 = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_TNS_START:
+      g_franken.tnsStartHz = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_WINDOW_SHAPE:
+      g_franken.windowShape = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_SHORT_GROUPS:
+      g_franken.shortGroups = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_AVOID_HOLES:
+      g_franken.avoidHoles = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_HOLE_START:
+      g_franken.holeStartLong = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_HOLE_START_SHORT:
+      g_franken.holeStartShort = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_HOLE_SPREAD:
+      g_franken.holeSpreadDbX1000 = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_HOLE_LADDER:
+      g_franken.holeLadder = (INT)value;
       hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
       break;
     case AACENC_FRANKEN_PNS_GAIN:

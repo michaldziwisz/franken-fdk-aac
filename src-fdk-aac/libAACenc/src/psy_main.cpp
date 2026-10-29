@@ -1303,7 +1303,13 @@ AAC_ENCODER_ERROR FDKaacEnc_psyMain(INT channels, PSY_ELEMENT *psyElement,
       psyOutChannel[ch]->sfbCnt = sfbCnt;
       psyOutChannel[ch]->sfbPerGroup = hPsyConfShort->sfbCnt;
       psyOutChannel[ch]->lastWindowSequence = SHORT_WINDOW;
-      psyOutChannel[ch]->windowShape = SINE_WINDOW;
+      /* Stock writes SINE for every short block, which matches the stock
+       * table (short = sine). With --window-shape the transform used the
+       * forced shape, so the bitstream must carry the same one. */
+      psyOutChannel[ch]->windowShape =
+          (g_franken.windowShape >= 0)
+              ? psyStatic[ch]->blockSwitchingControl.windowShape
+              : SINE_WINDOW;
     }
     /* generate grouping mask */
     mask = 0;

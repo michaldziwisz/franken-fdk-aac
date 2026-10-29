@@ -167,24 +167,24 @@ typedef struct FRANKEN_CFG {
   int midBiasQ8;      /* -1 default; else RAISE the MID (L+R) channel masking
                          threshold by this Q8 factor after the MS butterfly.
                          >256 = deliberately free bits from mid for side. */
-  int sideBiasDbX10;  /* FRANKEN_OFF=off; else shift SIDE (L-R) masking threshold on
-                         MS bands by dB*10 (60 = 6.0 dB). SIGN = EFFECT: + steers
+  int sideBiasDbX1000;  /* FRANKEN_OFF=off; else shift SIDE (L-R) masking threshold on
+                         MS bands by dB*1000 (6000 = 6.0 dB). SIGN = EFFECT: + steers
                          MORE bits to side (lowers thr); - deliberately DEGRADES
-                         side (raises thr). Range ~ -240..+500. 0 = off. */
-  int sideKneeDbX10;  /* FRANKEN_OFF=off; shape the SIDE coded<->zeroed cliff, dB*10.
+                         side (raises thr). Range -24000..+50000. 0 = off. */
+  int sideKneeDbX1000;  /* FRANKEN_OFF=off; shape the SIDE coded<->zeroed cliff, dB*1000.
                          + = SOFT knee (keep near-miss bands just under threshold at
                          coarsest scf instead of dropping = smoother fade). - = HARD
                          knee (drop bands that only just clear threshold = early
-                         cutoff, extreme destruction). Range ~ -240..+500. 0 = off. */
-  int msaSlopeDbX10;  /* FRANKEN_OFF=off; shift the Masking-Slope-Adaptation START
-                         threshold (dB*10). MSA is a NON-masking heuristic that
+                         cutoff, extreme destruction). Range -24000..+50000. 0 = off. */
+  int msaSlopeDbX1000;  /* FRANKEN_OFF=off; shift the Masking-Slope-Adaptation START
+                         threshold (dB*1000). MSA is a NON-masking heuristic that
                          relaxes the required min-SNR for SFBs whose energy sits
                          far (>~10 dB stock) below the frame average - i.e. it
                          starves quiet bands to save bits, on BOTH channels. + =
                          raise the threshold => fewer bands starved => more detail
                          in quiet bands (costs bits); - = lower it => starve quiet
                          bands more aggressively (saves bits, hollows detail).
-                         Applies globally (mid+side). Range ~ -240..+500. 0 = off. */
+                         Applies globally (mid+side). Range -24000..+50000. 0 = off. */
 
   /* ---- 18. SBR header period (streaming SBR sync) ---- */
   int sbrHeaderPeriod;/* -1 default(FDK, ~10 frames); else frames between SBR headers.
@@ -292,6 +292,34 @@ typedef struct FRANKEN_CFG {
   int sbrNfSmooth;        /* -1 off (stock smoothing over 4 frames); 0 = no smoothing. */
   int sbrSoftness;        /* -1 off; 0..7 single "metallic <-> soft" macro that sets the
                              table/bias/weight above. Explicit knobs win over it. */
+
+  /* ---- 22. Core transients / pre-echo / avoid-holes (LC, LD, ELD core) ----
+   * Hardcoded constants of the long-block pre-echo control, the attack
+   * detector, TNS activation, window shape, short-block grouping and the
+   * avoid-holes logic. FRANKEN_OFF / -1 = the stock code path, untouched. */
+  int preEchoRiseDbX1000;  /* FRANKEN_OFF; else max RISE of a band's masking threshold
+                              from one long frame to the next, dB*1000 (stock factor 2
+                              = 3.01 dB). Lower = noise cannot jump ahead of an attack. */
+  int preEchoDepthDbX1000; /* FRANKEN_OFF; else how far pre-echo control may LOWER a
+                              threshold, dB*1000 (stock factor 0.01 = 20 dB). */
+  int attackDecayX1000;    /* FRANKEN_OFF; else share of the running energy kept per
+                              sub-window in the attack detector, x1000 (stock 700). */
+  int attackFloorDbX1000;  /* FRANKEN_OFF; else shift of the minimum attack energy,
+                              dB*1000 (- = quieter attacks also count). */
+  int tnsThreshX1000;      /* FRANKEN_OFF; else multiplier on the TNS prediction-gain
+                              thresholds that switch a filter on, x1000. */
+  int tnsStartHz;          /* -1; else lowest frequency of the lower TNS filter, Hz. */
+  int windowShape;         /* -1 stock; 0 always sine, 1 always KBD (AAC-LC only). */
+  int shortGroups;         /* -1/0 stock table; 1 one group of 8, 2 pairs, 3 tight
+                              around the attack. */
+  int avoidHoles;          /* -1 stock (on from 20 kbps per channel); 0 off, 1 on. */
+  int holeStartLong;       /* -1 stock; else first long SFB where holes may be cut. */
+  int holeStartShort;      /* -1 stock; else first short SFB where holes may be cut. */
+  int holeSpreadDbX1000;   /* FRANKEN_OFF; else spread-energy reduction that decides which
+                              bands count as maskable holes, dB*1000 (stock 3.01 long,
+                              2.0 short; the value replaces both). */
+  int holeLadder;          /* -1 stock 8; else 1..8 energy steps of the hole cutting:
+                              fewer = cut only the quietest bands first, coarser. */
 
   /* ---- Read-back: effective values chosen by the encoder (for --verbose) ----
    * Populated by the encoder during init regardless of overrides. -1 = unknown. */

@@ -102,6 +102,7 @@ amm-info@iis.fraunhofer.de
 
 #include "psy_configuration.h"
 #include "franken.h"
+#include <math.h>
 #include "adj_thr.h"
 #include "aacEnc_rom.h"
 
@@ -806,6 +807,17 @@ AAC_ENCODER_ERROR FDKaacEnc_InitPsyConfiguration(INT bitrate, INT samplerate,
   psyConf->maxAllowedIncreaseFactor = 2; /* integer */
   psyConf->minRemainingThresholdFactor = (FIXP_SGL)0x0148;
   /* FL2FXCONST_SGL(0.01f); */ /* fract   */
+  /* Frankenstein --preecho-rise/--preecho-depth: see franken.h. The rise is
+   * applied in FDKaacEnc_PreEchoControl as a Q16 factor (the stock integer
+   * factor cannot express e.g. 1.4x); maxAllowedIncreaseFactor stays 2 so the
+   * stock path is untouched when the knob is off. */
+  if (g_franken.preEchoDepthDbX1000 != FRANKEN_OFF) {
+    double f = pow(10.0, -(g_franken.preEchoDepthDbX1000 / 1000.0) / 10.0);
+    INT q = (INT)(f * 32768.0 + 0.5);
+    if (q < 1) q = 1;
+    if (q > 32767) q = 32767;
+    psyConf->minRemainingThresholdFactor = (FIXP_SGL)q;
+  }
 
   psyConf->clipEnergy =
       (FIXP_DBL)0x773593ff; /* FL2FXCONST_DBL(1.0e9*NORM_PCM_ENERGY); */

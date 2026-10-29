@@ -1098,10 +1098,10 @@ static void FDKaacEnc_EstimateScaleFactorsChannel(
         /* Suwak 1 --side-bias <dB>: shift the side threshold. + lowers it
          * (steers bits to side, finer/less-dropped); - raises it (starves the
          * side on purpose). The subtraction handles both signs automatically. */
-        if (g_franken.sideBiasDbX10 != FRANKEN_OFF &&
-            g_franken.sideBiasDbX10 != 0) {
+        if (g_franken.sideBiasDbX1000 != FRANKEN_OFF &&
+            g_franken.sideBiasDbX1000 != 0) {
           FIXP_DBL off = (FIXP_DBL)((INT)(
-              (g_franken.sideBiasDbX10 / 10.0) * 0.00519 * 2147483648.0));
+              (g_franken.sideBiasDbX1000 / 1000.0) * 0.00519 * 2147483648.0));
           threshLdData -= off; /* +dB -> lower thr; -dB -> raise thr */
           qcOutChannel->sfbThresholdLdData[sfbOffs + sfb] = threshLdData;
         }
@@ -1110,9 +1110,9 @@ static void FDKaacEnc_EstimateScaleFactorsChannel(
          * instead of dropped, fading out gradually). - sharpens it past hard
          * (bands up to N dB ABOVE the energy=thr line are forced to zero, so
          * the side cuts off early = extreme destruction). */
-        if (g_franken.sideKneeDbX10 != FRANKEN_OFF &&
-            g_franken.sideKneeDbX10 != 0) {
-          double kneeDb = g_franken.sideKneeDbX10 / 10.0;
+        if (g_franken.sideKneeDbX1000 != FRANKEN_OFF &&
+            g_franken.sideKneeDbX1000 != 0) {
+          double kneeDb = g_franken.sideKneeDbX1000 / 1000.0;
           double kneeAbs = kneeDb < 0.0 ? -kneeDb : kneeDb;
           FIXP_DBL knee = (FIXP_DBL)((INT)(kneeAbs * 0.00519 * 2147483648.0));
           FIXP_DBL eps = (FIXP_DBL)((INT)(0.00519 * 2147483648.0));

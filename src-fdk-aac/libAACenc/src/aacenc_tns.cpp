@@ -426,6 +426,15 @@ AAC_ENCODER_ERROR FDKaacEnc_InitTnsConfiguration(
       } else {
         tC->lpcStartBand[LOFILT] =
             (sampleRate < 9391) ? 2 : ((sampleRate < 18783) ? 4 : 8);
+        /* Frankenstein --tns-start <Hz>: lowest frequency the lower TNS
+         * filter reaches in long blocks (stock 8 SFBs, ~1.4 kHz at 48 kHz). */
+        if (g_franken.tnsStartHz >= 0) {
+          INT b = FDKaacEnc_FreqToBandWidthRounding(
+              g_franken.tnsStartHz, sampleRate, pC->sfbCnt, pC->sfbOffset);
+          if (b < 0) b = 0;
+          if (b > tC->lpcStopBand - 1) b = fMax(0, tC->lpcStopBand - 1);
+          tC->lpcStartBand[LOFILT] = b;
+        }
       }
       tC->lpcStartLine[LOFILT] = pC->sfbOffset[tC->lpcStartBand[LOFILT]];
 
@@ -509,6 +518,23 @@ AAC_ENCODER_ERROR FDKaacEnc_InitTnsConfiguration(
     } break;
     default:
       tC->tnsActive = FALSE; /* no configuration available, disable tns tool */
+  }
+
+  /* Frankenstein --tns-thresh <x>: scale the prediction-gain thresholds that
+   * switch a TNS filter on (stock 1.437 / 1.5 in LC, from the tuning table in
+   * LD/ELD). Below 1.0 TNS shapes the quantisation noise in time on more
+   * frames (tighter attacks, less pre-echo), above 1.0 it is used more
+   * rarely. The gain itself is never below 1.0 (1000), so 0.5 is close to
+   * "always". The order limits and syntax are untouched. */
+  if (g_franken.tnsThreshX1000 != FRANKEN_OFF) {
+    int f;
+    for (f = 0; f < MAX_NUM_OF_FILTERS; f++) {
+      long long v =
+          ((long long)tC->confTab.threshOn[f] * g_franken.tnsThreshX1000) / 1000;
+      if (v < 1) v = 1;
+      if (v > 100000) v = 100000;
+      tC->confTab.threshOn[f] = (INT)v;
+    }
   }
 
   return AAC_ENC_OK;

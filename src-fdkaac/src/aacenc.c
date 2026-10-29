@@ -323,6 +323,19 @@ int aacenc_init(HANDLE_AACENCODER *encoder, const aacenc_param_t *params,
     FR_SET(params->fr_sbr_nf_weight_from != -1, AACENC_FRANKEN_SBR_NF_WEIGHT_FROM, params->fr_sbr_nf_weight_from);
     FR_SET(params->fr_sbr_nf_smooth != -1, AACENC_FRANKEN_SBR_NF_SMOOTH, params->fr_sbr_nf_smooth);
     FR_SET(params->fr_sbr_softness != -1, AACENC_FRANKEN_SBR_SOFTNESS, params->fr_sbr_softness);
+    FR_SET(params->fr_preecho_rise != AACENC_FRANKEN_OFF, AACENC_FRANKEN_PREECHO_RISE, params->fr_preecho_rise);
+    FR_SET(params->fr_preecho_depth != AACENC_FRANKEN_OFF, AACENC_FRANKEN_PREECHO_DEPTH, params->fr_preecho_depth);
+    FR_SET(params->fr_attack_decay != AACENC_FRANKEN_OFF, AACENC_FRANKEN_ATTACK_DECAY, params->fr_attack_decay);
+    FR_SET(params->fr_attack_floor != AACENC_FRANKEN_OFF, AACENC_FRANKEN_ATTACK_FLOOR, params->fr_attack_floor);
+    FR_SET(params->fr_tns_thresh != AACENC_FRANKEN_OFF, AACENC_FRANKEN_TNS_THRESH, params->fr_tns_thresh);
+    FR_SET(params->fr_tns_start != -1, AACENC_FRANKEN_TNS_START, params->fr_tns_start);
+    FR_SET(params->fr_window_shape != -1, AACENC_FRANKEN_WINDOW_SHAPE, params->fr_window_shape);
+    FR_SET(params->fr_short_groups != -1, AACENC_FRANKEN_SHORT_GROUPS, params->fr_short_groups);
+    FR_SET(params->fr_avoid_holes != -1, AACENC_FRANKEN_AVOID_HOLES, params->fr_avoid_holes);
+    FR_SET(params->fr_hole_start != -1, AACENC_FRANKEN_HOLE_START, params->fr_hole_start);
+    FR_SET(params->fr_hole_start_short != -1, AACENC_FRANKEN_HOLE_START_SHORT, params->fr_hole_start_short);
+    FR_SET(params->fr_hole_spread != AACENC_FRANKEN_OFF, AACENC_FRANKEN_HOLE_SPREAD, params->fr_hole_spread);
+    FR_SET(params->fr_hole_ladder != -1, AACENC_FRANKEN_HOLE_LADDER, params->fr_hole_ladder);
     FR_SET(params->fr_ps_ipd != -1, AACENC_FRANKEN_PS_IPD, params->fr_ps_ipd);
     FR_SET(params->fr_ps_opd != -1, AACENC_FRANKEN_PS_OPD, params->fr_ps_opd);
     FR_SET(params->fr_is_band_lo != -1, AACENC_FRANKEN_IS_BAND_LO, params->fr_is_band_lo);
@@ -589,9 +602,9 @@ int aacenc_init(HANDLE_AACENCODER *encoder, const aacenc_param_t *params,
             if (params->fr_spread_mask >= 0)    { FRV_HDR(); fprintf(stderr, " spread-mask           : %d Q8 (<256 = less masking, more detail)\n", params->fr_spread_mask); }
             if (params->fr_ath_scale >= 0)      { FRV_HDR(); fprintf(stderr, " ath-scale             : %d Q8 (<256 = cleaner/more bits)\n", params->fr_ath_scale); }
             if (params->fr_mid_bias >= 0)       { FRV_HDR(); fprintf(stderr, " mid-bias              : %d Q8 (>256 = free bits from mid for side)\n", params->fr_mid_bias); }
-            if (params->fr_side_bias != AACENC_FRANKEN_OFF) { FRV_HDR(); fprintf(stderr, " side-bias             : %+.1f dB (+ = more side, - = degrade side, vs mid)\n", params->fr_side_bias/10.0); }
-            if (params->fr_side_knee != AACENC_FRANKEN_OFF) { FRV_HDR(); fprintf(stderr, " side-knee             : %+.1f dB (+ = soft fade, - = hard cutoff)\n", params->fr_side_knee/10.0); }
-            if (params->fr_mask_slope != AACENC_FRANKEN_OFF) { FRV_HDR(); fprintf(stderr, " mask-slope            : %+.1f dB (+ = more detail in quiet bands, - = starve harder)\n", params->fr_mask_slope/10.0); }
+            if (params->fr_side_bias != AACENC_FRANKEN_OFF) { FRV_HDR(); fprintf(stderr, " side-bias             : %+.3f dB (+ = more side, - = degrade side, vs mid)\n", params->fr_side_bias/1000.0); }
+            if (params->fr_side_knee != AACENC_FRANKEN_OFF) { FRV_HDR(); fprintf(stderr, " side-knee             : %+.3f dB (+ = soft fade, - = hard cutoff)\n", params->fr_side_knee/1000.0); }
+            if (params->fr_mask_slope != AACENC_FRANKEN_OFF) { FRV_HDR(); fprintf(stderr, " mask-slope            : %+.3f dB (+ = more detail in quiet bands, - = starve harder)\n", params->fr_mask_slope/1000.0); }
             if (params->fr_minsnr_scale >= 0)   { FRV_HDR(); fprintf(stderr, " minsnr-scale          : %d Q8 (<256 = demand higher SNR, more detail)\n", params->fr_minsnr_scale); }
             if (params->fr_minsnr_clamp_hi >= 0){ FRV_HDR(); fprintf(stderr, " minsnr-clamp-hi       : %d Q8 (scale MAX_SNR ceiling)\n", params->fr_minsnr_clamp_hi); }
             if (params->fr_minsnr_clamp_lo >= 0){ FRV_HDR(); fprintf(stderr, " minsnr-clamp-lo       : %d Q8 (scale MIN_SNR floor)\n", params->fr_minsnr_clamp_lo); }
@@ -625,6 +638,19 @@ int aacenc_init(HANDLE_AACENCODER *encoder, const aacenc_param_t *params,
             if (params->fr_sbr_mh_deltatime >= 0) { FRV_HDR(); fprintf(stderr, " sbr-mh-deltatime      : %d raw transient-distance limit\n", params->fr_sbr_mh_deltatime); }
             if (params->fr_sbr_noise_max != -1) { FRV_HDR(); fprintf(stderr, " sbr-noise-max         : %d (6=1.0, 3=0.5, -3=0.125 injected-noise ceiling)\n", params->fr_sbr_noise_max); }
             if (params->fr_sbr_softness >= 0)   { FRV_HDR(); fprintf(stderr, " sbr-softness          : %d (0 hard .. 2 music .. 4 speech estimators .. 7 soft)\n", params->fr_sbr_softness); }
+            if (params->fr_preecho_rise != AACENC_FRANKEN_OFF) { FRV_HDR(); fprintf(stderr, " preecho-rise          : %.3f\n", params->fr_preecho_rise/1000.0); }
+            if (params->fr_preecho_depth != AACENC_FRANKEN_OFF) { FRV_HDR(); fprintf(stderr, " preecho-depth         : %.3f\n", params->fr_preecho_depth/1000.0); }
+            if (params->fr_attack_decay != AACENC_FRANKEN_OFF) { FRV_HDR(); fprintf(stderr, " attack-decay          : %.3f\n", params->fr_attack_decay/1000.0); }
+            if (params->fr_attack_floor != AACENC_FRANKEN_OFF) { FRV_HDR(); fprintf(stderr, " attack-floor          : %.3f\n", params->fr_attack_floor/1000.0); }
+            if (params->fr_tns_thresh != AACENC_FRANKEN_OFF) { FRV_HDR(); fprintf(stderr, " tns-thresh            : %.3f\n", params->fr_tns_thresh/1000.0); }
+            if (params->fr_tns_start != -1) { FRV_HDR(); fprintf(stderr, " tns-start             : %d\n", params->fr_tns_start); }
+            if (params->fr_window_shape != -1) { FRV_HDR(); fprintf(stderr, " window-shape          : %d\n", params->fr_window_shape); }
+            if (params->fr_short_groups != -1) { FRV_HDR(); fprintf(stderr, " short-groups          : %d\n", params->fr_short_groups); }
+            if (params->fr_avoid_holes != -1) { FRV_HDR(); fprintf(stderr, " avoid-holes           : %d\n", params->fr_avoid_holes); }
+            if (params->fr_hole_start != -1) { FRV_HDR(); fprintf(stderr, " hole-start            : %d\n", params->fr_hole_start); }
+            if (params->fr_hole_start_short != -1) { FRV_HDR(); fprintf(stderr, " hole-start-short      : %d\n", params->fr_hole_start_short); }
+            if (params->fr_hole_spread != AACENC_FRANKEN_OFF) { FRV_HDR(); fprintf(stderr, " hole-spread           : %.3f\n", params->fr_hole_spread/1000.0); }
+            if (params->fr_hole_ladder != -1) { FRV_HDR(); fprintf(stderr, " hole-ladder           : %d\n", params->fr_hole_ladder); }
             if (params->fr_sbr_invf_min >= 0)   { FRV_HDR(); fprintf(stderr, " sbr-invf-min          : %d (dynamic invf floor)\n", params->fr_sbr_invf_min); }
             if (params->fr_sbr_invf_max >= 0)   { FRV_HDR(); fprintf(stderr, " sbr-invf-max          : %d (dynamic invf ceiling)\n", params->fr_sbr_invf_max); }
             if (params->fr_sbr_invf_bias != AACENC_FRANKEN_OFF) { FRV_HDR(); fprintf(stderr, " sbr-invf-bias         : %+d step(s) on every dynamic decision\n", params->fr_sbr_invf_bias); }

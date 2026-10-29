@@ -116,6 +116,40 @@ amm-info@iis.fraunhofer.de
        ? (r)                                                               \
        : (__typeof__(r))(((long long)(r) * (long long)g_franken.blockBias) >> 7))
 #include "genericStds.h"
+#include <math.h>
+
+/* Frankenstein --attack-decay: share of the running energy kept per
+ * sub-window (stock 0.7). Returns the constant in the type of r (FIXP_DBL Q31
+ * or FIXP_SGL Q15 depending on the build). The accumulate factor is 1-decay so
+ * the running energy keeps unit gain. */
+#define FR_DECAY(r)                                                         \
+  ((g_franken.attackDecayX1000 == FRANKEN_OFF)                             \
+       ? (r)                                                               \
+       : (__typeof__(r))((sizeof(r) == 2)                                  \
+                             ? ((g_franken.attackDecayX1000 * 32767LL) / 1000) \
+                             : ((g_franken.attackDecayX1000 * 2147483647LL) / 1000)))
+#define FR_ACCFAC(r)                                                        \
+  ((g_franken.attackDecayX1000 == FRANKEN_OFF)                             \
+       ? (r)                                                               \
+       : (FIXP_DBL)(((1000 - g_franken.attackDecayX1000) * 2147483647LL) / 1000))
+
+/* Frankenstein --attack-floor: minimum attack energy shifted by dB. */
+static FIXP_DBL frAttackFloor(FIXP_DBL e) {
+  if (g_franken.attackFloorDbX1000 == FRANKEN_OFF) return e;
+  double f = pow(10.0, (g_franken.attackFloorDbX1000 / 1000.0) / 10.0);
+  double v = (double)e * f;
+  if (v > 2147483647.0) v = 2147483647.0;
+  if (v < 1.0) v = 1.0;
+  return (FIXP_DBL)(LONG)v;
+}
+
+/* Frankenstein --window-shape for AAC-LC: 0 sine, 1 KBD for every block. The
+ * shape is one bit per frame in the syntax, both are legal everywhere in LC. */
+static INT frWinShape(INT stock, INT allowShortFrames) {
+  if (!allowShortFrames || g_franken.windowShape < 0) return stock;
+  if (stock == WRONG_WINDOW) return stock;
+  return g_franken.windowShape ? KBD_WINDOW : SINE_WINDOW;
+}
 
 #define LOWOV_WINDOW _LOWOV_WINDOW
 
@@ -196,8 +230,7 @@ void FDKaacEnc_InitBlockSwitching(
   /* Initialize startvalue for blocktype */
   blockSwitchingControl->lastWindowSequence = LONG_WINDOW;
   blockSwitchingControl->windowShape =
-      blockType2windowShape[blockSwitchingControl->allowShortFrames]
-                           [blockSwitchingControl->lastWindowSequence];
+      frWinShape(blockType2windowShape[blockSwitchingControl->allowShortFrames][blockSwitchingControl->lastWindowSequence], blockSwitchingControl->allowShortFrames);
 }
 
 static const INT suggestedGroupingTable[TRANS_FAC][MAX_NO_OF_GROUPS] = {
@@ -284,6 +317,38 @@ int FDKaacEnc_BlockSwitching(BLOCK_SWITCHING_CONTROL *blockSwitchingControl,
               suggestedGroupingTable[blockSwitchingControl->lastAttackIndex],
               sizeof(blockSwitchingControl->groupLen));
 
+    /* Frankenstein --short-groups: alternative legal groupings of the 8 short
+     * windows. 1 = one group (one scalefactor set per frame: cheapest, noise
+     * smeared over the whole frame), 2 = four pairs (even time resolution),
+     * 3 = tight: the attack window alone, one window before and after it,
+     * everything else lumped (most bits where the attack is). The sum is
+     * always 8 and at most MAX_NO_OF_GROUPS groups, as the syntax requires. */
+    if (g_franken.shortGroups >= 1 && g_franken.shortGroups <= 3) {
+      INT a = blockSwitchingControl->lastAttackIndex;
+      INT g[MAX_NO_OF_GROUPS] = {0, 0, 0, 0};
+      INT n = 0, k;
+      if (a < 0) a = 0;
+      if (a > TRANS_FAC - 1) a = TRANS_FAC - 1;
+      if (g_franken.shortGroups == 1) {
+        g[0] = TRANS_FAC; n = 1;
+      } else if (g_franken.shortGroups == 2) {
+        g[0] = g[1] = g[2] = g[3] = 2; n = 4;
+      } else {
+        /* [0..a-2] [a-1] [a] [a+1..7], dropping empty groups */
+        INT parts[4];
+        parts[0] = (a >= 2) ? a - 1 : 0;
+        parts[1] = (a >= 1) ? 1 : 0;
+        parts[2] = 1;
+        parts[3] = TRANS_FAC - 1 - a;
+        for (k = 0; k < 4; k++)
+          if (parts[k] > 0) g[n++] = parts[k];
+      }
+      FDKmemclear(blockSwitchingControl->groupLen,
+                  sizeof(blockSwitchingControl->groupLen));
+      for (k = 0; k < n; k++) blockSwitchingControl->groupLen[k] = g[k];
+      blockSwitchingControl->noOfGroups = n;
+    }
+
     if (blockSwitchingControl->attack == TRUE)
       blockSwitchingControl->maxWindowNrg =
           FDKaacEnc_GetWindowEnergy(blockSwitchingControl->windowNrg[0],
@@ -309,8 +374,9 @@ int FDKaacEnc_BlockSwitching(BLOCK_SWITCHING_CONTROL *blockSwitchingControl,
 
   for (i = 0; i < nBlockSwitchWindows; i++) {
     FIXP_DBL tmp =
-        fMultDiv2(oneMinusAccWindowNrgFac, blockSwitchingControl->accWindowNrg);
-    blockSwitchingControl->accWindowNrg = fMultAdd(tmp, accWindowNrgFac, enM1);
+        fMultDiv2(FR_DECAY(oneMinusAccWindowNrgFac), blockSwitchingControl->accWindowNrg);
+    blockSwitchingControl->accWindowNrg =
+        fMultAdd(tmp, FR_ACCFAC(accWindowNrgFac), enM1);
 
     if (fMult(blockSwitchingControl->windowNrgF[1][i],
               FR_BLOCKBIAS(invAttackRatio)) >
@@ -322,7 +388,7 @@ int FDKaacEnc_BlockSwitching(BLOCK_SWITCHING_CONTROL *blockSwitchingControl,
     enMax = fixMax(enMax, enM1);
   }
 
-  if (enMax < minAttackNrg) blockSwitchingControl->attack = FALSE;
+  if (enMax < frAttackFloor(minAttackNrg)) blockSwitchingControl->attack = FALSE;
 
   /* Check if attack spreads over frame border */
   if ((blockSwitchingControl->attack == FALSE) &&
@@ -352,8 +418,7 @@ int FDKaacEnc_BlockSwitching(BLOCK_SWITCHING_CONTROL *blockSwitchingControl,
 
   /* update window shape */
   blockSwitchingControl->windowShape =
-      blockType2windowShape[blockSwitchingControl->allowShortFrames]
-                           [blockSwitchingControl->lastWindowSequence];
+      frWinShape(blockType2windowShape[blockSwitchingControl->allowShortFrames][blockSwitchingControl->lastWindowSequence], blockSwitchingControl->allowShortFrames);
 
   return (0);
 }
@@ -460,11 +525,9 @@ int FDKaacEnc_SyncBlockSwitching(
 
     /* update window shape */
     blockSwitchingControlLeft->windowShape =
-        blockType2windowShape[blockSwitchingControlLeft->allowShortFrames]
-                             [blockSwitchingControlLeft->lastWindowSequence];
+        frWinShape(blockType2windowShape[blockSwitchingControlLeft->allowShortFrames][blockSwitchingControlLeft->lastWindowSequence], blockSwitchingControlLeft->allowShortFrames);
     blockSwitchingControlRight->windowShape =
-        blockType2windowShape[blockSwitchingControlLeft->allowShortFrames]
-                             [blockSwitchingControlRight->lastWindowSequence];
+        frWinShape(blockType2windowShape[blockSwitchingControlLeft->allowShortFrames][blockSwitchingControlRight->lastWindowSequence], blockSwitchingControlLeft->allowShortFrames);
   }
 
   if (blockSwitchingControlLeft->allowShortFrames) {

@@ -94,6 +94,19 @@
     int fr_sbr_nf_weight_from; \
     int fr_sbr_nf_smooth; \
     int fr_sbr_softness; \
+    int fr_preecho_rise; \
+    int fr_preecho_depth; \
+    int fr_attack_decay; \
+    int fr_attack_floor; \
+    int fr_tns_thresh; \
+    int fr_tns_start; \
+    int fr_window_shape; \
+    int fr_short_groups; \
+    int fr_avoid_holes; \
+    int fr_hole_start; \
+    int fr_hole_start_short; \
+    int fr_hole_spread; \
+    int fr_hole_ladder; \
     int fr_ps_ipd; \
     int fr_ps_opd; \
     int fr_is_band_lo; \

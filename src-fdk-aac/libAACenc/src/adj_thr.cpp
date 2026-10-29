@@ -104,6 +104,7 @@ amm-info@iis.fraunhofer.de
 #include "sf_estim.h"
 #include "aacEnc_ram.h"
 #include "franken.h"
+#include <math.h>
 
 #define NUM_NRG_LEVS (8)
 #define INV_INT_TAB_SIZE (8)
@@ -552,7 +553,19 @@ static void FDKaacEnc_initAvoidHoleFlag(
   for (ch = 0; ch < nChannels; ch++) {
     QC_OUT_CHANNEL *const qcOutChan = qcOutChannel[ch];
 
-    if (psyOutChannel[ch]->lastWindowSequence != SHORT_WINDOW) {
+    if (g_franken.holeSpreadDbX1000 != FRANKEN_OFF) {
+      /* Frankenstein --hole-spread <dB>: how much the spread (neighbour)
+       * energy is lowered before deciding that a band is masked by its
+       * neighbours and may become a hole. Stock 3 dB long / 2 dB short.
+       * Larger = fewer bands look "covered" = more bands are protected. */
+      double f = pow(10.0, -(g_franken.holeSpreadDbX1000 / 1000.0) / 10.0);
+      FIXP_DBL fac = (FIXP_DBL)(LONG)(f * 2147483647.0);
+      for (sfbGrp = 0; sfbGrp < psyOutChannel[ch]->sfbCnt;
+           sfbGrp += psyOutChannel[ch]->sfbPerGroup)
+        for (sfb = 0; sfb < psyOutChannel[ch]->maxSfbPerGroup; sfb++)
+          qcOutChan->sfbSpreadEnergy[sfbGrp + sfb] =
+              fMult(fac, qcOutChan->sfbSpreadEnergy[sfbGrp + sfb]);
+    } else if (psyOutChannel[ch]->lastWindowSequence != SHORT_WINDOW) {
       for (sfbGrp = 0; sfbGrp < psyOutChannel[ch]->sfbCnt;
            sfbGrp += psyOutChannel[ch]->sfbPerGroup)
         for (sfb = 0; sfb < psyOutChannel[ch]->maxSfbPerGroup; sfb++)
@@ -1847,7 +1860,14 @@ static void FDKaacEnc_allowMoreHoles(
         /* restart with next energy border */
         sfb = maxSfb;
         enIdx++;
-        if (enIdx >= NUM_NRG_LEVS) {
+        /* Frankenstein --hole-ladder N: stop after N energy borders instead
+         * of 8, so only the quietest bands may be cut. If the budget is then
+         * still exceeded, the rate loop raises thresholds instead (coarser
+         * but no extra holes). */
+        if (enIdx >= ((g_franken.holeLadder >= 1 &&
+                       g_franken.holeLadder < NUM_NRG_LEVS)
+                          ? g_franken.holeLadder
+                          : NUM_NRG_LEVS)) {
           done = 1;
         }
       }
@@ -2570,6 +2590,23 @@ void FDKaacEnc_AdjThrInit(
       atsElem->ahParam.startSfbL = 0;
       atsElem->ahParam.startSfbS = 0;
     }
+    /* Frankenstein --avoid-holes / --hole-start / --hole-start-short. Stock
+     * switches the peak/valley min-SNR shaping off below 20 kbps PER CHANNEL,
+     * i.e. below 40 kbps for stereo, and then also lets holes be cut from SFB
+     * 0. With the knob it can be forced either way; the start SFBs say from
+     * which band the energy-ladder may zero bands at all (higher = the lower
+     * spectrum is protected from holes). */
+    if (g_franken.avoidHoles == 0 || g_franken.avoidHoles == 1) {
+      atsElem->ahParam.modifyMinSnr = g_franken.avoidHoles ? TRUE : FALSE;
+      if (g_franken.avoidHoles == 1 && chBitrate < 20000) {
+        atsElem->ahParam.startSfbL = 15;
+        atsElem->ahParam.startSfbS = 3;
+      }
+    }
+    if (g_franken.holeStartLong >= 0)
+      atsElem->ahParam.startSfbL = fMin(g_franken.holeStartLong, MAX_SFB_LONG);
+    if (g_franken.holeStartShort >= 0)
+      atsElem->ahParam.startSfbS = fMin(g_franken.holeStartShort, MAX_SFB_SHORT);
 
     /* minSnr adaptation */
     msaParam->maxRed = FL2FXCONST_DBL(0.00390625f); /* 0.25f/64.0f */
@@ -2578,9 +2615,9 @@ void FDKaacEnc_AdjThrInit(
     /* Frankenstein --mask-slope: shift the MSA start threshold by N dB. + raises
      * it (fewer quiet bands starved = more detail); - lowers it (starve harder).
      * ld64 domain: 1 dB ~= 0.00519. */
-    if (g_franken.msaSlopeDbX10 != FRANKEN_OFF &&
-        g_franken.msaSlopeDbX10 != 0) {
-      double off = (g_franken.msaSlopeDbX10 / 10.0) * 0.00519;
+    if (g_franken.msaSlopeDbX1000 != FRANKEN_OFF &&
+        g_franken.msaSlopeDbX1000 != 0) {
+      double off = (g_franken.msaSlopeDbX1000 / 1000.0) * 0.00519;
       double nr = 0.05190512648 + off;
       if (nr < 0.0) nr = 0.0; /* clamp: never negative ratio */
       msaParam->startRatio = (FIXP_DBL)((INT)(nr * 2147483648.0));
