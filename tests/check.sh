@@ -30,7 +30,7 @@ command -v ffmpeg  >/dev/null || { echo "SKIP: brak ffmpeg";  exit 77; }
 command -v python3 >/dev/null || { echo "SKIP: brak python3"; exit 77; }
 [ -x "$X64" ] || [ -f "$X64" ] || { echo "FAIL: brak $X64"; exit 1; }
 
-cleanup(){ rm -f "$WAV" _check_invf.wav _check_nfw.wav _check_unlock.wav _check_hdr.wav _check_msshort.wav _check_isalt.wav short_ms.wav is_alt.wav _check_dab_in.wav _check_psmulti.wav _check_psnoiid.wav "${OUT}"*.m4a "${OUT}"*.aac "${OUT}"*.txt "${OUT}"*.dabp "${OUT}"*.bin "${OUT}"*.loas; rm -rf _check_dabtmp; }
+cleanup(){ rm -f "$WAV" _check_core_*.wav _check_core_*.txt _check_invf.wav _check_nfw.wav _check_unlock.wav _check_hdr.wav _check_msshort.wav _check_isalt.wav short_ms.wav is_alt.wav _check_dab_in.wav _check_psmulti.wav _check_psnoiid.wav "${OUT}"*.m4a "${OUT}"*.aac "${OUT}"*.txt "${OUT}"*.dabp "${OUT}"*.bin "${OUT}"*.loas; rm -rf _check_dabtmp; }
 trap cleanup EXIT
 
 # --- probka: 2s stereo, ton + lekki szum (rusza MS/IS/TNS) ---
@@ -849,6 +849,100 @@ r=$(realbps "${OUT}_ul_stock.aac")
 [ "$r" -ge 14000 ] && [ "$r" -le 20000 ] && ok "bez --unlock-bitrate HE -b 8 dalej podniesione do wiersza tabeli (realnie ${r} bps)" \
   || bad "bez --unlock-bitrate HE -b 8: ${r} bps (zmienione zachowanie stock)"
 rm -f "$ULW"
+
+# --- Parser liczb dziesietnych + rdzen: pre-echo, transjenty, dziury (30.10.2026) ---
+echo "--- parser dziesietny (--side-bias/--side-knee/--mask-slope) ---"
+# Bug: sscanf("%lf") czytal "-0,23" jako "-0" (pokretlo wylaczone), "-1,5" jako
+# "-1", a skala dB*10 gubila trzecie miejsce. Teraz '.' lub ',', do 3 miejsc,
+# zakres sprawdzany na wartosci PO zaokragleniu. Odczyt z --verbose.
+vb(){ "$X64" -p2 -b40 "$@" --verbose -f2 -o "${OUT}_pv.aac" "$WAV" 2>&1 | tr -d '\r' | grep -o "$PVNAME *: [-+0-9.]* dB" | sed 's/.*: *\([-+0-9.]*\) dB/\1/'; }
+PVNAME=side-bias
+for pair in "-0.23:-0.230" "-0,23:-0.230" "-0,98:-0.980" "-1,5:-1.500" "1.2345:+1.235" "-0.0005:-0.001" "50.0004:+50.000"; do
+  a=${pair%%:*}; want=${pair#*:}
+  got=$(vb --side-bias "$a")
+  [ "$got" = "$want" ] && ok "--side-bias $a -> $got dB" || bad "--side-bias $a -> '$got' (oczekiwane $want)"
+done
+PVNAME=side-knee
+got=$(vb --side-knee "0,75"); [ "$got" = "+0.750" ] && ok "--side-knee 0,75 -> $got dB" || bad "--side-knee 0,75 -> '$got'"
+for a in 50.001 -24.001 1e1 nan inf "1.2.3" "1,2,3" abc 1x " 1" 99999999999; do
+  "$X64" -p2 -b40 --side-bias "$a" -f2 -o "${OUT}_pv.aac" "$WAV" >/dev/null 2>&1; rc=$?
+  [ $rc != 0 ] && ok "--side-bias '$a' odrzucone (rc=$rc)" || bad "--side-bias '$a' przyjete, a powinno byc odrzucone"
+done
+for a in "128,5" "3x" "1e3"; do
+  "$X64" -p2 -b40 --block-bias "$a" -f2 -o "${OUT}_pv.aac" "$WAV" >/dev/null 2>&1; rc=$?
+  [ $rc != 0 ] && ok "--block-bias '$a' odrzucone (calkowite pokretla tez scisle)" || bad "--block-bias '$a' przyjete"
+done
+# Ulamek musi realnie zmieniac strumien (wczesniej -0.23..-0.98 = wylaczone).
+enc "$X64" -f2 -p2 -b40 -w 18000 -o "${OUT}_pv0.aac" "$WAV"
+enc "$X64" -f2 -p2 -b40 -w 18000 --side-bias -0.5 -o "${OUT}_pv5.aac" "$WAV"
+enc "$X64" -f2 -p2 -b40 -w 18000 --side-bias -0,5 -o "${OUT}_pv5c.aac" "$WAV"
+[ "$(md5 ${OUT}_pv5.aac)" != "$(md5 ${OUT}_pv0.aac)" ] && [ "$(md5 ${OUT}_pv5.aac)" = "$(md5 ${OUT}_pv5c.aac)" ] \
+  && ok "--side-bias -0.5 zmienia strumien, '-0,5' = '-0.5'" || bad "--side-bias -0.5 bez efektu albo przecinek != kropka"
+
+echo "--- rdzen: pre-echo, transjenty, okno, grupy, dziury ---"
+python3 tools/core/gen_core.py . >/dev/null
+mv attacks48.wav _check_core_att.wav; mv attacks48.txt _check_core_att.txt; mv dense48.wav _check_core_dense.wav
+# Kazde pokretlo musi zmienic strumien na materiale, na ktory dziala, i dac
+# strumien bez bledow dekodera.
+for spec in "att:-p2 -b40 -w 18000:--preecho-rise 1.5" "att:-p2 -b40 -w 18000:--preecho-depth 40" \
+            "att:-p2 -b40 -w 18000:--attack-decay 0.9" "att:-p2 -b40 -w 18000:--attack-floor -20" \
+            "att:-p2 -b40 -w 18000:--tns-thresh 0.7" "att:-p2 -b40 -w 18000:--tns-start 400" \
+            "att:-p2 -b40 -w 18000:--window-shape 0" "att:-p2 -b40 -w 18000:--window-shape 1" \
+            "att:-p2 -b40 -w 18000:--short-groups 1" "att:-p2 -b40 -w 18000:--short-groups 3" \
+            "dense:-p2 -b32 -w 17000:--avoid-holes 1" "dense:-p2 -b32 -w 17000:--hole-start 25" \
+            "dense:-p2 -b32 -w 17000:--hole-start-short 8" "dense:-p2 -b32 -w 17000:--hole-spread 9" \
+            "dense:-p2 -b32 -w 17000:--hole-ladder 2"; do
+  w=${spec%%:*}; rest=${spec#*:}; base=${rest%%:*}; knob=${rest#*:}
+  enc "$X64" -f2 $base -o "${OUT}_cb.aac" "_check_core_$w.wav"
+  enc "$X64" -f2 $base $knob -o "${OUT}_ck.aac" "_check_core_$w.wav"
+  if [ -s "${OUT}_ck.aac" ] && [ "$(md5 ${OUT}_ck.aac)" != "$(md5 ${OUT}_cb.aac)" ] && [ "$(derr ${OUT}_ck.aac)" = "0" ]; then
+    ok "$knob: zmienia strumien, 0 bledow dekodera"
+  else
+    bad "$knob: brak efektu, brak pliku albo bledy dekodera"
+  fi
+done
+# Okno i grupy odczytane Z BITSTREAMU (pole window_shape i scale_factor_grouping).
+wsg(){ python3 - "$1" <<'PY'
+import sys
+sys.path.insert(0, 'tools/msis')
+from parse_ms import frames, Bits
+sh = set(); gr = set()
+for fr, hdr, nb in frames(open(sys.argv[1], 'rb').read()):
+    b = Bits(fr, hdr)
+    if b.get(3) != 1: continue
+    b.get(4)
+    if not b.get(1): continue
+    b.get(1); ws = b.get(2); shape = b.get(1)
+    sh.add(shape)
+    if ws == 2:
+        b.get(4); g = b.get(7)
+        gr.add(1 + sum(1 for k in range(7) if not (g >> (6 - k)) & 1))
+print(sorted(sh), sorted(gr))
+PY
+}
+enc "$X64" -f2 -p2 -b128 --window-shape 1 -o "${OUT}_cw.aac" _check_core_att.wav
+[ "$(wsg ${OUT}_cw.aac)" = "[1] [4]" ] && ok "--window-shape 1: KBD w kazdej ramce, takze short (z bitstreamu)" || bad "--window-shape 1: $(wsg ${OUT}_cw.aac)"
+enc "$X64" -f2 -p2 -b128 --window-shape 0 -o "${OUT}_cw.aac" _check_core_att.wav
+[ "$(wsg ${OUT}_cw.aac)" = "[0] [4]" ] && ok "--window-shape 0: sinus w kazdej ramce (z bitstreamu)" || bad "--window-shape 0: $(wsg ${OUT}_cw.aac)"
+enc "$X64" -f2 -p2 -b128 --short-groups 1 -o "${OUT}_cw.aac" _check_core_att.wav
+[ "$(wsg ${OUT}_cw.aac)" = "[0, 1] [1]" ] && ok "--short-groups 1: jedna grupa w kazdym bloku short" || bad "--short-groups 1: $(wsg ${OUT}_cw.aac)"
+# Dziury: --hole-ladder 2 przy 32 kbps i pasmie 17 kHz musi zmniejszyc odsetek
+# wyzerowanych pasm po dekodowaniu (zmierzone: 37% -> 8%).
+enc "$X64" -f2 -p2 -b32 -w 17000 -o "${OUT}_ch0.aac" _check_core_dense.wav
+enc "$X64" -f2 -p2 -b32 -w 17000 --hole-ladder 2 -o "${OUT}_ch2.aac" _check_core_dense.wav
+# Dekodowanie ffmpeg (AAC-LC, zgodny dekoder); core_measure sam wyrownuje opoznienie.
+ffmpeg -y -loglevel error -i "${OUT}_ch0.aac" -c:a pcm_s16le _check_core_d0.wav
+ffmpeg -y -loglevel error -i "${OUT}_ch2.aac" -c:a pcm_s16le _check_core_d2.wav
+h0=$(python3 tools/core/core_measure.py _check_core_dense.wav _check_core_d0.wav | grep -o 'holes=[0-9.]*' | cut -d= -f2)
+h2=$(python3 tools/core/core_measure.py _check_core_dense.wav _check_core_d2.wav | grep -o 'holes=[0-9.]*' | cut -d= -f2)
+python3 -c "import sys; sys.exit(0 if float('${h2:-999}') < float('${h0:-0}') * 0.5 else 1)" \
+  && ok "--hole-ladder 2: dziury po dekodowaniu ${h0}% -> ${h2}%" || bad "--hole-ladder 2: dziury '${h0}'% -> '${h2}'% (oczekiwany spadek o polowe)"
+# Bez flag: wynik identyczny z punktem odniesienia obliczonym w tym przebiegu
+# jest juz pokryty wyzej (stock = bez nowych flag), tu tylko wartosci neutralne.
+enc "$X64" -f2 -p2 -b40 -w 18000 -o "${OUT}_cn0.aac" _check_core_att.wav
+enc "$X64" -f2 -p2 -b40 -w 18000 --short-groups 0 --hole-ladder 8 -o "${OUT}_cn1.aac" _check_core_att.wav
+[ "$(md5 ${OUT}_cn1.aac)" = "$(md5 ${OUT}_cn0.aac)" ] && ok "wartosci neutralne (--short-groups 0, --hole-ladder 8) = stock" || bad "wartosci neutralne zmieniaja strumien"
+rm -f _check_core_*.wav _check_core_*.txt
 
 echo "==================================="
 echo "WYNIK: PASS=$PASS FAIL=$FAIL"
