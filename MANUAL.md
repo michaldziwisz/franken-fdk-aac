@@ -187,24 +187,40 @@ lot" to właśnie to, co zwykle chcesz — i jest w pełni kontrolowany.
 ## 9. Skrajne bitrate: bardzo nisko i bardzo wysoko
 
 BARDZO NISKO. Standardowo FDK nie pozwoli zejść poniżej pewnej podłogi. Jeśli
-naprawdę chcesz 8 kbps HE-AAC stereo albo 6 kbps LC (choćby dla eksperymentu),
-użyj flagi `--unlock-bitrate`. UWAGA na jeden szczegół: normalnie ten frontend
-traktuje małe liczby przy `-b` jako kilobity (czyli `-b 96` = 96 kbps). W trybie
-`--unlock-bitrate` bierze `-b` DOSŁOWNIE jako bity na sekundę — czyli `-b 8000`
-to 8000 bps = 8 kbps. Poniżej mniej więcej 10 kbps jest naturalna podłoga
-wynikająca z samych nagłówków AAC — niżej się nie da bez łamania formatu.
+naprawdę chcesz 6 kbps HE-AAC stereo, 4 kbps HE-AAC v2 albo 3 kbps LC (choćby dla
+eksperymentu), użyj flagi `--unlock-bitrate`. UWAGA na jeden szczegół: normalnie
+ten frontend traktuje małe liczby przy `-b` jako kilobity (czyli `-b 96` = 96
+kbps). W trybie `--unlock-bitrate` bierze `-b` DOSŁOWNIE jako bity na sekundę,
+czyli `-b 8000` to 8000 bps = 8 kbps.
 
-    fdkaac-franken-x64.exe -p 29 -b 8000 --unlock-bitrate -o out.m4a in48k.wav
+    fdkaac-franken-x64.exe -p 29 -b 6000 --unlock-bitrate -o out.m4a in48k.wav
 
 DWA WAŻNE ZASTRZEŻENIA do bardzo niskich bitrate'ów:
 
-Po pierwsze — `--unlock-bitrate` obniża podłogę tylko dla AAC-LC (profil 2).
-HE-AAC i HE-AAC v2 (profile 5 i 29) mają WŁASNĄ, twardą podłogę około 16 kbps,
-wynikającą z tego, że SBR nie potrafi skonfigurować się poniżej — enkoder albo
-podniesie bitrate do 16 kbps, albo w ogóle odmówi startu. Dlatego jeśli pod
-HE-AAC wpiszesz `-b 5` albo `-b 8000`, dostaniesz 16 kbps (program Cię o tym
-ostrzeże). Chcesz naprawdę niżej niż 16 kbps? Użyj AAC-LC: `-p 2 -b 8000
---unlock-bitrate`.
+Po pierwsze: skąd w ogóle podłogi i co flaga zdejmuje. Popularne przekonanie, że
+HE-AAC ma twarde minimum 16 kbps, jest nieprawdziwe; dawniej powtarzała je także
+ta instrukcja. 16 kbps to tylko najniższy wiersz tabeli strojenia SBR dla 48 kHz
+stereo. Dla mono i niższych częstotliwości tabela zaczyna się od 8..12 kbps, dla
+HE-AAC v2 od 8 kbps. Stock FDK podnosi wszystko, co leży niżej, do tego wiersza.
+Z `--unlock-bitrate` enkoder bierze najniższy wiersz i zostawia Twój bitrate:
+siatka SBR jest ta sama, rdzeń AAC dostaje po prostu mniej bitów. W LD i ELD
+flaga zdejmuje dodatkowo regułę 8 kbps na kanał i 208-bitowy zapas na transport
+(prawdziwy narzut nagłówków nadal jest sprawdzany), a poniżej tabeli pasm bierze
+najwęższe pasmo. Najniższe `-b`, przy którym kodowanie przy 48 kHz się kończy
+(w nawiasie podłoga stock, do której enkoder dawniej podnosił): HE-AAC stereo
+5050 (16008), HE-AAC mono 2505 (12008), HE-AAC v2 3122 (12008), LD 8291 (19500),
+ELD 9062 (19500), ELD z SBR około 10500..11300 (36008..60008), LC 2659 (9750).
+Przy 24 i 32 kHz wartości są jeszcze niższe. Prawdziwa twarda granica to
+szacunek ładunku samego SBR (około 2,5 kbps na kanał plus PS): poniżej niego
+rdzeń nie ma ani bitu i enkoder kończy czystym komunikatem „encoder
+initialization failed”.
+
+Przy takich wartościach licz się z tym, że gęste fragmenty wyjdą powyżej `-b`:
+ramka, która nie mieści nawet własnych nagłówków i danych pobocznych, przekracza
+budżet, a rezerwuar odrabia to na kolejnych ramkach. Przykład: `-b 6000` dla
+HE-AAC stereo dał realnie 7290 bps na muzyce. Sprawdzaj rozmiar pliku, a nie
+samą deklarację w `--verbose`. Do odsłuchu takich strumieni LD i ELD używaj
+dekodera Fraunhofera; ffmpeg 6.1 ma z nimi kłopot nawet przy enkoderze stock.
 
 Po drugie — UWAGA na interpretację `-b` w trybie unlock. Normalnie ten frontend
 traktuje małe liczby jako kilobity: `-b 128` = 128 kbps, `-b 1152` = 1152 kbps.
@@ -477,6 +493,41 @@ bardziej tonalne czy bardziej szumowe, i odpowiednio "wybiela" skopiowany
 materiał. 0 = wyłączone, 1 = słabe, 2 = średnie, 3 = mocne. Mocniejsze =
 mniej "metalicznego" dzwonienia w górze, kosztem części detalu. Zwykle steruje
 tym automat; wymuś ręcznie, gdy słyszysz metaliczność.
+
+Wymuszenie ma jedną wadę: jeden poziom obowiązuje wtedy w całym pliku, także w
+pasmach i momentach, w których automat wybrałby inaczej. Drugi sposób to zostawić
+decyzję automatowi i zmienić tylko jego reguły. Decyzja zapada nadal osobno dla
+każdego pasma i każdej ramki.
+
+`--sbr-softness <0..7>` — jedno pokrętło od „twardo, metalicznie” do „bardzo
+miękko”. `2` to dokładnie estymatory stock dla muzyki, `4` estymatory stock dla
+mowy (bez reszty zmian z `--speech`, czyli bez innego crossovera). Poziomy 0..1
+dają mniej wybielania, 3 trzyma co najmniej słabe, 5..7 dokładają szumu i
+wybielania. Pomiar z bitstreamu: średni poziom filtrowania rośnie z 0 do około 3,
+a płaskość zdekodowanego pasma SBR z 0,37 do 0,42 na mowie i z 0,40 do 0,52 na
+materiale tonalnym. Przełączanie między ramkami zostaje na poziomie stock.
+
+Pokrętła dla eksperta, każde wygrywa z makrem:
+`--sbr-invf-min` i `--sbr-invf-max` ograniczają wybór automatu od dołu i od
+góry (np. `--sbr-invf-max 2` = nigdy mocne). `--sbr-invf-bias <-3..3>` przesuwa
+każdą decyzję o tyle stopni. `--sbr-invf-table 0|1` wybiera tabelę decyzji
+muzyki albo mowy niezależnie od `--speech`. `--sbr-invf-hyst` (0..2, stock 1)
+to histereza granic: mniejsza daje szybszą reakcję i częstsze przełączanie.
+`--sbr-invf-sbr-thr` i `--sbr-invf-orig-thr` przesuwają granice tonalności pasma
+łatanego i oryginalnego, mniej więcej w dB. Uwaga: przesunięcie granic potrafi
+wywołać migotanie decyzji między ramkami, dlatego makro ich nie używa.
+`--sbr-invf-smooth 0..2` mówi, ile ramek uśrednia estymator.
+
+Szum: `--sbr-nf-weight 0..1` to waga różnicy tonalności oryginału i łaty w
+poziomie szumu (muzyka 0,25, mowa 1,0), `--sbr-nf-weight-from 1..3` mówi, od
+którego poziomu filtrowania pasma dostają tę wagę (stock tylko mocne), a
+`--sbr-nf-smooth 0` wyłącza wygładzanie szumu w czasie. Ważna rzecz z pomiaru:
+szum ogranicza sufit `--sbr-noise-max`. Z sufitem z tabeli strojenia (0,125)
+około 95% pasm już na nim siedzi, więc sama waga często nic nie zmienia. Łącz ją
+z `--sbr-noise-max 3` albo `6`.
+
+    fdkaac-franken-x64.exe -p 5 -b 32000 --sbr-softness 6 -o out.m4a in.wav
+    fdkaac-franken-x64.exe -p 5 -b 32000 --sbr-invf-max 2 --sbr-invf-hyst 1.5 -o out.m4a in.wav
 
 `--sbr-noise-floor-offset <n>` — offset poziomu szumu wstrzykiwanego przez SBR.
 Większe wartości = więcej szumu wypełniającego rekonstrukcję.
@@ -874,6 +925,11 @@ naturalniej, bez "bulgotania" w górze. Dotyczy HE-AAC/HE-AAC v2 (bo działa w
 SBR).
 
     fdkaac-franken-x64.exe -p 5 -b 32000 --speech -o mowa.m4a podcast.wav
+
+`--speech` zmienia kilka rzeczy naraz. Jego część dotyczącą estymatorów SBR
+można teraz brać osobno: `--sbr-invf-table 1` daje samą tabelę decyzji mowy,
+`--sbr-nf-weight 1.0` samą wagę szumu mowy, a `--sbr-softness 4` obie naraz, bez
+zmiany crossovera i bez wyłączania kodowania parametrycznego.
 
 Uczciwie o LC: czysty AAC-LC (bez SBR) NIE ma osobnego, oddzielnego "trybu mowy"
 w FDK. Model psychoakustyczny LC jest ten sam dla mowy i muzyki. Dla mowy w LC

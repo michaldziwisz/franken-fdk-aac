@@ -483,24 +483,42 @@ exactly what you usually want — and it is fully controlled.</p>
 <h2 id="9-extreme-bitrates-very-low-and-very-high">9. Extreme bitrates:
 very low and very high</h2>
 <p>VERY LOW. By default FDK won't let you go below a certain floor. If
-you really want 8 kbps HE-AAC stereo or 6 kbps LC (even just for an
-experiment), use the <code>--unlock-bitrate</code> flag. WATCH OUT for
-one detail: normally this frontend treats small numbers with
-<code>-b</code> as kilobits (that is, <code>-b 96</code> = 96 kbps). In
-<code>--unlock-bitrate</code> mode it takes <code>-b</code> LITERALLY as
-bits per second — that is, <code>-b 8000</code> is 8000 bps = 8 kbps.
-Below roughly 10 kbps there's a natural floor resulting from the AAC
-headers themselves — you can't go lower without breaking the format.</p>
-<pre><code>fdkaac-franken-x64.exe -p 29 -b 8000 --unlock-bitrate -o out.m4a in48k.wav</code></pre>
+you really want 6 kbps HE-AAC stereo, 4 kbps HE-AAC v2 or 3 kbps LC
+(even just for an experiment), use the <code>--unlock-bitrate</code>
+flag. WATCH OUT for one detail: normally this frontend treats small
+numbers with <code>-b</code> as kilobits (that is, <code>-b 96</code> =
+96 kbps). In <code>--unlock-bitrate</code> mode it takes <code>-b</code>
+LITERALLY as bits per second, so <code>-b 8000</code> is 8000 bps = 8
+kbps.</p>
+<pre><code>fdkaac-franken-x64.exe -p 29 -b 6000 --unlock-bitrate -o out.m4a in48k.wav</code></pre>
 <p>TWO IMPORTANT CAVEATS for very low bitrates:</p>
-<p>First — <code>--unlock-bitrate</code> lowers the floor only for
-AAC-LC (profile 2). HE-AAC and HE-AAC v2 (profiles 5 and 29) have THEIR
-OWN, hard floor of about 16 kbps, resulting from the fact that SBR
-cannot configure itself below that — the encoder will either raise the
-bitrate to 16 kbps or refuse to start at all. So if under HE-AAC you
-enter <code>-b 5</code> or <code>-b 8000</code>, you'll get 16 kbps (the
-program will warn you about this). Want to go truly lower than 16 kbps?
-Use AAC-LC: <code>-p 2 -b 8000 --unlock-bitrate</code>.</p>
+<p>First: where the floors come from and what the flag removes. The
+common belief that HE-AAC has a hard 16 kbps minimum is wrong; this
+manual used to repeat it too. 16 kbps is only the lowest row of the SBR
+tuning table for 48 kHz stereo. For mono and lower sample rates the
+table starts at 8..12 kbps, for HE-AAC v2 at 8 kbps. Stock FDK raises
+anything below to that row. With <code>--unlock-bitrate</code> the
+encoder takes the lowest row and keeps your bitrate: the SBR grid is the
+same, the AAC core simply gets fewer bits. Under LD and ELD the flag
+also removes the 8 kbps per channel rule and the 208-bit transport
+reserve (the real header overhead is still checked) and uses the
+narrowest bandwidth below the bandwidth table. The lowest
+<code>-b</code> that still encodes at 48 kHz (stock floor it used to be
+raised to in brackets): HE-AAC stereo 5050 (16008), HE-AAC mono 2505
+(12008), HE-AAC v2 3122 (12008), LD 8291 (19500), ELD 9062 (19500), ELD
+with SBR about 10500..11300 (36008..60008), LC 2659 (9750). At 24 and 32
+kHz the values are lower still. The real hard limit is the estimate of
+the SBR payload itself (about 2.5 kbps per channel plus PS): below it
+the core has no bits at all and the encoder stops with a clean "encoder
+initialization failed".</p>
+<p>At such values expect dense passages to come out above
+<code>-b</code>: a frame that cannot fit even its own headers and side
+information overshoots, and the reservoir catches up over the next
+frames. Example: <code>-b 6000</code> for HE-AAC stereo gave a real 7290
+bps on music. Check the file size, not only the value in
+<code>--verbose</code>. Listen to such LD and ELD streams with the
+Fraunhofer decoder; ffmpeg 6.1 has trouble with them even from the stock
+encoder.</p>
 <p>Second — WATCH the interpretation of <code>-b</code> in unlock mode.
 Normally this frontend treats small numbers as kilobits:
 <code>-b 128</code> = 128 kbps, <code>-b 1152</code> = 1152 kbps. But
@@ -801,6 +819,46 @@ and accordingly "whitens" the copied material. 0 = off, 1 = weak, 2 =
 medium, 3 = strong. Stronger = less "metallic" ringing up top, at the
 cost of some detail. Usually the automation controls it; force manually
 when you hear metallicness.</p>
+<p>Forcing has one drawback: a single level then applies to the whole
+file, also in the bands and moments where the automation would have
+chosen differently. The other way is to leave the decision to the
+automation and change only its rules. The decision is still made per
+band and per frame.</p>
+<p><code>--sbr-softness &lt;0..7&gt;</code> — one knob from "hard,
+metallic" to "very soft". <code>2</code> is exactly the stock music
+estimators, <code>4</code> the stock speech estimators (without the rest
+of <code>--speech</code>, so no different crossover). Levels 0..1 give
+less whitening, 3 keeps at least weak, 5..7 add noise and whitening.
+Measured from the bitstream: the mean filtering level rises from 0 to
+about 3, and the flatness of the decoded SBR band from 0.37 to 0.42 on
+speech and from 0.40 to 0.52 on tonal material. Frame-to-frame switching
+stays at the stock level.</p>
+<p>Expert knobs, each wins over the macro: <code>--sbr-invf-min</code>
+and <code>--sbr-invf-max</code> bound the automation from below and
+above (e.g. <code>--sbr-invf-max 2</code> = never strong).
+<code>--sbr-invf-bias &lt;-3..3&gt;</code> shifts every decision by that
+many steps. <code>--sbr-invf-table 0|1</code> picks the music or speech
+decision table regardless of <code>--speech</code>.
+<code>--sbr-invf-hyst</code> (0..2, stock 1) is the hysteresis of the
+borders: smaller reacts faster and switches more often.
+<code>--sbr-invf-sbr-thr</code> and <code>--sbr-invf-orig-thr</code>
+shift the tonality borders of the patched and the original band, roughly
+in dB. Note: shifting the borders can make the decision flicker between
+frames, which is why the macro does not use them.
+<code>--sbr-invf-smooth 0..2</code> sets how many frames the estimator
+averages.</p>
+<p>Noise: <code>--sbr-nf-weight 0..1</code> is the weight of the
+original-versus-patch tonality gap in the noise level (music 0.25,
+speech 1.0), <code>--sbr-nf-weight-from 1..3</code> sets from which
+filtering level the bands get that weight (stock: strong only), and
+<code>--sbr-nf-smooth 0</code> turns off the time smoothing of the
+noise. One important finding from measurement: the noise is capped by
+<code>--sbr-noise-max</code>. With the tuning-table ceiling (0.125)
+about 95% of the bands already sit at it, so the weight alone often
+changes nothing. Pair it with <code>--sbr-noise-max 3</code> or
+<code>6</code>.</p>
+<pre><code>fdkaac-franken-x64.exe -p 5 -b 32000 --sbr-softness 6 -o out.m4a in.wav
+fdkaac-franken-x64.exe -p 5 -b 32000 --sbr-invf-max 2 --sbr-invf-hyst 1.5 -o out.m4a in.wav</code></pre>
 <p><code>--sbr-noise-floor-offset &lt;n&gt;</code> — the offset of the
 noise level injected by SBR. Larger values = more fill noise in the
 reconstruction.</p>
@@ -1258,6 +1316,12 @@ audiobook, dialogue) at low bitrate sounds more natural, without
 "gurgling" up top. It applies to HE-AAC/HE-AAC v2 (because it works in
 SBR).</p>
 <pre><code>fdkaac-franken-x64.exe -p 5 -b 32000 --speech -o mowa.m4a podcast.wav</code></pre>
+<p><code>--speech</code> changes several things at once. Its SBR
+estimator part can now be taken separately:
+<code>--sbr-invf-table 1</code> gives just the speech decision table,
+<code>--sbr-nf-weight 1.0</code> just the speech noise weight, and
+<code>--sbr-softness 4</code> both, without changing the crossover and
+without disabling parametric coding.</p>
 <p>Honestly about LC: pure AAC-LC (without SBR) does NOT have a
 separate, distinct "speech mode" in FDK. The LC psychoacoustic model is
 the same for speech and music. For speech in LC it's best to simply

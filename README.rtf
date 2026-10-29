@@ -908,6 +908,287 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 \intbl\row}
 {\pard \ql \f0 \sa180 \li0 \fi0 \par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Lowering the master transient threshold to 40 essentially removes pre-echo in the replicated band: the detector then notices the attacks it was previously missing and gives them their own envelope instead of averaging across the transient. The effect is monotonic, reproducible at both bitrates, and saturates below 60 - so {\f1 --sbr-tran-thr 40} is the recommended starting point on percussive material. Everything from 100 upwards is byte-identical to stock, which also confirms the knob is cleanly opt-in.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel2 \b \fs28 SBR inverse filtering and noise floor estimators (invf stays dynamic)\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\f1 --sbr-invf} above freezes one level for the whole file. These knobs instead reshape the estimator, so the decision is still made per band and per frame, only along different rules. Explicit knobs win over {\f1 --sbr-softness}; {\f1 --sbr-invf} wins over everything.\par}
+{
+\trowd \trgaph120
+\clbrdrb\brdrs\cellx2160\clbrdrb\brdrs\cellx4320\clbrdrb\brdrs\cellx6480\clbrdrb\brdrs\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Switch\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Values\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Default\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Description\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --sbr-softness <0..7>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0..7\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 off\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 One macro from "hard / metallic" to "very soft". {\f1 2} = stock music estimators, {\f1 4} = stock speech estimators (decision table and noise weight only, the speech crossover is NOT applied). {\f1 0} one step less whitening than music, {\f1 1} never HIGH, {\f1 3} at least LOW, {\f1 5}/{\f1 6} raise the noise ceiling to 0.5 and weight MID bands too ({\f1 6} adds one step of whitening), {\f1 7} ceiling 1.0.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --sbr-invf-min <0..3>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0..3\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 off\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Lowest level the estimator may pick.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --sbr-invf-max <0..3>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0..3\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 off\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Highest level the estimator may pick ({\f1 2} = never HIGH).\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --sbr-invf-bias <-3..3>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -3..3\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Shifts every dynamic decision by n steps (+ = more whitening), before min/max.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --sbr-invf-table <0|1>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0 music, 1 speech\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 follows {\f1 --speech}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 The decision table only, without the crossover change of {\f1 --speech}.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --sbr-invf-hyst <x>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 decimal, 0..2\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 1.0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Hysteresis of the decision borders. {\f1 0} = none = more frame-to-frame switching; above 2 the borders would overlap, so it is rejected.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --sbr-invf-sbr-thr <x>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 about dB, -20..20\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Shifts the tonality borders of the PATCHED band (+ = more invf).\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --sbr-invf-orig-thr <x>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 about dB, -20..20\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Shifts the tonality borders of the ORIGINAL band (+ = more invf).\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --sbr-invf-smooth <0..2>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0..2\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 2\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Frames the estimator averages. {\f1 0} = this frame only.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --sbr-nf-weight <x>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0.0..1.0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (music 0.25, speech 1.0)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Weight of the original-versus-patch tonality gap in the noise floor.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --sbr-nf-weight-from <1..3>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 1..3\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 3 (HIGH only)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Lowest invf level whose bands get that weight.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --sbr-nf-smooth 0}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 stock smoothing\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 No time smoothing of the noise floor.\par}
+\cell}
+}
+\intbl\row}
+{\pard \ql \f0 \sa180 \li0 \fi0 \par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Neutral values ({\f1 --sbr-invf-hyst 1.0}, {\f1 --sbr-invf-bias 0}, {\f1 --sbr-invf-smooth 2}, {\f1 --sbr-nf-weight 0.25}, {\f1 --sbr-nf-weight-from 3}, {\f1 --sbr-invf-table 0}, {\f1 --sbr-invf-min 0}, {\f1 --sbr-invf-max 3}) give a stream byte-identical to stock, as do {\f1 --sbr-softness 2} and {\f1 --speech --sbr-softness 4}.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 MEASURED (HE-AAC 32 kbps, levels read back from the bitstream on the decoder side, flatness of the decoded SBR band 7..14.5 kHz, 0 = tonal, 1 = noise-like):\par}
+{
+\trowd \trgaph120
+\clbrdrb\brdrs\cellx2880\clbrdrb\brdrs\cellx5760\clbrdrb\brdrs\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --sbr-softness}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 mean invf level (speech / tonal / music)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 SBR band flatness (speech / tonal)\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2880\cellx5760\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0.15 / 0.00 / 0.00\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0.366 / 0.396\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2880\cellx5760\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 2 (stock music)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 1.12 / 0.98 / 0.99\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0.373 / 0.430\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2880\cellx5760\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 4 (stock speech)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 1.93 / 1.96 / 1.98\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0.379 / 0.440\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2880\cellx5760\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 5\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 1.93 / 1.96 / 1.98\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0.403 / 0.518\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2880\cellx5760\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 7\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 2.93 / 2.96 / 2.98\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0.417 / 0.521\par}
+\cell}
+}
+\intbl\row}
+{\pard \ql \f0 \sa180 \li0 \fi0 \par}
+{\pard \ql \f0 \sa180 \li0 \fi0 The scale is monotonic on every sample. Neighbouring levels can give the same stream when the material never reaches the bound they differ in (for example 1 and 2 on music the estimator never whitens to HIGH). Mode changes per band and frame stay at the stock level (0.004..0.04); shifting the tonality borders instead was measured to make the decision flicker (0.2..0.29), which is why the macro does not use them.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 NOTE on {\f1 --sbr-nf-weight}: the weighted noise is clipped by the noise ceiling. With the tuning-table ceiling (0.125 at 24..48 kHz) about 95% of the bands are already at the ceiling, so the weight alone often changes nothing. Pair it with {\f1 --sbr-noise-max 3} or {\f1 6} (levels 5..7 of {\f1 --sbr-softness} do that for you).\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 NOTE: {\f1 --sbr-start}/{\f1 --sbr-stop} are validated BY FDK \u8212- an incorrect start/stop COMBINATION (wrong number of master bands) will give "encoder initialization failed". This is a limitation of SBR itself, not a bug. Choose pairs (e.g. for 64k stereo start=5 stop=9, start=8 stop=14 work).\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 4. Parametric Stereo (HE-AAC v2)\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 PS describes stereo with a few parameters (IID/ICC...). Here you can control them, even at the cost of the stereo image.\par}
@@ -1795,7 +2076,7 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 \cell}
 {{\pard\intbl \ql \f0 \sa0 \li0 \fi0 off\par}
 \cell}
-{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Remove the LOWER bitrate threshold. Allows extremely low: 8k HE-AAC stereo, 6k LC. IMPORTANT: in this mode {\f1 -b} is taken LITERALLY as bps (without the nu774 x1000 convention), so {\f1 -b 6000} = 6000 bps. The upper ceiling 6144*channels stays (hard AAC limit). Residual floor ~10 kbps = the minimum of AAC headers.\par}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Remove the LOWER bitrate floors of every profile (details below). IMPORTANT: in this mode {\f1 -b} is taken LITERALLY as bps (without the nu774 x1000 convention), so {\f1 -b 6000} = 6000 bps. The upper ceiling 6144*channels stays (hard AAC limit).\par}
 \cell}
 }
 \intbl\row}
@@ -1830,6 +2111,133 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 }
 \intbl\row}
 {\pard \ql \f0 \sa180 \li0 \fi0 \par}
+{\pard \ql \f0 \sa180 \li0 \fi0 LOW BITRATES WITH {\f1 --unlock-bitrate}: the 16 kbps floor of HE-AAC is NOT a format limit. Stock FDK raises the bitrate to the lowest row of its SBR tuning table (16 kbps for 48 kHz stereo HE-AAC, 8..12 kbps for mono or lower rates, 8 kbps for HE-AAC v2) and LD/ELD refuse less than 8 kbps per channel plus a 208-bit transport reserve. With the flag:\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab HE-AAC, HE-AAC v2 and ELD+SBR below the table reuse its lowest row (same SBR grid, the bitrate is kept);\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab LD/ELD drop the 8 kbps per channel rule and the 208-bit guess (the real header overhead is still checked with the real transport encoder) and use the narrowest bandwidth of their table below its first row;\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab frames that cannot fit their own side information no longer abort the encode: they overshoot and the reservoir absorbs it;\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab below the SBR payload estimate (about 2.5 kbps per channel plus PS) the encoder stops with a clean "encoder initialization failed" instead of an assertion.\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 MEASURED, real bitrate from the size of the ADTS/LOAS stream (no container):\par}
+{
+\trowd \trgaph120
+\clbrdrb\brdrs\cellx1728\clbrdrb\brdrs\cellx3456\clbrdrb\brdrs\cellx5184\clbrdrb\brdrs\cellx6912\clbrdrb\brdrs\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Mode\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 -b}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 real bps\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 FDK decoder\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 ffmpeg 6.1\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx1728\cellx3456\cellx5184\cellx6912\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 HE-AAC 48 kHz stereo\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 8000 / 6000\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 9232 / 7290\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0 errors\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0 errors\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx1728\cellx3456\cellx5184\cellx6912\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 HE-AAC 48 kHz mono\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 4000 / 3000\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 4736 / 4348\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx1728\cellx3456\cellx5184\cellx6912\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 HE-AAC v2 48 kHz\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 6000 / 4000\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 6678 / 4894\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 1 (see below)\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx1728\cellx3456\cellx5184\cellx6912\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 ELD+SBR 48 kHz stereo\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 12000\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 12984\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 see below\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx1728\cellx3456\cellx5184\cellx6912\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 ELD / LD 32 kHz stereo\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 8000\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 8154\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 see below\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx1728\cellx3456\cellx5184\cellx6912\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 AAC-LC 48 kHz stereo\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 4000 / 3000\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 6012 / 7054\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0\par}
+\cell}
+}
+\intbl\row}
+{\pard \ql \f0 \sa180 \li0 \fi0 \par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Where the real bitrate is above {\f1 -b}, those are dense frames that overshoot (headers and side information alone). ffmpeg 6.1 reports the same errors on the STOCK encoder for these modes: one {\f1 noise_facs_q is invalid} on HE-AAC v2 at 12..14 kbps (inside the stock tables) and many errors on every ELD / LD LOAS stream at any bitrate. ffmpeg does not implement LD/ELD fully; judge those streams with the Fraunhofer decoder.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 BANDWIDTH ABOVE 20 kHz (audiophile): FDK has a hardcoded cap {\f1 min(20000, sr/2)} on the core bandwidth \u8212- even with a 96 kHz input and high bitrate, nothing above 20 kHz is actually coded (your suspicion was correct). {\f1 --uncap-bandwidth} lifts this cap; then {\f1 --core-cutoff} controls the bandwidth all the way up to sr/2.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Measured (96 kHz input, LC 400k, broadband noise):\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab without uncap, {\f1 --core-cutoff 40000}: verbose 20000 Hz, energy >20 kHz ~= 0%.\par}
@@ -3790,6 +4198,287 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 \intbl\row}
 {\pard \ql \f0 \sa180 \li0 \fi0 \par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Obni\u380 ?enie g\u322 ?\u243 ?wnego progu transjent\u243 ?w do 40 praktycznie usuwa pre-echo w pa\u347 ?mie odtwarzanym: detektor zauwa\u380 ?a wtedy ataki, kt\u243 ?re wcze\u347 ?niej przegapia\u322 ?, i daje im w\u322 ?asn\u261 ? obwiedni\u281 ? zamiast u\u347 ?rednia\u263 ? przez transjent. Efekt jest monotoniczny, powtarzalny na obu przep\u322 ?ywno\u347 ?ciach i saturuje poni\u380 ?ej 60 - wi\u281 ?c {\f1 --sbr-tran-thr 40} to zalecany punkt startowy na materiale perkusyjnym. Wszystko od 100 w g\u243 ?r\u281 ? jest bit-identyczne ze stockiem, co potwierdza te\u380 ?, \u380 ?e pokr\u281 ?t\u322 ?o jest czysto opcjonalne.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel2 \b \fs28 Estymatory inverse filtering i szumu SBR (invf pozostaje dynamiczny)\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\f1 --sbr-invf} z tabeli wy\u380 ?ej zamra\u380 ?a jeden poziom na ca\u322 ?y plik. Te pokr\u281 ?t\u322 ?a zmieniaj\u261 ? natomiast sam estymator: decyzja zapada nadal osobno dla ka\u380 ?dego pasma i ka\u380 ?dej ramki, tylko wed\u322 ?ug innych regu\u322 ?. Jawne pokr\u281 ?t\u322 ?a wygrywaj\u261 ? z {\f1 --sbr-softness}, a {\f1 --sbr-invf} wygrywa ze wszystkim.\par}
+{
+\trowd \trgaph120
+\clbrdrb\brdrs\cellx2160\clbrdrb\brdrs\cellx4320\clbrdrb\brdrs\cellx6480\clbrdrb\brdrs\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Prze\u322 ?\u261 ?cznik\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Warto\u347 ?ci\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Domy\u347 ?lnie\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Opis\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --sbr-softness <0..7>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0..7\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 wy\u322 ?.\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Jedno makro od \u8222 ?twardo, metalicznie\u8221" do \u8222 ?bardzo mi\u281 ?kko\u8221". {\f1 2} = estymatory stock dla muzyki, {\f1 4} = estymatory stock dla mowy (tylko tabela decyzji i waga szumu, bez zmiany crossovera z {\f1 --speech}). {\f1 0} o stopie\u324 ? mniej wybielania ni\u380 ? muzyka, {\f1 1} nigdy HIGH, {\f1 3} co najmniej LOW, {\f1 5} i {\f1 6} podnosz\u261 ? sufit szumu do 0,5 i wa\u380 ?\u261 ? tak\u380 ?e pasma MID ({\f1 6} dok\u322 ?ada stopie\u324 ? wybielania), {\f1 7} sufit 1,0.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --sbr-invf-min <0..3>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0..3\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 wy\u322 ?.\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Najni\u380 ?szy poziom, jaki estymator mo\u380 ?e wybra\u263 ?.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --sbr-invf-max <0..3>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0..3\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 wy\u322 ?.\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Najwy\u380 ?szy poziom, jaki estymator mo\u380 ?e wybra\u263 ? ({\f1 2} = nigdy HIGH).\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --sbr-invf-bias <-3..3>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -3..3\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Przesuwa ka\u380 ?d\u261 ? dynamiczn\u261 ? decyzj\u281 ? o n stopni (+ = wi\u281 ?cej wybielania), przed min i max.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --sbr-invf-table <0|1>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0 muzyka, 1 mowa\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 jak {\f1 --speech}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Sama tabela decyzji, bez zmiany crossovera z {\f1 --speech}.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --sbr-invf-hyst <x>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 dziesi\u281 ?tnie, 0..2\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 1,0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Histereza granic decyzji. {\f1 0} = brak, czyli cz\u281 ?stsze prze\u322 ?\u261 ?czanie mi\u281 ?dzy ramkami. Powy\u380 ?ej 2 granice by si\u281 ? nak\u322 ?ada\u322 ?y, wi\u281 ?c warto\u347 ?\u263 ? jest odrzucana.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --sbr-invf-sbr-thr <x>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 oko\u322 ?o dB, -20..20\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Przesuwa granice tonalno\u347 ?ci pasma \u321 ?ATANEGO (+ = wi\u281 ?cej invf).\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --sbr-invf-orig-thr <x>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 oko\u322 ?o dB, -20..20\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Przesuwa granice tonalno\u347 ?ci pasma ORYGINALNEGO (+ = wi\u281 ?cej invf).\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --sbr-invf-smooth <0..2>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0..2\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 2\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Ile ramek u\u347 ?rednia estymator. {\f1 0} = tylko bie\u380 ?\u261 ?ca.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --sbr-nf-weight <x>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0,0..1,0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (muzyka 0,25, mowa 1,0)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Waga r\u243 ?\u380 ?nicy tonalno\u347 ?ci orygina\u322 ?u i \u322 ?aty w poziomie szumu.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --sbr-nf-weight-from <1..3>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 1..3\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 3 (tylko HIGH)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Od kt\u243 ?rego poziomu invf pasma dostaj\u261 ? t\u281 ? wag\u281 ?.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --sbr-nf-smooth 0}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 wyg\u322 ?adzanie stock\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Bez wyg\u322 ?adzania szumu w czasie.\par}
+\cell}
+}
+\intbl\row}
+{\pard \ql \f0 \sa180 \li0 \fi0 \par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Warto\u347 ?ci neutralne ({\f1 --sbr-invf-hyst 1.0}, {\f1 --sbr-invf-bias 0}, {\f1 --sbr-invf-smooth 2}, {\f1 --sbr-nf-weight 0.25}, {\f1 --sbr-nf-weight-from 3}, {\f1 --sbr-invf-table 0}, {\f1 --sbr-invf-min 0}, {\f1 --sbr-invf-max 3}) daj\u261 ? strumie\u324 ? bajt w bajt identyczny ze stockiem. Tak samo {\f1 --sbr-softness 2} oraz {\f1 --speech --sbr-softness 4}.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 ZMIERZONE (HE-AAC 32 kbps, poziomy odczytane z bitstreamu po stronie dekodera, p\u322 ?asko\u347 ?\u263 ? zdekodowanego pasma SBR 7..14,5 kHz, 0 = tonalnie, 1 = szumowo):\par}
+{
+\trowd \trgaph120
+\clbrdrb\brdrs\cellx2880\clbrdrb\brdrs\cellx5760\clbrdrb\brdrs\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --sbr-softness}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 \u347 ?redni poziom invf (mowa / tony / muzyka)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 p\u322 ?asko\u347 ?\u263 ? pasma SBR (mowa / tony)\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2880\cellx5760\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0,15 / 0,00 / 0,00\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0,366 / 0,396\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2880\cellx5760\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 2 (stock muzyka)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 1,12 / 0,98 / 0,99\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0,373 / 0,430\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2880\cellx5760\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 4 (stock mowa)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 1,93 / 1,96 / 1,98\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0,379 / 0,440\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2880\cellx5760\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 5\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 1,93 / 1,96 / 1,98\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0,403 / 0,518\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2880\cellx5760\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 7\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 2,93 / 2,96 / 2,98\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0,417 / 0,521\par}
+\cell}
+}
+\intbl\row}
+{\pard \ql \f0 \sa180 \li0 \fi0 \par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Skala jest monotoniczna na ka\u380 ?dej pr\u243 ?bce. S\u261 ?siednie poziomy mog\u261 ? da\u263 ? ten sam strumie\u324 ?, gdy materia\u322 ? nie dochodzi do granicy, kt\u243 ?r\u261 ? si\u281 ? r\u243 ?\u380 ?ni\u261 ? (np. 1 i 2 na muzyce, kt\u243 ?rej estymator i tak nie wybiela do HIGH). Liczba zmian trybu na pasmo i ramk\u281 ? zostaje na poziomie stock (0,004..0,04). Przesuwanie granic tonalno\u347 ?ci dawa\u322 ?o w pomiarze migotanie decyzji (0,2..0,29), dlatego makro go nie u\u380 ?ywa.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 UWAGA o {\f1 --sbr-nf-weight}: wa\u380 ?ony szum obcina sufit szumu. Przy suficie z tabeli strojenia (0,125 dla 24..48 kHz) oko\u322 ?o 95% pasm ju\u380 ? na nim siedzi, wi\u281 ?c sama waga cz\u281 ?sto nic nie zmienia. \u321 ?\u261 ?cz j\u261 ? z {\f1 --sbr-noise-max 3} albo {\f1 6} (poziomy 5..7 {\f1 --sbr-softness} robi\u261 ? to same).\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 UWAGA: {\f1 --sbr-start}/{\f1 --sbr-stop} s\u261 ? walidowane PRZEZ FDK \u8212- niepoprawna KOMBINACJA start/stop (z\u322 ?a liczba pasm master) da "encoder initialization failed". To ograniczenie samego SBR, nie buga. Dobieraj pary (np. dla 64k stereo dzia\u322 ?a start=5 stop=9, start=8 stop=14).\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 4. Parametric Stereo (HE-AAC v2)\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 PS opisuje stereo kilkoma parametrami (IID/ICC...). Tu mo\u380 ?na nimi sterowa\u263 ?, nawet kosztem obrazu stereo.\par}
@@ -4662,7 +5351,7 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 \cell}
 {{\pard\intbl \ql \f0 \sa0 \li0 \fi0 off\par}
 \cell}
-{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Zdejmij DOLNY prog bitrate. Pozwala na skrajnie niskie: 8k HE-AAC stereo, 6k LC. WAZNE: w tym trybie {\f1 -b} bierzemy DOSLOWNIE jako bps (bez konwencji nu774 x1000), wi\u281 ?c {\f1 -b 6000} = 6000 bps. G\u243 ?rny sufit 6144*kana\u322 ?y zostaje (twardy limit AAC). Rezydualny floor ~10 kbps = minimum nag\u322 ?\u243 ?wk\u243 ?w AAC.\par}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Zdejmij DOLNE progi bitrate we wszystkich profilach (szczeg\u243 ?\u322 ?y ni\u380 ?ej). WA\u379 ?NE: w tym trybie {\f1 -b} bierzemy DOS\u321 ?OWNIE jako bps (bez konwencji nu774 x1000), wi\u281 ?c {\f1 -b 6000} = 6000 bps. G\u243 ?rny sufit 6144*kana\u322 ?y zostaje (twardy limit AAC).\par}
 \cell}
 }
 \intbl\row}
@@ -4697,6 +5386,133 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 }
 \intbl\row}
 {\pard \ql \f0 \sa180 \li0 \fi0 \par}
+{\pard \ql \f0 \sa180 \li0 \fi0 NISKIE BITRATE Z {\f1 --unlock-bitrate}: pr\u243 ?g 16 kbps w HE-AAC NIE jest limitem formatu. Stock FDK podnosi bitrate do najni\u380 ?szego wiersza swojej tabeli strojenia SBR (16 kbps dla HE-AAC 48 kHz stereo, 8..12 kbps dla mono lub ni\u380 ?szych cz\u281 ?stotliwo\u347 ?ci, 8 kbps dla HE-AAC v2), a LD i ELD odrzucaj\u261 ? mniej ni\u380 ? 8 kbps na kana\u322 ? plus 208-bitow\u261 ? rezerw\u281 ? transportu. Z flag\u261 ?:\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab HE-AAC, HE-AAC v2 i ELD+SBR poni\u380 ?ej tabeli u\u380 ?ywaj\u261 ? jej najni\u380 ?szego wiersza (ta sama siatka SBR, bitrate zostaje);\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab LD i ELD trac\u261 ? regu\u322 ?\u281 ? 8 kbps na kana\u322 ? i szacunek 208 bit\u243 ?w (prawdziwy narzut nag\u322 ?\u243 ?wka nadal sprawdza prawdziwy enkoder transportu), a poni\u380 ?ej pierwszego wiersza swojej tabeli pasma bior\u261 ? najw\u281 ?\u380 ?sze pasmo;\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab ramki, kt\u243 ?re nie mieszcz\u261 ? w\u322 ?asnych danych pobocznych, nie przerywaj\u261 ? ju\u380 ? kodowania: przekraczaj\u261 ? bud\u380 ?et, a rezerwuar to wch\u322 ?ania;\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab poni\u380 ?ej szacunku \u322 ?adunku SBR (oko\u322 ?o 2,5 kbps na kana\u322 ? plus PS) enkoder ko\u324 ?czy czystym \u8222 ?encoder initialization failed\u8221" zamiast asercji.\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 ZMIERZONE, realny bitrate z rozmiaru strumienia ADTS/LOAS (bez kontenera):\par}
+{
+\trowd \trgaph120
+\clbrdrb\brdrs\cellx1728\clbrdrb\brdrs\cellx3456\clbrdrb\brdrs\cellx5184\clbrdrb\brdrs\cellx6912\clbrdrb\brdrs\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Tryb\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 -b}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 realne bps\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 dekoder FDK\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 ffmpeg 6.1\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx1728\cellx3456\cellx5184\cellx6912\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 HE-AAC 48 kHz stereo\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 8000 / 6000\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 9232 / 7290\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0 b\u322 ?\u281 ?d\u243 ?w\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0 b\u322 ?\u281 ?d\u243 ?w\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx1728\cellx3456\cellx5184\cellx6912\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 HE-AAC 48 kHz mono\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 4000 / 3000\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 4736 / 4348\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx1728\cellx3456\cellx5184\cellx6912\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 HE-AAC v2 48 kHz\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 6000 / 4000\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 6678 / 4894\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 1 (patrz ni\u380 ?ej)\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx1728\cellx3456\cellx5184\cellx6912\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 ELD+SBR 48 kHz stereo\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 12000\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 12984\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 patrz ni\u380 ?ej\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx1728\cellx3456\cellx5184\cellx6912\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 ELD / LD 32 kHz stereo\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 8000\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 8154\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 patrz ni\u380 ?ej\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx1728\cellx3456\cellx5184\cellx6912\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 AAC-LC 48 kHz stereo\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 4000 / 3000\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 6012 / 7054\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0\par}
+\cell}
+}
+\intbl\row}
+{\pard \ql \f0 \sa180 \li0 \fi0 \par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Tam, gdzie realny bitrate jest wy\u380 ?szy od {\f1 -b}, g\u281 ?ste ramki przekraczaj\u261 ? bud\u380 ?et (same nag\u322 ?\u243 ?wki i dane poboczne). ffmpeg 6.1 zg\u322 ?asza te same b\u322 ?\u281 ?dy przy enkoderze STOCK w tych trybach: jeden {\f1 noise_facs_q is invalid} w HE-AAC v2 przy 12..14 kbps (wewn\u261 ?trz tabel orygina\u322 ?u) i wiele b\u322 ?\u281 ?d\u243 ?w na ka\u380 ?dym strumieniu LOAS z LD lub ELD, przy dowolnym bitrate. ffmpeg nie implementuje LD i ELD w pe\u322 ?ni, takie strumienie oceniamy dekoderem Fraunhofera.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 PASMO POWY\u379 ?EJ 20 kHz (audiofilskie): FDK ma zaszyty cap {\f1 min(20000, sr/2)} na pasmo rdzenia \u8212- nawet przy wej\u347 ?ciu 96 kHz i wysokim bitrate realnie nic powy\u380 ?ej 20 kHz nie jest kodowane (Twoje podejrzenie bylo trafne). {\f1 --uncap-bandwidth} znosi ten cap; wtedy {\f1 --core-cutoff} steruje pasmem az do sr/2.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Zmierzone (96 kHz wej\u347 ?cie, LC 400k, szum szerokopasmowy):\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab bez uncap, {\f1 --core-cutoff 40000}: verbose 20000 Hz, energia >20 kHz ~= 0%.\par}

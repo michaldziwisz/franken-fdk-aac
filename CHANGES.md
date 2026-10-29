@@ -5,6 +5,54 @@ Library** (per section 2 of the FDK AAC license, see `NOTICE.fdk-aac`).
 
 ## Releases
 
+### Unreleased — SBR estimator knobs, `--sbr-softness`, real low-bitrate unlock
+
+Without the new switches the output is bit-identical to v1.3.2 (checked on HE,
+HEv2, LC, LD, ELD and ELD+SBR at several rates and channel counts).
+
+#### SBR inverse filtering and noise floor estimators exposed
+
+Inverse filtering stays dynamic per band and frame; the new knobs bound, shift
+and reweigh the estimator instead of freezing one level like `--sbr-invf`:
+`--sbr-invf-min/-max`, `--sbr-invf-bias`, `--sbr-invf-table`,
+`--sbr-invf-hyst`, `--sbr-invf-sbr-thr`, `--sbr-invf-orig-thr`,
+`--sbr-invf-smooth`, `--sbr-nf-weight`, `--sbr-nf-weight-from`,
+`--sbr-nf-smooth 0`. The speech parts of the estimators (decision table and
+noise weight) are now separate from `--speech`.
+
+New macro `--sbr-softness 0..7`: `2` = stock music estimators, `4` = stock
+speech estimators (both bit-identical to stock), monotonic from hard to soft.
+Measured from the bitstream on the decoder side (`tools/invf/`): mean invf level
+0 -> about 3, flatness of the decoded SBR band 0.37 -> 0.42 (speech) and
+0.40 -> 0.52 (tonal), frame-to-frame switching at the stock level. Shifting the
+tonality borders made the decision flicker (0.2..0.29 changes per band and
+frame), so the macro does not use them.
+
+Finding: the noise weight is capped by the noise ceiling. With the tuning-table
+ceiling (0.125) about 95% of the bands are already clipped, so the weight alone
+often changes nothing; levels 5..7 of the macro also lift the ceiling.
+
+#### `--unlock-bitrate` now really reaches below the HE-AAC 16 kbps floor
+
+The old warning and documentation said HE-AAC / HE-AAC v2 have a hard ~16 kbps
+floor and that the flag only helps AAC-LC. That was wrong: 16 kbps is just the
+lowest row of the SBR tuning table for 48 kHz stereo. With the flag:
+
+- HE-AAC, HE-AAC v2 and ELD+SBR below the table reuse its lowest row;
+- LD/ELD no longer require 8 kbps per channel nor reserve a 208-bit transport
+  guess (the real header overhead is still enforced), and use the narrowest
+  bandwidth below the LD/ELD bandwidth table;
+- frames that cannot fit their own side information overshoot (reservoir
+  clamped at zero, bounded quantisation loop) instead of aborting the encode;
+- below the SBR payload estimate the encoder fails cleanly instead of
+  hitting an assertion.
+
+Lowest `-b` that encodes at 48 kHz, now (stock): HE-AAC stereo 5050 (16008),
+mono 2505 (12008), HE-AAC v2 3122 (12008), LD 8291 (19500), ELD 9062 (19500),
+ELD+SBR about 10500..11300 (36008..60008), LC 2659 (9750). All streams decode
+with 0 errors in the Fraunhofer decoder. Dense passages can come out above
+`-b` (e.g. HE-AAC stereo `-b 6000` = 7290 bps real on music).
+
 ### v1.3.2 — MS/IS fixes, SBR noise bands, SBR header interval for streaming
 
 Bug-fix release plus one streaming switch (`--sbr-header-time`). No tuning changes. Without `--msbands`,

@@ -275,6 +275,56 @@ effect is monotonic, reproducible at both bitrates, and saturates below 60 - so
 Everything from 100 upwards is byte-identical to stock, which also confirms the
 knob is cleanly opt-in.
 
+### SBR inverse filtering and noise floor estimators (invf stays dynamic)
+
+`--sbr-invf` above freezes one level for the whole file. These knobs instead
+reshape the estimator, so the decision is still made per band and per frame,
+only along different rules. Explicit knobs win over `--sbr-softness`;
+`--sbr-invf` wins over everything.
+
+| Switch | Values | Default | Description |
+|---|---|---|---|
+| `--sbr-softness <0..7>` | 0..7 | -1 off | One macro from "hard / metallic" to "very soft". `2` = stock music estimators, `4` = stock speech estimators (decision table and noise weight only, the speech crossover is NOT applied). `0` one step less whitening than music, `1` never HIGH, `3` at least LOW, `5`/`6` raise the noise ceiling to 0.5 and weight MID bands too (`6` adds one step of whitening), `7` ceiling 1.0. |
+| `--sbr-invf-min <0..3>` | 0..3 | -1 off | Lowest level the estimator may pick. |
+| `--sbr-invf-max <0..3>` | 0..3 | -1 off | Highest level the estimator may pick (`2` = never HIGH). |
+| `--sbr-invf-bias <-3..3>` | -3..3 | 0 | Shifts every dynamic decision by n steps (+ = more whitening), before min/max. |
+| `--sbr-invf-table <0\|1>` | 0 music, 1 speech | -1 follows `--speech` | The decision table only, without the crossover change of `--speech`. |
+| `--sbr-invf-hyst <x>` | decimal, 0..2 | 1.0 | Hysteresis of the decision borders. `0` = none = more frame-to-frame switching; above 2 the borders would overlap, so it is rejected. |
+| `--sbr-invf-sbr-thr <x>` | about dB, -20..20 | 0 | Shifts the tonality borders of the PATCHED band (+ = more invf). |
+| `--sbr-invf-orig-thr <x>` | about dB, -20..20 | 0 | Shifts the tonality borders of the ORIGINAL band (+ = more invf). |
+| `--sbr-invf-smooth <0..2>` | 0..2 | 2 | Frames the estimator averages. `0` = this frame only. |
+| `--sbr-nf-weight <x>` | 0.0..1.0 | -1 (music 0.25, speech 1.0) | Weight of the original-versus-patch tonality gap in the noise floor. |
+| `--sbr-nf-weight-from <1..3>` | 1..3 | 3 (HIGH only) | Lowest invf level whose bands get that weight. |
+| `--sbr-nf-smooth 0` | 0 | stock smoothing | No time smoothing of the noise floor. |
+
+Neutral values (`--sbr-invf-hyst 1.0`, `--sbr-invf-bias 0`, `--sbr-invf-smooth 2`,
+`--sbr-nf-weight 0.25`, `--sbr-nf-weight-from 3`, `--sbr-invf-table 0`,
+`--sbr-invf-min 0`, `--sbr-invf-max 3`) give a stream byte-identical to stock, as do
+`--sbr-softness 2` and `--speech --sbr-softness 4`.
+
+MEASURED (HE-AAC 32 kbps, levels read back from the bitstream on the decoder side,
+flatness of the decoded SBR band 7..14.5 kHz, 0 = tonal, 1 = noise-like):
+
+| `--sbr-softness` | mean invf level (speech / tonal / music) | SBR band flatness (speech / tonal) |
+|---|---|---|
+| 0 | 0.15 / 0.00 / 0.00 | 0.366 / 0.396 |
+| 2 (stock music) | 1.12 / 0.98 / 0.99 | 0.373 / 0.430 |
+| 4 (stock speech) | 1.93 / 1.96 / 1.98 | 0.379 / 0.440 |
+| 5 | 1.93 / 1.96 / 1.98 | 0.403 / 0.518 |
+| 7 | 2.93 / 2.96 / 2.98 | 0.417 / 0.521 |
+
+The scale is monotonic on every sample. Neighbouring levels can give the same
+stream when the material never reaches the bound they differ in (for example 1
+and 2 on music the estimator never whitens to HIGH). Mode changes per band and
+frame stay at the stock level (0.004..0.04); shifting the tonality borders instead
+was measured to make the decision flicker (0.2..0.29), which is why the macro does
+not use them.
+
+NOTE on `--sbr-nf-weight`: the weighted noise is clipped by the noise ceiling.
+With the tuning-table ceiling (0.125 at 24..48 kHz) about 95% of the bands are
+already at the ceiling, so the weight alone often changes nothing. Pair it with
+`--sbr-noise-max 3` or `6` (levels 5..7 of `--sbr-softness` do that for you).
+
 NOTE: `--sbr-start`/`--sbr-stop` are validated BY FDK — an incorrect start/stop
 COMBINATION (wrong number of master bands) will give "encoder initialization
 failed". This is a limitation of SBR itself, not a bug. Choose pairs (e.g. for
@@ -531,9 +581,43 @@ HOW TO SET IT OPTIMALLY (for the less experienced - so you don't overdo it):
 | `--uncap-bandwidth` | flag | off | Remove the hard 20 kHz core cap. `--core-cutoff` can then reach all the way to Nyquist. |
 | `--is-aggression <0..100>` | 0..100 | -1 (off) | IS aggression slider (see section 1). |
 | `--force-pns` | flag | off | PNS below the ~28 kbps gate (see section 5). |
-| `--unlock-bitrate` | flag | off | Remove the LOWER bitrate threshold. Allows extremely low: 8k HE-AAC stereo, 6k LC. IMPORTANT: in this mode `-b` is taken LITERALLY as bps (without the nu774 x1000 convention), so `-b 6000` = 6000 bps. The upper ceiling 6144*channels stays (hard AAC limit). Residual floor ~10 kbps = the minimum of AAC headers. |
+| `--unlock-bitrate` | flag | off | Remove the LOWER bitrate floors of every profile (details below). IMPORTANT: in this mode `-b` is taken LITERALLY as bps (without the nu774 x1000 convention), so `-b 6000` = 6000 bps. The upper ceiling 6144*channels stays (hard AAC limit). |
 | `--speech` | flag | off | SBR tuning mode for human SPEECH (different inverse-filtering thresholds, noise level, no parametric coding). Applies to HE-AAC (SBR); LC has no separate speech mode. For pure speech at low bitrate. |
 | `--spread-mask <n>` | Q8, >=0 | -1 (off) | Scales the spreading of masking between bands. `<256` = LESS masking = more detail (equivalent to loosening tone-masks-noise). Biggest effect where bits are limited (96-192k). 256=no change. Combine with `--ath-scale <256`. |
+
+LOW BITRATES WITH `--unlock-bitrate`: the 16 kbps floor of HE-AAC is NOT a format
+limit. Stock FDK raises the bitrate to the lowest row of its SBR tuning table
+(16 kbps for 48 kHz stereo HE-AAC, 8..12 kbps for mono or lower rates, 8 kbps for
+HE-AAC v2) and LD/ELD refuse less than 8 kbps per channel plus a 208-bit transport
+reserve. With the flag:
+
+- HE-AAC, HE-AAC v2 and ELD+SBR below the table reuse its lowest row (same SBR
+  grid, the bitrate is kept);
+- LD/ELD drop the 8 kbps per channel rule and the 208-bit guess (the real header
+  overhead is still checked with the real transport encoder) and use the
+  narrowest bandwidth of their table below its first row;
+- frames that cannot fit their own side information no longer abort the encode:
+  they overshoot and the reservoir absorbs it;
+- below the SBR payload estimate (about 2.5 kbps per channel plus PS) the encoder
+  stops with a clean "encoder initialization failed" instead of an assertion.
+
+MEASURED, real bitrate from the size of the ADTS/LOAS stream (no container):
+
+| Mode | `-b` | real bps | FDK decoder | ffmpeg 6.1 |
+|---|---|---|---|---|
+| HE-AAC 48 kHz stereo | 8000 / 6000 | 9232 / 7290 | 0 errors | 0 errors |
+| HE-AAC 48 kHz mono | 4000 / 3000 | 4736 / 4348 | 0 | 0 |
+| HE-AAC v2 48 kHz | 6000 / 4000 | 6678 / 4894 | 0 | 1 (see below) |
+| ELD+SBR 48 kHz stereo | 12000 | 12984 | 0 | see below |
+| ELD / LD 32 kHz stereo | 8000 | 8154 | 0 | see below |
+| AAC-LC 48 kHz stereo | 4000 / 3000 | 6012 / 7054 | 0 | 0 |
+
+Where the real bitrate is above `-b`, those are dense frames that overshoot
+(headers and side information alone). ffmpeg 6.1 reports the same errors on the
+STOCK encoder for these modes: one `noise_facs_q is invalid` on HE-AAC v2 at
+12..14 kbps (inside the stock tables) and many errors on every ELD / LD LOAS
+stream at any bitrate. ffmpeg does not implement LD/ELD fully; judge those
+streams with the Fraunhofer decoder.
 
 BANDWIDTH ABOVE 20 kHz (audiophile): FDK has a hardcoded cap `min(20000, sr/2)` on
 the core bandwidth — even with a 96 kHz input and high bitrate, nothing above

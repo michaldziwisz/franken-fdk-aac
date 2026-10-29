@@ -1064,6 +1064,172 @@ both bitrates, and saturates below 60 - so
 <code>--sbr-tran-thr 40</code> is the recommended starting point on
 percussive material. Everything from 100 upwards is byte-identical to
 stock, which also confirms the knob is cleanly opt-in.</p>
+<h3
+id="sbr-inverse-filtering-and-noise-floor-estimators-invf-stays-dynamic">SBR
+inverse filtering and noise floor estimators (invf stays dynamic)</h3>
+<p><code>--sbr-invf</code> above freezes one level for the whole file.
+These knobs instead reshape the estimator, so the decision is still made
+per band and per frame, only along different rules. Explicit knobs win
+over <code>--sbr-softness</code>; <code>--sbr-invf</code> wins over
+everything.</p>
+<table>
+<thead>
+<tr class="header">
+<th>Switch</th>
+<th>Values</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>--sbr-softness &lt;0..7&gt;</code></td>
+<td>0..7</td>
+<td>-1 off</td>
+<td>One macro from "hard / metallic" to "very soft". <code>2</code> =
+stock music estimators, <code>4</code> = stock speech estimators
+(decision table and noise weight only, the speech crossover is NOT
+applied). <code>0</code> one step less whitening than music,
+<code>1</code> never HIGH, <code>3</code> at least LOW,
+<code>5</code>/<code>6</code> raise the noise ceiling to 0.5 and weight
+MID bands too (<code>6</code> adds one step of whitening),
+<code>7</code> ceiling 1.0.</td>
+</tr>
+<tr class="even">
+<td><code>--sbr-invf-min &lt;0..3&gt;</code></td>
+<td>0..3</td>
+<td>-1 off</td>
+<td>Lowest level the estimator may pick.</td>
+</tr>
+<tr class="odd">
+<td><code>--sbr-invf-max &lt;0..3&gt;</code></td>
+<td>0..3</td>
+<td>-1 off</td>
+<td>Highest level the estimator may pick (<code>2</code> = never
+HIGH).</td>
+</tr>
+<tr class="even">
+<td><code>--sbr-invf-bias &lt;-3..3&gt;</code></td>
+<td>-3..3</td>
+<td>0</td>
+<td>Shifts every dynamic decision by n steps (+ = more whitening),
+before min/max.</td>
+</tr>
+<tr class="odd">
+<td><code>--sbr-invf-table &lt;0|1&gt;</code></td>
+<td>0 music, 1 speech</td>
+<td>-1 follows <code>--speech</code></td>
+<td>The decision table only, without the crossover change of
+<code>--speech</code>.</td>
+</tr>
+<tr class="even">
+<td><code>--sbr-invf-hyst &lt;x&gt;</code></td>
+<td>decimal, 0..2</td>
+<td>1.0</td>
+<td>Hysteresis of the decision borders. <code>0</code> = none = more
+frame-to-frame switching; above 2 the borders would overlap, so it is
+rejected.</td>
+</tr>
+<tr class="odd">
+<td><code>--sbr-invf-sbr-thr &lt;x&gt;</code></td>
+<td>about dB, -20..20</td>
+<td>0</td>
+<td>Shifts the tonality borders of the PATCHED band (+ = more
+invf).</td>
+</tr>
+<tr class="even">
+<td><code>--sbr-invf-orig-thr &lt;x&gt;</code></td>
+<td>about dB, -20..20</td>
+<td>0</td>
+<td>Shifts the tonality borders of the ORIGINAL band (+ = more
+invf).</td>
+</tr>
+<tr class="odd">
+<td><code>--sbr-invf-smooth &lt;0..2&gt;</code></td>
+<td>0..2</td>
+<td>2</td>
+<td>Frames the estimator averages. <code>0</code> = this frame
+only.</td>
+</tr>
+<tr class="even">
+<td><code>--sbr-nf-weight &lt;x&gt;</code></td>
+<td>0.0..1.0</td>
+<td>-1 (music 0.25, speech 1.0)</td>
+<td>Weight of the original-versus-patch tonality gap in the noise
+floor.</td>
+</tr>
+<tr class="odd">
+<td><code>--sbr-nf-weight-from &lt;1..3&gt;</code></td>
+<td>1..3</td>
+<td>3 (HIGH only)</td>
+<td>Lowest invf level whose bands get that weight.</td>
+</tr>
+<tr class="even">
+<td><code>--sbr-nf-smooth 0</code></td>
+<td>0</td>
+<td>stock smoothing</td>
+<td>No time smoothing of the noise floor.</td>
+</tr>
+</tbody>
+</table>
+<p>Neutral values (<code>--sbr-invf-hyst 1.0</code>,
+<code>--sbr-invf-bias 0</code>, <code>--sbr-invf-smooth 2</code>,
+<code>--sbr-nf-weight 0.25</code>, <code>--sbr-nf-weight-from 3</code>,
+<code>--sbr-invf-table 0</code>, <code>--sbr-invf-min 0</code>,
+<code>--sbr-invf-max 3</code>) give a stream byte-identical to stock, as
+do <code>--sbr-softness 2</code> and
+<code>--speech --sbr-softness 4</code>.</p>
+<p>MEASURED (HE-AAC 32 kbps, levels read back from the bitstream on the
+decoder side, flatness of the decoded SBR band 7..14.5 kHz, 0 = tonal, 1
+= noise-like):</p>
+<table>
+<thead>
+<tr class="header">
+<th><code>--sbr-softness</code></th>
+<th>mean invf level (speech / tonal / music)</th>
+<th>SBR band flatness (speech / tonal)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>0</td>
+<td>0.15 / 0.00 / 0.00</td>
+<td>0.366 / 0.396</td>
+</tr>
+<tr class="even">
+<td>2 (stock music)</td>
+<td>1.12 / 0.98 / 0.99</td>
+<td>0.373 / 0.430</td>
+</tr>
+<tr class="odd">
+<td>4 (stock speech)</td>
+<td>1.93 / 1.96 / 1.98</td>
+<td>0.379 / 0.440</td>
+</tr>
+<tr class="even">
+<td>5</td>
+<td>1.93 / 1.96 / 1.98</td>
+<td>0.403 / 0.518</td>
+</tr>
+<tr class="odd">
+<td>7</td>
+<td>2.93 / 2.96 / 2.98</td>
+<td>0.417 / 0.521</td>
+</tr>
+</tbody>
+</table>
+<p>The scale is monotonic on every sample. Neighbouring levels can give
+the same stream when the material never reaches the bound they differ in
+(for example 1 and 2 on music the estimator never whitens to HIGH). Mode
+changes per band and frame stay at the stock level (0.004..0.04);
+shifting the tonality borders instead was measured to make the decision
+flicker (0.2..0.29), which is why the macro does not use them.</p>
+<p>NOTE on <code>--sbr-nf-weight</code>: the weighted noise is clipped
+by the noise ceiling. With the tuning-table ceiling (0.125 at 24..48
+kHz) about 95% of the bands are already at the ceiling, so the weight
+alone often changes nothing. Pair it with <code>--sbr-noise-max 3</code>
+or <code>6</code> (levels 5..7 of <code>--sbr-softness</code> do that
+for you).</p>
 <p>NOTE: <code>--sbr-start</code>/<code>--sbr-stop</code> are validated
 BY FDK — an incorrect start/stop COMBINATION (wrong number of master
 bands) will give "encoder initialization failed". This is a limitation
@@ -1716,12 +1882,10 @@ reach all the way to Nyquist.</td>
 <td><code>--unlock-bitrate</code></td>
 <td>flag</td>
 <td>off</td>
-<td>Remove the LOWER bitrate threshold. Allows extremely low: 8k HE-AAC
-stereo, 6k LC. IMPORTANT: in this mode <code>-b</code> is taken
-LITERALLY as bps (without the nu774 x1000 convention), so
-<code>-b 6000</code> = 6000 bps. The upper ceiling 6144*channels stays
-(hard AAC limit). Residual floor ~10 kbps = the minimum of AAC
-headers.</td>
+<td>Remove the LOWER bitrate floors of every profile (details below).
+IMPORTANT: in this mode <code>-b</code> is taken LITERALLY as bps
+(without the nu774 x1000 convention), so <code>-b 6000</code> = 6000
+bps. The upper ceiling 6144*channels stays (hard AAC limit).</td>
 </tr>
 <tr class="odd">
 <td><code>--speech</code></td>
@@ -1742,6 +1906,88 @@ with <code>--ath-scale &lt;256</code>.</td>
 </tr>
 </tbody>
 </table>
+<p>LOW BITRATES WITH <code>--unlock-bitrate</code>: the 16 kbps floor of
+HE-AAC is NOT a format limit. Stock FDK raises the bitrate to the lowest
+row of its SBR tuning table (16 kbps for 48 kHz stereo HE-AAC, 8..12
+kbps for mono or lower rates, 8 kbps for HE-AAC v2) and LD/ELD refuse
+less than 8 kbps per channel plus a 208-bit transport reserve. With the
+flag:</p>
+<ul>
+<li>HE-AAC, HE-AAC v2 and ELD+SBR below the table reuse its lowest row
+(same SBR grid, the bitrate is kept);</li>
+<li>LD/ELD drop the 8 kbps per channel rule and the 208-bit guess (the
+real header overhead is still checked with the real transport encoder)
+and use the narrowest bandwidth of their table below its first row;</li>
+<li>frames that cannot fit their own side information no longer abort
+the encode: they overshoot and the reservoir absorbs it;</li>
+<li>below the SBR payload estimate (about 2.5 kbps per channel plus PS)
+the encoder stops with a clean "encoder initialization failed" instead
+of an assertion.</li>
+</ul>
+<p>MEASURED, real bitrate from the size of the ADTS/LOAS stream (no
+container):</p>
+<table>
+<thead>
+<tr class="header">
+<th>Mode</th>
+<th><code>-b</code></th>
+<th>real bps</th>
+<th>FDK decoder</th>
+<th>ffmpeg 6.1</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>HE-AAC 48 kHz stereo</td>
+<td>8000 / 6000</td>
+<td>9232 / 7290</td>
+<td>0 errors</td>
+<td>0 errors</td>
+</tr>
+<tr class="even">
+<td>HE-AAC 48 kHz mono</td>
+<td>4000 / 3000</td>
+<td>4736 / 4348</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr class="odd">
+<td>HE-AAC v2 48 kHz</td>
+<td>6000 / 4000</td>
+<td>6678 / 4894</td>
+<td>0</td>
+<td>1 (see below)</td>
+</tr>
+<tr class="even">
+<td>ELD+SBR 48 kHz stereo</td>
+<td>12000</td>
+<td>12984</td>
+<td>0</td>
+<td>see below</td>
+</tr>
+<tr class="odd">
+<td>ELD / LD 32 kHz stereo</td>
+<td>8000</td>
+<td>8154</td>
+<td>0</td>
+<td>see below</td>
+</tr>
+<tr class="even">
+<td>AAC-LC 48 kHz stereo</td>
+<td>4000 / 3000</td>
+<td>6012 / 7054</td>
+<td>0</td>
+<td>0</td>
+</tr>
+</tbody>
+</table>
+<p>Where the real bitrate is above <code>-b</code>, those are dense
+frames that overshoot (headers and side information alone). ffmpeg 6.1
+reports the same errors on the STOCK encoder for these modes: one
+<code>noise_facs_q is invalid</code> on HE-AAC v2 at 12..14 kbps (inside
+the stock tables) and many errors on every ELD / LD LOAS stream at any
+bitrate. ffmpeg does not implement LD/ELD fully; judge those streams
+with the Fraunhofer decoder.</p>
 <p>BANDWIDTH ABOVE 20 kHz (audiophile): FDK has a hardcoded cap
 <code>min(20000, sr/2)</code> on the core bandwidth — even with a 96 kHz
 input and high bitrate, nothing above 20 kHz is actually coded (your
@@ -3178,6 +3424,168 @@ i saturuje poniżej 60 - więc <code>--sbr-tran-thr 40</code> to zalecany
 punkt startowy na materiale perkusyjnym. Wszystko od 100 w górę jest
 bit-identyczne ze stockiem, co potwierdza też, że pokrętło jest czysto
 opcjonalne.</p>
+<h3
+id="estymatory-inverse-filtering-i-szumu-sbr-invf-pozostaje-dynamiczny">Estymatory
+inverse filtering i szumu SBR (invf pozostaje dynamiczny)</h3>
+<p><code>--sbr-invf</code> z tabeli wyżej zamraża jeden poziom na cały
+plik. Te pokrętła zmieniają natomiast sam estymator: decyzja zapada
+nadal osobno dla każdego pasma i każdej ramki, tylko według innych
+reguł. Jawne pokrętła wygrywają z <code>--sbr-softness</code>, a
+<code>--sbr-invf</code> wygrywa ze wszystkim.</p>
+<table>
+<thead>
+<tr class="header">
+<th>Przełącznik</th>
+<th>Wartości</th>
+<th>Domyślnie</th>
+<th>Opis</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>--sbr-softness &lt;0..7&gt;</code></td>
+<td>0..7</td>
+<td>-1 wył.</td>
+<td>Jedno makro od „twardo, metalicznie” do „bardzo miękko”.
+<code>2</code> = estymatory stock dla muzyki, <code>4</code> =
+estymatory stock dla mowy (tylko tabela decyzji i waga szumu, bez zmiany
+crossovera z <code>--speech</code>). <code>0</code> o stopień mniej
+wybielania niż muzyka, <code>1</code> nigdy HIGH, <code>3</code> co
+najmniej LOW, <code>5</code> i <code>6</code> podnoszą sufit szumu do
+0,5 i ważą także pasma MID (<code>6</code> dokłada stopień wybielania),
+<code>7</code> sufit 1,0.</td>
+</tr>
+<tr class="even">
+<td><code>--sbr-invf-min &lt;0..3&gt;</code></td>
+<td>0..3</td>
+<td>-1 wył.</td>
+<td>Najniższy poziom, jaki estymator może wybrać.</td>
+</tr>
+<tr class="odd">
+<td><code>--sbr-invf-max &lt;0..3&gt;</code></td>
+<td>0..3</td>
+<td>-1 wył.</td>
+<td>Najwyższy poziom, jaki estymator może wybrać (<code>2</code> = nigdy
+HIGH).</td>
+</tr>
+<tr class="even">
+<td><code>--sbr-invf-bias &lt;-3..3&gt;</code></td>
+<td>-3..3</td>
+<td>0</td>
+<td>Przesuwa każdą dynamiczną decyzję o n stopni (+ = więcej
+wybielania), przed min i max.</td>
+</tr>
+<tr class="odd">
+<td><code>--sbr-invf-table &lt;0|1&gt;</code></td>
+<td>0 muzyka, 1 mowa</td>
+<td>-1 jak <code>--speech</code></td>
+<td>Sama tabela decyzji, bez zmiany crossovera z
+<code>--speech</code>.</td>
+</tr>
+<tr class="even">
+<td><code>--sbr-invf-hyst &lt;x&gt;</code></td>
+<td>dziesiętnie, 0..2</td>
+<td>1,0</td>
+<td>Histereza granic decyzji. <code>0</code> = brak, czyli częstsze
+przełączanie między ramkami. Powyżej 2 granice by się nakładały, więc
+wartość jest odrzucana.</td>
+</tr>
+<tr class="odd">
+<td><code>--sbr-invf-sbr-thr &lt;x&gt;</code></td>
+<td>około dB, -20..20</td>
+<td>0</td>
+<td>Przesuwa granice tonalności pasma ŁATANEGO (+ = więcej invf).</td>
+</tr>
+<tr class="even">
+<td><code>--sbr-invf-orig-thr &lt;x&gt;</code></td>
+<td>około dB, -20..20</td>
+<td>0</td>
+<td>Przesuwa granice tonalności pasma ORYGINALNEGO (+ = więcej
+invf).</td>
+</tr>
+<tr class="odd">
+<td><code>--sbr-invf-smooth &lt;0..2&gt;</code></td>
+<td>0..2</td>
+<td>2</td>
+<td>Ile ramek uśrednia estymator. <code>0</code> = tylko bieżąca.</td>
+</tr>
+<tr class="even">
+<td><code>--sbr-nf-weight &lt;x&gt;</code></td>
+<td>0,0..1,0</td>
+<td>-1 (muzyka 0,25, mowa 1,0)</td>
+<td>Waga różnicy tonalności oryginału i łaty w poziomie szumu.</td>
+</tr>
+<tr class="odd">
+<td><code>--sbr-nf-weight-from &lt;1..3&gt;</code></td>
+<td>1..3</td>
+<td>3 (tylko HIGH)</td>
+<td>Od którego poziomu invf pasma dostają tę wagę.</td>
+</tr>
+<tr class="even">
+<td><code>--sbr-nf-smooth 0</code></td>
+<td>0</td>
+<td>wygładzanie stock</td>
+<td>Bez wygładzania szumu w czasie.</td>
+</tr>
+</tbody>
+</table>
+<p>Wartości neutralne (<code>--sbr-invf-hyst 1.0</code>,
+<code>--sbr-invf-bias 0</code>, <code>--sbr-invf-smooth 2</code>,
+<code>--sbr-nf-weight 0.25</code>, <code>--sbr-nf-weight-from 3</code>,
+<code>--sbr-invf-table 0</code>, <code>--sbr-invf-min 0</code>,
+<code>--sbr-invf-max 3</code>) dają strumień bajt w bajt identyczny ze
+stockiem. Tak samo <code>--sbr-softness 2</code> oraz
+<code>--speech --sbr-softness 4</code>.</p>
+<p>ZMIERZONE (HE-AAC 32 kbps, poziomy odczytane z bitstreamu po stronie
+dekodera, płaskość zdekodowanego pasma SBR 7..14,5 kHz, 0 = tonalnie, 1
+= szumowo):</p>
+<table>
+<thead>
+<tr class="header">
+<th><code>--sbr-softness</code></th>
+<th>średni poziom invf (mowa / tony / muzyka)</th>
+<th>płaskość pasma SBR (mowa / tony)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>0</td>
+<td>0,15 / 0,00 / 0,00</td>
+<td>0,366 / 0,396</td>
+</tr>
+<tr class="even">
+<td>2 (stock muzyka)</td>
+<td>1,12 / 0,98 / 0,99</td>
+<td>0,373 / 0,430</td>
+</tr>
+<tr class="odd">
+<td>4 (stock mowa)</td>
+<td>1,93 / 1,96 / 1,98</td>
+<td>0,379 / 0,440</td>
+</tr>
+<tr class="even">
+<td>5</td>
+<td>1,93 / 1,96 / 1,98</td>
+<td>0,403 / 0,518</td>
+</tr>
+<tr class="odd">
+<td>7</td>
+<td>2,93 / 2,96 / 2,98</td>
+<td>0,417 / 0,521</td>
+</tr>
+</tbody>
+</table>
+<p>Skala jest monotoniczna na każdej próbce. Sąsiednie poziomy mogą dać
+ten sam strumień, gdy materiał nie dochodzi do granicy, którą się różnią
+(np. 1 i 2 na muzyce, której estymator i tak nie wybiela do HIGH).
+Liczba zmian trybu na pasmo i ramkę zostaje na poziomie stock
+(0,004..0,04). Przesuwanie granic tonalności dawało w pomiarze migotanie
+decyzji (0,2..0,29), dlatego makro go nie używa.</p>
+<p>UWAGA o <code>--sbr-nf-weight</code>: ważony szum obcina sufit szumu.
+Przy suficie z tabeli strojenia (0,125 dla 24..48 kHz) około 95% pasm
+już na nim siedzi, więc sama waga często nic nie zmienia. Łącz ją z
+<code>--sbr-noise-max 3</code> albo <code>6</code> (poziomy 5..7
+<code>--sbr-softness</code> robią to same).</p>
 <p>UWAGA: <code>--sbr-start</code>/<code>--sbr-stop</code> są walidowane
 PRZEZ FDK — niepoprawna KOMBINACJA start/stop (zła liczba pasm master)
 da "encoder initialization failed". To ograniczenie samego SBR, nie
@@ -3826,11 +4234,10 @@ wtedy sięgnąć az do Nyquista.</td>
 <td><code>--unlock-bitrate</code></td>
 <td>flaga</td>
 <td>off</td>
-<td>Zdejmij DOLNY prog bitrate. Pozwala na skrajnie niskie: 8k HE-AAC
-stereo, 6k LC. WAZNE: w tym trybie <code>-b</code> bierzemy DOSLOWNIE
-jako bps (bez konwencji nu774 x1000), więc <code>-b 6000</code> = 6000
-bps. Górny sufit 6144*kanały zostaje (twardy limit AAC). Rezydualny
-floor ~10 kbps = minimum nagłówków AAC.</td>
+<td>Zdejmij DOLNE progi bitrate we wszystkich profilach (szczegóły
+niżej). WAŻNE: w tym trybie <code>-b</code> bierzemy DOSŁOWNIE jako bps
+(bez konwencji nu774 x1000), więc <code>-b 6000</code> = 6000 bps. Górny
+sufit 6144*kanały zostaje (twardy limit AAC).</td>
 </tr>
 <tr class="odd">
 <td><code>--speech</code></td>
@@ -3851,6 +4258,89 @@ tone-masks-noise). Największy efekt gdzie bity ograniczone (96-192k).
 </tr>
 </tbody>
 </table>
+<p>NISKIE BITRATE Z <code>--unlock-bitrate</code>: próg 16 kbps w HE-AAC
+NIE jest limitem formatu. Stock FDK podnosi bitrate do najniższego
+wiersza swojej tabeli strojenia SBR (16 kbps dla HE-AAC 48 kHz stereo,
+8..12 kbps dla mono lub niższych częstotliwości, 8 kbps dla HE-AAC v2),
+a LD i ELD odrzucają mniej niż 8 kbps na kanał plus 208-bitową rezerwę
+transportu. Z flagą:</p>
+<ul>
+<li>HE-AAC, HE-AAC v2 i ELD+SBR poniżej tabeli używają jej najniższego
+wiersza (ta sama siatka SBR, bitrate zostaje);</li>
+<li>LD i ELD tracą regułę 8 kbps na kanał i szacunek 208 bitów
+(prawdziwy narzut nagłówka nadal sprawdza prawdziwy enkoder transportu),
+a poniżej pierwszego wiersza swojej tabeli pasma biorą najwęższe
+pasmo;</li>
+<li>ramki, które nie mieszczą własnych danych pobocznych, nie przerywają
+już kodowania: przekraczają budżet, a rezerwuar to wchłania;</li>
+<li>poniżej szacunku ładunku SBR (około 2,5 kbps na kanał plus PS)
+enkoder kończy czystym „encoder initialization failed” zamiast
+asercji.</li>
+</ul>
+<p>ZMIERZONE, realny bitrate z rozmiaru strumienia ADTS/LOAS (bez
+kontenera):</p>
+<table>
+<thead>
+<tr class="header">
+<th>Tryb</th>
+<th><code>-b</code></th>
+<th>realne bps</th>
+<th>dekoder FDK</th>
+<th>ffmpeg 6.1</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>HE-AAC 48 kHz stereo</td>
+<td>8000 / 6000</td>
+<td>9232 / 7290</td>
+<td>0 błędów</td>
+<td>0 błędów</td>
+</tr>
+<tr class="even">
+<td>HE-AAC 48 kHz mono</td>
+<td>4000 / 3000</td>
+<td>4736 / 4348</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr class="odd">
+<td>HE-AAC v2 48 kHz</td>
+<td>6000 / 4000</td>
+<td>6678 / 4894</td>
+<td>0</td>
+<td>1 (patrz niżej)</td>
+</tr>
+<tr class="even">
+<td>ELD+SBR 48 kHz stereo</td>
+<td>12000</td>
+<td>12984</td>
+<td>0</td>
+<td>patrz niżej</td>
+</tr>
+<tr class="odd">
+<td>ELD / LD 32 kHz stereo</td>
+<td>8000</td>
+<td>8154</td>
+<td>0</td>
+<td>patrz niżej</td>
+</tr>
+<tr class="even">
+<td>AAC-LC 48 kHz stereo</td>
+<td>4000 / 3000</td>
+<td>6012 / 7054</td>
+<td>0</td>
+<td>0</td>
+</tr>
+</tbody>
+</table>
+<p>Tam, gdzie realny bitrate jest wyższy od <code>-b</code>, gęste ramki
+przekraczają budżet (same nagłówki i dane poboczne). ffmpeg 6.1 zgłasza
+te same błędy przy enkoderze STOCK w tych trybach: jeden
+<code>noise_facs_q is invalid</code> w HE-AAC v2 przy 12..14 kbps
+(wewnątrz tabel oryginału) i wiele błędów na każdym strumieniu LOAS z LD
+lub ELD, przy dowolnym bitrate. ffmpeg nie implementuje LD i ELD w
+pełni, takie strumienie oceniamy dekoderem Fraunhofera.</p>
 <p>PASMO POWYŻEJ 20 kHz (audiofilskie): FDK ma zaszyty cap
 <code>min(20000, sr/2)</code> na pasmo rdzenia — nawet przy wejściu 96
 kHz i wysokim bitrate realnie nic powyżej 20 kHz nie jest kodowane
