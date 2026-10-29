@@ -2831,6 +2831,54 @@ AACENC_ERROR aacEncoder_SetParam(const HANDLE_AACENCODER hAacEncoder,
       g_franken.sbrHeaderTimeMs = (INT)value;
       hAacEncoder->InitFlags |= AACENC_INIT_CONFIG | AACENC_INIT_TRANSPORT;
       break;
+    case AACENC_FRANKEN_SBR_INVF_MIN:
+      g_franken.sbrInvfMin = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_SBR_INVF_MAX:
+      g_franken.sbrInvfMax = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_SBR_INVF_BIAS:
+      g_franken.sbrInvfBias = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_SBR_INVF_TABLE:
+      g_franken.sbrInvfTable = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_SBR_INVF_HYST:
+      g_franken.sbrInvfHystX100 = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_SBR_INVF_SBR_THR:
+      g_franken.sbrInvfSbrThrX100 = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_SBR_INVF_ORIG_THR:
+      g_franken.sbrInvfOrigThrX100 = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_SBR_INVF_SMOOTH:
+      g_franken.sbrInvfSmooth = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_SBR_NF_WEIGHT:
+      g_franken.sbrNfWeightX1000 = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_SBR_NF_WEIGHT_FROM:
+      g_franken.sbrNfWeightFrom = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_SBR_NF_SMOOTH:
+      g_franken.sbrNfSmooth = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_SBR_SOFTNESS:
+      g_franken.sbrSoftness = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
     case AACENC_FRANKEN_PNS_GAIN:
       g_franken.pnsGainX100 = (INT)value;
       hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;

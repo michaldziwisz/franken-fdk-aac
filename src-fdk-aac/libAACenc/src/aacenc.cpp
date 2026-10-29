@@ -182,6 +182,13 @@ INT FDKaacEnc_LimitBitrate(HANDLE_TRANSPORTENC hTpEnc, AUDIO_OBJECT_TYPE aot,
     } else {
       /* Assume some worst case */
       transportBits = 208;
+      /* Frankenstein --unlock-bitrate: the 208-bit guess is a pre-transport
+       * estimate (real ADTS = 56 bits, LOAS ~ 24 + AU length). At 48 kHz with
+       * 512-sample LD/ELD frames it alone forces 19.5 kbps, with 1024-sample
+       * frames 9.75 kbps. Drop it here; the second check in
+       * FDKaacEnc_Initialize() runs with the REAL transport encoder and still
+       * enforces the true header overhead. */
+      if (g_franken.unlockBitrate == 1) transportBits = 0;
     }
 
     bitRate = fMax(bitRate,
@@ -592,6 +599,16 @@ AAC_ENCODER_ERROR FDKaacEnc_Initialize(
   }
   g_franken.effTnsMask = config->useTns ? tnsMask : 0; /* verbose read-back */
   psyBitrate = config->bitRate - config->ancDataBitRate;
+
+  /* Frankenstein --unlock-bitrate guard: SBR/PS reserves an ESTIMATE of its own
+   * payload up front (sbrEncoder_GetEstimateBitrate, ~2.5 kbps per channel +
+   * PS). Below that the core budget is zero or negative and the psy init hits
+   * an assertion (fDivNorm with a negative numerator) instead of an error.
+   * Refuse it cleanly: the caller reports "encoder initialization failed". */
+  if (g_franken.unlockBitrate == 1 && psyBitrate <= 0) {
+    ErrorStatus = AAC_ENC_UNSUPPORTED_BITRATE;
+    goto bail;
+  }
 
   if ((hAacEnc->encoderMode != prevChannelMode) || (initFlags != 0)) {
     /* Reinitialize psych states in case of channel configuration change ore if

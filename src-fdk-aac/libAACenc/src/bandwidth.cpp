@@ -217,6 +217,14 @@ static INT GetBandwidthEntry(const INT frameLength, const INT sampleRate,
 
   if (pBwTab != NULL) {
     int i;
+    /* Frankenstein --unlock-bitrate: the LD/ELD tables start at 8 kbps per
+     * channel and return "no entry" below it (encoder init then fails with
+     * AAC_ENC_INVALID_CHANNEL_BITRATE, e.g. ELD 32 kHz stereo at 12 kbps).
+     * Below the first row use the first row's (narrowest) bandwidth. */
+    if (g_franken.unlockBitrate == 1 && chanBitRate < pBwTab[0].chanBitRate) {
+      return (entryNo == 0) ? pBwTab[0].bandWidthMono
+                            : pBwTab[0].bandWidth2AndMoreChan;
+    }
     for (i = 0; i < bwTabSize - 1; i++) {
       if (chanBitRate >= pBwTab[i].chanBitRate &&
           chanBitRate < pBwTab[i + 1].chanBitRate) {

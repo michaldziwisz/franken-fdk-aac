@@ -101,6 +101,7 @@ amm-info@iis.fraunhofer.de
 *******************************************************************************/
 
 #include "nf_est.h"
+#include "../../libAACenc/src/franken.h"
 
 #include "sbr_misc.h"
 
@@ -109,6 +110,9 @@ amm-info@iis.fraunhofer.de
 /* smoothFilter[4]  = {0.05857864376269f, 0.2f, 0.34142135623731f, 0.4f}; */
 static const FIXP_DBL smoothFilter[4] = {0x077f813d, 0x19999995, 0x2bb3b1f5,
                                          0x33333335};
+/* Frankenstein --sbr-nf-smooth 0: newest estimate only (gain 1.0 on the last
+ * tap of the 4-tap smoother, the history keeps being updated). */
+static const FIXP_DBL smoothFilterNone[4] = {0, 0, 0, (FIXP_DBL)MAXVAL_DBL};
 
 /* static const INT smoothFilterLength = 4; */
 
@@ -272,9 +276,22 @@ static void qmfBasedNoiseFloorDetection(
   meanOrig = fixMax(meanOrig, RELAXATION);
   meanSbr = fixMax(meanSbr, RELAXATION);
 
-  if (missingHarmonicFlag == 1 || inverseFilteringLevel == INVF_MID_LEVEL ||
-      inverseFilteringLevel == INVF_LOW_LEVEL ||
-      inverseFilteringLevel == INVF_OFF || inverseFilteringLevel <= diffThres) {
+  /* Frankenstein --sbr-nf-weight-from: which invf levels get the weighted
+   * tonality difference (stock: only HIGH). */
+  INT nfFrom = frankenEffNfWeightFrom();
+  INT noWeight;
+  if (nfFrom >= 1 && nfFrom <= 3) {
+    noWeight = (missingHarmonicFlag == 1) ||
+               ((INT)inverseFilteringLevel < nfFrom);
+  } else {
+    noWeight = (missingHarmonicFlag == 1 ||
+                inverseFilteringLevel == INVF_MID_LEVEL ||
+                inverseFilteringLevel == INVF_LOW_LEVEL ||
+                inverseFilteringLevel == INVF_OFF ||
+                inverseFilteringLevel <= diffThres);
+  }
+
+  if (noWeight) {
     diff = RELAXATION;
   } else {
     accu = fDivNorm(meanSbr, meanOrig, &scale);
@@ -475,13 +492,26 @@ INT FDKsbrEnc_InitSbrNoiseFloorEstimate(
 
   FDKmemclear(h_sbrNoiseFloorEstimate, sizeof(SBR_NOISE_FLOOR_ESTIMATE));
 
-  h_sbrNoiseFloorEstimate->smoothFilter = smoothFilter;
+  h_sbrNoiseFloorEstimate->smoothFilter =
+      (g_franken.sbrNfSmooth == 0) ? smoothFilterNone : smoothFilter;
   if (useSpeechConfig) {
     h_sbrNoiseFloorEstimate->weightFac = (FIXP_DBL)MAXVAL_DBL;
     h_sbrNoiseFloorEstimate->diffThres = INVF_LOW_LEVEL;
   } else {
     h_sbrNoiseFloorEstimate->weightFac = FL2FXCONST_DBL(0.25f);
     h_sbrNoiseFloorEstimate->diffThres = INVF_MID_LEVEL;
+  }
+  /* Frankenstein: noise-floor weighting decoupled from --speech. The weight
+   * scales how strongly the tonality difference between the original and the
+   * patched band raises the injected noise; 1000 = x1.0 exactly (the stock
+   * speech value, MAXVAL_DBL, never 2^31 which would wrap negative). */
+  {
+    const INT w = frankenEffNfWeightX1000(useSpeechConfig ? 1 : 0);
+    if (w >= 0) {
+      h_sbrNoiseFloorEstimate->weightFac =
+          (w >= 1000) ? (FIXP_DBL)MAXVAL_DBL
+                      : (FIXP_DBL)(((INT64)w << 31) / 1000);
+    }
   }
 
   h_sbrNoiseFloorEstimate->timeSlots = timeSlots;

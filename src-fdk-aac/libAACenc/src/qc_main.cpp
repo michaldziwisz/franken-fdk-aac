@@ -109,6 +109,7 @@ amm-info@iis.fraunhofer.de
 #include "dyn_bits.h"
 #include "channel_map.h"
 #include "aacEnc_ram.h"
+#include "franken.h"
 
 #include "genericStds.h"
 
@@ -630,8 +631,19 @@ static AAC_ENCODER_ERROR FDKaacEnc_prepareBitDistribution(
     /* crash recovery allows to reduce static bits to a minimum */
     if ((qcOut[0]->grantedDynBits + hQC->bitResTot) <
         (FDKaacEnc_getMinimalStaticBitdemand(cm, psyOut) -
-         qcOut[0]->staticBits))
-      return AAC_ENC_BITRES_TOO_LOW;
+         qcOut[0]->staticBits)) {
+      /* Frankenstein --unlock-bitrate: at extreme low rates a single dense
+       * frame (SBR payload + side info of a zeroed spectrum) can exceed the
+       * reservoir. Stock aborts the whole encode here; instead clamp the
+       * dynamic budget to zero and let this frame overshoot. The bit
+       * reservoir absorbs it over the next frames (the average still
+       * holds, the peak frame is larger). */
+      if (g_franken.unlockBitrate == 1) {
+        qcOut[0]->grantedDynBits = 0;
+      } else {
+        return AAC_ENC_BITRES_TOO_LOW;
+      }
+    }
   }
 
   /* distribute dynamic bits to each element */
@@ -895,6 +907,7 @@ AAC_ENCODER_ERROR FDKaacEnc_QCMain(QC_STATE* RESTRICT hQC, PSY_OUT** psyOut,
   INT quantizationDone = 0;
   INT sumDynBitsConsumedTotal = 0;
   INT decreaseBitConsumption = -1; /* no direction yet! */
+  INT frankenOuterIter = 0; /* --unlock-bitrate: bound on the outer loop */
 
   /*-------------------------------------------- */
   /* -start- Quantization loop ...               */
@@ -1105,6 +1118,15 @@ AAC_ENCODER_ERROR FDKaacEnc_QCMain(QC_STATE* RESTRICT hQC, PSY_OUT** psyOut,
 
     } /* quantizationDone */
 
+    /* Frankenstein --unlock-bitrate: below the side-info cost of a frame the
+     * budget can never be met, the stock loop would spin forever (after the
+     * QUANT_ERROR exits above are relaxed). After a bounded number of passes
+     * keep the current (already maximally reduced) quantization. */
+    if (g_franken.unlockBitrate == 1 && !quantizationDone &&
+        ++frankenOuterIter > 64) {
+      quantizationDone = 1;
+    }
+
   } while (!quantizationDone);
 
   /*-------------------------------------------- */
@@ -1137,6 +1159,16 @@ static AAC_ENCODER_ERROR FDKaacEnc_reduceBitConsumption(
     }
   } else if ((*iterations) == maxIterations) {
     if (qcOutElement->dynBitsUsed == 0) {
+      /* Frankenstein --unlock-bitrate: nothing left to drop (spectrum already
+       * empty). Stock aborts the encode; accept the frame as it is and let
+       * the bit reservoir carry the overshoot. */
+      if (g_franken.unlockBitrate == 1) {
+        for (ch = 0; ch < nChannels; ch++) {
+          chConstraintsFulfilled[ch] = 1;
+          calculateQuant[ch] = 0;
+        }
+        return AAC_ENC_OK;
+      }
       return AAC_ENC_QUANT_ERROR;
     } else {
       /* crash recovery */
@@ -1159,6 +1191,16 @@ static AAC_ENCODER_ERROR FDKaacEnc_reduceBitConsumption(
     }
   } else {
     /* (*iterations) > maxIterations */
+    if (g_franken.unlockBitrate == 1) {
+      /* Frankenstein --unlock-bitrate: crash recovery already zeroed what it
+       * could; accept the frame (overshoot carried by the reservoir clamp in
+       * FDKaacEnc_updateBitres) instead of aborting the encode. */
+      for (ch = 0; ch < nChannels; ch++) {
+        chConstraintsFulfilled[ch] = 1;
+        calculateQuant[ch] = 0;
+      }
+      return AAC_ENC_OK;
+    }
     return AAC_ENC_QUANT_ERROR;
   }
   (*iterations)++;
@@ -1270,6 +1312,13 @@ void FDKaacEnc_updateBitres(CHANNEL_MAPPING* cm, QC_STATE* qcKernel,
                                (qcOut[c]->usedDynBits + qcOut[c]->totFillBits +
                                 qcOut[c]->alignBits);
       }
+      /* Frankenstein --unlock-bitrate: below the side-info cost of a frame
+       * the reservoir goes negative and stock aborts with BITRES_TOO_LOW.
+       * Clamp it at zero: such frames simply overshoot the average, so the
+       * real bitrate of very dense passages ends up above -b (measured and
+       * documented), instead of the whole encode failing. */
+      if (g_franken.unlockBitrate == 1 && qcKernel->bitResTot < 0)
+        qcKernel->bitResTot = 0;
       break;
   }
 }

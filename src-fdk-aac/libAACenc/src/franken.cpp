@@ -76,6 +76,18 @@ extern "C" void frankenResetDefaults(void) {
   g_franken.sbrMhMaxComp = -1;
   g_franken.sbrMhDeltaTime = -1;
   g_franken.sbrNoiseMaxLevel = -128;
+  g_franken.sbrInvfMin = -1;
+  g_franken.sbrInvfMax = -1;
+  g_franken.sbrInvfBias = FRANKEN_OFF;
+  g_franken.sbrInvfTable = -1;
+  g_franken.sbrInvfHystX100 = -1;
+  g_franken.sbrInvfSbrThrX100 = FRANKEN_OFF;
+  g_franken.sbrInvfOrigThrX100 = FRANKEN_OFF;
+  g_franken.sbrInvfSmooth = -1;
+  g_franken.sbrNfWeightX1000 = -1;
+  g_franken.sbrNfWeightFrom = -1;
+  g_franken.sbrNfSmooth = -1;
+  g_franken.sbrSoftness = -1;
   g_franken.psBands = -1;
   g_franken.psEnvelopes = -1;
   g_franken.psEnvReduce = -1;
@@ -129,6 +141,119 @@ extern "C" void frankenResetDefaults(void) {
   g_franken.effIsMinSfbs = (g_franken.isMinSfbs >= 0) ? g_franken.isMinSfbs : 6;
   g_franken.effIsCorrQ8 = (g_franken.isCorrThreshQ8 >= 0) ? g_franken.isCorrThreshQ8 : 243; /* 0.95 */
   g_franken.effIsLrRatioQ8 = (g_franken.isLRRatioQ8 >= 0) ? g_franken.isLRRatioQ8 : 179; /* 0.70 */
+}
+
+/* ---- SBR estimator macro (--sbr-softness 0..7) ----
+ * One knob between a "hard / metallic" high band (little inverse filtering,
+ * no extra noise) and a "very soft" one (more whitening and more fill noise),
+ * built ONLY from the estimator knobs, so the invf decision stays dynamic at
+ * every level. Level 2 = stock music estimators, level 4 = stock speech
+ * estimators (decision table + noise weight; the speech crossover and the
+ * other --speech changes are NOT part of it).
+ * Built from the decision table, an integer bias and the noise weighting:
+ * those keep the frame-to-frame stability of the stock estimator. Shifting
+ * the tonality borders instead was measured to make the decision flicker
+ * (0.004 -> 0.2..0.29 mode changes per band and frame), so the borders are
+ * left to the explicit expert knobs.
+ * Columns: decision table, bias, noise weight x1000, lowest invf level that
+ * gets the weighted noise (3 = stock, HIGH only), noise ceiling (0 = from the
+ * tuning table, else 6/3/-3 as --sbr-noise-max).
+ * Measured: with the tuning-table ceiling (-3 = 0.125 at 24..48 kHz) the
+ * estimated fill noise is clipped in ~95% of the bands, so the weight alone
+ * changed nothing there (levels 1/2 and 3..5 gave identical streams on most
+ * material). Levels 5..7 therefore also lift the ceiling, and levels 1 and 3
+ * use an invf bound (1: never HIGH, 3: at least LOW). The scale is monotonic
+ * (mean invf level and HF flatness grow 0 -> 7 on every test sample), but two
+ * neighbours can still give the same stream where the material never reaches
+ * the bound they differ in (e.g. 1 = 2 when the music estimator never picks
+ * HIGH). */
+static const struct {
+  signed char table, bias;
+  short nfWeight;
+  signed char nfFrom;
+  signed char noiseMax;
+  signed char invfMin, invfMax; /* -1 = no bound */
+} kSoftness[8] = {
+    {0, -1, 0, 3, 0, -1, -1},    /* 0 harder than music: one step less whitening */
+    {0, 0, 0, 3, 0, -1, 2},      /* 1 music table, never HIGH whitening */
+    {0, 0, 250, 3, 0, -1, -1},   /* 2 = stock music estimators */
+    {0, 0, 250, 3, 0, 1, -1},    /* 3 music table, at least LOW whitening */
+    {1, 0, 1000, 3, 0, -1, -1},  /* 4 = stock speech estimators */
+    {1, 0, 1000, 2, 3, -1, -1},  /* 5 weighted noise also in MID bands, ceiling 0.5 */
+    {1, 1, 1000, 2, 3, -1, -1},  /* 6 one step more whitening */
+    {1, 1, 1000, 1, 6, -1, -1},  /* 7 very soft, ceiling 1.0, still dynamic */
+};
+
+/* Noise ceiling: explicit --sbr-noise-max wins; else the macro; 0 = table. */
+extern "C" int frankenEffNoiseMax(void) {
+  if (g_franken.sbrNoiseMaxLevel == 6 || g_franken.sbrNoiseMaxLevel == 3 ||
+      g_franken.sbrNoiseMaxLevel == -3)
+    return g_franken.sbrNoiseMaxLevel;
+  if (g_franken.sbrSoftness >= 0 && g_franken.sbrSoftness <= 7)
+    return kSoftness[g_franken.sbrSoftness].noiseMax;
+  return 0;
+}
+
+static int softLevel(void) {
+  return (g_franken.sbrSoftness >= 0 && g_franken.sbrSoftness <= 7)
+             ? g_franken.sbrSoftness
+             : -1;
+}
+
+extern "C" int frankenEffInvfTable(int stockSpeech) {
+  if (g_franken.sbrInvfTable == 0 || g_franken.sbrInvfTable == 1)
+    return g_franken.sbrInvfTable;
+  if (softLevel() >= 0) return kSoftness[softLevel()].table;
+  return stockSpeech ? 1 : 0;
+}
+
+extern "C" int frankenEffInvfBias(void) {
+  if (g_franken.sbrInvfBias != FRANKEN_OFF) return g_franken.sbrInvfBias;
+  if (softLevel() >= 0) return kSoftness[softLevel()].bias;
+  return 0;
+}
+
+extern "C" int frankenEffInvfMin(void) {
+  if (g_franken.sbrInvfMin >= 0 && g_franken.sbrInvfMin <= 3)
+    return g_franken.sbrInvfMin;
+  if (softLevel() >= 0) return kSoftness[softLevel()].invfMin;
+  return -1;
+}
+
+extern "C" int frankenEffInvfMax(void) {
+  if (g_franken.sbrInvfMax >= 0 && g_franken.sbrInvfMax <= 3)
+    return g_franken.sbrInvfMax;
+  if (softLevel() >= 0) return kSoftness[softLevel()].invfMax;
+  return -1;
+}
+
+extern "C" int frankenEffNfWeightX1000(int stockSpeech) {
+  if (g_franken.sbrNfWeightX1000 >= 0) return g_franken.sbrNfWeightX1000;
+  if (softLevel() >= 0) {
+    const int w = kSoftness[softLevel()].nfWeight;
+    /* -1 where the macro equals the stock value of the current mode, so
+     * --sbr-softness 2 (music) / 4 (with --speech) stay bit-identical */
+    if (w == (stockSpeech ? 1000 : 250)) return -1;
+    return w;
+  }
+  return -1;
+}
+
+extern "C" int frankenEffNfWeightFrom(void) {
+  if (g_franken.sbrNfWeightFrom >= 1 && g_franken.sbrNfWeightFrom <= 3)
+    return g_franken.sbrNfWeightFrom;
+  if (softLevel() >= 0 && kSoftness[softLevel()].nfFrom != 3)
+    return kSoftness[softLevel()].nfFrom;
+  return -1;
+}
+
+/* Border shifts: explicit expert knobs only (see note above). */
+extern "C" int frankenEffInvfSbrThrX100(void) {
+  return g_franken.sbrInvfSbrThrX100;
+}
+
+extern "C" int frankenEffInvfOrigThrX100(void) {
+  return g_franken.sbrInvfOrigThrX100;
 }
 
 /* Ensure defaults are set even if the frontend never calls the reset

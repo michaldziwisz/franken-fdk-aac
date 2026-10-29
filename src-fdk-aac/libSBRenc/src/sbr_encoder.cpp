@@ -264,6 +264,15 @@ static INT getSbrTuningTableIndex(
     return bitRateClosestUpperIndex;
   }
 
+  /* Frankenstein --unlock-bitrate: below the lowest tuning row for this core
+   * rate / channel count, reuse that lowest row (its crossover, noise bands
+   * and stereo mode) instead of refusing the bitrate. Stock FDK snaps the
+   * bitrate UP to that row (16 kbps for 24/48 kHz stereo); the SBR grid itself
+   * is fully valid at any bitrate, the core simply gets fewer bits. */
+  if (g_franken.unlockBitrate == 1 && found && bitRateClosestLowerIndex >= 0) {
+    return bitRateClosestLowerIndex;
+  }
+
   if (pBitRateClosest != NULL) {
     /* If there was at least one matching tuning entry pick the least distance
      * bit rate */
@@ -327,6 +336,11 @@ static INT getPsTuningTableIndex(UINT bitrate, UINT *pBitRateClosest) {
 
   if (bitRateClosestUpperIndex >= 0) {
     return bitRateClosestUpperIndex;
+  }
+
+  /* Frankenstein --unlock-bitrate: below the lowest PS row (8 kbps) reuse it. */
+  if (g_franken.unlockBitrate == 1 && bitRateClosestLowerIndex >= 0) {
+    return bitRateClosestLowerIndex;
   }
 
   if (pBitRateClosest != NULL) {
@@ -528,9 +542,9 @@ static UINT FDKsbrEnc_AdjustSbrSettings(
      * SBR injects into the high band may get. This is the "air vs hiss" limit;
      * nf_est maps 6 -> 1.0, 3 -> 0.5, -3 -> 0.125 (anything else falls back to
      * 1.0), so only those three values are accepted by the frontend. */
-    if (g_franken.sbrNoiseMaxLevel == 6 || g_franken.sbrNoiseMaxLevel == 3 ||
-        g_franken.sbrNoiseMaxLevel == -3) {
-      config->ana_max_level = g_franken.sbrNoiseMaxLevel;
+    /* (--sbr-softness 5..7 lift it too, see frankenEffNoiseMax) */
+    if (frankenEffNoiseMax() != 0) {
+      config->ana_max_level = frankenEffNoiseMax();
     }
     config->stereoMode = sbrTuningTable[idx].stereoMode;
     config->freqScale = sbrTuningTable[idx].freqScale;
@@ -1985,9 +1999,11 @@ UINT sbrEncoder_LimitBitRate(UINT bitRate, UINT numChannels,
   if (index != INVALID_TABLE_IDX) {
     newBitRate = bitRate;
   }
-  /* NOTE: below the lowest SBR tuning entry (~16 kbps) SBR cannot configure a
-   * valid master/envelope grid - forcing it there makes sbrEncoder_Init fail.
-   * So --unlock-bitrate does NOT lower the SBR floor; use plain LC for <16k. */
+  /* Frankenstein: with --unlock-bitrate getSbrTuningTableIndex() reuses the
+   * lowest tuning row below its range, so the bitrate passes unchanged here.
+   * (The old note claiming SBR cannot initialise below ~16 kbps was wrong:
+   * the master/envelope grid does not depend on the bitrate at all; what
+   * failed was only the missing table row.) */
 
   return newBitRate;
 }

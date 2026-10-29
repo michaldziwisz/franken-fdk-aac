@@ -350,6 +350,27 @@ static void calculateDetectorValues(
   detectorValues->origQuotaMeanStrongestFilt = FL2FXCONST_DBL(0.0f);
   detectorValues->sbrQuotaMeanStrongestFilt = FL2FXCONST_DBL(0.0f);
 
+  if (g_franken.sbrInvfSmooth >= 0 &&
+      g_franken.sbrInvfSmooth < INVF_SMOOTHING_LENGTH) {
+    /* Frankenstein --sbr-invf-smooth: shorter time smoothing of the tonality
+     * that drives the decision. The newest value sits at the END of the
+     * buffer, so the shorter FIR is aligned to the end (0 = newest only). */
+    const INT s = g_franken.sbrInvfSmooth;
+    const FIXP_DBL *f = *fir_table[s];
+    for (i = INVF_SMOOTHING_LENGTH - s; i < INVF_SMOOTHING_LENGTH + 1; i++) {
+      const FIXP_DBL c = f[i - (INVF_SMOOTHING_LENGTH - s)];
+      detectorValues->origQuotaMeanFilt +=
+          fMult(detectorValues->origQuotaMean[i], c);
+      detectorValues->sbrQuotaMeanFilt +=
+          fMult(detectorValues->sbrQuotaMean[i], c);
+      detectorValues->origQuotaMeanStrongestFilt +=
+          fMult(detectorValues->origQuotaMeanStrongest[i], c);
+      detectorValues->sbrQuotaMeanStrongestFilt +=
+          fMult(detectorValues->sbrQuotaMeanStrongest[i], c);
+    }
+    return;
+  }
+
   for (i = 0; i < INVF_SMOOTHING_LENGTH + 1; i++) {
     detectorValues->origQuotaMeanFilt +=
         fMult(detectorValues->origQuotaMean[i], filter[i]);
@@ -459,19 +480,41 @@ static INVF_MODE decisionAlgorithm(
   FDKmemcpy(quantStepsOrigTmp, detectorParams->quantStepsOrig,
             numRegionsOrig * sizeof(FIXP_DBL));
 
+  /* Frankenstein: region borders and hysteresis of the dynamic decision.
+   * Estimator unit = 2^22 in this scale = 1/3 octave of the log2 tonality
+   * quota, i.e. about 1 dB (stock borders: SBR 1/10/14/19, orig 0/3/7/10,
+   * hysteresis 1). Both shifts are signed so that + means MORE inverse
+   * filtering: the PATCHED band borders move down (it counts as tonal
+   * sooner) and the ORIGINAL band borders move up (the source counts as
+   * tonal later). Sentinels keep the stock arithmetic untouched. */
+  FIXP_DBL hyst = hysteresis;
+  if (g_franken.sbrInvfHystX100 >= 0 && g_franken.sbrInvfHystX100 != 100)
+    hyst = (FIXP_DBL)(((INT64)hysteresis * g_franken.sbrInvfHystX100) / 100);
+  {
+    const INT tS = frankenEffInvfSbrThrX100();
+    const INT tO = frankenEffInvfOrigThrX100();
+    if (tS != FRANKEN_OFF || tO != FRANKEN_OFF) {
+      INT i;
+      FIXP_DBL dS = 0, dO = 0;
+      if (tS != FRANKEN_OFF) dS = (FIXP_DBL)(((INT64)tS << 22) / 100);
+      if (tO != FRANKEN_OFF) dO = (FIXP_DBL)(((INT64)tO << 22) / 100);
+      for (i = 0; i < numRegionsSbr; i++) quantStepsSbrTmp[i] -= dS;
+      for (i = 0; i < numRegionsOrig; i++) quantStepsOrigTmp[i] += dO;
+    }
+  }
+
   if (*prevRegionSbr < numRegionsSbr)
-    quantStepsSbrTmp[*prevRegionSbr] =
-        detectorParams->quantStepsSbr[*prevRegionSbr] + hysteresis;
+    quantStepsSbrTmp[*prevRegionSbr] = quantStepsSbrTmp[*prevRegionSbr] + hyst;
   if (*prevRegionSbr > 0)
     quantStepsSbrTmp[*prevRegionSbr - 1] =
-        detectorParams->quantStepsSbr[*prevRegionSbr - 1] - hysteresis;
+        quantStepsSbrTmp[*prevRegionSbr - 1] - hyst;
 
   if (*prevRegionOrig < numRegionsOrig)
     quantStepsOrigTmp[*prevRegionOrig] =
-        detectorParams->quantStepsOrig[*prevRegionOrig] + hysteresis;
+        quantStepsOrigTmp[*prevRegionOrig] + hyst;
   if (*prevRegionOrig > 0)
     quantStepsOrigTmp[*prevRegionOrig - 1] =
-        detectorParams->quantStepsOrig[*prevRegionOrig - 1] - hysteresis;
+        quantStepsOrigTmp[*prevRegionOrig - 1] - hyst;
 
   regionSbr = findRegion(sbrQuotaMeanFilt, quantStepsSbrTmp, numRegionsSbr);
   regionOrig = findRegion(origQuotaMeanFilt, quantStepsOrigTmp, numRegionsOrig);
@@ -489,6 +532,18 @@ static INVF_MODE decisionAlgorithm(
   /* Compensate for low energy.*/
   invFiltLevel =
       max(invFiltLevel + detectorParams->EnergyCompFactor[regionNrg], 0);
+
+  /* Frankenstein: bias and clamp the DYNAMIC decision (the estimator keeps
+   * deciding per band and frame; we only shift it and bound it). */
+  {
+    INT bias = frankenEffInvfBias();
+    INT lo = frankenEffInvfMin(), hi = frankenEffInvfMax();
+    if (bias != 0) invFiltLevel += bias;
+    if (lo >= 0 && invFiltLevel < lo) invFiltLevel = lo;
+    if (hi >= 0 && invFiltLevel > hi) invFiltLevel = hi;
+    if (invFiltLevel < INVF_OFF) invFiltLevel = INVF_OFF;
+    if (invFiltLevel > INVF_HIGH_LEVEL) invFiltLevel = INVF_HIGH_LEVEL;
+  }
 
   return (INVF_MODE)(invFiltLevel);
 }
@@ -568,7 +623,8 @@ INT FDKsbrEnc_initInvFiltDetector(
   FDKmemclear(hInvFilt, sizeof(SBR_INV_FILT_EST));
 
   hInvFilt->detectorParams =
-      (useSpeechConfig) ? &detectorParamsAACSpeech : &detectorParamsAAC;
+      frankenEffInvfTable(useSpeechConfig ? 1 : 0) ? &detectorParamsAACSpeech
+                                                   : &detectorParamsAAC;
 
   hInvFilt->noDetectorBandsMax = numDetectorBands;
 

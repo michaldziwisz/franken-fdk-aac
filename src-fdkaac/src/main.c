@@ -224,9 +224,13 @@ PROGNAME " %s\n"
 " --uncap-bandwidth           Lift the hard 20 kHz core cap so --core-cutoff can reach up\n"
 "                               to Nyquist (e.g. full band from 96 kHz input). Use WITH\n"
 "                               --core-cutoff <hz>; alone it does nothing.\n"
-" --unlock-bitrate            Remove the LOWER bitrate floor (8k HE stereo, 6k LC). NOTE:\n"
-"                               -b is then read literally as bps. Upper 6144*ch ceiling stays.\n"
-"                               Off-spec, deliberate opt-in.\n"
+" --unlock-bitrate            Remove the LOWER bitrate floors: the 40 bit/channel core\n"
+"                               minimum, the LD/ELD 8 kbps/ch rule and 208-bit transport\n"
+"                               guess, the LD/ELD bandwidth table start and the SBR/PS\n"
+"                               tuning-table floor (HE/HEv2/ELD+SBR reuse the lowest row).\n"
+"                               -b is then read literally as bps. Real limit left = the\n"
+"                               transport header (ADTS 56 bit/frame). Upper 6144*ch\n"
+"                               ceiling stays. Off-spec, deliberate opt-in.\n"
 "\n== B. Stereo coding ==\n"
 "   -- MS (mid/side), core -- \n"
 " --msmask <n>                Force MS: -1 auto(def), 0 off (pure L/R), 1 on (all bands).\n"
@@ -357,6 +361,40 @@ PROGNAME " %s\n"
 "                               the MH detector, raw (9 for AAC, 16 for LD).\n"
 " --sbr-noise-max <6|3|-3>    Ceiling on how loud the noise SBR injects may get: 6 = 1.0,\n"
 "                               3 = 0.5, -3 = 0.125. The \"air vs hiss\" limit up top.\n"
+"  SBR estimators (inverse filtering stays DYNAMIC, these bound/bias/weigh it;\n"
+"  --sbr-invf forces a fixed level and wins over all of them):\n"
+" --sbr-softness <0..7>       One macro: 0 = harder/more metallic than music tuning,\n"
+"                               2 = stock music estimators, 4 = stock speech\n"
+"                               estimators (crossover untouched), 7 = very soft.\n"
+"                               1 = never HIGH whitening, 3 = at least LOW, 5..7 also\n"
+"                               lift the noise ceiling (5,6 = 0.5, 7 = 1.0).\n"
+"                               Explicit knobs below win over it. -1 off.\n"
+" --sbr-invf-min <0..3>       Lowest invf level the estimator may pick. -1 off.\n"
+" --sbr-invf-max <0..3>       Highest invf level the estimator may pick (ceiling,\n"
+"                               e.g. 2 = never HIGH). -1 off.\n"
+" --sbr-invf-bias <-3..3>     Shift every dynamic invf decision by n steps (+ = more\n"
+"                               whitening). Applied before min/max. 0 = off.\n"
+" --sbr-invf-table <0|1>      invf decision table: 0 music, 1 speech. Only the table,\n"
+"                               no crossover change. -1 = follows --speech.\n"
+" --sbr-invf-hyst <x>         Hysteresis of the decision borders, decimal (1.0 =\n"
+"                               stock, 0 = none = more frame-to-frame switching).\n"
+" --sbr-invf-sbr-thr <x>      Shift the PATCHED-band tonality borders, about dB\n"
+"                               (-20..20). + = patched band counts as tonal sooner =\n"
+"                               more invf.\n"
+" --sbr-invf-orig-thr <x>     Shift the ORIGINAL-band tonality borders, about dB\n"
+"                               (-20..20). + = source counts as tonal later = more invf.\n"
+" --sbr-invf-smooth <0..2>    Frames the estimator averages (2 = stock, 0 = this frame\n"
+"                               only = faster reaction, more switching). -1 off.\n"
+" --sbr-nf-weight <x>         Noise-floor weight of the orig-vs-SBR tonality gap,\n"
+"                               0.0..1.0 (music 0.25, speech 1.0). Higher = more fill\n"
+"                               noise where the patch is too tonal. -1 = follows --speech.\n"
+"                               Audible only below the noise ceiling: with the table\n"
+"                               ceiling (0.125) most bands are clipped, so pair it\n"
+"                               with --sbr-noise-max 3 or 6.\n"
+" --sbr-nf-weight-from <1..3> Lowest invf level whose bands get that weight (3 = stock,\n"
+"                               HIGH only; 1 = LOW, MID and HIGH). -1 off.\n"
+" --sbr-nf-smooth <0>         0 = no time smoothing of the noise floor (stock smooths\n"
+"                               over 4 frames). -1 off.\n"
 
 " --core-cutoff <hz>          Force core bandwidth in Hz even under SBR (where -w is\n"
 "                               ignored). 0=default, max sr/2. See also --uncap-bandwidth.\n"
@@ -566,6 +604,18 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
 #define OPT_FR_SBR_MH_MAXCOMP    M4AF_FOURCC('f','m','m','c')
 #define OPT_FR_SBR_MH_DELTATIME  M4AF_FOURCC('f','m','d','t')
 #define OPT_FR_SBR_NOISE_MAX     M4AF_FOURCC('f','s','n','m')
+#define OPT_FR_SBR_INVF_MIN      M4AF_FOURCC('f','s','i','n')
+#define OPT_FR_SBR_INVF_MAX      M4AF_FOURCC('f','s','i','x')
+#define OPT_FR_SBR_INVF_BIAS     M4AF_FOURCC('f','s','i','b')
+#define OPT_FR_SBR_INVF_TABLE    M4AF_FOURCC('f','s','i','t')
+#define OPT_FR_SBR_INVF_HYST     M4AF_FOURCC('f','s','i','h')
+#define OPT_FR_SBR_INVF_SBR_THR  M4AF_FOURCC('f','s','i','s')
+#define OPT_FR_SBR_INVF_ORIG_THR M4AF_FOURCC('f','s','i','o')
+#define OPT_FR_SBR_INVF_SMOOTH   M4AF_FOURCC('f','s','i','m')
+#define OPT_FR_SBR_NF_WEIGHT     M4AF_FOURCC('f','n','f','w')
+#define OPT_FR_SBR_NF_WFROM      M4AF_FOURCC('f','n','f','f')
+#define OPT_FR_SBR_NF_SMOOTH     M4AF_FOURCC('f','n','f','s')
+#define OPT_FR_SBR_SOFTNESS      M4AF_FOURCC('f','s','s','o')
 #define OPT_FR_PS_IPD            M4AF_FOURCC('f','p','i','d')
 #define OPT_FR_PS_OPD            M4AF_FOURCC('f','p','o','d')
 #define OPT_FR_IS_BAND_LO        M4AF_FOURCC('f','i','l','o')
@@ -700,6 +750,18 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
         { "sbr-mh-maxcomp",        required_argument, 0, OPT_FR_SBR_MH_MAXCOMP },
         { "sbr-mh-deltatime",      required_argument, 0, OPT_FR_SBR_MH_DELTATIME },
         { "sbr-noise-max",       required_argument, 0, OPT_FR_SBR_NOISE_MAX },
+        { "sbr-invf-min",        required_argument, 0, OPT_FR_SBR_INVF_MIN },
+        { "sbr-invf-max",        required_argument, 0, OPT_FR_SBR_INVF_MAX },
+        { "sbr-invf-bias",       required_argument, 0, OPT_FR_SBR_INVF_BIAS },
+        { "sbr-invf-table",      required_argument, 0, OPT_FR_SBR_INVF_TABLE },
+        { "sbr-invf-hyst",       required_argument, 0, OPT_FR_SBR_INVF_HYST },
+        { "sbr-invf-sbr-thr",    required_argument, 0, OPT_FR_SBR_INVF_SBR_THR },
+        { "sbr-invf-orig-thr",   required_argument, 0, OPT_FR_SBR_INVF_ORIG_THR },
+        { "sbr-invf-smooth",     required_argument, 0, OPT_FR_SBR_INVF_SMOOTH },
+        { "sbr-nf-weight",       required_argument, 0, OPT_FR_SBR_NF_WEIGHT },
+        { "sbr-nf-weight-from",  required_argument, 0, OPT_FR_SBR_NF_WFROM },
+        { "sbr-nf-smooth",       required_argument, 0, OPT_FR_SBR_NF_SMOOTH },
+        { "sbr-softness",        required_argument, 0, OPT_FR_SBR_SOFTNESS },
         { "ps-ipd",              required_argument, 0, OPT_FR_PS_IPD            },
         { "ps-opd",              required_argument, 0, OPT_FR_PS_OPD            },
         { "is-lo",               required_argument, 0, OPT_FR_IS_BAND_LO        },
@@ -792,6 +854,18 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
     params->fr_sbr_mh_maxcomp = -1;
     params->fr_sbr_mh_deltatime = -1;
     params->fr_sbr_noise_max = -1;
+    params->fr_sbr_invf_min = -1;
+    params->fr_sbr_invf_max = -1;
+    params->fr_sbr_invf_bias = AACENC_FRANKEN_OFF;
+    params->fr_sbr_invf_table = -1;
+    params->fr_sbr_invf_hyst = -1;
+    params->fr_sbr_invf_sbr_thr = AACENC_FRANKEN_OFF;
+    params->fr_sbr_invf_orig_thr = AACENC_FRANKEN_OFF;
+    params->fr_sbr_invf_smooth = -1;
+    params->fr_sbr_nf_weight = -1;
+    params->fr_sbr_nf_weight_from = -1;
+    params->fr_sbr_nf_smooth = -1;
+    params->fr_sbr_softness = -1;
     params->fr_ps_ipd = -1;
     params->fr_ps_opd = -1;
     params->fr_is_band_lo = -1;
@@ -1182,6 +1256,42 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
         case OPT_FR_SBR_NOISE_MAX:
             if (sscanf(optarg, "%d", &n) != 1 || !(n==6 || n==3 || n==-3)) { fprintf(stderr, "invalid arg for sbr-noise-max: noise-max (6, 3 or -3)\n"); return -1; }
             params->fr_sbr_noise_max = n; break;
+        case OPT_FR_SBR_INVF_MIN:
+            if (sscanf(optarg, "%d", &n) != 1 || n < 0 || n > 3) { fprintf(stderr, "invalid arg for sbr-invf-min (0..3)\n"); return -1; }
+            params->fr_sbr_invf_min = n; break;
+        case OPT_FR_SBR_INVF_MAX:
+            if (sscanf(optarg, "%d", &n) != 1 || n < 0 || n > 3) { fprintf(stderr, "invalid arg for sbr-invf-max (0..3)\n"); return -1; }
+            params->fr_sbr_invf_max = n; break;
+        case OPT_FR_SBR_INVF_BIAS:
+            if (sscanf(optarg, "%d", &n) != 1 || n < -3 || n > 3) { fprintf(stderr, "invalid arg for sbr-invf-bias (-3..3)\n"); return -1; }
+            params->fr_sbr_invf_bias = (n == 0) ? AACENC_FRANKEN_OFF : n; break;
+        case OPT_FR_SBR_INVF_TABLE:
+            if (sscanf(optarg, "%d", &n) != 1 || n < 0 || n > 1) { fprintf(stderr, "invalid arg for sbr-invf-table (0 music, 1 speech)\n"); return -1; }
+            params->fr_sbr_invf_table = n; break;
+        case OPT_FR_SBR_INVF_HYST:
+            { double dv; if (sscanf(optarg, "%lf", &dv) != 1 || dv < 0.0 || dv > 2.0) { fprintf(stderr, "invalid arg for sbr-invf-hyst (0.0..2.0, 1.0 = stock; above 2 the decision borders overlap)\n"); return -1; }
+              params->fr_sbr_invf_hyst = (int)(dv * 100.0 + 0.5); } break;
+        case OPT_FR_SBR_INVF_SBR_THR:
+            { double dv; if (sscanf(optarg, "%lf", &dv) != 1 || dv < -20.0 || dv > 20.0) { fprintf(stderr, "invalid arg for sbr-invf-sbr-thr (-20.0..20.0)\n"); return -1; }
+              params->fr_sbr_invf_sbr_thr = (int)(dv * 100.0 + (dv<0?-0.5:0.5)); } break;
+        case OPT_FR_SBR_INVF_ORIG_THR:
+            { double dv; if (sscanf(optarg, "%lf", &dv) != 1 || dv < -20.0 || dv > 20.0) { fprintf(stderr, "invalid arg for sbr-invf-orig-thr (-20.0..20.0)\n"); return -1; }
+              params->fr_sbr_invf_orig_thr = (int)(dv * 100.0 + (dv<0?-0.5:0.5)); } break;
+        case OPT_FR_SBR_INVF_SMOOTH:
+            if (sscanf(optarg, "%d", &n) != 1 || n < 0 || n > 2) { fprintf(stderr, "invalid arg for sbr-invf-smooth (0..2, 2 = stock)\n"); return -1; }
+            params->fr_sbr_invf_smooth = n; break;
+        case OPT_FR_SBR_NF_WEIGHT:
+            { double dv; if (sscanf(optarg, "%lf", &dv) != 1 || dv < 0.0 || dv > 1.0) { fprintf(stderr, "invalid arg for sbr-nf-weight (0.0..1.0; music 0.25, speech 1.0)\n"); return -1; }
+              params->fr_sbr_nf_weight = (int)(dv * 1000.0 + 0.5); } break;
+        case OPT_FR_SBR_NF_WFROM:
+            if (sscanf(optarg, "%d", &n) != 1 || n < 1 || n > 3) { fprintf(stderr, "invalid arg for sbr-nf-weight-from (1..3, 3 = stock)\n"); return -1; }
+            params->fr_sbr_nf_weight_from = n; break;
+        case OPT_FR_SBR_NF_SMOOTH:
+            if (sscanf(optarg, "%d", &n) != 1 || n != 0) { fprintf(stderr, "invalid arg for sbr-nf-smooth (only 0 = off)\n"); return -1; }
+            params->fr_sbr_nf_smooth = n; break;
+        case OPT_FR_SBR_SOFTNESS:
+            if (sscanf(optarg, "%d", &n) != 1 || n < 0 || n > 7) { fprintf(stderr, "invalid arg for sbr-softness (0 hard .. 7 soft)\n"); return -1; }
+            params->fr_sbr_softness = n; break;
         case OPT_FR_PS_IPD:
             if (sscanf(optarg, "%d", &n) != 1 || n < 0 || n > 1) { fprintf(stderr, "invalid arg for ps-ipd (0,1)\n"); return -1; }
             params->fr_ps_ipd = n; break;
@@ -1303,16 +1413,18 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
                 params->bitrate, params->bitrate, params->bitrate, params->bitrate,
                 params->bitrate);
 
-    /* SBR floor guard: HE-AAC / HE-AAC v2 (profiles 5/29/...) cannot configure
-     * SBR below ~16 kbps - the encoder would snap up silently (or fail). Warn so
-     * the user is not surprised that -b 8000 under HE-AAC becomes 16 kbps. */
+    /* SBR floor note: stock FDK raises HE-AAC / HE-AAC v2 below the lowest SBR
+     * tuning-table row (16 kbps for 24/48 kHz stereo, 8-12 kbps for mono or
+     * lower rates, 8 kbps for HEv2). That is a table limit, not a format one:
+     * --unlock-bitrate reuses the lowest row and keeps the requested bitrate.
+     * The encoder prints the bitrate it really uses in --verbose. */
     if (params->bitrate > 0 && params->bitrate < 16000 &&
-        (params->profile == 5 || params->profile == 29 ||
-         params->profile == 4 /* SSR-ish */)) {
+        params->fr_unlock_bitrate != 1 &&
+        (params->profile == 5 || params->profile == 29)) {
         fprintf(stderr,
-                "WARNING: HE-AAC (SBR) has a hard ~16 kbps floor; -b %d will be "
-                "raised to 16 kbps. For genuinely lower rates use AAC-LC (-p 2) "
-                "with --unlock-bitrate.\n", params->bitrate);
+                "NOTE: below the lowest SBR tuning row FDK raises -b %d (e.g. to "
+                "16 kbps for 48 kHz stereo HE-AAC). Add --unlock-bitrate to keep "
+                "it (then -b is bits/sec).\n", params->bitrate);
     }
 
     if (params->is_raw) {

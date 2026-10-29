@@ -311,6 +311,18 @@ int aacenc_init(HANDLE_AACENCODER *encoder, const aacenc_param_t *params,
     FR_SET(params->fr_sbr_mh_maxcomp != -1, AACENC_FRANKEN_SBR_MH_MAXCOMP, params->fr_sbr_mh_maxcomp);
     FR_SET(params->fr_sbr_mh_deltatime != -1, AACENC_FRANKEN_SBR_MH_DELTATIME, params->fr_sbr_mh_deltatime);
     FR_SET(params->fr_sbr_noise_max != -1, AACENC_FRANKEN_SBR_NOISE_MAX, params->fr_sbr_noise_max);
+    FR_SET(params->fr_sbr_invf_min != -1, AACENC_FRANKEN_SBR_INVF_MIN, params->fr_sbr_invf_min);
+    FR_SET(params->fr_sbr_invf_max != -1, AACENC_FRANKEN_SBR_INVF_MAX, params->fr_sbr_invf_max);
+    FR_SET(params->fr_sbr_invf_bias != AACENC_FRANKEN_OFF, AACENC_FRANKEN_SBR_INVF_BIAS, params->fr_sbr_invf_bias);
+    FR_SET(params->fr_sbr_invf_table != -1, AACENC_FRANKEN_SBR_INVF_TABLE, params->fr_sbr_invf_table);
+    FR_SET(params->fr_sbr_invf_hyst != -1, AACENC_FRANKEN_SBR_INVF_HYST, params->fr_sbr_invf_hyst);
+    FR_SET(params->fr_sbr_invf_sbr_thr != AACENC_FRANKEN_OFF, AACENC_FRANKEN_SBR_INVF_SBR_THR, params->fr_sbr_invf_sbr_thr);
+    FR_SET(params->fr_sbr_invf_orig_thr != AACENC_FRANKEN_OFF, AACENC_FRANKEN_SBR_INVF_ORIG_THR, params->fr_sbr_invf_orig_thr);
+    FR_SET(params->fr_sbr_invf_smooth != -1, AACENC_FRANKEN_SBR_INVF_SMOOTH, params->fr_sbr_invf_smooth);
+    FR_SET(params->fr_sbr_nf_weight != -1, AACENC_FRANKEN_SBR_NF_WEIGHT, params->fr_sbr_nf_weight);
+    FR_SET(params->fr_sbr_nf_weight_from != -1, AACENC_FRANKEN_SBR_NF_WEIGHT_FROM, params->fr_sbr_nf_weight_from);
+    FR_SET(params->fr_sbr_nf_smooth != -1, AACENC_FRANKEN_SBR_NF_SMOOTH, params->fr_sbr_nf_smooth);
+    FR_SET(params->fr_sbr_softness != -1, AACENC_FRANKEN_SBR_SOFTNESS, params->fr_sbr_softness);
     FR_SET(params->fr_ps_ipd != -1, AACENC_FRANKEN_PS_IPD, params->fr_ps_ipd);
     FR_SET(params->fr_ps_opd != -1, AACENC_FRANKEN_PS_OPD, params->fr_ps_opd);
     FR_SET(params->fr_is_band_lo != -1, AACENC_FRANKEN_IS_BAND_LO, params->fr_is_band_lo);
@@ -612,6 +624,18 @@ int aacenc_init(HANDLE_AACENCODER *encoder, const aacenc_param_t *params,
             if (params->fr_sbr_mh_maxcomp >= 0) { FRV_HDR(); fprintf(stderr, " sbr-mh-maxcomp        : %d raw (50 = stock compensation cap)\n", params->fr_sbr_mh_maxcomp); }
             if (params->fr_sbr_mh_deltatime >= 0) { FRV_HDR(); fprintf(stderr, " sbr-mh-deltatime      : %d raw transient-distance limit\n", params->fr_sbr_mh_deltatime); }
             if (params->fr_sbr_noise_max != -1) { FRV_HDR(); fprintf(stderr, " sbr-noise-max         : %d (6=1.0, 3=0.5, -3=0.125 injected-noise ceiling)\n", params->fr_sbr_noise_max); }
+            if (params->fr_sbr_softness >= 0)   { FRV_HDR(); fprintf(stderr, " sbr-softness          : %d (0 hard .. 2 music .. 4 speech estimators .. 7 soft)\n", params->fr_sbr_softness); }
+            if (params->fr_sbr_invf_min >= 0)   { FRV_HDR(); fprintf(stderr, " sbr-invf-min          : %d (dynamic invf floor)\n", params->fr_sbr_invf_min); }
+            if (params->fr_sbr_invf_max >= 0)   { FRV_HDR(); fprintf(stderr, " sbr-invf-max          : %d (dynamic invf ceiling)\n", params->fr_sbr_invf_max); }
+            if (params->fr_sbr_invf_bias != AACENC_FRANKEN_OFF) { FRV_HDR(); fprintf(stderr, " sbr-invf-bias         : %+d step(s) on every dynamic decision\n", params->fr_sbr_invf_bias); }
+            if (params->fr_sbr_invf_table >= 0) { FRV_HDR(); fprintf(stderr, " sbr-invf-table        : %d (%s decision table, crossover untouched)\n", params->fr_sbr_invf_table, params->fr_sbr_invf_table ? "speech" : "music"); }
+            if (params->fr_sbr_invf_hyst >= 0)  { FRV_HDR(); fprintf(stderr, " sbr-invf-hyst         : %.2f x stock border hysteresis\n", params->fr_sbr_invf_hyst / 100.0); }
+            if (params->fr_sbr_invf_sbr_thr != AACENC_FRANKEN_OFF) { FRV_HDR(); fprintf(stderr, " sbr-invf-sbr-thr      : %+.2f (patched-band borders, + = more invf)\n", params->fr_sbr_invf_sbr_thr / 100.0); }
+            if (params->fr_sbr_invf_orig_thr != AACENC_FRANKEN_OFF) { FRV_HDR(); fprintf(stderr, " sbr-invf-orig-thr     : %+.2f (original-band borders, + = more invf)\n", params->fr_sbr_invf_orig_thr / 100.0); }
+            if (params->fr_sbr_invf_smooth >= 0) { FRV_HDR(); fprintf(stderr, " sbr-invf-smooth       : %d frame(s) of history (2 = stock)\n", params->fr_sbr_invf_smooth); }
+            if (params->fr_sbr_nf_weight >= 0)  { FRV_HDR(); fprintf(stderr, " sbr-nf-weight         : %.3f (music 0.25, speech 1.0)\n", params->fr_sbr_nf_weight / 1000.0); }
+            if (params->fr_sbr_nf_weight_from >= 0) { FRV_HDR(); fprintf(stderr, " sbr-nf-weight-from    : invf level %d and up (3 = stock, HIGH only)\n", params->fr_sbr_nf_weight_from); }
+            if (params->fr_sbr_nf_smooth == 0)  { FRV_HDR(); fprintf(stderr, " sbr-nf-smooth         : 0 (no time smoothing of the noise floor)\n"); }
             if (!any) fprintf(stderr, "--- franken overrides applied: none (stock FDK behaviour) ---\n");
             #undef FRV_HDR
         }

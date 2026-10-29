@@ -268,6 +268,31 @@ typedef struct FRANKEN_CFG {
                              the level of noise SBR may inject (1.0 / 0.5 / 0.125). This is
                              the "air vs hiss" limit in the high band. */
 
+  /* ---- 21. SBR inverse-filtering and noise-floor estimators ----
+   * The invf estimator stays DYNAMIC (decided per band and frame from the
+   * tonality of the original vs the patched band); these knobs only bound,
+   * bias or re-weight it. --sbr-invf (forced level) still wins over all of
+   * them. Every field has a sentinel = stock behaviour. */
+  int sbrInvfMin;         /* -1 off; else lowest invf level the estimator may pick (0..3). */
+  int sbrInvfMax;         /* -1 off; else highest invf level the estimator may pick (0..3). */
+  int sbrInvfBias;        /* FRANKEN_OFF off; else integer shift of every dynamic decision
+                             (-3..3), applied before the min/max clamp. + = more whitening. */
+  int sbrInvfTable;       /* -1 off (follows --speech); 0 = music decision table,
+                             1 = speech decision table. Crossover is NOT touched. */
+  int sbrInvfHystX100;    /* -1 off (100 = stock); hysteresis of the region borders x100. */
+  int sbrInvfSbrThrX100;  /* FRANKEN_OFF off; shift of the PATCHED-band tonality borders,
+                             estimator units x100 (1 unit ~ 0.9 dB of tonality). */
+  int sbrInvfOrigThrX100; /* FRANKEN_OFF off; same for the ORIGINAL-band borders. */
+  int sbrInvfSmooth;      /* -1 off (2 = stock); 0..2 = frames averaged by the estimator. */
+  int sbrNfWeightX1000;   /* -1 off (follows --speech: 250 music, 1000 speech); 0..1000 =
+                             weight of the orig-vs-SBR tonality difference in the noise
+                             floor (weightFac). */
+  int sbrNfWeightFrom;    /* -1 off (stock: weighting only in invf HIGH bands); 1..3 =
+                             lowest invf level whose bands get the weighting. */
+  int sbrNfSmooth;        /* -1 off (stock smoothing over 4 frames); 0 = no smoothing. */
+  int sbrSoftness;        /* -1 off; 0..7 single "metallic <-> soft" macro that sets the
+                             table/bias/weight above. Explicit knobs win over it. */
+
   /* ---- Read-back: effective values chosen by the encoder (for --verbose) ----
    * Populated by the encoder during init regardless of overrides. -1 = unknown. */
   int effSbrActive;
@@ -293,6 +318,19 @@ extern "C" {
 #endif
 extern FRANKEN_CFG g_franken;
 void frankenResetDefaults(void);
+/* Effective SBR estimator settings after resolving --sbr-softness and the
+ * explicit knobs (explicit wins). stockSpeech = 1 when the encoder runs the
+ * speech tuning. Return values: table 0/1; bias -3..3; min/max -1 = none;
+ * weight x1000 or -1 = stock; weightFrom 1..3 or -1 = stock. */
+int frankenEffInvfTable(int stockSpeech);
+int frankenEffInvfBias(void);
+int frankenEffInvfMin(void);
+int frankenEffInvfMax(void);
+int frankenEffNfWeightX1000(int stockSpeech);
+int frankenEffNfWeightFrom(void);
+int frankenEffInvfSbrThrX100(void);  /* FRANKEN_OFF = no shift */
+int frankenEffInvfOrigThrX100(void); /* FRANKEN_OFF = no shift */
+int frankenEffNoiseMax(void); /* 0 = tuning table, else 6/3/-3 */
 #ifdef __cplusplus
 }
 #endif

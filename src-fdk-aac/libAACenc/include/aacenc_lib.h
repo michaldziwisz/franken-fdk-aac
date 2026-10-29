@@ -1603,6 +1603,18 @@ typedef enum {
   AACENC_FRANKEN_PS_IPD = 0xF069,         /*!< 1 = compute and transmit PS IPD (phase); -1/0 = off (stock). */
   AACENC_FRANKEN_PS_OPD = 0xF06A,         /*!< 0 = force OPD to zero while IPD is on (-1 = compute it). */
   AACENC_FRANKEN_SBR_HEADER_TIME = 0xF06B, /*!< SBR header interval in ms, uncapped (-1 off). */
+  AACENC_FRANKEN_SBR_INVF_MIN = 0xF06D,    /*!< Lowest dynamic invf level 0..3 (-1 off). */
+  AACENC_FRANKEN_SBR_INVF_MAX = 0xF06E,    /*!< Highest dynamic invf level 0..3 (-1 off). */
+  AACENC_FRANKEN_SBR_INVF_BIAS = 0xF06F,   /*!< Shift of the dynamic invf decision -3..3 (AACENC_FRANKEN_OFF off). */
+  AACENC_FRANKEN_SBR_INVF_TABLE = 0xF070,  /*!< invf decision table 0 music / 1 speech (-1 = follows --speech). */
+  AACENC_FRANKEN_SBR_INVF_HYST = 0xF071,   /*!< invf region hysteresis x100 (-1 off, 100 stock). */
+  AACENC_FRANKEN_SBR_INVF_SBR_THR = 0xF072, /*!< Patched-band tonality border shift, units x100 (AACENC_FRANKEN_OFF off). */
+  AACENC_FRANKEN_SBR_INVF_ORIG_THR = 0xF073,/*!< Original-band tonality border shift, units x100 (AACENC_FRANKEN_OFF off). */
+  AACENC_FRANKEN_SBR_INVF_SMOOTH = 0xF074, /*!< invf estimator time smoothing 0..2 frames (-1 off, 2 stock). */
+  AACENC_FRANKEN_SBR_NF_WEIGHT = 0xF075,   /*!< Noise-floor tonality weight x1000, 0..1000 (-1 = follows --speech). */
+  AACENC_FRANKEN_SBR_NF_WEIGHT_FROM = 0xF076, /*!< Lowest invf level whose bands get the weight, 1..3 (-1 = stock 3). */
+  AACENC_FRANKEN_SBR_NF_SMOOTH = 0xF077,   /*!< Noise-floor time smoothing: 0 none (-1 = stock 4 frames). */
+  AACENC_FRANKEN_SBR_SOFTNESS = 0xF078,    /*!< SBR estimator macro 0 hard .. 7 soft (-1 off). */
   AACENC_FRANKEN_VERBOSE = 0xF016,     /*!< Verbose init dump 0/1. */
 
   /* Read-only (GetParam) mirrors of internal encoder-chosen values, for --verbose. */

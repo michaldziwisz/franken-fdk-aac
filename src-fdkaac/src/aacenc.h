@@ -82,6 +82,18 @@
     int fr_sbr_mh_maxcomp; \
     int fr_sbr_mh_deltatime; \
     int fr_sbr_noise_max; \
+    int fr_sbr_invf_min; \
+    int fr_sbr_invf_max; \
+    int fr_sbr_invf_bias; \
+    int fr_sbr_invf_table; \
+    int fr_sbr_invf_hyst; \
+    int fr_sbr_invf_sbr_thr; \
+    int fr_sbr_invf_orig_thr; \
+    int fr_sbr_invf_smooth; \
+    int fr_sbr_nf_weight; \
+    int fr_sbr_nf_weight_from; \
+    int fr_sbr_nf_smooth; \
+    int fr_sbr_softness; \
     int fr_ps_ipd; \
     int fr_ps_opd; \
     int fr_is_band_lo; \
