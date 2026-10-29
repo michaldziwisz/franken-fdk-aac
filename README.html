@@ -513,7 +513,8 @@ from the side end). Kept for completeness. 256=off.</td>
 </tr>
 <tr class="odd">
 <td><code>--side-bias &lt;dB&gt;</code></td>
-<td>-24.0 .. +50.0</td>
+<td>-24.0 .. +50.0, up to 3 decimals, <code>.</code> or
+<code>,</code></td>
 <td>0 (off)</td>
 <td><strong>The main stereo-quality knob.</strong> Shifts the SIDE (L−R)
 channel's masking threshold on MS-coded bands, at the exact point where
@@ -536,7 +537,7 @@ side error in the 4–8 kHz region while mid degrades a few dB. 0 = off
 </tr>
 <tr class="even">
 <td><code>--side-knee &lt;dB&gt;</code></td>
-<td>-24.0 .. +50.0</td>
+<td>-24.0 .. +50.0, up to 3 decimals</td>
 <td>0 (off)</td>
 <td>Shapes HOW SHARPLY a side band flips between "coded" and "zeroed" at
 the threshold. Stock FDK is a hard cliff: the instant
@@ -553,7 +554,7 @@ cutting the side off early — leaner, more aggressive. Ortogonal to
 </tr>
 <tr class="odd">
 <td><code>--mask-slope &lt;dB&gt;</code></td>
-<td>-24.0 .. +50.0</td>
+<td>-24.0 .. +50.0, up to 3 decimals</td>
 <td>0 (off)</td>
 <td>Global (mid <strong>and</strong> side) tuning of FDK's
 <strong>Masking-Slope-Adaptation</strong> — a NON-masking heuristic
@@ -641,6 +642,27 @@ only a panning coefficient survives). The stream stays legal.</td>
 </tr>
 </tbody>
 </table>
+<p>DECIMALS in <code>--side-bias</code>, <code>--side-knee</code> and
+<code>--mask-slope</code> (fixed in this version): they used to be read
+with a parser that stopped at a comma, so <code>-0,23</code> became
+<code>-0</code> (knob off) and <code>-1,5</code> became <code>-1</code>,
+and the value was stored in tenths of a dB. Now all decimal switches
+accept <code>.</code> or <code>,</code>, keep 3 decimal places (rounded
+half away from zero), reject anything else (<code>1e1</code>,
+<code>nan</code>, <code>1.2.3</code>, <code>3x</code>, spaces) with an
+error, and check the range on the rounded value, so what is accepted is
+exactly what the encoder gets. Whole-number switches are strict too
+(<code>--block-bias 128,5</code> is an error instead of 128).</p>
+<p>Measured on dense stereo at 40 kbps: <code>--side-bias</code> now
+changes the side error continuously from 0 to -0.95 dB (-1.13 -&gt;
+-0.92 dB side error). At about -0.97 dB there is a real step (-0.92
+-&gt; -0.31 dB): there the raised side threshold crosses the -0.97 dB
+minimum-SNR line of the avoid-holes logic (<code>SnrLdFac</code> = 0.8
+in <code>adj_thr.cpp</code>) and most side bands are dropped at once.
+Below that, more negative values change nothing more, because the side
+is already gone. So the jump at -1 that was heard is real and comes from
+the encoder, not from rounding; the values in between now really
+work.</p>
 <h3
 id="intensity-stereo-in-practice-how-to-use-it-not-the-formulas">Intensity
 stereo in practice (how to use it, not the formulas)</h3>
@@ -1720,6 +1742,157 @@ SFB/grouping -&gt; decoders rejected it, Winamp "skipped like on a
 scratched disc"). If you want maximum long blocks:
 <code>--block-bias 0</code>; maximum short:
 <code>--block-bias 255</code>.</p>
+<h3
+id="7b-core-transients-pre-echo-and-spectral-holes-lc--ld--eld-core">7b.
+Core transients, pre-echo and spectral holes (LC / LD / ELD core)</h3>
+<p>These knobs reach the AAC core itself, below SBR. They matter most
+where the core is starved: LC stereo 24..50 kbps with a bandwidth forced
+well above normal (<code>-w 16000..20000</code>). Each one is off by
+default and gives a stream byte-identical to stock when unset. All
+streams were checked with the Fraunhofer decoder and ffmpeg (0 errors in
+396 extreme-value encodes across LC, HE-AAC, LD and ELD).</p>
+<table>
+<thead>
+<tr class="header">
+<th>Switch</th>
+<th>Values</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>--hole-ladder &lt;1..8&gt;</code></td>
+<td>1..8</td>
+<td>-1 (stock 8)</td>
+<td><strong>The strongest lever against holes.</strong> When a frame
+cannot afford all bands, FDK cuts bands to zero in 8 energy steps, from
+the quietest upwards, until the bit budget fits. With fewer steps only
+the quietest bands may be cut, and the rest of the budget problem is
+solved by coarser quantisation instead of more zeroed bands. Measured on
+dense wideband material: at 32 kbps / 17 kHz zeroed bands drop from
+<strong>37% to 8%</strong> (<code>2</code>), at 40 kbps / 18 kHz from
+37% to 1.7%, at 50 kbps / 19 kHz from 35% to 0.2%. The price is a little
+more noise in the bands that remain (error-to-signal ratio 0.3..0.5 dB
+worse): fewer holes, slightly grainier fill. <code>2</code> is a good
+start, <code>1</code> is the extreme.</td>
+</tr>
+<tr class="even">
+<td><code>--avoid-holes &lt;0|1&gt;</code></td>
+<td>0, 1</td>
+<td>-1 (stock)</td>
+<td>The peak/valley shaping that keeps narrow loud bands from being
+zeroed. Stock switches it OFF below 20 kbps <strong>per
+channel</strong>, i.e. below 40 kbps <strong>stereo</strong>, right
+inside the 24..50 kbps range. <code>1</code> forces it on,
+<code>0</code> off. Alone it changes little (measured), but it helps
+together with <code>--hole-ladder</code>.</td>
+</tr>
+<tr class="odd">
+<td><code>--hole-start &lt;sfb&gt;</code></td>
+<td>0..51</td>
+<td>-1 (stock 15, 0 when holes are off)</td>
+<td>First long-block scalefactor band where bands may be cut to zero at
+all. Higher = the lower spectrum is protected (measured: <code>25</code>
+cuts holes from 37% to 26% at 32 kbps). Lower = holes allowed
+deeper.</td>
+</tr>
+<tr class="even">
+<td><code>--hole-start-short &lt;sfb&gt;</code></td>
+<td>0..15</td>
+<td>-1 (stock 3)</td>
+<td>The same for short blocks.</td>
+</tr>
+<tr class="odd">
+<td><code>--hole-spread &lt;dB&gt;</code></td>
+<td>0.0..24.0</td>
+<td>-1 (stock 3.0 long, 2.0 short)</td>
+<td>How much the neighbour (spread) energy is lowered before a band
+counts as covered by its neighbours and so as a safe hole. Higher =
+fewer bands look covered. A fine knob: effects of 1..2% of bands.</td>
+</tr>
+<tr class="even">
+<td><code>--preecho-rise &lt;dB&gt;</code></td>
+<td>0.0..24.0</td>
+<td>-1 (stock 3.01)</td>
+<td>Pre-echo control inside LONG blocks: how far a band's masking
+threshold may rise from one frame to the next. Lower = the quantisation
+noise cannot run ahead of an attack that a long block has to carry.
+Above 3.01 = looser. Effect measured as small (tenths of a dB of
+pre-echo energy): the attack detector usually sends real attacks to
+short blocks first. Most useful with <code>--block-bias</code> low and
+in LD/ELD, which have no short blocks.</td>
+</tr>
+<tr class="odd">
+<td><code>--preecho-depth &lt;dB&gt;</code></td>
+<td>0.0..60.0</td>
+<td>-1 (stock 20.0)</td>
+<td>How far pre-echo control may lower a threshold at most. Pairs with
+<code>--preecho-rise</code>.</td>
+</tr>
+<tr class="even">
+<td><code>--attack-decay &lt;x&gt;</code></td>
+<td>0.0..0.99</td>
+<td>-1 (stock 0.70)</td>
+<td>Memory of the attack detector that decides between long and short
+blocks: share of the running energy kept per sub-window. Higher = the
+attack is compared with a longer average (measured <code>0.9</code>:
+worst-case pre-echo 2.9 dB lower on castanet-like clicks). Lower =
+compared with the very last moment.</td>
+</tr>
+<tr class="odd">
+<td><code>--attack-floor &lt;dB&gt;</code></td>
+<td>-60.0..30.0</td>
+<td>-1 (0 = stock)</td>
+<td>Shift of the minimum energy an attack must have. <code>-</code> =
+quiet attacks (brushes, soft hi-hats) also switch to short blocks;
+<code>+</code> = only loud ones.</td>
+</tr>
+<tr class="even">
+<td><code>--tns-thresh &lt;x&gt;</code></td>
+<td>0.5..4.0</td>
+<td>-1 (stock 1.0)</td>
+<td>Multiplier on the prediction gain TNS needs to switch on. Below 1
+TNS shapes noise in time on more frames; above 1 more rarely. Measured
+trade-off: <code>0.7</code> spends bits on TNS side info and leaves more
+holes at low bitrate, <code>2.0</code> the reverse. In LD/ELD TNS is the
+main tool against pre-echo.</td>
+</tr>
+<tr class="odd">
+<td><code>--tns-start &lt;Hz&gt;</code></td>
+<td>0..24000</td>
+<td>-1 (stock ~1.4 kHz @48k)</td>
+<td>Lowest frequency of the lower TNS filter in long blocks (LC). Lower
+= TNS also shapes the mids.</td>
+</tr>
+<tr class="even">
+<td><code>--window-shape &lt;0|1&gt;</code></td>
+<td>0, 1</td>
+<td>-1 (stock)</td>
+<td>AAC-LC window: <code>0</code> sine for every block, <code>1</code>
+KBD for every block (stock: KBD long, sine short). One bit per frame,
+legal everywhere in LC. <strong>Measured: <code>1</code> lowers pre-echo
+by 3.4..6.1 dB on the mean and 1.2..6.6 dB in the worst case</strong> at
+24, 40 and 128 kbps (the short blocks then use KBD, whose side lobes
+fall off much faster, so less noise leaks ahead of the attack). Read
+from the bitstream: the window_shape bit really is 1 in every
+frame.</td>
+</tr>
+<tr class="odd">
+<td><code>--short-groups &lt;0..3&gt;</code></td>
+<td>0..3</td>
+<td>-1 (stock table)</td>
+<td>How the 8 short windows of a transient frame are grouped (one
+scalefactor set per group). <code>1</code> one group (cheapest, noise
+spread over the whole frame), <code>2</code> four pairs (even time
+resolution, measured: fewest holes in short frames), <code>3</code>
+tight around the attack (most bits where the attack is). <code>0</code>
+= stock table.</td>
+</tr>
+</tbody>
+</table>
+<p>Starting point for 24..50 kbps LC stereo with a wide band:</p>
+<pre><code>fdkaac-franken-x64.exe -p 2 -b 32000 -w 17000 --hole-ladder 2 --avoid-holes 1 --window-shape 1 -o out.m4a in.wav</code></pre>
 <h2 id="8-ms-decision-bias-honestly-a-tool-with-a-weak-effect">8. MS
 decision bias (honestly: a tool with a WEAK effect)</h2>
 <table>
@@ -2651,23 +2824,23 @@ libfdk are wired through a single module
 <code>g_franken</code> block, sentinels = FDK defaults), and the new
 <code>AACENC_PARAM</code>s (range <code>0xF0xx</code>) are exposed in
 <code>aacenc_lib.h</code>.</p>
-<div class="sourceCode" id="cb7"><pre
-class="sourceCode bash"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> apt-get install <span class="at">-y</span> mingw-w64          <span class="co"># + autotools (autoconf/automake/libtool)</span></span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="co"># --- libfdk-aac (x64) ---</span></span>
-<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> src-fdk-aac <span class="kw">&amp;&amp;</span> <span class="ex">autoreconf</span> <span class="at">-i</span></span>
-<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="ex">./configure</span> <span class="at">--host</span><span class="op">=</span>x86_64-w64-mingw32 <span class="at">--prefix</span><span class="op">=</span><span class="va">$PWD</span>/../inst-x64 <span class="dt">\</span></span>
-<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">--enable-static</span> <span class="at">--disable-shared</span> CFLAGS=-O2 CXXFLAGS=-O2</span>
-<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> <span class="at">-j</span> <span class="kw">&amp;&amp;</span> <span class="fu">make</span> install</span>
-<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a><span class="co"># --- frontend (x64) ---</span></span>
-<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> ../src-fdkaac <span class="kw">&amp;&amp;</span> <span class="ex">autoreconf</span> <span class="at">-i</span></span>
-<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a><span class="va">PKG_CONFIG_PATH</span><span class="op">=</span><span class="va">$PWD</span>/../inst-x64/lib/pkgconfig <span class="ex">./configure</span> <span class="dt">\</span></span>
-<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">--host</span><span class="op">=</span>x86_64-w64-mingw32 CFLAGS=<span class="st">&quot;-O2 -I</span><span class="va">$PWD</span><span class="st">/../inst-x64/include&quot;</span> <span class="dt">\</span></span>
-<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>    LDFLAGS=<span class="st">&quot;-static -static-libgcc -L</span><span class="va">$PWD</span><span class="st">/../inst-x64/lib&quot;</span></span>
-<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> <span class="at">-j</span>     <span class="co"># -&gt; fdkaac.exe</span></span>
-<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a><span class="co"># x86: the same with --host=i686-w64-mingw32 and a separate inst-x86 prefix.</span></span></code></pre></div>
+<div class="sourceCode" id="cb8"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> apt-get install <span class="at">-y</span> mingw-w64          <span class="co"># + autotools (autoconf/automake/libtool)</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="co"># --- libfdk-aac (x64) ---</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> src-fdk-aac <span class="kw">&amp;&amp;</span> <span class="ex">autoreconf</span> <span class="at">-i</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="ex">./configure</span> <span class="at">--host</span><span class="op">=</span>x86_64-w64-mingw32 <span class="at">--prefix</span><span class="op">=</span><span class="va">$PWD</span>/../inst-x64 <span class="dt">\</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">--enable-static</span> <span class="at">--disable-shared</span> CFLAGS=-O2 CXXFLAGS=-O2</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> <span class="at">-j</span> <span class="kw">&amp;&amp;</span> <span class="fu">make</span> install</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a><span class="co"># --- frontend (x64) ---</span></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> ../src-fdkaac <span class="kw">&amp;&amp;</span> <span class="ex">autoreconf</span> <span class="at">-i</span></span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a><span class="va">PKG_CONFIG_PATH</span><span class="op">=</span><span class="va">$PWD</span>/../inst-x64/lib/pkgconfig <span class="ex">./configure</span> <span class="dt">\</span></span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">--host</span><span class="op">=</span>x86_64-w64-mingw32 CFLAGS=<span class="st">&quot;-O2 -I</span><span class="va">$PWD</span><span class="st">/../inst-x64/include&quot;</span> <span class="dt">\</span></span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>    LDFLAGS=<span class="st">&quot;-static -static-libgcc -L</span><span class="va">$PWD</span><span class="st">/../inst-x64/lib&quot;</span></span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> <span class="at">-j</span>     <span class="co"># -&gt; fdkaac.exe</span></span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a><span class="co"># x86: the same with --host=i686-w64-mingw32 and a separate inst-x86 prefix.</span></span></code></pre></div>
 <h2 id="list-of-changed-fdk-files-mapped-to-points">List of changed FDK
 files (mapped to points)</h2>
 <ul>
@@ -2872,7 +3045,8 @@ po ten sam budzet od strony side). Zostawiony dla kompletności.
 </tr>
 <tr class="odd">
 <td><code>--side-bias &lt;dB&gt;</code></td>
-<td>-24.0 .. +50.0</td>
+<td>-24,0 .. +50,0, do 3 miejsc po przecinku, <code>.</code> lub
+<code>,</code></td>
 <td>0 (off)</td>
 <td><strong>Główne pokrętło jakości stereo.</strong> Przesuwa prog
 maskowania kanału SIDE (L−R) na pasmach kodowanych w MS, dokładnie w
@@ -2893,7 +3067,7 @@ skrajnego/artystycznego niszczenia przy niskim bitrate. 0 = off
 </tr>
 <tr class="even">
 <td><code>--side-knee &lt;dB&gt;</code></td>
-<td>-24.0 .. +50.0</td>
+<td>-24,0 .. +50,0, do 3 miejsc</td>
 <td>0 (off)</td>
 <td>Kształtuje JAK OSTRO pasmo side przełącza się między „kodowane" a
 „wyzerowane" na progu. Stock FDK to twardy klif: w chwili gdy
@@ -2910,7 +3084,7 @@ odcinając side wcześniej — chudziej, agresywniej. Ortogonalny do
 </tr>
 <tr class="odd">
 <td><code>--mask-slope &lt;dB&gt;</code></td>
-<td>-24.0 .. +50.0</td>
+<td>-24,0 .. +50,0, do 3 miejsc</td>
 <td>0 (off)</td>
 <td>Globalne (mid <strong>i</strong> side) strojenie
 <strong>Masking-Slope-Adaptation</strong> FDK — heurystyki
@@ -3000,6 +3174,27 @@ zostaje tylko współczynnik panoramy). Strumien pozostaje legalny.</td>
 </tr>
 </tbody>
 </table>
+<p>UŁAMKI w <code>--side-bias</code>, <code>--side-knee</code> i
+<code>--mask-slope</code> (naprawione w tej wersji): dawniej czytał je
+parser, który zatrzymywał się na przecinku, więc <code>-0,23</code>
+stawało się <code>-0</code> (pokrętło wyłączone), a <code>-1,5</code>
+stawało się <code>-1</code>; do tego wartość trzymana była w dziesiątych
+częściach dB. Teraz wszystkie przełączniki dziesiętne przyjmują
+<code>.</code> lub <code>,</code>, zachowują 3 miejsca po przecinku
+(zaokrąglenie połówek od zera), wszystko inne (<code>1e1</code>,
+<code>nan</code>, <code>1.2.3</code>, <code>3x</code>, spacje) odrzucają
+błędem, a zakres sprawdzają na wartości PO zaokrągleniu, więc przyjęte
+jest dokładnie to, co trafia do enkodera. Przełączniki całkowite też są
+ścisłe (<code>--block-bias 128,5</code> to błąd, a nie 128).</p>
+<p>Zmierzone na gęstym stereo przy 40 kbps: <code>--side-bias</code>
+zmienia teraz błąd kanału side płynnie od 0 do -0,95 dB (-1,13 -&gt;
+-0,92 dB błędu side). Przy około -0,97 dB jest prawdziwy skok (-0,92
+-&gt; -0,31 dB): tam podniesiony próg side przecina linię minimalnego
+SNR -0,97 dB w logice unikania dziur (<code>SnrLdFac</code> = 0,8 w
+<code>adj_thr.cpp</code>) i większość pasm side wypada naraz. Dalsze
+ujemne wartości nic już nie zmieniają, bo side jest już wycięty.
+Słyszalny skok przy -1 jest więc prawdziwy i pochodzi z enkodera, nie z
+zaokrąglania; wartości pośrednie teraz faktycznie działają.</p>
 <h3 id="intensity-stereo-w-praktyce-jak-tego-używać-nie-wzory">Intensity
 stereo w praktyce (jak tego używać, nie wzory)</h3>
 <p>Co to jest: intensity stereo (IS) w górnych pasmach porzuca osobne
@@ -4069,6 +4264,160 @@ przeliczenia SFB/grupowania -&gt; dekoder odrzucał, Winamp "skakał jak
 po porysowanej płycie"). Jesli chcesz maksimum długich:
 <code>--block-bias 0</code>; maksimum krótkich:
 <code>--block-bias 255</code>.</p>
+<h3
+id="7b-transjenty-rdzenia-pre-echo-i-dziury-w-widmie-rdzeń-lc--ld--eld">7b.
+Transjenty rdzenia, pre-echo i dziury w widmie (rdzeń LC / LD /
+ELD)</h3>
+<p>Te pokrętła sięgają samego rdzenia AAC, pod SBR. Najwięcej dają tam,
+gdzie rdzeń głoduje: LC stereo 24..50 kbps z pasmem wymuszonym wyraźnie
+ponad normę (<code>-w 16000..20000</code>). Każde jest domyślnie
+wyłączone i bez ustawienia daje strumień bajt w bajt identyczny ze
+stockiem. Strumienie sprawdziliśmy dekoderem Fraunhofera i ffmpeg (0
+błędów w 396 kodowaniach skrajnych wartości w LC, HE-AAC, LD i ELD).</p>
+<table>
+<thead>
+<tr class="header">
+<th>Przełącznik</th>
+<th>Wartości</th>
+<th>Domyślnie</th>
+<th>Opis</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>--hole-ladder &lt;1..8&gt;</code></td>
+<td>1..8</td>
+<td>-1 (stock 8)</td>
+<td><strong>Najsilniejsza dźwignia przeciw dziurom.</strong> Gdy ramki
+nie stać na wszystkie pasma, FDK zeruje pasma w 8 krokach energii, od
+najcichszych w górę, aż budżet bitów się zmieści. Przy mniejszej liczbie
+kroków wolno zerować tylko najcichsze pasma, a resztę problemu z
+budżetem rozwiązuje grubsza kwantyzacja zamiast kolejnych wyzerowanych
+pasm. Zmierzone na gęstym, szerokopasmowym materiale: przy 32 kbps / 17
+kHz wyzerowanych pasm ubywa <strong>z 37% do 8%</strong>
+(<code>2</code>), przy 40 kbps / 18 kHz z 37% do 1,7%, przy 50 kbps / 19
+kHz z 35% do 0,2%. Cena to trochę więcej szumu w pasmach, które zostają
+(stosunek błędu do sygnału gorszy o 0,3..0,5 dB): mniej dziur, nieco
+bardziej ziarniste wypełnienie. <code>2</code> to dobry start,
+<code>1</code> to skrajność.</td>
+</tr>
+<tr class="even">
+<td><code>--avoid-holes &lt;0|1&gt;</code></td>
+<td>0, 1</td>
+<td>-1 (stock)</td>
+<td>Kształtowanie szczytów i dolin, które chroni wąskie głośne pasma
+przed wyzerowaniem. Stock wyłącza je poniżej 20 kbps <strong>na
+kanał</strong>, czyli poniżej 40 kbps <strong>stereo</strong>, w samym
+środku zakresu 24..50 kbps. <code>1</code> wymusza włączenie,
+<code>0</code> wyłączenie. Samo zmienia niewiele (zmierzone), pomaga
+razem z <code>--hole-ladder</code>.</td>
+</tr>
+<tr class="odd">
+<td><code>--hole-start &lt;sfb&gt;</code></td>
+<td>0..51</td>
+<td>-1 (stock 15, 0 gdy ochrona wyłączona)</td>
+<td>Pierwsze pasmo współczynnika skali bloku long, w którym w ogóle
+wolno zerować. Wyżej = dolne widmo chronione (zmierzone: <code>25</code>
+zmniejsza dziury z 37% do 26% przy 32 kbps). Niżej = dziury dozwolone
+głębiej.</td>
+</tr>
+<tr class="even">
+<td><code>--hole-start-short &lt;sfb&gt;</code></td>
+<td>0..15</td>
+<td>-1 (stock 3)</td>
+<td>To samo dla bloków short.</td>
+</tr>
+<tr class="odd">
+<td><code>--hole-spread &lt;dB&gt;</code></td>
+<td>0,0..24,0</td>
+<td>-1 (stock 3,0 long, 2,0 short)</td>
+<td>O ile obniżana jest energia sąsiadów, zanim pasmo uznamy za
+przykryte przez sąsiadów, czyli za bezpieczną dziurę. Wyżej = mniej pasm
+wygląda na przykryte. Pokrętło precyzyjne: efekty rzędu 1..2% pasm.</td>
+</tr>
+<tr class="even">
+<td><code>--preecho-rise &lt;dB&gt;</code></td>
+<td>0,0..24,0</td>
+<td>-1 (stock 3,01)</td>
+<td>Kontrola pre-echa w blokach LONG: o ile próg maskowania pasma może
+urosnąć z ramki na ramkę. Niżej = szum kwantyzacji nie wyprzedzi ataku,
+który musi unieść blok long. Powyżej 3,01 = luźniej. Efekt zmierzony
+jako mały (dziesiąte części dB energii pre-echa): detektor ataków zwykle
+wcześniej kieruje prawdziwe ataki do bloków short. Najbardziej przydatne
+przy niskim <code>--block-bias</code> oraz w LD i ELD, które bloków
+short nie mają.</td>
+</tr>
+<tr class="odd">
+<td><code>--preecho-depth &lt;dB&gt;</code></td>
+<td>0,0..60,0</td>
+<td>-1 (stock 20,0)</td>
+<td>Jak głęboko kontrola pre-echa może co najwyżej obniżyć próg. W parze
+z <code>--preecho-rise</code>.</td>
+</tr>
+<tr class="even">
+<td><code>--attack-decay &lt;x&gt;</code></td>
+<td>0,0..0,99</td>
+<td>-1 (stock 0,70)</td>
+<td>Pamięć detektora ataków, który wybiera między blokami long i short:
+jaka część bieżącej energii zostaje na każde podokno. Wyżej = atak
+porównywany z dłuższą średnią (zmierzone <code>0,9</code>: najgorszy
+przypadek pre-echa niższy o 2,9 dB na kliknięciach podobnych do
+kastanietów). Niżej = porównanie z ostatnią chwilą.</td>
+</tr>
+<tr class="odd">
+<td><code>--attack-floor &lt;dB&gt;</code></td>
+<td>-60,0..30,0</td>
+<td>-1 (0 = stock)</td>
+<td>Przesunięcie minimalnej energii ataku. <code>-</code> = ciche ataki
+(szczotki, ciche hi-haty) też przełączają na bloki short; <code>+</code>
+= tylko głośne.</td>
+</tr>
+<tr class="even">
+<td><code>--tns-thresh &lt;x&gt;</code></td>
+<td>0,5..4,0</td>
+<td>-1 (stock 1,0)</td>
+<td>Mnożnik zysku predykcji, którego TNS potrzebuje, by się włączyć.
+Poniżej 1 TNS kształtuje szum w czasie w większej liczbie ramek, powyżej
+1 rzadziej. Zmierzony kompromis: <code>0,7</code> wydaje bity na dane
+poboczne TNS i przy niskim bitrate zostawia więcej dziur,
+<code>2,0</code> odwrotnie. W LD i ELD TNS to główne narzędzie przeciw
+pre-echu.</td>
+</tr>
+<tr class="odd">
+<td><code>--tns-start &lt;Hz&gt;</code></td>
+<td>0..24000</td>
+<td>-1 (stock ok. 1,4 kHz przy 48 kHz)</td>
+<td>Najniższa częstotliwość dolnego filtra TNS w blokach long (LC).
+Niżej = TNS kształtuje też środek pasma.</td>
+</tr>
+<tr class="even">
+<td><code>--window-shape &lt;0|1&gt;</code></td>
+<td>0, 1</td>
+<td>-1 (stock)</td>
+<td>Okno AAC-LC: <code>0</code> sinus dla każdego bloku, <code>1</code>
+KBD dla każdego bloku (stock: KBD dla long, sinus dla short). Jeden bit
+na ramkę, legalny wszędzie w LC. <strong>Zmierzone: <code>1</code>
+obniża pre-echo o 3,4..6,1 dB średnio i o 1,2..6,6 dB w najgorszym
+przypadku</strong> przy 24, 40 i 128 kbps (bloki short używają wtedy
+KBD, którego listki boczne opadają dużo szybciej, więc mniej szumu
+przecieka przed atak). Odczyt z bitstreamu: bit window_shape faktycznie
+wynosi 1 w każdej ramce.</td>
+</tr>
+<tr class="odd">
+<td><code>--short-groups &lt;0..3&gt;</code></td>
+<td>0..3</td>
+<td>-1 (tabela stock)</td>
+<td>Jak grupowane są 8 okien short w ramce z transjentem (jeden zestaw
+współczynników skali na grupę). <code>1</code> jedna grupa (najtaniej,
+szum rozłożony na całą ramkę), <code>2</code> cztery pary (równa
+rozdzielczość czasowa, zmierzone: najmniej dziur w ramkach short),
+<code>3</code> ciasno wokół ataku (najwięcej bitów tam, gdzie atak).
+<code>0</code> = tabela stock.</td>
+</tr>
+</tbody>
+</table>
+<p>Punkt wyjścia dla LC stereo 24..50 kbps z szerokim pasmem:</p>
+<pre><code>fdkaac-franken-x64.exe -p 2 -b 32000 -w 17000 --hole-ladder 2 --avoid-holes 1 --window-shape 1 -o out.m4a in.wav</code></pre>
 <h2 id="8-bias-decyzji-ms-uczciwie-narzędzie-o-słabym-efekcie">8. Bias
 decyzji MS (uczciwie: narzędzie o SŁABYM efekcie)</h2>
 <table>
@@ -4999,23 +5348,23 @@ jeden modul <code>libAACenc/src/franken.{h,cpp}</code> (globalny blok
 <code>g_franken</code>, sentinele = domyślne FDK), a nowe
 <code>AACENC_PARAM</code> (zakres <code>0xF0xx</code>) są wystawione w
 <code>aacenc_lib.h</code>.</p>
-<div class="sourceCode" id="cb14"><pre
-class="sourceCode bash"><code class="sourceCode bash"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> apt-get install <span class="at">-y</span> mingw-w64          <span class="co"># + autotools (autoconf/automake/libtool)</span></span>
-<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a><span class="co"># --- libfdk-aac (x64) ---</span></span>
-<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> src-fdk-aac <span class="kw">&amp;&amp;</span> <span class="ex">autoreconf</span> <span class="at">-i</span></span>
-<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a><span class="ex">./configure</span> <span class="at">--host</span><span class="op">=</span>x86_64-w64-mingw32 <span class="at">--prefix</span><span class="op">=</span><span class="va">$PWD</span>/../inst-x64 <span class="dt">\</span></span>
-<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">--enable-static</span> <span class="at">--disable-shared</span> CFLAGS=-O2 CXXFLAGS=-O2</span>
-<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> <span class="at">-j</span> <span class="kw">&amp;&amp;</span> <span class="fu">make</span> install</span>
-<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a><span class="co"># --- frontend (x64) ---</span></span>
-<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> ../src-fdkaac <span class="kw">&amp;&amp;</span> <span class="ex">autoreconf</span> <span class="at">-i</span></span>
-<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a><span class="va">PKG_CONFIG_PATH</span><span class="op">=</span><span class="va">$PWD</span>/../inst-x64/lib/pkgconfig <span class="ex">./configure</span> <span class="dt">\</span></span>
-<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">--host</span><span class="op">=</span>x86_64-w64-mingw32 CFLAGS=<span class="st">&quot;-O2 -I</span><span class="va">$PWD</span><span class="st">/../inst-x64/include&quot;</span> <span class="dt">\</span></span>
-<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a>    LDFLAGS=<span class="st">&quot;-static -static-libgcc -L</span><span class="va">$PWD</span><span class="st">/../inst-x64/lib&quot;</span></span>
-<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> <span class="at">-j</span>     <span class="co"># -&gt; fdkaac.exe</span></span>
-<span id="cb14-15"><a href="#cb14-15" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb14-16"><a href="#cb14-16" aria-hidden="true" tabindex="-1"></a><span class="co"># x86: to samo z --host=i686-w64-mingw32 i osobnym prefixem inst-x86.</span></span></code></pre></div>
+<div class="sourceCode" id="cb16"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> apt-get install <span class="at">-y</span> mingw-w64          <span class="co"># + autotools (autoconf/automake/libtool)</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a><span class="co"># --- libfdk-aac (x64) ---</span></span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> src-fdk-aac <span class="kw">&amp;&amp;</span> <span class="ex">autoreconf</span> <span class="at">-i</span></span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a><span class="ex">./configure</span> <span class="at">--host</span><span class="op">=</span>x86_64-w64-mingw32 <span class="at">--prefix</span><span class="op">=</span><span class="va">$PWD</span>/../inst-x64 <span class="dt">\</span></span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">--enable-static</span> <span class="at">--disable-shared</span> CFLAGS=-O2 CXXFLAGS=-O2</span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> <span class="at">-j</span> <span class="kw">&amp;&amp;</span> <span class="fu">make</span> install</span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a><span class="co"># --- frontend (x64) ---</span></span>
+<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> ../src-fdkaac <span class="kw">&amp;&amp;</span> <span class="ex">autoreconf</span> <span class="at">-i</span></span>
+<span id="cb16-11"><a href="#cb16-11" aria-hidden="true" tabindex="-1"></a><span class="va">PKG_CONFIG_PATH</span><span class="op">=</span><span class="va">$PWD</span>/../inst-x64/lib/pkgconfig <span class="ex">./configure</span> <span class="dt">\</span></span>
+<span id="cb16-12"><a href="#cb16-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">--host</span><span class="op">=</span>x86_64-w64-mingw32 CFLAGS=<span class="st">&quot;-O2 -I</span><span class="va">$PWD</span><span class="st">/../inst-x64/include&quot;</span> <span class="dt">\</span></span>
+<span id="cb16-13"><a href="#cb16-13" aria-hidden="true" tabindex="-1"></a>    LDFLAGS=<span class="st">&quot;-static -static-libgcc -L</span><span class="va">$PWD</span><span class="st">/../inst-x64/lib&quot;</span></span>
+<span id="cb16-14"><a href="#cb16-14" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> <span class="at">-j</span>     <span class="co"># -&gt; fdkaac.exe</span></span>
+<span id="cb16-15"><a href="#cb16-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-16"><a href="#cb16-16" aria-hidden="true" tabindex="-1"></a><span class="co"># x86: to samo z --host=i686-w64-mingw32 i osobnym prefixem inst-x86.</span></span></code></pre></div>
 <h2 id="lista-zmienionych-plikow-fdk-mapa-na-punkty">Lista zmienionych
 plikow FDK (mapa na punkty)</h2>
 <ul>

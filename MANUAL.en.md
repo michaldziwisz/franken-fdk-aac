@@ -363,6 +363,13 @@ Sane human range: **+3 to +9** for "wider and more spacious"; go negative only w
 deliberately want the extreme, artistic, low-bitrate mangling of the width. The value is in
 decibels (decimal), and `0` means off — bit-identical to stock FDK.
 
+Fractions work. You can type a dot or a comma and up to three decimal places (`-0,23`,
+`-0.75`, `1,125`). `-0,23` used to be read as zero, and everything between -0.1 and -0.9
+gave the same result; that was a parser bug, now fixed. One real boundary remains: at about
+-0.97 dB the raised side threshold crosses the minimum-SNR line built into FDK and most side
+bands drop out at once. That is why -0.95 and -0.98 sound clearly different, while -1, -4 and
+-12 sound the same: the side is simply cut by then. For gentle narrowing use 0 to -0.95.
+
 SHAPING THE SIDE CUTOFF. `--side-knee <dB>` controls HOW SHARPLY a side band flips between
 "coded" and "zeroed" at that threshold. Stock FDK is a hard cliff: the instant a band's energy
 drops to or below the threshold, the whole band is thrown away. A POSITIVE value gives you a
@@ -819,6 +826,41 @@ before PNS is allowed to act on it. This one is a raw line count, not a `×100` 
 effective only above the built-in default (LC = 16 lines); pushing it to 32 or 64 restricts PNS
 to the wider bands only, keeping the encoder from substituting noise on narrow low bands where
 it would be more obvious. `-1` = off (use FDK's default).
+
+### Transients, pre-echo and holes in the core (LC, LD, ELD)
+
+At a low bitrate with a wide band (e.g. LC stereo 32 kbps and `-w 17000`) the core has no
+bits for every band. You hear it in two ways: noise smeared ahead of a hit (pre-echo) and
+bubbling, flickering bands that keep disappearing (holes). These knobs reach both
+mechanisms. Without them the encoder behaves exactly like stock.
+
+HOLES. `--hole-ladder <1..8>` is the strongest knob. When a frame cannot afford everything,
+FDK zeroes bands in 8 steps, from the quietest upwards. Fewer steps means only the quietest
+may be zeroed, and the rest of the saving is done by coarser quantisation. Measured at
+32 kbps and 17 kHz: zeroed bands drop from 37% to 8% (`2`), at 40 kbps from 37% to 1.7%. In
+return the remaining bands carry a little more noise, so instead of holes you get a slightly
+grainier fill. Start with `2`. `--avoid-holes 1` turns on the protection of narrow loud bands
+that FDK switches off below 40 kbps stereo. `--hole-start <sfb>` protects the lower bands from
+zeroing (higher = more protected), `--hole-start-short` does the same for short blocks, and
+`--hole-spread <dB>` fine-tunes when a band counts as covered by its neighbours.
+
+PRE-ECHO. The strongest is `--window-shape 1`: every block, short ones too, gets the KBD
+window, which leaks less noise far from the sound. Measured: pre-echo 3.4 to 6.1 dB lower on
+average at 24, 40 and 128 kbps. `--window-shape 0` does the opposite, sine everywhere.
+`--attack-decay <x>` (stock 0.7) sets the memory of the hit detector: higher compares an
+attack with a longer average; in the measurement `0.9` lowered the worst pre-echo case by
+2.9 dB. Lowering `--attack-floor <dB>` makes quiet attacks such as brushes switch to short
+blocks too. `--short-groups <0..3>` says how the 8 short windows are grouped: `1` one group
+(cheapest), `2` even pairs, `3` tight around the hit. `--preecho-rise <dB>` and
+`--preecho-depth <dB>` guard pre-echo inside long blocks; in LC they act weakly, because real
+attacks go to short blocks anyway, but in LD and ELD, which have no short blocks, they are
+one of the few tools. The other one there is `--tns-thresh <x>`: below 1 TNS switches on more
+often and shapes the noise in time. `--tns-start <Hz>` sets how low the lower TNS filter
+reaches.
+
+A start for LC stereo 24 to 50 kbps with a wide band:
+
+    fdkaac-franken-x64.exe -p 2 -b 32000 -w 17000 --hole-ladder 2 --avoid-holes 1 --window-shape 1 -o out.m4a in.wav
 
 `--ath-scale <n>` — scaling of the threshold of hearing (ATH), in Q8 (256 = ×1.0).
 This is the GLOBAL masking regulator. Above 256 = raises the thresholds = the encoder

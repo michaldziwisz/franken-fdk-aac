@@ -7,6 +7,32 @@ Library** (per section 2 of the FDK AAC license, see `NOTICE.fdk-aac`).
 
 ### Unreleased — SBR estimator knobs, `--sbr-softness`, real low-bitrate unlock
 
+#### Core transients, pre-echo and spectral holes (LC / LD / ELD)
+
+New, all opt-in (bit-identical to stock when unset): `--hole-ladder`,
+`--avoid-holes`, `--hole-start`, `--hole-start-short`, `--hole-spread`,
+`--preecho-rise`, `--preecho-depth`, `--attack-decay`, `--attack-floor`,
+`--tns-thresh`, `--tns-start`, `--window-shape`, `--short-groups`.
+Measured after decoding (`tools/core/`): `--hole-ladder 2` cuts zeroed bands
+from 37% to 8% at LC 32 kbps / 17 kHz and to 1.7% at 40 kbps; `--window-shape 1`
+lowers pre-echo by 3.4..6.1 dB on average. Stock switches the avoid-holes
+shaping off below 20 kbps per channel, i.e. below 40 kbps stereo.
+`--window-shape` also writes the forced shape into short blocks, which stock
+always signals as sine. 396 extreme-value encodes across LC, HE-AAC, LD and ELD
+decode with 0 errors in the Fraunhofer decoder and ffmpeg.
+
+#### Decimal switches: fractions were silently dropped
+
+`--side-bias`, `--side-knee`, `--mask-slope` and every other decimal switch were
+read with `sscanf("%lf")`, which stops at a comma: `-0,23` became `-0` (knob off),
+`-1,5` became `-1`. The side knobs were also stored in tenths of a dB. Now: `.`
+or `,`, three decimal places (dB*1000 in the API: `AACENC_FRANKEN_SIDE_BIAS`,
+`_SIDE_KNEE`, `_MASK_SLOPE` change unit from dB*10), anything else rejected,
+range checked on the rounded value. Whole-number switches are strict too
+(`--block-bias 128,5` is an error instead of 128). The audible step of
+`--side-bias` near -0.97 dB is real: the side threshold crosses FDK's -0.97 dB
+minimum-SNR line there.
+
 Without the new switches the output is bit-identical to v1.3.2 (checked on HE,
 HEv2, LC, LD, ELD and ELD+SBR at several rates and channel counts).
 

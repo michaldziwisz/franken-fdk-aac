@@ -85,9 +85,9 @@ Here you can override these decisions and force extreme configurations.
 | `--msbands-hi <n>` | -1 off, 0..N | -1 | END (highest SFB band number) of the MS range. Used together with `--msbands-lo` as a FROM–TO pair. Bands outside this range go pure L/R. |
 | `--ms-precision <n>` | 256..no limit (Q8) | -1 (off) | *(Very experimental — you probably want `--side-bias` instead.)* Scales the precision of MS bands globally (both mid and side together), LAME `-q` style. 256=no change, 384~1.5x, 512~2x. In practice its reach is limited: above ~600-800 the threshold hits FDK's hard floor and under CBR bits are only shifted between bands, so the sound stops changing. Superseded for stereo tuning by `--side-bias`/`--side-knee`, which act per-channel exactly where it matters. |
 | `--mid-bias <n>` | 256..no limit (Q8) | -1 (off) | *(Very experimental — rarely needed.)* `>256` RAISES the mid (L+R) threshold after the MS butterfly to free bits from mid for side. The cleaner, better-measured way to shift the mid↔side balance is `--side-bias` (which pulls from the same budget from the side end). Kept for completeness. 256=off. |
-| `--side-bias <dB>` | -24.0 .. +50.0 | 0 (off) | **The main stereo-quality knob.** Shifts the SIDE (L−R) channel's masking threshold on MS-coded bands, at the exact point where FDK decides whether a scalefactor band is coded or dropped (`energy > threshold` in `sf_estim.cpp`). Sign = EFFECT: **`+` steers MORE bits to the side channel** (lower threshold → fewer side bands zeroed, the survivors quantized finer → cleaner stereo width, reverb tails, ambience), at the mid channel's expense; **`−` deliberately DEGRADES the side** (raises the threshold → side bands drop out → narrower, more mono image). This is the very same energy-vs-threshold decision LAME rides for its bit allocation and MusePack drives with `--ms` — nothing exotic. Because it is a fixed-budget tradeoff, at low bitrate the mid channel audibly gives up bits; that is expected, not a bug. Sane range **+3 .. +9** for "more spacious", negative only for extreme/artistic low-bitrate mangling. Measured on real material at 96 kbps: `+9` lifts side error in the 4–8 kHz region while mid degrades a few dB. 0 = off (bit-identical to stock). |
-| `--side-knee <dB>` | -24.0 .. +50.0 | 0 (off) | Shapes HOW SHARPLY a side band flips between "coded" and "zeroed" at the threshold. Stock FDK is a hard cliff: the instant `energy ≤ threshold` the whole band is dropped to zero. **`+` = SOFT knee**: bands sitting up to N dB *below* the threshold are still kept (coded at the coarsest scalefactor) instead of dropped, so the side fades out gradually rather than switching off — smoother decay of reverb/air. **`−` = HARD knee**: bands that only just clear the threshold (within N dB *above* it) are forced to zero anyway, cutting the side off early — leaner, more aggressive. Ortogonal to `--side-bias` and combines with it. Sane range **+3 .. +6**. 0 = off. |
-| `--mask-slope <dB>` | -24.0 .. +50.0 | 0 (off) | Global (mid **and** side) tuning of FDK's **Masking-Slope-Adaptation** — a NON-masking heuristic (`adj_thr.cpp`) that relaxes the required SNR for scalefactor bands whose energy sits far below the frame average (stock: more than ~10 dB below), i.e. it deliberately starves very quiet bands to save bits. This knob shifts that "how far below average before I stop caring" threshold. **`+` raises it → fewer quiet bands starved → more detail in quiet passages, reverb tails, decays** (costs bits); **`−` lowers it → quiet bands starved harder → leaner, hollower, more bits for the loud stuff**. Same family as `--side-bias` but applied to both channels and keyed on energy-vs-average rather than the MS threshold. Subtle on dense material (it only touches the quietest bands); most audible on sparse/reverberant content. Sane range **±6 .. ±12**. 0 = off. |
+| `--side-bias <dB>` | -24.0 .. +50.0, up to 3 decimals, `.` or `,` | 0 (off) | **The main stereo-quality knob.** Shifts the SIDE (L−R) channel's masking threshold on MS-coded bands, at the exact point where FDK decides whether a scalefactor band is coded or dropped (`energy > threshold` in `sf_estim.cpp`). Sign = EFFECT: **`+` steers MORE bits to the side channel** (lower threshold → fewer side bands zeroed, the survivors quantized finer → cleaner stereo width, reverb tails, ambience), at the mid channel's expense; **`−` deliberately DEGRADES the side** (raises the threshold → side bands drop out → narrower, more mono image). This is the very same energy-vs-threshold decision LAME rides for its bit allocation and MusePack drives with `--ms` — nothing exotic. Because it is a fixed-budget tradeoff, at low bitrate the mid channel audibly gives up bits; that is expected, not a bug. Sane range **+3 .. +9** for "more spacious", negative only for extreme/artistic low-bitrate mangling. Measured on real material at 96 kbps: `+9` lifts side error in the 4–8 kHz region while mid degrades a few dB. 0 = off (bit-identical to stock). |
+| `--side-knee <dB>` | -24.0 .. +50.0, up to 3 decimals | 0 (off) | Shapes HOW SHARPLY a side band flips between "coded" and "zeroed" at the threshold. Stock FDK is a hard cliff: the instant `energy ≤ threshold` the whole band is dropped to zero. **`+` = SOFT knee**: bands sitting up to N dB *below* the threshold are still kept (coded at the coarsest scalefactor) instead of dropped, so the side fades out gradually rather than switching off — smoother decay of reverb/air. **`−` = HARD knee**: bands that only just clear the threshold (within N dB *above* it) are forced to zero anyway, cutting the side off early — leaner, more aggressive. Ortogonal to `--side-bias` and combines with it. Sane range **+3 .. +6**. 0 = off. |
+| `--mask-slope <dB>` | -24.0 .. +50.0, up to 3 decimals | 0 (off) | Global (mid **and** side) tuning of FDK's **Masking-Slope-Adaptation** — a NON-masking heuristic (`adj_thr.cpp`) that relaxes the required SNR for scalefactor bands whose energy sits far below the frame average (stock: more than ~10 dB below), i.e. it deliberately starves very quiet bands to save bits. This knob shifts that "how far below average before I stop caring" threshold. **`+` raises it → fewer quiet bands starved → more detail in quiet passages, reverb tails, decays** (costs bits); **`−` lowers it → quiet bands starved harder → leaner, hollower, more bits for the loud stuff**. Same family as `--side-bias` but applied to both channels and keyed on energy-vs-average rather than the MS threshold. Subtle on dense material (it only touches the quietest bands); most audible on sparse/reverberant content. Sane range **±6 .. ±12**. 0 = off. |
 | `--is <n>` | -1 auto, 0 off, 1 on | -1 | Intensity stereo globally on/off. |
 | `--isbands <n>` | -1 no limit, 0..N | -1 | Maximum number of SFBs that may use intensity. Above that — coded normally. |
 | `--is-aggression <0..100>` | 0..100 | -1 (off) | CONSUMER slider: how hard the encoder should push intensity stereo. Start here, leave the advanced `--is-*` alone. |
@@ -98,6 +98,24 @@ Here you can override these decisions and force extreme configurations.
 | `--is-hi <sfb>` | -1 off, 0..N | -1 | Allow IS only up to this SFB (inclusive). Pair with `--is-lo` as a range. TIP: IS usually lands on LOW bands at low bitrate, so scan small values to see the effect. |
 | `--is-force-lo <sfb>` | -1 off, 0..N | -1 | FORCE intensity stereo from this SFB, bypassing the correlation / min-sfbs / loudness gates. Laboratory mode: can deliberately wreck the stereo image (IS is lossy + directional — the right channel is zeroed, only a panning coefficient survives). The stream stays legal. |
 | `--is-force-hi <sfb>` | -1 off, 0..N | -1 | Upper SFB of the forced-IS range (inclusive). |
+
+DECIMALS in `--side-bias`, `--side-knee` and `--mask-slope` (fixed in this version):
+they used to be read with a parser that stopped at a comma, so `-0,23` became `-0`
+(knob off) and `-1,5` became `-1`, and the value was stored in tenths of a dB. Now
+all decimal switches accept `.` or `,`, keep 3 decimal places (rounded half away
+from zero), reject anything else (`1e1`, `nan`, `1.2.3`, `3x`, spaces) with an error,
+and check the range on the rounded value, so what is accepted is exactly what the
+encoder gets. Whole-number switches are strict too (`--block-bias 128,5` is an
+error instead of 128).
+
+Measured on dense stereo at 40 kbps: `--side-bias` now changes the side error
+continuously from 0 to -0.95 dB (-1.13 -> -0.92 dB side error). At about -0.97 dB
+there is a real step (-0.92 -> -0.31 dB): there the raised side threshold crosses
+the -0.97 dB minimum-SNR line of the avoid-holes logic (`SnrLdFac` = 0.8 in
+`adj_thr.cpp`) and most side bands are dropped at once. Below that, more negative
+values change nothing more, because the side is already gone. So the jump at -1 that
+was heard is real and comes from the encoder, not from rounding; the values in
+between now really work.
 
 ### Intensity stereo in practice (how to use it, not the formulas)
 
@@ -512,6 +530,34 @@ replaced the old `--allshort`/`--alllong`, which created an ILLEGAL stream (hard
 forcing of the short window without recomputing SFB/grouping -> decoders rejected
 it, Winamp "skipped like on a scratched disc"). If you want maximum long blocks:
 `--block-bias 0`; maximum short: `--block-bias 255`.
+
+### 7b. Core transients, pre-echo and spectral holes (LC / LD / ELD core)
+
+These knobs reach the AAC core itself, below SBR. They matter most where the core
+is starved: LC stereo 24..50 kbps with a bandwidth forced well above normal
+(`-w 16000..20000`). Each one is off by default and gives a stream byte-identical
+to stock when unset. All streams were checked with the Fraunhofer decoder and
+ffmpeg (0 errors in 396 extreme-value encodes across LC, HE-AAC, LD and ELD).
+
+| Switch | Values | Default | Description |
+|---|---|---|---|
+| `--hole-ladder <1..8>` | 1..8 | -1 (stock 8) | **The strongest lever against holes.** When a frame cannot afford all bands, FDK cuts bands to zero in 8 energy steps, from the quietest upwards, until the bit budget fits. With fewer steps only the quietest bands may be cut, and the rest of the budget problem is solved by coarser quantisation instead of more zeroed bands. Measured on dense wideband material: at 32 kbps / 17 kHz zeroed bands drop from **37% to 8%** (`2`), at 40 kbps / 18 kHz from 37% to 1.7%, at 50 kbps / 19 kHz from 35% to 0.2%. The price is a little more noise in the bands that remain (error-to-signal ratio 0.3..0.5 dB worse): fewer holes, slightly grainier fill. `2` is a good start, `1` is the extreme. |
+| `--avoid-holes <0\|1>` | 0, 1 | -1 (stock) | The peak/valley shaping that keeps narrow loud bands from being zeroed. Stock switches it OFF below 20 kbps **per channel**, i.e. below 40 kbps **stereo**, right inside the 24..50 kbps range. `1` forces it on, `0` off. Alone it changes little (measured), but it helps together with `--hole-ladder`. |
+| `--hole-start <sfb>` | 0..51 | -1 (stock 15, 0 when holes are off) | First long-block scalefactor band where bands may be cut to zero at all. Higher = the lower spectrum is protected (measured: `25` cuts holes from 37% to 26% at 32 kbps). Lower = holes allowed deeper. |
+| `--hole-start-short <sfb>` | 0..15 | -1 (stock 3) | The same for short blocks. |
+| `--hole-spread <dB>` | 0.0..24.0 | -1 (stock 3.0 long, 2.0 short) | How much the neighbour (spread) energy is lowered before a band counts as covered by its neighbours and so as a safe hole. Higher = fewer bands look covered. A fine knob: effects of 1..2% of bands. |
+| `--preecho-rise <dB>` | 0.0..24.0 | -1 (stock 3.01) | Pre-echo control inside LONG blocks: how far a band's masking threshold may rise from one frame to the next. Lower = the quantisation noise cannot run ahead of an attack that a long block has to carry. Above 3.01 = looser. Effect measured as small (tenths of a dB of pre-echo energy): the attack detector usually sends real attacks to short blocks first. Most useful with `--block-bias` low and in LD/ELD, which have no short blocks. |
+| `--preecho-depth <dB>` | 0.0..60.0 | -1 (stock 20.0) | How far pre-echo control may lower a threshold at most. Pairs with `--preecho-rise`. |
+| `--attack-decay <x>` | 0.0..0.99 | -1 (stock 0.70) | Memory of the attack detector that decides between long and short blocks: share of the running energy kept per sub-window. Higher = the attack is compared with a longer average (measured `0.9`: worst-case pre-echo 2.9 dB lower on castanet-like clicks). Lower = compared with the very last moment. |
+| `--attack-floor <dB>` | -60.0..30.0 | -1 (0 = stock) | Shift of the minimum energy an attack must have. `-` = quiet attacks (brushes, soft hi-hats) also switch to short blocks; `+` = only loud ones. |
+| `--tns-thresh <x>` | 0.5..4.0 | -1 (stock 1.0) | Multiplier on the prediction gain TNS needs to switch on. Below 1 TNS shapes noise in time on more frames; above 1 more rarely. Measured trade-off: `0.7` spends bits on TNS side info and leaves more holes at low bitrate, `2.0` the reverse. In LD/ELD TNS is the main tool against pre-echo. |
+| `--tns-start <Hz>` | 0..24000 | -1 (stock ~1.4 kHz @48k) | Lowest frequency of the lower TNS filter in long blocks (LC). Lower = TNS also shapes the mids. |
+| `--window-shape <0\|1>` | 0, 1 | -1 (stock) | AAC-LC window: `0` sine for every block, `1` KBD for every block (stock: KBD long, sine short). One bit per frame, legal everywhere in LC. **Measured: `1` lowers pre-echo by 3.4..6.1 dB on the mean and 1.2..6.6 dB in the worst case** at 24, 40 and 128 kbps (the short blocks then use KBD, whose side lobes fall off much faster, so less noise leaks ahead of the attack). Read from the bitstream: the window_shape bit really is 1 in every frame. |
+| `--short-groups <0..3>` | 0..3 | -1 (stock table) | How the 8 short windows of a transient frame are grouped (one scalefactor set per group). `1` one group (cheapest, noise spread over the whole frame), `2` four pairs (even time resolution, measured: fewest holes in short frames), `3` tight around the attack (most bits where the attack is). `0` = stock table. |
+
+Starting point for 24..50 kbps LC stereo with a wide band:
+
+    fdkaac-franken-x64.exe -p 2 -b 32000 -w 17000 --hole-ladder 2 --avoid-holes 1 --window-shape 1 -o out.m4a in.wav
 
 ## 8. MS decision bias (honestly: a tool with a WEAK effect)
 

@@ -668,6 +668,15 @@ ujemne schodź tylko wtedy, gdy świadomie chcesz skrajnego, artystycznego
 niszczenia szerokości przy niskim bitrate. Wartość jest w decybelach
 (dziesiętnie), a <code>0</code> oznacza off — bit-identycznie ze
 stockowym FDK.</p>
+<p>Ułamki działają. Możesz wpisać kropkę albo przecinek i do trzech
+miejsc po przecinku (<code>-0,23</code>, <code>-0.75</code>,
+<code>1,125</code>). Dawniej <code>-0,23</code> było czytane jako zero,
+a wszystko między -0,1 a -0,9 dawało ten sam wynik; to był błąd parsera,
+naprawiony. Zostaje jedna prawdziwa granica: przy około -0,97 dB
+podniesiony próg side przecina wbudowaną w FDK linię minimalnego SNR i
+większość pasm side wypada naraz. Dlatego -0,95 i -0,98 brzmią wyraźnie
+inaczej, a -1, -4 i -12 już tak samo: side jest wtedy po prostu wycięty.
+Do delikatnego zwężania używaj wartości od 0 do -0,95.</p>
 <p>KSZTAŁTOWANIE ODCIĘCIA SIDE. <code>--side-knee &lt;dB&gt;</code>
 steruje tym, JAK OSTRO pasmo side przełącza się między „kodowane" a
 „wyzerowane" na tym progu. Stock FDK to twardy klif: w chwili gdy
@@ -1216,6 +1225,50 @@ wbudowanej domyślnej (LC = 16 linii); podbicie do 32 albo 64 ogranicza
 PNS tylko do szerszych pasm, powstrzymując enkoder przed podstawianiem
 szumu na wąskich niskich pasmach, gdzie byłoby to bardziej słyszalne.
 <code>-1</code> = off (użyj domyślnej FDK).</p>
+<h3 id="transjenty-pre-echo-i-dziury-w-rdzeniu-lc-ld-eld">Transjenty,
+pre-echo i dziury w rdzeniu (LC, LD, ELD)</h3>
+<p>Przy niskim bitrate z szerokim pasmem (np. LC stereo 32 kbps i
+<code>-w 17000</code>) rdzeń nie ma bitów na wszystkie pasma. Słychać to
+na dwa sposoby: szum rozmazany przed uderzeniem (pre-echo) i bulgocące,
+migające pasma, które co chwilę znikają (dziury). Te pokrętła sięgają do
+obu mechanizmów. Bez nich enkoder działa dokładnie jak stock.</p>
+<p>DZIURY. <code>--hole-ladder &lt;1..8&gt;</code> to najmocniejsze
+pokrętło. Gdy ramki nie stać na wszystko, FDK zeruje pasma w 8 krokach,
+od najcichszych w górę. Mniej kroków znaczy, że wolno zerować tylko
+najcichsze, a resztę oszczędności enkoder robi grubszą kwantyzacją.
+Zmierzone przy 32 kbps i 17 kHz: wyzerowanych pasm ubywa z 37% do 8%
+(<code>2</code>), przy 40 kbps z 37% do 1,7%. W zamian pozostałe pasma
+mają trochę więcej szumu, czyli zamiast dziur dostajesz nieco bardziej
+ziarniste wypełnienie. Zacznij od <code>2</code>.
+<code>--avoid-holes 1</code> włącza ochronę wąskich głośnych pasm, którą
+FDK wyłącza poniżej 40 kbps stereo.
+<code>--hole-start &lt;sfb&gt;</code> chroni dolne pasma przed
+zerowaniem (wyżej = więcej chronionych), <code>--hole-start-short</code>
+to samo dla bloków short, a <code>--hole-spread &lt;dB&gt;</code> to
+precyzyjna korekta tego, kiedy pasmo uznajemy za przykryte przez
+sąsiadów.</p>
+<p>PRE-ECHO. Najmocniej działa <code>--window-shape 1</code>: wszystkie
+bloki, także krótkie, dostają okno KBD, które słabiej przepuszcza szum
+daleko od dźwięku. Zmierzone: pre-echo średnio niższe o 3,4 do 6,1 dB
+przy 24, 40 i 128 kbps. <code>--window-shape 0</code> daje odwrotnie,
+sinus wszędzie. <code>--attack-decay &lt;x&gt;</code> (stock 0,7)
+ustawia pamięć detektora uderzeń: wyżej porównuje atak z dłuższą
+średnią, w pomiarze <code>0,9</code> obniżyło najgorszy przypadek
+pre-echa o 2,9 dB. <code>--attack-floor &lt;dB&gt;</code> w dół sprawia,
+że także ciche ataki, np. szczotki, przełączają na bloki krótkie.
+<code>--short-groups &lt;0..3&gt;</code> mówi, jak 8 krótkich okien
+dzieli się na grupy: <code>1</code> jedna grupa (najtaniej),
+<code>2</code> równe pary, <code>3</code> ciasno wokół uderzenia.
+<code>--preecho-rise &lt;dB&gt;</code> i
+<code>--preecho-depth &lt;dB&gt;</code> pilnują pre-echa wewnątrz
+długich bloków; w LC działają słabo, bo prawdziwe ataki i tak trafiają
+do bloków krótkich, ale w LD i ELD, które bloków krótkich nie mają, są
+jednym z niewielu narzędzi. Tam drugim jest
+<code>--tns-thresh &lt;x&gt;</code>: poniżej 1 TNS włącza się częściej i
+kształtuje szum w czasie. <code>--tns-start &lt;Hz&gt;</code> ustala,
+jak nisko sięga dolny filtr TNS.</p>
+<p>Na start dla LC stereo 24 do 50 kbps z szerokim pasmem:</p>
+<pre><code>fdkaac-franken-x64.exe -p 2 -b 32000 -w 17000 --hole-ladder 2 --avoid-holes 1 --window-shape 1 -o out.m4a in.wav</code></pre>
 <p><code>--ath-scale &lt;n&gt;</code> — skalowanie progu słyszalności
 (ATH), w Q8 (256 = ×1,0). To jest GLOBALNY regulator maskowania. Powyżej
 256 = podnosi progi = enkoder uznaje więcej rzeczy za niesłyszalne =

@@ -87,9 +87,9 @@ te decyzję nadpisac i wymusic ekstremalne konfiguracje.
 | `--msbands-hi <n>` | -1 off, 0..N | -1 | KONIEC (najwyższy numer pasma SFB) zakresu MS. Używane razem z `--msbands-lo` jako para OD–DO. Pasma poza tym zakresem ida czystym L/R. |
 | `--ms-precision <n>` | 256..bez limitu (Q8) | -1 (off) | *(Bardzo eksperymentalny — raczej niepotrzebny, użyj `--side-bias`.)* Skaluje precyzję pasm MS globalnie (mid i side razem), w stylu LAME `-q`. 256=bez zmian, 384~1.5x, 512~2x. W praktyce jego zasięg jest ograniczony: powyżej ~600-800 prog uderza w twarda podłogę FDK, a przy CBR bity są tylko PRZESUWANE między pasmami, więc brzmienie przestaje sie zmieniac. Do strojenia stereo zastąpiony przez `--side-bias`/`--side-knee`, które działają per-kanał dokładnie tam, gdzie trzeba. |
 | `--mid-bias <n>` | 256..bez limitu (Q8) | -1 (off) | *(Bardzo eksperymentalny — raczej niepotrzebny.)* `>256` PODNOSI prog kanału mid (L+R) po motylku MS, żeby uwolnić bity z mid dla side. Czystszym, lepiej zmierzonym sposobem przesunięcia balansu mid↔side jest `--side-bias` (który sięga po ten sam budzet od strony side). Zostawiony dla kompletności. 256=off. |
-| `--side-bias <dB>` | -24.0 .. +50.0 | 0 (off) | **Główne pokrętło jakości stereo.** Przesuwa prog maskowania kanału SIDE (L−R) na pasmach kodowanych w MS, dokładnie w miejscu, gdzie FDK decyduje, czy pasmo skali (SFB) jest kodowane czy zerowane (`energia > prog` w `sf_estim.cpp`). Znak = EFEKT: **`+` kieruje WIĘCEJ bitow do kanału side** (niższy prog → mniej pasm side zerowanych, przetrwałe kwantyzowane dokładniej → czystsza szerokość stereo, ogony pogłosu, ambience), kosztem kanału mid; **`−` celowo DEGRADUJE side** (podnosi prog → pasma side wypadają → węższy, bardziej mono obraz). To dokładnie ta sama zależność energia-vs-prog, której LAME używa do alokacji bitow, a MusePack steruje przez `--ms` — nic egzotycznego. Ponieważ to tradeoff przy stałym budzecie, przy niskim bitrate kanał mid słyszalnie oddaje bity; to oczekiwane, nie błąd. Rozsądny zakres **+3 .. +9** dla „szerzej", ujemne tylko do skrajnego/artystycznego niszczenia przy niskim bitrate. 0 = off (bit-identyczny ze stockiem). |
-| `--side-knee <dB>` | -24.0 .. +50.0 | 0 (off) | Kształtuje JAK OSTRO pasmo side przełącza się między „kodowane" a „wyzerowane" na progu. Stock FDK to twardy klif: w chwili gdy `energia ≤ prog`, całe pasmo spada do zera. **`+` = MIĘKKIE kolano**: pasma leżące do N dB *poniżej* progu są nadal zachowane (kodowane na najzgrubszym scalefactorze) zamiast zerowane, więc side gaśnie stopniowo zamiast wyłączać się — łagodniejsze wybrzmienie pogłosu/powietrza. **`−` = TWARDE kolano**: pasma, które ledwo przekraczają prog (do N dB *nad* nim), są mimo to zerowane, odcinając side wcześniej — chudziej, agresywniej. Ortogonalny do `--side-bias` i łączy się z nim. Rozsądny zakres **+3 .. +6**. 0 = off. |
-| `--mask-slope <dB>` | -24.0 .. +50.0 | 0 (off) | Globalne (mid **i** side) strojenie **Masking-Slope-Adaptation** FDK — heurystyki NIE-maskującej (`adj_thr.cpp`), która rozluźnia wymagany SNR dla pasm SFB o energii dużo poniżej średniej ramki (stock: ponad ~10 dB poniżej), czyli celowo głodzi bardzo ciche pasma, żeby oszczędzić bity. To pokrętło przesuwa prog „jak daleko poniżej średniej, zanim przestanę się przejmować". **`+` podnosi go → mniej cichych pasm głodzonych → więcej detalu w cichych fragmentach, ogonach pogłosu, wybrzmieniach** (kosztuje bity); **`−` obniża go → ciche pasma głodzone mocniej → chudziej, bardziej pusto, więcej bitow na głośne rzeczy**. Ta sama rodzina co `--side-bias`, ale stosowana do obu kanałów i zakotwiczona na energii-vs-średnia zamiast progu MS. Subtelny na gęstym materiale (rusza tylko najcichsze pasma); najbardziej słyszalny na rzadkiej/pogłosowej treści. Rozsądny zakres **±6 .. ±12**. 0 = off. |
+| `--side-bias <dB>` | -24,0 .. +50,0, do 3 miejsc po przecinku, `.` lub `,` | 0 (off) | **Główne pokrętło jakości stereo.** Przesuwa prog maskowania kanału SIDE (L−R) na pasmach kodowanych w MS, dokładnie w miejscu, gdzie FDK decyduje, czy pasmo skali (SFB) jest kodowane czy zerowane (`energia > prog` w `sf_estim.cpp`). Znak = EFEKT: **`+` kieruje WIĘCEJ bitow do kanału side** (niższy prog → mniej pasm side zerowanych, przetrwałe kwantyzowane dokładniej → czystsza szerokość stereo, ogony pogłosu, ambience), kosztem kanału mid; **`−` celowo DEGRADUJE side** (podnosi prog → pasma side wypadają → węższy, bardziej mono obraz). To dokładnie ta sama zależność energia-vs-prog, której LAME używa do alokacji bitow, a MusePack steruje przez `--ms` — nic egzotycznego. Ponieważ to tradeoff przy stałym budzecie, przy niskim bitrate kanał mid słyszalnie oddaje bity; to oczekiwane, nie błąd. Rozsądny zakres **+3 .. +9** dla „szerzej", ujemne tylko do skrajnego/artystycznego niszczenia przy niskim bitrate. 0 = off (bit-identyczny ze stockiem). |
+| `--side-knee <dB>` | -24,0 .. +50,0, do 3 miejsc | 0 (off) | Kształtuje JAK OSTRO pasmo side przełącza się między „kodowane" a „wyzerowane" na progu. Stock FDK to twardy klif: w chwili gdy `energia ≤ prog`, całe pasmo spada do zera. **`+` = MIĘKKIE kolano**: pasma leżące do N dB *poniżej* progu są nadal zachowane (kodowane na najzgrubszym scalefactorze) zamiast zerowane, więc side gaśnie stopniowo zamiast wyłączać się — łagodniejsze wybrzmienie pogłosu/powietrza. **`−` = TWARDE kolano**: pasma, które ledwo przekraczają prog (do N dB *nad* nim), są mimo to zerowane, odcinając side wcześniej — chudziej, agresywniej. Ortogonalny do `--side-bias` i łączy się z nim. Rozsądny zakres **+3 .. +6**. 0 = off. |
+| `--mask-slope <dB>` | -24,0 .. +50,0, do 3 miejsc | 0 (off) | Globalne (mid **i** side) strojenie **Masking-Slope-Adaptation** FDK — heurystyki NIE-maskującej (`adj_thr.cpp`), która rozluźnia wymagany SNR dla pasm SFB o energii dużo poniżej średniej ramki (stock: ponad ~10 dB poniżej), czyli celowo głodzi bardzo ciche pasma, żeby oszczędzić bity. To pokrętło przesuwa prog „jak daleko poniżej średniej, zanim przestanę się przejmować". **`+` podnosi go → mniej cichych pasm głodzonych → więcej detalu w cichych fragmentach, ogonach pogłosu, wybrzmieniach** (kosztuje bity); **`−` obniża go → ciche pasma głodzone mocniej → chudziej, bardziej pusto, więcej bitow na głośne rzeczy**. Ta sama rodzina co `--side-bias`, ale stosowana do obu kanałów i zakotwiczona na energii-vs-średnia zamiast progu MS. Subtelny na gęstym materiale (rusza tylko najcichsze pasma); najbardziej słyszalny na rzadkiej/pogłosowej treści. Rozsądny zakres **±6 .. ±12**. 0 = off. |
 | `--is <n>` | -1 auto, 0 off, 1 on | -1 | Intensity stereo globalnie wł/wył. |
 | `--isbands <n>` | -1 brak limitu, 0..N | -1 | Maksymalna liczba SFB, które mogą użyć intensity. Powyżej — kodowane normalnie. |
 | `--is-aggression <0..100>` | 0..100 | -1 (off) | KONSUMENCKI suwak: jak bardzo enkoder ma isc w intensity stereo. Zaczynaj tu, zaawansowane `--is-*` zostaw. |
@@ -100,6 +100,25 @@ te decyzję nadpisac i wymusic ekstremalne konfiguracje.
 | `--is-hi <sfb>` | -1 off, 0..N | -1 | Pozwól na IS tylko do tego SFB (włącznie). Używaj z `--is-lo` jako zakres. WSKAZOWKA: IS zwykle ląduje na NISKICH pasmach przy niskim bitrate, więc skanuj małe wartości, by zobaczyć efekt. |
 | `--is-force-lo <sfb>` | -1 off, 0..N | -1 | WYMUSZA intensity stereo od tego SFB, omijając bramki korelacji / min-sfbs / głośności. Tryb laboratoryjny: może celowo rozbić obraz stereo (IS jest stratne i kierunkowe — prawy kanał zostaje wyzerowany, zostaje tylko współczynnik panoramy). Strumien pozostaje legalny. |
 | `--is-force-hi <sfb>` | -1 off, 0..N | -1 | Górny SFB wymuszonego zakresu IS (włącznie). |
+
+
+UŁAMKI w `--side-bias`, `--side-knee` i `--mask-slope` (naprawione w tej wersji):
+dawniej czytał je parser, który zatrzymywał się na przecinku, więc `-0,23` stawało
+się `-0` (pokrętło wyłączone), a `-1,5` stawało się `-1`; do tego wartość trzymana
+była w dziesiątych częściach dB. Teraz wszystkie przełączniki dziesiętne przyjmują
+`.` lub `,`, zachowują 3 miejsca po przecinku (zaokrąglenie połówek od zera),
+wszystko inne (`1e1`, `nan`, `1.2.3`, `3x`, spacje) odrzucają błędem, a zakres
+sprawdzają na wartości PO zaokrągleniu, więc przyjęte jest dokładnie to, co trafia
+do enkodera. Przełączniki całkowite też są ścisłe (`--block-bias 128,5` to błąd,
+a nie 128).
+
+Zmierzone na gęstym stereo przy 40 kbps: `--side-bias` zmienia teraz błąd kanału
+side płynnie od 0 do -0,95 dB (-1,13 -> -0,92 dB błędu side). Przy około -0,97 dB
+jest prawdziwy skok (-0,92 -> -0,31 dB): tam podniesiony próg side przecina linię
+minimalnego SNR -0,97 dB w logice unikania dziur (`SnrLdFac` = 0,8 w `adj_thr.cpp`)
+i większość pasm side wypada naraz. Dalsze ujemne wartości nic już nie zmieniają,
+bo side jest już wycięty. Słyszalny skok przy -1 jest więc prawdziwy i pochodzi z
+enkodera, nie z zaokrąglania; wartości pośrednie teraz faktycznie działają.
 
 ### Intensity stereo w praktyce (jak tego używać, nie wzory)
 
@@ -503,6 +522,34 @@ prog detekcji ataku, nie wymusza na sile typu bloku). Zastąpił dawne
 short window bez przeliczenia SFB/grupowania -> dekoder odrzucał, Winamp
 "skakał jak po porysowanej płycie"). Jesli chcesz maksimum długich: `--block-bias 0`;
 maksimum krótkich: `--block-bias 255`.
+
+### 7b. Transjenty rdzenia, pre-echo i dziury w widmie (rdzeń LC / LD / ELD)
+
+Te pokrętła sięgają samego rdzenia AAC, pod SBR. Najwięcej dają tam, gdzie rdzeń
+głoduje: LC stereo 24..50 kbps z pasmem wymuszonym wyraźnie ponad normę
+(`-w 16000..20000`). Każde jest domyślnie wyłączone i bez ustawienia daje strumień
+bajt w bajt identyczny ze stockiem. Strumienie sprawdziliśmy dekoderem Fraunhofera
+i ffmpeg (0 błędów w 396 kodowaniach skrajnych wartości w LC, HE-AAC, LD i ELD).
+
+| Przełącznik | Wartości | Domyślnie | Opis |
+|---|---|---|---|
+| `--hole-ladder <1..8>` | 1..8 | -1 (stock 8) | **Najsilniejsza dźwignia przeciw dziurom.** Gdy ramki nie stać na wszystkie pasma, FDK zeruje pasma w 8 krokach energii, od najcichszych w górę, aż budżet bitów się zmieści. Przy mniejszej liczbie kroków wolno zerować tylko najcichsze pasma, a resztę problemu z budżetem rozwiązuje grubsza kwantyzacja zamiast kolejnych wyzerowanych pasm. Zmierzone na gęstym, szerokopasmowym materiale: przy 32 kbps / 17 kHz wyzerowanych pasm ubywa **z 37% do 8%** (`2`), przy 40 kbps / 18 kHz z 37% do 1,7%, przy 50 kbps / 19 kHz z 35% do 0,2%. Cena to trochę więcej szumu w pasmach, które zostają (stosunek błędu do sygnału gorszy o 0,3..0,5 dB): mniej dziur, nieco bardziej ziarniste wypełnienie. `2` to dobry start, `1` to skrajność. |
+| `--avoid-holes <0\|1>` | 0, 1 | -1 (stock) | Kształtowanie szczytów i dolin, które chroni wąskie głośne pasma przed wyzerowaniem. Stock wyłącza je poniżej 20 kbps **na kanał**, czyli poniżej 40 kbps **stereo**, w samym środku zakresu 24..50 kbps. `1` wymusza włączenie, `0` wyłączenie. Samo zmienia niewiele (zmierzone), pomaga razem z `--hole-ladder`. |
+| `--hole-start <sfb>` | 0..51 | -1 (stock 15, 0 gdy ochrona wyłączona) | Pierwsze pasmo współczynnika skali bloku long, w którym w ogóle wolno zerować. Wyżej = dolne widmo chronione (zmierzone: `25` zmniejsza dziury z 37% do 26% przy 32 kbps). Niżej = dziury dozwolone głębiej. |
+| `--hole-start-short <sfb>` | 0..15 | -1 (stock 3) | To samo dla bloków short. |
+| `--hole-spread <dB>` | 0,0..24,0 | -1 (stock 3,0 long, 2,0 short) | O ile obniżana jest energia sąsiadów, zanim pasmo uznamy za przykryte przez sąsiadów, czyli za bezpieczną dziurę. Wyżej = mniej pasm wygląda na przykryte. Pokrętło precyzyjne: efekty rzędu 1..2% pasm. |
+| `--preecho-rise <dB>` | 0,0..24,0 | -1 (stock 3,01) | Kontrola pre-echa w blokach LONG: o ile próg maskowania pasma może urosnąć z ramki na ramkę. Niżej = szum kwantyzacji nie wyprzedzi ataku, który musi unieść blok long. Powyżej 3,01 = luźniej. Efekt zmierzony jako mały (dziesiąte części dB energii pre-echa): detektor ataków zwykle wcześniej kieruje prawdziwe ataki do bloków short. Najbardziej przydatne przy niskim `--block-bias` oraz w LD i ELD, które bloków short nie mają. |
+| `--preecho-depth <dB>` | 0,0..60,0 | -1 (stock 20,0) | Jak głęboko kontrola pre-echa może co najwyżej obniżyć próg. W parze z `--preecho-rise`. |
+| `--attack-decay <x>` | 0,0..0,99 | -1 (stock 0,70) | Pamięć detektora ataków, który wybiera między blokami long i short: jaka część bieżącej energii zostaje na każde podokno. Wyżej = atak porównywany z dłuższą średnią (zmierzone `0,9`: najgorszy przypadek pre-echa niższy o 2,9 dB na kliknięciach podobnych do kastanietów). Niżej = porównanie z ostatnią chwilą. |
+| `--attack-floor <dB>` | -60,0..30,0 | -1 (0 = stock) | Przesunięcie minimalnej energii ataku. `-` = ciche ataki (szczotki, ciche hi-haty) też przełączają na bloki short; `+` = tylko głośne. |
+| `--tns-thresh <x>` | 0,5..4,0 | -1 (stock 1,0) | Mnożnik zysku predykcji, którego TNS potrzebuje, by się włączyć. Poniżej 1 TNS kształtuje szum w czasie w większej liczbie ramek, powyżej 1 rzadziej. Zmierzony kompromis: `0,7` wydaje bity na dane poboczne TNS i przy niskim bitrate zostawia więcej dziur, `2,0` odwrotnie. W LD i ELD TNS to główne narzędzie przeciw pre-echu. |
+| `--tns-start <Hz>` | 0..24000 | -1 (stock ok. 1,4 kHz przy 48 kHz) | Najniższa częstotliwość dolnego filtra TNS w blokach long (LC). Niżej = TNS kształtuje też środek pasma. |
+| `--window-shape <0\|1>` | 0, 1 | -1 (stock) | Okno AAC-LC: `0` sinus dla każdego bloku, `1` KBD dla każdego bloku (stock: KBD dla long, sinus dla short). Jeden bit na ramkę, legalny wszędzie w LC. **Zmierzone: `1` obniża pre-echo o 3,4..6,1 dB średnio i o 1,2..6,6 dB w najgorszym przypadku** przy 24, 40 i 128 kbps (bloki short używają wtedy KBD, którego listki boczne opadają dużo szybciej, więc mniej szumu przecieka przed atak). Odczyt z bitstreamu: bit window_shape faktycznie wynosi 1 w każdej ramce. |
+| `--short-groups <0..3>` | 0..3 | -1 (tabela stock) | Jak grupowane są 8 okien short w ramce z transjentem (jeden zestaw współczynników skali na grupę). `1` jedna grupa (najtaniej, szum rozłożony na całą ramkę), `2` cztery pary (równa rozdzielczość czasowa, zmierzone: najmniej dziur w ramkach short), `3` ciasno wokół ataku (najwięcej bitów tam, gdzie atak). `0` = tabela stock. |
+
+Punkt wyjścia dla LC stereo 24..50 kbps z szerokim pasmem:
+
+    fdkaac-franken-x64.exe -p 2 -b 32000 -w 17000 --hole-ladder 2 --avoid-holes 1 --window-shape 1 -o out.m4a in.wav
 
 ## 8. Bias decyzji MS (uczciwie: narzędzie o SŁABYM efekcie)
 

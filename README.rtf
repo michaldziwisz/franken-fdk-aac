@@ -146,7 +146,7 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 {
 {{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --side-bias <dB>}\par}
 \cell}
-{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -24.0 .. +50.0\par}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -24.0 .. +50.0, up to 3 decimals, {\f1 .} or {\f1 ,}\par}
 \cell}
 {{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0 (off)\par}
 \cell}
@@ -161,7 +161,7 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 {
 {{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --side-knee <dB>}\par}
 \cell}
-{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -24.0 .. +50.0\par}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -24.0 .. +50.0, up to 3 decimals\par}
 \cell}
 {{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0 (off)\par}
 \cell}
@@ -176,7 +176,7 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 {
 {{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --mask-slope <dB>}\par}
 \cell}
-{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -24.0 .. +50.0\par}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -24.0 .. +50.0, up to 3 decimals\par}
 \cell}
 {{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0 (off)\par}
 \cell}
@@ -335,6 +335,8 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 }
 \intbl\row}
 {\pard \ql \f0 \sa180 \li0 \fi0 \par}
+{\pard \ql \f0 \sa180 \li0 \fi0 DECIMALS in {\f1 --side-bias}, {\f1 --side-knee} and {\f1 --mask-slope} (fixed in this version): they used to be read with a parser that stopped at a comma, so {\f1 -0,23} became {\f1 -0} (knob off) and {\f1 -1,5} became {\f1 -1}, and the value was stored in tenths of a dB. Now all decimal switches accept {\f1 .} or {\f1 ,}, keep 3 decimal places (rounded half away from zero), reject anything else ({\f1 1e1}, {\f1 nan}, {\f1 1.2.3}, {\f1 3x}, spaces) with an error, and check the range on the rounded value, so what is accepted is exactly what the encoder gets. Whole-number switches are strict too ({\f1 --block-bias 128,5} is an error instead of 128).\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Measured on dense stereo at 40 kbps: {\f1 --side-bias} now changes the side error continuously from 0 to -0.95 dB (-1.13 -> -0.92 dB side error). At about -0.97 dB there is a real step (-0.92 -> -0.31 dB): there the raised side threshold crosses the -0.97 dB minimum-SNR line of the avoid-holes logic ({\f1 SnrLdFac} = 0.8 in {\f1 adj_thr.cpp}) and most side bands are dropped at once. Below that, more negative values change nothing more, because the side is already gone. So the jump at -1 that was heard is real and comes from the encoder, not from rounding; the values in between now really work.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel2 \b \fs28 Intensity stereo in practice (how to use it, not the formulas)\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 What it is: intensity stereo (IS) in the upper bands drops separate L/R and sends ONE energy envelope + direction (panning) information. The ear localizes high tones poorly, so this saves quite a few bits \u8212- but at the cost of stereo separation (the width of the scene at the top of the band narrows). You pay for it especially on material with a real L/R difference in the highs (cymbals on one side, spatial effects).\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 By default FDK is very CAUTIOUS with IS (hence your observation "you can barely hear the difference"). There are three reasons, and that is what these knobs are for:\par}
@@ -1865,6 +1867,221 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 \intbl\row}
 {\pard \ql \f0 \sa180 \li0 \fi0 \par}
 {\pard \ql \f0 \sa180 \li0 \fi0 IMPORTANT: {\f1 --block-bias} always produces a standard-compliant stream (it shifts the attack-detection threshold, it doesn't forcibly impose a block type). It replaced the old {\f1 --allshort}/{\f1 --alllong}, which created an ILLEGAL stream (hard forcing of the short window without recomputing SFB/grouping -> decoders rejected it, Winamp "skipped like on a scratched disc"). If you want maximum long blocks: {\f1 --block-bias 0}; maximum short: {\f1 --block-bias 255}.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel2 \b \fs28 7b. Core transients, pre-echo and spectral holes (LC / LD / ELD core)\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 These knobs reach the AAC core itself, below SBR. They matter most where the core is starved: LC stereo 24..50 kbps with a bandwidth forced well above normal ({\f1 -w 16000..20000}). Each one is off by default and gives a stream byte-identical to stock when unset. All streams were checked with the Fraunhofer decoder and ffmpeg (0 errors in 396 extreme-value encodes across LC, HE-AAC, LD and ELD).\par}
+{
+\trowd \trgaph120
+\clbrdrb\brdrs\cellx2160\clbrdrb\brdrs\cellx4320\clbrdrb\brdrs\cellx6480\clbrdrb\brdrs\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Switch\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Values\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Default\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Description\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --hole-ladder <1..8>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 1..8\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (stock 8)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\b The strongest lever against holes.} When a frame cannot afford all bands, FDK cuts bands to zero in 8 energy steps, from the quietest upwards, until the bit budget fits. With fewer steps only the quietest bands may be cut, and the rest of the budget problem is solved by coarser quantisation instead of more zeroed bands. Measured on dense wideband material: at 32 kbps / 17 kHz zeroed bands drop from {\b 37% to 8%} ({\f1 2}), at 40 kbps / 18 kHz from 37% to 1.7%, at 50 kbps / 19 kHz from 35% to 0.2%. The price is a little more noise in the bands that remain (error-to-signal ratio 0.3..0.5 dB worse): fewer holes, slightly grainier fill. {\f1 2} is a good start, {\f1 1} is the extreme.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --avoid-holes <0|1>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0, 1\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (stock)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 The peak/valley shaping that keeps narrow loud bands from being zeroed. Stock switches it OFF below 20 kbps {\b per channel}, i.e. below 40 kbps {\b stereo}, right inside the 24..50 kbps range. {\f1 1} forces it on, {\f1 0} off. Alone it changes little (measured), but it helps together with {\f1 --hole-ladder}.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --hole-start <sfb>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0..51\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (stock 15, 0 when holes are off)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 First long-block scalefactor band where bands may be cut to zero at all. Higher = the lower spectrum is protected (measured: {\f1 25} cuts holes from 37% to 26% at 32 kbps). Lower = holes allowed deeper.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --hole-start-short <sfb>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0..15\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (stock 3)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 The same for short blocks.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --hole-spread <dB>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0.0..24.0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (stock 3.0 long, 2.0 short)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 How much the neighbour (spread) energy is lowered before a band counts as covered by its neighbours and so as a safe hole. Higher = fewer bands look covered. A fine knob: effects of 1..2% of bands.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --preecho-rise <dB>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0.0..24.0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (stock 3.01)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Pre-echo control inside LONG blocks: how far a band's masking threshold may rise from one frame to the next. Lower = the quantisation noise cannot run ahead of an attack that a long block has to carry. Above 3.01 = looser. Effect measured as small (tenths of a dB of pre-echo energy): the attack detector usually sends real attacks to short blocks first. Most useful with {\f1 --block-bias} low and in LD/ELD, which have no short blocks.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --preecho-depth <dB>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0.0..60.0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (stock 20.0)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 How far pre-echo control may lower a threshold at most. Pairs with {\f1 --preecho-rise}.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --attack-decay <x>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0.0..0.99\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (stock 0.70)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Memory of the attack detector that decides between long and short blocks: share of the running energy kept per sub-window. Higher = the attack is compared with a longer average (measured {\f1 0.9}: worst-case pre-echo 2.9 dB lower on castanet-like clicks). Lower = compared with the very last moment.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --attack-floor <dB>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -60.0..30.0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (0 = stock)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Shift of the minimum energy an attack must have. {\f1 -} = quiet attacks (brushes, soft hi-hats) also switch to short blocks; {\f1 +} = only loud ones.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --tns-thresh <x>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0.5..4.0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (stock 1.0)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Multiplier on the prediction gain TNS needs to switch on. Below 1 TNS shapes noise in time on more frames; above 1 more rarely. Measured trade-off: {\f1 0.7} spends bits on TNS side info and leaves more holes at low bitrate, {\f1 2.0} the reverse. In LD/ELD TNS is the main tool against pre-echo.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --tns-start <Hz>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0..24000\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (stock ~1.4 kHz @48k)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Lowest frequency of the lower TNS filter in long blocks (LC). Lower = TNS also shapes the mids.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --window-shape <0|1>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0, 1\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (stock)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 AAC-LC window: {\f1 0} sine for every block, {\f1 1} KBD for every block (stock: KBD long, sine short). One bit per frame, legal everywhere in LC. {\b Measured: {\f1 1} lowers pre-echo by 3.4..6.1 dB on the mean and 1.2..6.6 dB in the worst case} at 24, 40 and 128 kbps (the short blocks then use KBD, whose side lobes fall off much faster, so less noise leaks ahead of the attack). Read from the bitstream: the window_shape bit really is 1 in every frame.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --short-groups <0..3>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0..3\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (stock table)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 How the 8 short windows of a transient frame are grouped (one scalefactor set per group). {\f1 1} one group (cheapest, noise spread over the whole frame), {\f1 2} four pairs (even time resolution, measured: fewest holes in short frames), {\f1 3} tight around the attack (most bits where the attack is). {\f1 0} = stock table.\par}
+\cell}
+}
+\intbl\row}
+{\pard \ql \f0 \sa180 \li0 \fi0 \par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Starting point for 24..50 kbps LC stereo with a wide band:\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \f1 fdkaac-franken-x64.exe -p 2 -b 32000 -w 17000 --hole-ladder 2 --avoid-holes 1 --window-shape 1 -o out.m4a in.wav\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 8. MS decision bias (honestly: a tool with a WEAK effect)\par}
 {
 \trowd \trgaph120
@@ -3436,7 +3653,7 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 {
 {{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --side-bias <dB>}\par}
 \cell}
-{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -24.0 .. +50.0\par}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -24,0 .. +50,0, do 3 miejsc po przecinku, {\f1 .} lub {\f1 ,}\par}
 \cell}
 {{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0 (off)\par}
 \cell}
@@ -3451,7 +3668,7 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 {
 {{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --side-knee <dB>}\par}
 \cell}
-{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -24.0 .. +50.0\par}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -24,0 .. +50,0, do 3 miejsc\par}
 \cell}
 {{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0 (off)\par}
 \cell}
@@ -3466,7 +3683,7 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 {
 {{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --mask-slope <dB>}\par}
 \cell}
-{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -24.0 .. +50.0\par}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -24,0 .. +50,0, do 3 miejsc\par}
 \cell}
 {{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0 (off)\par}
 \cell}
@@ -3625,6 +3842,8 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 }
 \intbl\row}
 {\pard \ql \f0 \sa180 \li0 \fi0 \par}
+{\pard \ql \f0 \sa180 \li0 \fi0 U\u321 ?AMKI w {\f1 --side-bias}, {\f1 --side-knee} i {\f1 --mask-slope} (naprawione w tej wersji): dawniej czyta\u322 ? je parser, kt\u243 ?ry zatrzymywa\u322 ? si\u281 ? na przecinku, wi\u281 ?c {\f1 -0,23} stawa\u322 ?o si\u281 ? {\f1 -0} (pokr\u281 ?t\u322 ?o wy\u322 ?\u261 ?czone), a {\f1 -1,5} stawa\u322 ?o si\u281 ? {\f1 -1}; do tego warto\u347 ?\u263 ? trzymana by\u322 ?a w dziesi\u261 ?tych cz\u281 ?\u347 ?ciach dB. Teraz wszystkie prze\u322 ?\u261 ?czniki dziesi\u281 ?tne przyjmuj\u261 ? {\f1 .} lub {\f1 ,}, zachowuj\u261 ? 3 miejsca po przecinku (zaokr\u261 ?glenie po\u322 ?\u243 ?wek od zera), wszystko inne ({\f1 1e1}, {\f1 nan}, {\f1 1.2.3}, {\f1 3x}, spacje) odrzucaj\u261 ? b\u322 ?\u281 ?dem, a zakres sprawdzaj\u261 ? na warto\u347 ?ci PO zaokr\u261 ?gleniu, wi\u281 ?c przyj\u281 ?te jest dok\u322 ?adnie to, co trafia do enkodera. Prze\u322 ?\u261 ?czniki ca\u322 ?kowite te\u380 ? s\u261 ? \u347 ?cis\u322 ?e ({\f1 --block-bias 128,5} to b\u322 ?\u261 ?d, a nie 128).\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Zmierzone na g\u281 ?stym stereo przy 40 kbps: {\f1 --side-bias} zmienia teraz b\u322 ?\u261 ?d kana\u322 ?u side p\u322 ?ynnie od 0 do -0,95 dB (-1,13 -> -0,92 dB b\u322 ?\u281 ?du side). Przy oko\u322 ?o -0,97 dB jest prawdziwy skok (-0,92 -> -0,31 dB): tam podniesiony pr\u243 ?g side przecina lini\u281 ? minimalnego SNR -0,97 dB w logice unikania dziur ({\f1 SnrLdFac} = 0,8 w {\f1 adj_thr.cpp}) i wi\u281 ?kszo\u347 ?\u263 ? pasm side wypada naraz. Dalsze ujemne warto\u347 ?ci nic ju\u380 ? nie zmieniaj\u261 ?, bo side jest ju\u380 ? wyci\u281 ?ty. S\u322 ?yszalny skok przy -1 jest wi\u281 ?c prawdziwy i pochodzi z enkodera, nie z zaokr\u261 ?glania; warto\u347 ?ci po\u347 ?rednie teraz faktycznie dzia\u322 ?aj\u261 ?.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel2 \b \fs28 Intensity stereo w praktyce (jak tego u\u380 ?ywa\u263 ?, nie wzory)\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Co to jest: intensity stereo (IS) w g\u243 ?rnych pasmach porzuca osobne L/R i wysyla JEDNA obwiedni\u281 ? energii + informacj\u281 ? o kierunku (panoramie). Ucho s\u322 ?abo lokalizuje wysokie tony, wi\u281 ?c to oszcz\u281 ?dza sporo bitow \u8212- ale za cena separacji stereo (szeroko\u347 ?\u263 ? sceny w g\u243 ?rze pasma sie zw\u281 ?\u380 ?a). P\u322 ?aci sie za to zw\u322 ?aszcza na materiale z realna r\u243 ?\u380 ?nica L/R w wysokich (blachy z jednej strony, efekty przestrzenne).\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 FDK domy\u347 ?lnie jest bardzo OSTRO\u379 ?NY z IS (st\u261 ?d Twoja obserwacja "ledwo s\u322 ?ycha\u263 ? r\u243 ?\u380 ?nice"). Powody s\u261 ? trzy i po to s\u261 ? te pokretla:\par}
@@ -5140,6 +5359,221 @@ https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 \intbl\row}
 {\pard \ql \f0 \sa180 \li0 \fi0 \par}
 {\pard \ql \f0 \sa180 \li0 \fi0 WAZNE: {\f1 --block-bias} zawsze produkuje strumien zgodny ze standardem (przesuwa prog detekcji ataku, nie wymusza na sile typu bloku). Zast\u261 ?pi\u322 ? dawne {\f1 --allshort}/{\f1 --alllong}, kt\u243 ?re tworzy\u322 ?y NIELEGALNY strumien (twarde wymuszenie short window bez przeliczenia SFB/grupowania -> dekoder odrzuca\u322 ?, Winamp "skaka\u322 ? jak po porysowanej p\u322 ?ycie"). Jesli chcesz maksimum d\u322 ?ugich: {\f1 --block-bias 0}; maksimum kr\u243 ?tkich: {\f1 --block-bias 255}.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel2 \b \fs28 7b. Transjenty rdzenia, pre-echo i dziury w widmie (rdze\u324 ? LC / LD / ELD)\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Te pokr\u281 ?t\u322 ?a si\u281 ?gaj\u261 ? samego rdzenia AAC, pod SBR. Najwi\u281 ?cej daj\u261 ? tam, gdzie rdze\u324 ? g\u322 ?oduje: LC stereo 24..50 kbps z pasmem wymuszonym wyra\u378 ?nie ponad norm\u281 ? ({\f1 -w 16000..20000}). Ka\u380 ?de jest domy\u347 ?lnie wy\u322 ?\u261 ?czone i bez ustawienia daje strumie\u324 ? bajt w bajt identyczny ze stockiem. Strumienie sprawdzili\u347 ?my dekoderem Fraunhofera i ffmpeg (0 b\u322 ?\u281 ?d\u243 ?w w 396 kodowaniach skrajnych warto\u347 ?ci w LC, HE-AAC, LD i ELD).\par}
+{
+\trowd \trgaph120
+\clbrdrb\brdrs\cellx2160\clbrdrb\brdrs\cellx4320\clbrdrb\brdrs\cellx6480\clbrdrb\brdrs\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Prze\u322 ?\u261 ?cznik\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Warto\u347 ?ci\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Domy\u347 ?lnie\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Opis\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --hole-ladder <1..8>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 1..8\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (stock 8)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\b Najsilniejsza d\u378 ?wignia przeciw dziurom.} Gdy ramki nie sta\u263 ? na wszystkie pasma, FDK zeruje pasma w 8 krokach energii, od najcichszych w g\u243 ?r\u281 ?, a\u380 ? bud\u380 ?et bit\u243 ?w si\u281 ? zmie\u347 ?ci. Przy mniejszej liczbie krok\u243 ?w wolno zerowa\u263 ? tylko najcichsze pasma, a reszt\u281 ? problemu z bud\u380 ?etem rozwi\u261 ?zuje grubsza kwantyzacja zamiast kolejnych wyzerowanych pasm. Zmierzone na g\u281 ?stym, szerokopasmowym materiale: przy 32 kbps / 17 kHz wyzerowanych pasm ubywa {\b z 37% do 8%} ({\f1 2}), przy 40 kbps / 18 kHz z 37% do 1,7%, przy 50 kbps / 19 kHz z 35% do 0,2%. Cena to troch\u281 ? wi\u281 ?cej szumu w pasmach, kt\u243 ?re zostaj\u261 ? (stosunek b\u322 ?\u281 ?du do sygna\u322 ?u gorszy o 0,3..0,5 dB): mniej dziur, nieco bardziej ziarniste wype\u322 ?nienie. {\f1 2} to dobry start, {\f1 1} to skrajno\u347 ?\u263 ?.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --avoid-holes <0|1>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0, 1\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (stock)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Kszta\u322 ?towanie szczyt\u243 ?w i dolin, kt\u243 ?re chroni w\u261 ?skie g\u322 ?o\u347 ?ne pasma przed wyzerowaniem. Stock wy\u322 ?\u261 ?cza je poni\u380 ?ej 20 kbps {\b na kana\u322 ?}, czyli poni\u380 ?ej 40 kbps {\b stereo}, w samym \u347 ?rodku zakresu 24..50 kbps. {\f1 1} wymusza w\u322 ?\u261 ?czenie, {\f1 0} wy\u322 ?\u261 ?czenie. Samo zmienia niewiele (zmierzone), pomaga razem z {\f1 --hole-ladder}.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --hole-start <sfb>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0..51\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (stock 15, 0 gdy ochrona wy\u322 ?\u261 ?czona)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Pierwsze pasmo wsp\u243 ?\u322 ?czynnika skali bloku long, w kt\u243 ?rym w og\u243 ?le wolno zerowa\u263 ?. Wy\u380 ?ej = dolne widmo chronione (zmierzone: {\f1 25} zmniejsza dziury z 37% do 26% przy 32 kbps). Ni\u380 ?ej = dziury dozwolone g\u322 ?\u281 ?biej.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --hole-start-short <sfb>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0..15\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (stock 3)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 To samo dla blok\u243 ?w short.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --hole-spread <dB>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0,0..24,0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (stock 3,0 long, 2,0 short)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 O ile obni\u380 ?ana jest energia s\u261 ?siad\u243 ?w, zanim pasmo uznamy za przykryte przez s\u261 ?siad\u243 ?w, czyli za bezpieczn\u261 ? dziur\u281 ?. Wy\u380 ?ej = mniej pasm wygl\u261 ?da na przykryte. Pokr\u281 ?t\u322 ?o precyzyjne: efekty rz\u281 ?du 1..2% pasm.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --preecho-rise <dB>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0,0..24,0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (stock 3,01)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Kontrola pre-echa w blokach LONG: o ile pr\u243 ?g maskowania pasma mo\u380 ?e urosn\u261 ?\u263 ? z ramki na ramk\u281 ?. Ni\u380 ?ej = szum kwantyzacji nie wyprzedzi ataku, kt\u243 ?ry musi unie\u347 ?\u263 ? blok long. Powy\u380 ?ej 3,01 = lu\u378 ?niej. Efekt zmierzony jako ma\u322 ?y (dziesi\u261 ?te cz\u281 ?\u347 ?ci dB energii pre-echa): detektor atak\u243 ?w zwykle wcze\u347 ?niej kieruje prawdziwe ataki do blok\u243 ?w short. Najbardziej przydatne przy niskim {\f1 --block-bias} oraz w LD i ELD, kt\u243 ?re blok\u243 ?w short nie maj\u261 ?.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --preecho-depth <dB>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0,0..60,0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (stock 20,0)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Jak g\u322 ?\u281 ?boko kontrola pre-echa mo\u380 ?e co najwy\u380 ?ej obni\u380 ?y\u263 ? pr\u243 ?g. W parze z {\f1 --preecho-rise}.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --attack-decay <x>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0,0..0,99\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (stock 0,70)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Pami\u281 ?\u263 ? detektora atak\u243 ?w, kt\u243 ?ry wybiera mi\u281 ?dzy blokami long i short: jaka cz\u281 ?\u347 ?\u263 ? bie\u380 ?\u261 ?cej energii zostaje na ka\u380 ?de podokno. Wy\u380 ?ej = atak por\u243 ?wnywany z d\u322 ?u\u380 ?sz\u261 ? \u347 ?redni\u261 ? (zmierzone {\f1 0,9}: najgorszy przypadek pre-echa ni\u380 ?szy o 2,9 dB na klikni\u281 ?ciach podobnych do kastaniet\u243 ?w). Ni\u380 ?ej = por\u243 ?wnanie z ostatni\u261 ? chwil\u261 ?.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --attack-floor <dB>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -60,0..30,0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (0 = stock)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Przesuni\u281 ?cie minimalnej energii ataku. {\f1 -} = ciche ataki (szczotki, ciche hi-haty) te\u380 ? prze\u322 ?\u261 ?czaj\u261 ? na bloki short; {\f1 +} = tylko g\u322 ?o\u347 ?ne.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --tns-thresh <x>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0,5..4,0\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (stock 1,0)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Mno\u380 ?nik zysku predykcji, kt\u243 ?rego TNS potrzebuje, by si\u281 ? w\u322 ?\u261 ?czy\u263 ?. Poni\u380 ?ej 1 TNS kszta\u322 ?tuje szum w czasie w wi\u281 ?kszej liczbie ramek, powy\u380 ?ej 1 rzadziej. Zmierzony kompromis: {\f1 0,7} wydaje bity na dane poboczne TNS i przy niskim bitrate zostawia wi\u281 ?cej dziur, {\f1 2,0} odwrotnie. W LD i ELD TNS to g\u322 ?\u243 ?wne narz\u281 ?dzie przeciw pre-echu.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --tns-start <Hz>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0..24000\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (stock ok. 1,4 kHz przy 48 kHz)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Najni\u380 ?sza cz\u281 ?stotliwo\u347 ?\u263 ? dolnego filtra TNS w blokach long (LC). Ni\u380 ?ej = TNS kszta\u322 ?tuje te\u380 ? \u347 ?rodek pasma.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --window-shape <0|1>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0, 1\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (stock)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Okno AAC-LC: {\f1 0} sinus dla ka\u380 ?dego bloku, {\f1 1} KBD dla ka\u380 ?dego bloku (stock: KBD dla long, sinus dla short). Jeden bit na ramk\u281 ?, legalny wsz\u281 ?dzie w LC. {\b Zmierzone: {\f1 1} obni\u380 ?a pre-echo o 3,4..6,1 dB \u347 ?rednio i o 1,2..6,6 dB w najgorszym przypadku} przy 24, 40 i 128 kbps (bloki short u\u380 ?ywaj\u261 ? wtedy KBD, kt\u243 ?rego listki boczne opadaj\u261 ? du\u380 ?o szybciej, wi\u281 ?c mniej szumu przecieka przed atak). Odczyt z bitstreamu: bit window_shape faktycznie wynosi 1 w ka\u380 ?dej ramce.\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2160\cellx4320\cellx6480\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 {\f1 --short-groups <0..3>}\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 0..3\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 -1 (tabela stock)\par}
+\cell}
+{{\pard\intbl \ql \f0 \sa0 \li0 \fi0 Jak grupowane s\u261 ? 8 okien short w ramce z transjentem (jeden zestaw wsp\u243 ?\u322 ?czynnik\u243 ?w skali na grup\u281 ?). {\f1 1} jedna grupa (najtaniej, szum roz\u322 ?o\u380 ?ony na ca\u322 ?\u261 ? ramk\u281 ?), {\f1 2} cztery pary (r\u243 ?wna rozdzielczo\u347 ?\u263 ? czasowa, zmierzone: najmniej dziur w ramkach short), {\f1 3} ciasno wok\u243 ?\u322 ? ataku (najwi\u281 ?cej bit\u243 ?w tam, gdzie atak). {\f1 0} = tabela stock.\par}
+\cell}
+}
+\intbl\row}
+{\pard \ql \f0 \sa180 \li0 \fi0 \par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Punkt wyj\u347 ?cia dla LC stereo 24..50 kbps z szerokim pasmem:\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \f1 fdkaac-franken-x64.exe -p 2 -b 32000 -w 17000 --hole-ladder 2 --avoid-holes 1 --window-shape 1 -o out.m4a in.wav\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 8. Bias decyzji MS (uczciwie: narz\u281 ?dzie o S\u321 ?ABYM efekcie)\par}
 {
 \trowd \trgaph120
