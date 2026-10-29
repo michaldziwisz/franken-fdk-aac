@@ -30,7 +30,7 @@ command -v ffmpeg  >/dev/null || { echo "SKIP: brak ffmpeg";  exit 77; }
 command -v python3 >/dev/null || { echo "SKIP: brak python3"; exit 77; }
 [ -x "$X64" ] || [ -f "$X64" ] || { echo "FAIL: brak $X64"; exit 1; }
 
-cleanup(){ rm -f "$WAV" _check_hdr.wav _check_msshort.wav _check_isalt.wav short_ms.wav is_alt.wav _check_dab_in.wav _check_psmulti.wav _check_psnoiid.wav "${OUT}"*.m4a "${OUT}"*.aac "${OUT}"*.txt "${OUT}"*.dabp "${OUT}"*.bin "${OUT}"*.loas; rm -rf _check_dabtmp; }
+cleanup(){ rm -f "$WAV" _check_invf.wav _check_nfw.wav _check_unlock.wav _check_hdr.wav _check_msshort.wav _check_isalt.wav short_ms.wav is_alt.wav _check_dab_in.wav _check_psmulti.wav _check_psnoiid.wav "${OUT}"*.m4a "${OUT}"*.aac "${OUT}"*.txt "${OUT}"*.dabp "${OUT}"*.bin "${OUT}"*.loas; rm -rf _check_dabtmp; }
 trap cleanup EXIT
 
 # --- probka: 2s stereo, ton + lekki szum (rusza MS/IS/TNS) ---
@@ -713,6 +713,142 @@ else
   bad "domyslny okres naglowka SBR zmieniony: ${g} s"
 fi
 rm -f "$HDRW"
+
+# --- Estymator invf/noise floor wystawiony + --sbr-softness (29.10.2026) ---
+# Dynamiczna decyzja inverse filtering zostaje dynamiczna; pokretla zmieniaja
+# tylko jej parametry. Makro --sbr-softness 2 = stock muzyka, 4 = stock mowa
+# (tabela + waga szumu, bez zmiany crossovera), wiec maja dac IDENTYCZNY
+# strumien jak stock. Pozostale musza zmienic bitstream i dekodowac sie.
+INVW="_check_invf.wav"
+python3 - "$INVW" <<'PY'
+import wave, struct, math, random, sys
+sr = 48000; rnd = random.Random(5)
+c = lambda x: max(-32768, min(32767, int(x)))
+w = wave.open(sys.argv[1], 'wb'); w.setnchannels(2); w.setsampwidth(2); w.setframerate(sr)
+fr = []
+for i in range(sr * 3):
+    t = i / sr
+    v = 4000 * math.sin(2 * math.pi * 440 * t) + 2500 * math.sin(2 * math.pi * 3520 * t) \
+        + 1800 * math.sin(2 * math.pi * 7040 * t) + 1500 * rnd.uniform(-1, 1)
+    fr.append(struct.pack('<hh', c(v), c(0.9 * v)))
+w.writeframes(b''.join(fr)); w.close()
+PY
+enc "$X64" -f2 -p5 -b32000 -o "${OUT}_inv_base.aac" "$INVW"
+enc "$X64" -f2 -p5 -b32000 --speech -o "${OUT}_inv_speech.aac" "$INVW"
+IB=$(md5 "${OUT}_inv_base.aac"); IS=$(md5 "${OUT}_inv_speech.aac")
+enc "$X64" -f2 -p5 -b32000 --sbr-softness 2 -o "${OUT}_inv_s2.aac" "$INVW"
+[ -s "${OUT}_inv_s2.aac" ] && [ "$(md5 ${OUT}_inv_s2.aac)" = "$IB" ] \
+  && ok "--sbr-softness 2 = stock muzyka (bit-identyczny)" || bad "--sbr-softness 2 rozni sie od stock muzyki"
+enc "$X64" -f2 -p5 -b32000 --speech --sbr-softness 4 -o "${OUT}_inv_s4.aac" "$INVW"
+[ -s "${OUT}_inv_s4.aac" ] && [ "$(md5 ${OUT}_inv_s4.aac)" = "$IS" ] \
+  && ok "--sbr-softness 4 z --speech = stock mowa (bit-identyczny)" || bad "--sbr-softness 4 rozni sie od stock --speech"
+enc "$X64" -f2 -p5 -b32000 --sbr-invf-hyst 1.0 --sbr-invf-bias 0 --sbr-invf-smooth 2 \
+    --sbr-nf-weight 0.25 --sbr-nf-weight-from 3 --sbr-invf-table 0 --sbr-invf-min 0 --sbr-invf-max 3 \
+    -o "${OUT}_inv_neutral.aac" "$INVW"
+[ -s "${OUT}_inv_neutral.aac" ] && [ "$(md5 ${OUT}_inv_neutral.aac)" = "$IB" ] \
+  && ok "invf: wartosci neutralne = stock (bit-identyczny)" || bad "invf: wartosci neutralne zmieniaja strumien"
+for spec in "soft0:--sbr-softness 0" "soft5:--sbr-softness 5" "soft7:--sbr-softness 7" "min2:--sbr-invf-min 2" "max1:--sbr-invf-max 1" \
+            "bias+1:--sbr-invf-bias 1" "bias-1:--sbr-invf-bias -1" \
+            "hyst0:--sbr-invf-hyst 0" "sbrthr:--sbr-invf-sbr-thr 6" "origthr:--sbr-invf-orig-thr -6" \
+            "smooth0:--sbr-invf-smooth 0"; do
+  lbl="${spec%%:*}"; P="${spec#*:}"
+  enc "$X64" -f2 -p5 -b32000 $P -o "${OUT}_inv_${lbl}.aac" "$INVW"
+  f="${OUT}_inv_${lbl}.aac"
+  if [ -s "$f" ] && [ "$(md5 $f)" != "$IB" ] && [ "$(derr $f)" = "0" ]; then
+    ok "invf $P: inny strumien, dekodowalny"
+  else
+    bad "invf $P: brak pliku, strumien = stock albo bledy dekodera"
+  fi
+done
+# Tabela decyzji i waga szumu zaleza od materialu: tu tylko dekodowalnosc.
+for P in "--sbr-invf-table 1" "--sbr-nf-weight 1.0 --sbr-nf-weight-from 1"; do
+  enc "$X64" -f2 -p5 -b32000 $P -o "${OUT}_inv_dec.aac" "$INVW"
+  [ -s "${OUT}_inv_dec.aac" ] && [ "$(derr ${OUT}_inv_dec.aac)" = "0" ] \
+    && ok "invf $P: dekodowalny" || bad "invf $P: brak pliku albo bledy dekodera"
+done
+# Waga szumu dziala ponizej sufitu szumu. Z sufitem z tabeli (0.125) ~95%
+# pasm jest obcietych i waga nic nie zmienia; z --sbr-noise-max 6 musi.
+# Wlasna probka (ton + mocny szum): na probce INVW z trzema tonami waga nie
+# zmienia ani jednego pasma, co jest cecha materialu, nie bledem.
+NFW="_check_nfw.wav"
+python3 - "$NFW" <<'PY'
+import wave, struct, math, random, sys
+sr = 48000; rnd = random.Random(5)
+c = lambda x: max(-32768, min(32767, int(x)))
+w = wave.open(sys.argv[1], 'wb'); w.setnchannels(2); w.setsampwidth(2); w.setframerate(sr)
+fr = []
+for i in range(sr * 3):
+    x = 3000 * math.sin(2 * math.pi * 440 * i / sr) + 4000 * rnd.uniform(-1, 1)
+    fr.append(struct.pack('<hh', c(x), c(0.9 * x)))
+w.writeframes(b''.join(fr)); w.close()
+PY
+enc "$X64" -f2 -p5 -b32000 --sbr-noise-max 6 -o "${OUT}_inv_nm6.aac" "$NFW"
+enc "$X64" -f2 -p5 -b32000 --sbr-noise-max 6 --sbr-nf-weight 1.0 --sbr-nf-weight-from 1 -o "${OUT}_inv_nm6w.aac" "$NFW"
+rm -f "$NFW"
+[ -s "${OUT}_inv_nm6w.aac" ] && [ "$(md5 ${OUT}_inv_nm6w.aac)" != "$(md5 ${OUT}_inv_nm6.aac)" ] \
+  && [ "$(derr ${OUT}_inv_nm6w.aac)" = "0" ] \
+  && ok "--sbr-nf-weight 1.0 pod sufitem --sbr-noise-max 6: zmienia strumien, dekodowalny" \
+  || bad "--sbr-nf-weight 1.0 pod sufitem --sbr-noise-max 6: brak efektu albo bledy"
+rm -f "$INVW"
+
+# --- --unlock-bitrate ponizej tabel SBR/PS i LD/ELD (29.10.2026) ---
+# Stock (i Franken do 1.3.2) podnosil HE/HEv2 do najnizszego wiersza tabeli
+# strojenia SBR (16 kbps przy 48 kHz stereo HE-AAC), a LD/ELD odrzucal
+# ponizej 8 kbps/kanal + 208-bitowa rezerwa transportu. Mierzymy REALNY
+# bitrate z rozmiaru strumienia ADTS/LOAS (4 s), nie deklaracje.
+ULW="_check_unlock.wav"
+python3 - "$ULW" <<'PY'
+import wave, struct, math, random, sys
+sr = 48000; rnd = random.Random(7)
+c = lambda x: max(-32768, min(32767, int(x)))
+w = wave.open(sys.argv[1], 'wb'); w.setnchannels(2); w.setsampwidth(2); w.setframerate(sr)
+fr = []
+for i in range(sr * 4):
+    t = i / sr
+    v = 5000 * math.sin(2 * math.pi * 220 * t) + 2500 * math.sin(2 * math.pi * 1760 * t) + 2500 * rnd.uniform(-1, 1)
+    fr.append(struct.pack('<hh', c(v), c(0.8 * v + 1200 * rnd.uniform(-1, 1))))
+w.writeframes(b''.join(fr)); w.close()
+PY
+realbps(){ echo $(( $(stat -c%s "$1") * 8 / 4 )); }
+for spec in "he8k:-f2 -p5 -b8000:aac:12000" "hev2-6k:-f2 -p29 -b6000:aac:9000" \
+            "eldsbr12k:-f10 -p39 -L1 -b12000:loas:15000" "ld12k:-f10 -p23 -b12000:loas:15000" \
+            "eld10k:-f10 -p39 -b10000:loas:13000"; do
+  IFS=':' read -r lbl P ext lim <<< "$spec"
+  f="${OUT}_ul_${lbl}.${ext}"; rm -f "$f"
+  enc "$X64" $P --unlock-bitrate -o "$f" "$ULW"
+  if [ ! -s "$f" ]; then bad "--unlock-bitrate $P: enkoder nie wystartowal"; continue; fi
+  r=$(realbps "$f")
+  if [ "$r" -le "$lim" ]; then
+    ok "--unlock-bitrate $P: realnie ${r} bps (limit testu ${lim})"
+  else
+    bad "--unlock-bitrate $P: realnie ${r} bps, podloga nie zdjeta"
+  fi
+done
+for lbl in he8k hev2-6k; do
+  f="${OUT}_ul_${lbl}.aac"
+  # HEv2 ponizej 16 kbps: ffmpeg 6.1 zglasza JEDEN "noise_facs_q 255 is
+  # invalid" na 3. ramce - identycznie w STOCK HEv2 12 i 14 kbps (w tabelach
+  # oryginalu), dekoder Fraunhofera 0 bledow. Usterka istniejaca, nie nasza.
+  lim=0; [ "$lbl" = hev2-6k ] && lim=1
+  n=$(derr "$f")
+  [ -s "$f" ] && [ "$n" -le "$lim" ] && ok "--unlock-bitrate $lbl: ffmpeg bledow $n (dopuszczalne $lim)" \
+    || bad "--unlock-bitrate $lbl: bledy dekodera ffmpeg ($n)"
+done
+# Ponizej szacunku wlasnego ladunku SBR rdzen nie ma budzetu: czysty blad, nie abort.
+rm -f "${OUT}_ul_neg.aac"
+"$X64" -f2 -p5 -b2000 --unlock-bitrate -o "${OUT}_ul_neg.aac" "$ULW" >/dev/null 2>&1; rc=$?
+if [ "$rc" != "0" ] && [ "$rc" -lt 128 ] && [ ! -s "${OUT}_ul_neg.aac" ]; then
+  ok "--unlock-bitrate HE 2 kbps stereo: czysty blad inicjalizacji (rc=$rc), bez abort"
+else
+  bad "--unlock-bitrate HE 2 kbps stereo: rc=$rc (oczekiwany czysty blad)"
+fi
+# Bez --unlock-bitrate stock podnosi HE 8 kbps stereo (zachowanie bez zmian).
+# Bez flagi -b < 1000 znaczy kbps, wiec 8 kbps to "-b 8" (-b 8000 = 8000 kbps).
+enc "$X64" -f2 -p5 -b8 -o "${OUT}_ul_stock.aac" "$ULW"
+r=$(realbps "${OUT}_ul_stock.aac")
+[ "$r" -ge 14000 ] && [ "$r" -le 20000 ] && ok "bez --unlock-bitrate HE -b 8 dalej podniesione do wiersza tabeli (realnie ${r} bps)" \
+  || bad "bez --unlock-bitrate HE -b 8: ${r} bps (zmienione zachowanie stock)"
+rm -f "$ULW"
 
 echo "==================================="
 echo "WYNIK: PASS=$PASS FAIL=$FAIL"

@@ -1,0 +1,19 @@
+--- a/libSBRdec/src/env_extr.cpp
++++ b/libSBRdec/src/env_extr.cpp
+@@ -1,3 +1,5 @@
++#include <stdio.h>
++#include <stdlib.h>
+ /* -----------------------------------------------------------------------------
+ Software License for The Fraunhofer FDK AAC Codec Library for Android
+ 
+@@ -774,6 +776,10 @@
+     }
+   }
+ 
++  { static FILE *df = NULL; if (!df) { const char *fn = getenv("INVF_DUMP"); if (fn) df = fopen(fn, "w"); }
++    if (df) { for (i = 0; i < hHeaderData->freqBandData.nInvfBands; i++) fprintf(df, "%d", (int)hFrameDataLeft->sbr_invf_mode[i]);
++      if (nCh == 2) { fprintf(df, "|"); for (i = 0; i < hHeaderData->freqBandData.nInvfBands; i++) fprintf(df, "%d", (int)hFrameDataRight->sbr_invf_mode[i]); }
++      fprintf(df, "\n"); fflush(df); } }
+   if (nCh == 1) {
+     if (hHeaderData->bs_info.pvc_mode) {
+       if (!sbrGetPvcEnvelope(hHeaderData, hFrameDataLeft, hBs, flags,
