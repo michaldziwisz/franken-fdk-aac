@@ -48,6 +48,16 @@ is unchanged byte for byte.
   rescued.
 - `tools/core/core_measure.py` also reports `nsr_kept`, the error in the
   bands that were not cut.
+- `--side-knee` rebuilt as an offset on each side band's own margin (energy above
+  threshold) near the coded/zeroed edge. It reads the threshold the rate control
+  wanted before avoid-holes pinned the band at 0.97 dB, so the ~10% of side bands
+  stacked on that value are spread by their real level. The old version dropped
+  that whole crowd at once between -0.95 and -1.0 dB; now coded side bands per
+  frame fall evenly (acoustic music, 96 kbps: 30.2 stock, 25.4 at -1, 18.1 at -6,
+  1.1 at -24) and the + side grades the rescued bands instead of coding them all
+  at the same coarse step. Streams with `--side-knee` set differ from 1.3.x.
+  Diagnostic: `--side-knee-zone` (fade-out of the offset, stock 3x the knee) and
+  `--side-knee-spread` (dB of negative knee to fully spread the rescued crowd).
 - `--bit-stats`: counts where the bits of the written frames go (transport
   header, element and ics headers, MS mask, section data, scalefactors, PNS,
   TNS, spectrum, SBR/PS payload, fill), per channel where it applies, plus coded,

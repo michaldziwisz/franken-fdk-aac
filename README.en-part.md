@@ -868,49 +868,40 @@ the same signal the step shows in the mid error instead (-8.72 to -9.04 dB at -0
 
 #### `--side-knee <dB>`
 
-**Shape how abruptly a side band flips between coded and zeroed at the threshold.**
+**Give every side band near the coded/zeroed edge a precision that follows its own level.**
 
 - Applies to: stereo AAC core, MS bands. No effect in HE-AAC v2, and nothing to do under
   `--msmask 0`.
-- Values: `-24.0..50.0` dB, `0` = off (default, hard cliff as in stock)
+- Values: `-24.0..50.0` dB, `0` = off (default, stock behaviour)
 - Input: decimal, up to 3 places, `.` or `,`
 
-`--side-bias` moves where the coded/zeroed line sits. This switch changes the character of
-the line itself. Stock behaviour is a cliff: the moment a band's energy falls to the
-threshold, the entire band is thrown away, and the band next to it that cleared the
-threshold by a hair is coded normally. On decaying material that produces a brittle edge,
-because the side content of a reverb tail does not fade out, it switches off band by band.
+`--side-bias` moves where the coded/zeroed line sits. This switch works on the margin of
+each band: how far its energy lies above its masking threshold, which decides how finely
+the band is coded and whether it survives at all. The value is an offset added to that
+margin, so a band keeps the precision its real level deserves, just shifted.
 
-A positive value makes the knee soft. Bands sitting up to N dB below the threshold are
-still kept, coded at the coarsest scalefactor rather than dropped, so the side fades
-instead of stopping. Air and reverb decay more smoothly and the stereo picture stays
-coherent while it gets quiet. It costs bits, spent on bands the encoder had already judged
-inaudible, so it is a quality setting rather than an efficiency one.
+One detail of FDK makes this necessary. When bits run out, FDK does not drop a weak band at
+once: it pins the band at about 0.97 dB above its threshold and keeps it at the coarsest
+step. On real music some 10% of the side bands end up stacked on that one value, whatever
+their real level was. The switch reads the margin the rate control wanted before that
+rescue, so those bands are spread out again by their real level instead of moving as one
+block. Measured on acoustic music at 96 kbps, coded side bands per frame fall evenly from
+30.2 (stock) through 25.4 (-1), 22.2 (-3), 18.1 (-6), 10.5 (-12) to 1.1 (-24): no jump.
 
-A negative value makes the knee hard. Bands that only just clear the threshold, within N dB
-above it, are zeroed anyway, which cuts the side off earlier than stock. The result is
-leaner and more aggressive, and it frees bits for the bands that clearly matter.
+A positive value adds precision: bands up to N dB below the threshold are kept, graded by
+how far below they were, and bands near the edge get up to N dB finer. A negative value
+takes precision away: the bands closest to the edge leave first and the bits go to mid.
+The offset is full near the edge and fades out above it, so the loud, well coded part of
+the side channel is not touched (the fade-out zone is `--side-knee-zone`).
 
-The negative direction saturates early: by -6 dB everything marginal has already been
-cut, and -6, -12 and -24 produce the same result. Treat -6 as the floor of the control and
-do not bother typing bigger numbers. The positive direction keeps changing across the
-range, so there is genuine room to explore upward.
-
-Examples:
-- Mild, soft knee: `--side-knee 2`. Near miss bands survive at a coarse scalefactor. A
-  slightly gentler end to decays.
-- Strong, soft knee: `--side-knee 6`. Clearly smoother side fade out, with a real bit cost
-  on sparse material. The usual working region is +3 to +6.
-- Exaggerated, soft knee: `--side-knee 24`. A very wide band of inaudible side content
-  dragged into the stream at the coarsest resolution. A caricature: you are spending bits
-  on material that was below the masking threshold by a wide margin.
-- Mild, hard knee: `--side-knee -1`. The weakest surviving side bands are dropped. Slightly
-  leaner, slightly tighter.
-- Strong, hard knee: `--side-knee -3`. An early side cutoff, with the freed bits going to
-  the loud content. Audibly narrower on ambience.
-- Exaggerated, hard knee: `--side-knee -6`. The end of the control: every marginal side
-  band is gone. A caricature, and the point past which the switch stops responding, since
-  -12 and -24 behave identically.
+Examples (acoustic stereo music, 96 kbps):
+- Mild, finer: `--side-knee 2`. Side holes 6.9% to 2.2%, mid error up 0.8 dB.
+- Strong, finer: `--side-knee 6`. Side holes 0.6%, side error 2.4 dB lower, mid pays 3.5 dB.
+- Exaggerated, finer: `--side-knee 24`. More bits go to side than to mid. A caricature.
+- Mild, coarser: `--side-knee -1`. The weakest side bands go, about 5 of 37 per frame.
+- Strong, coarser: `--side-knee -6`. Side holes 29%, mid error 2.4 dB lower.
+- Exaggerated, coarser: `--side-knee -24`. Practically no side left; a mono image with
+  stereo bookkeeping.
 
 Works with / against: orthogonal to `--side-bias` and designed to be used with it; bias
 sets where the threshold is, knee sets how soft its edge is. Inert under `--msmask 0`.

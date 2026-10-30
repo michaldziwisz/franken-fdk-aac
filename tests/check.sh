@@ -1031,6 +1031,25 @@ for v in "--enfac-patch 2" "--enfac-patch -1"; do
   "$X64" -p2 -b32000 $v -f2 -o "${OUT}_vz.aac" _check_cov_dense.wav >/dev/null 2>&1; rc=$?
   [ $rc = 1 ] && ok "$v odrzucone (rc=1)" || bad "$v rc=$rc"
 done
+# --- --side-knee jako offset zapasu pasm side: plynny, bez skoku przy -0.97 dB ---
+# Stary knee zabijal naraz cala kupke pasm uratowanych przez avoid-holes (0.97 dB nad
+# progiem). Teraz liczba kodowanych pasm side ma maleć monotonicznie i bez skoku.
+sk(){ "$X64" -f2 -p2 -b96000 --side-knee "$1" --bit-stats -o "${OUT}_sk.aac" _check_cov_dense.wav 2>&1 >/dev/null | tr -d '\r' | sed -n 's/.*ch1 bands\/frame: coded \([0-9.]*\),.*/\1/p'; }
+c0=$(sk 0.001); c1=$(sk -0.9); c2=$(sk -1.0); c3=$(sk -3); c4=$(sk -12); cp=$(sk 6)
+python3 -c "
+import sys; v=[float(x) for x in '$c0 $c1 $c2 $c3 $c4'.split()]; p=float('$cp')
+mono=all(a>=b for a,b in zip(v,v[1:])); jump=abs(v[1]-v[2])
+sys.exit(0 if mono and jump < 1.0 and v[-1] < v[0] and p >= v[0] else 1)" \
+  && ok "--side-knee: pasma side ${cp} (+6) >= ${c0} >= ${c1} (-0.9) >= ${c2} (-1.0) >= ${c3} >= ${c4}, bez skoku przy -0.97" \
+  || bad "--side-knee: zly ksztalt ($cp | $c0 $c1 $c2 $c3 $c4)"
+for v in "--side-knee-zone 0.5" "--side-knee-zone 21" "--side-knee-spread 0" "--side-knee-spread 25"; do
+  "$X64" -p2 -b32000 $v -f2 -o "${OUT}_vz.aac" _check_cov_dense.wav >/dev/null 2>&1; rc=$?
+  [ $rc = 1 ] && ok "$v odrzucone (rc=1)" || bad "$v rc=$rc"
+done
+enc "$X64" -f2 -p2 -b96000 -o "${OUT}_sz0.aac" _check_cov_dense.wav
+enc "$X64" -f2 -p2 -b96000 --side-knee-zone 5 --side-knee-spread 2 -o "${OUT}_sz1.aac" _check_cov_dense.wav
+[ "$(md5 ${OUT}_sz1.aac)" = "$(md5 ${OUT}_sz0.aac)" ] && ok "--side-knee-zone/-spread bez --side-knee = stock" || bad "--side-knee-zone/-spread zmieniaja strumien bez --side-knee"
+
 # --- --bit-stats: tylko liczy, strumien bit w bit ten sam; tabela sie drukuje ---
 enc "$X64" -f2 -p2 -b14000 --uncap-bandwidth --unlock-bitrate -o "${OUT}_bs0.aac" _check_cov_dense.wav
 "$X64" -f2 -p2 -b14000 --uncap-bandwidth --unlock-bitrate --bit-stats -o "${OUT}_bs1.aac" _check_cov_dense.wav 2> "${OUT}_bs.txt" >/dev/null

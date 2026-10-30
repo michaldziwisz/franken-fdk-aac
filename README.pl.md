@@ -892,49 +892,40 @@ domyślnym na tym samym sygnale skok pojawia się w błędzie mid (z -8,72 na -9
 
 #### `--side-knee <dB>`
 
-**Ukształtuj, jak gwałtownie pasmo side przeskakuje na progu między kodowanym a wyzerowanym.**
+**Nadaj każdemu pasmu side przy krawędzi kodowane/wyzerowane precyzję zależną od jego własnego poziomu.**
 
 - Dotyczy: rdzeń AAC w stereo, pasma MS. Brak działania w HE-AAC v2, a przy `--msmask 0`
   nie ma tu nic do roboty.
-- Wartości: `-24.0..50.0` dB, `0` = wyłączone (domyślnie, twardy klif jak w stock)
+- Wartości: `-24.0..50.0` dB, `0` = wyłączone (domyślnie, zachowanie stock)
 - Wpisywanie: liczba dziesiętna, do 3 miejsc, `.` albo `,`
 
-`--side-bias` przesuwa to, gdzie leży linia kodowane/wyzerowane. Ten przełącznik zmienia
-charakter samej linii. Zachowanie stock to klif: w chwili, gdy energia pasma spada do
-progu, całe pasmo jest wyrzucane, a sąsiednie pasmo, które przeszło próg o włos, jest
-kodowane normalnie. Przy materiale wybrzmiewającym daje to kruchą krawędź, bo treść side
-ogona pogłosu nie wygasa, lecz wyłącza się pasmo po pasmie.
+`--side-bias` przesuwa to, gdzie leży linia kodowane/wyzerowane. Ten przełącznik działa na
+zapasie każdego pasma: o ile jego energia leży nad progiem maskowania, co decyduje, jak
+dokładnie pasmo jest kodowane i czy w ogóle przetrwa. Wartość to przesunięcie dodawane do
+tego zapasu, więc pasmo zachowuje precyzję należną jego prawdziwemu poziomowi, tylko
+przesuniętą.
 
-Wartość dodatnia robi kolano miękkim. Pasma leżące do N dB poniżej progu są nadal
-zachowywane, kodowane najgrubszym współczynnikiem skali, a nie porzucane, więc side
-wybrzmiewa, zamiast się urwać. Powietrze i pogłos wygasają gładziej, a obraz stereo
-zostaje spójny, gdy się ścisza. Kosztuje to bity, wydane na pasma, które koder uznał już
-za niesłyszalne, więc jest to ustawienie jakościowe, a nie oszczędnościowe.
+Potrzebne jest to przez jeden szczegół FDK. Gdy brakuje bitów, FDK nie wyrzuca słabego pasma
+od razu: przypina je około 0,97 dB nad progiem i trzyma na najgrubszym kroku. W prawdziwej
+muzyce około 10% pasm side ląduje na tej jednej wartości, niezależnie od ich rzeczywistego
+poziomu. Przełącznik czyta zapas, którego pętla bitów chciała przed tym ratunkiem, więc
+takie pasma znów rozkładają się według prawdziwego poziomu, zamiast ruszać się jednym
+blokiem. Zmierzone na muzyce akustycznej przy 96 kbps: kodowanych pasm side na ramkę ubywa
+równo z 30,2 (stock) przez 25,4 (-1), 22,2 (-3), 18,1 (-6), 10,5 (-12) do 1,1 (-24), bez skoku.
 
-Wartość ujemna robi kolano twardym. Pasma, które ledwie przechodzą próg, w granicach N dB
-nad nim, są mimo to zerowane, co odcina side wcześniej niż stock. Wynik jest chudszy i
-bardziej agresywny, a uwolnione bity idą do pasm, które wyraźnie mają znaczenie.
+Wartość dodatnia dodaje precyzji: pasma do N dB pod progiem zostają, stopniowane według
+tego, jak daleko pod nim były, a pasma przy krawędzi dostają do N dB dokładniej. Wartość
+ujemna odbiera precyzję: najpierw odchodzą pasma najbliżej krawędzi, a bity idą do mid.
+Przesunięcie działa w pełni przy krawędzi i wygasa wyżej, więc głośna, dobrze zakodowana
+część side zostaje nietknięta (strefę wygasania ustawia `--side-knee-zone`).
 
-Kierunek ujemny nasyca się szybko: przy -6 dB wszystko brzegowe jest już odcięte, a -6,
--12 i -24 dają ten sam wynik. Traktuj -6 jako podłogę tej kontroli i nie wpisuj większych
-liczb. Kierunek dodatni zmienia wynik w całym zakresie, więc w górę jest naprawdę miejsce
-na eksplorację.
-
-Przykłady:
-- Łagodnie, miękkie kolano: `--side-knee 2`. Pasma, którym zabrakło niewiele, przeżywają
-  na grubym współczynniku skali. Trochę łagodniejszy koniec wybrzmień.
-- Mocno, miękkie kolano: `--side-knee 6`. Wyraźnie gładsze wygasanie side, z realnym
-  kosztem bitowym przy materiale rzadkim. Zwykły obszar roboczy to +3 do +6.
-- Przesadnie, miękkie kolano: `--side-knee 24`. Bardzo szerokie pasmo niesłyszalnej treści
-  side wciągnięte do strumienia w najgrubszej rozdzielczości. Karykatura: wydajesz bity na
-  materiał, który był poniżej progu maskowania z dużym zapasem.
-- Łagodnie, twarde kolano: `--side-knee -1`. Najsłabsze z ocalałych pasm side są
-  porzucane. Trochę chudziej, trochę ciaśniej.
-- Mocno, twarde kolano: `--side-knee -3`. Wczesne odcięcie side, a uwolnione bity idą do
-  treści głośnej. Słyszalnie węziej na ambience.
-- Przesadnie, twarde kolano: `--side-knee -6`. Koniec tej kontroli: każde brzegowe pasmo
-  side zniknęło. Karykatura i punkt, za którym przełącznik przestaje odpowiadać, bo -12 i
-  -24 zachowują się identycznie.
+Przykłady (akustyczna muzyka stereo, 96 kbps):
+- Łagodnie, dokładniej: `--side-knee 2`. Dziury w side z 6,9% do 2,2%, błąd mid o 0,8 dB większy.
+- Mocno, dokładniej: `--side-knee 6`. Dziury w side 0,6%, błąd side o 2,4 dB mniejszy, mid płaci 3,5 dB.
+- Przesadnie, dokładniej: `--side-knee 24`. Więcej bitów idzie do side niż do mid. Karykatura.
+- Łagodnie, grubiej: `--side-knee -1`. Odchodzą najsłabsze pasma side, około 5 z 37 na ramkę.
+- Mocno, grubiej: `--side-knee -6`. Dziury w side 29%, błąd mid o 2,4 dB mniejszy.
+- Przesadnie, grubiej: `--side-knee -24`. Side praktycznie znika; obraz mono z księgowością stereo.
 
 Współpraca i konflikty: ortogonalne wobec `--side-bias` i zaprojektowane do używania razem
 z nim; bias ustala, gdzie jest próg, kolano ustala, jak miękka jest jego krawędź.
