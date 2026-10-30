@@ -364,8 +364,7 @@ deliberately want the extreme, artistic, low-bitrate mangling of the width. The 
 decibels (decimal), and `0` means off — bit-identical to stock FDK.
 
 Fractions work. You can type a dot or a comma and up to three decimal places (`-0,23`,
-`-0.75`, `1,125`). `-0,23` used to be read as zero, and everything between -0.1 and -0.9
-gave the same result; that was a parser bug, now fixed. One real boundary remains: at about
+`-0.75`, `1,125`); anything else is rejected with an error. One real boundary exists: at about
 -0.97 dB the raised side threshold crosses the minimum-SNR line built into FDK and most side
 bands drop out at once. That is why -0.95 and -0.98 sound clearly different, while -1, -4 and
 -12 sound the same: the side is simply cut by then. For gentle narrowing use 0 to -0.95.
@@ -466,7 +465,10 @@ Overrides the settings from the internal SBR tuning table.
 
 `--sbr-start <n>` / `--sbr-stop <n>` — the start and stop indices of the SBR band.
 NOTE: FDK validates the combination — a bad pair will give "encoder initialization failed."
-Pick proven pairs (e.g. for 64k stereo start=5 stop=9 works).
+Legal pairs form a diagonal band and depend on bitrate and sample rate. At HE-AAC 64 kbps
+stereo from 48 kHz, for example, start 0..4 is illegal with every stop, while 8/9, 8/14 and
+14/12 work. Try one change at a time and read `--verbose`; the reference card lists the
+measured values.
 
 `--sbr-freqscale <n>` — frequency grouping (0 linear, higher = finer
 logarithmic). `--sbr-noise-bands <0..3>` — the density of the SBR noise
@@ -530,8 +532,9 @@ weight alone often changes nothing. Pair it with `--sbr-noise-max 3` or `6`.
     fdkaac-franken-x64.exe -p 5 -b 32000 --sbr-softness 6 -o out.m4a in.wav
     fdkaac-franken-x64.exe -p 5 -b 32000 --sbr-invf-max 2 --sbr-invf-hyst 1.5 -o out.m4a in.wav
 
-`--sbr-noise-floor-offset <n>` — the offset of the noise level injected by SBR.
-Larger values = more fill noise in the reconstruction.
+`--sbr-noise-floor-offset <0..11>` — the offset of the noise level injected by SBR.
+Larger values = more fill noise in the reconstruction. FDK accepts only 0..11; anything else
+is rejected with an error.
 
 `--sbr-header-period <n>` — how many frames apart the SBR headers are written, which
 decides how fast the SBR upper band "kicks in" when a decoder tunes into a LIVE HE-AAC
@@ -727,7 +730,8 @@ just *before* the hi-hat, not after it. That is pre-echo, and in the SBR band it
 is one of the more recognisable coding artefacts.
 
 `--sbr-tran-thr <n>` scales the master threshold that decides how easily the
-detector fires (value*100, so 100 is unchanged). This turned out to be the single
+detector fires (value*100, so 100 is unchanged; values below 100 make it fire more
+readily, values above 100 less readily). This turned out to be the single
 most effective knob in the group. Measured on a signal of 24 percussive attacks
 plus decaying tones between 8 and 13 kHz, counting high-band energy that appears
 before an attack but is absent from the source: stock scores 1.610 at 32 kbps,
@@ -740,10 +744,10 @@ stock. On percussive material `--sbr-tran-thr 40` is the place to start.
 attack — the raw 0.90 constant, entered as 90. `--sbr-tran-split <n>` governs how
 readily a frame with no detected transient is still split into two envelopes,
 which buys time resolution at the cost of bits. Two further knobs,
-`--sbr-tran-quiet` and `--sbr-tran-dom`, exist for completeness but do nothing in
-this build: they live in the fast transient detector, which is only used for
-AAC-LD and ELD, and those profiles fail to initialise here — in the stock binary
-too, so it is an inherited limitation rather than something these knobs broke.
+`--sbr-tran-quiet` and `--sbr-tran-dom`, live in the fast transient detector, which runs
+only for AAC-ELD with SBR (`-p 39 -L 1`; ELD and LD need M4A, LATM or LOAS, not ADTS).
+`--sbr-tran-quiet` changes ELD+SBR streams at values below 100; for `--sbr-tran-dom` we
+have not observed a change on our test material.
 
 The **missing harmonics detector** handles the opposite problem. When SBR copies
 a low band upwards, a tone that existed in the original can land in the wrong

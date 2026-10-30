@@ -366,8 +366,7 @@ niszczenia szerokości przy niskim bitrate. Wartość jest w decybelach (dziesi�
 oznacza off — bit-identycznie ze stockowym FDK.
 
 Ułamki działają. Możesz wpisać kropkę albo przecinek i do trzech miejsc po przecinku
-(`-0,23`, `-0.75`, `1,125`). Dawniej `-0,23` było czytane jako zero, a wszystko między
--0,1 a -0,9 dawało ten sam wynik; to był błąd parsera, naprawiony. Zostaje jedna
+(`-0,23`, `-0.75`, `1,125`); wszystko inne zostaje odrzucone z błędem. Istnieje jedna
 prawdziwa granica: przy około -0,97 dB podniesiony próg side przecina wbudowaną w FDK
 linię minimalnego SNR i większość pasm side wypada naraz. Dlatego -0,95 i -0,98 brzmią
 wyraźnie inaczej, a -1, -4 i -12 już tak samo: side jest wtedy po prostu wycięty. Do
@@ -472,7 +471,10 @@ Nadpisuje ustawienia z wewnętrznej tabeli tuningowej SBR.
 
 `--sbr-start <n>` / `--sbr-stop <n>` — indeksy początku i końca pasma SBR.
 UWAGA: FDK waliduje kombinację — zła para da "encoder initialization failed".
-Dobieraj sprawdzone pary (np. dla 64k stereo działa start=5 stop=9).
+Dozwolone pary tworzą ukośny pas i zależą od bitrate'u oraz częstotliwości próbkowania.
+Na przykład przy HE-AAC 64 kbps stereo z 48 kHz start 0..4 jest niedozwolony z każdym
+stopem, a 8/9, 8/14 i 14/12 działają. Zmieniaj jedną rzecz naraz i czytaj `--verbose`;
+karta w opisie przełączników podaje zmierzone wartości.
 
 `--sbr-freqscale <n>` — grupowanie częstotliwości (0 liniowe, wyżej = drobniejsze
 logarytmiczne). `--sbr-noise-bands <0..3>` — gęstość opisu szumu SBR:
@@ -537,8 +539,9 @@ z `--sbr-noise-max 3` albo `6`.
     fdkaac-franken-x64.exe -p 5 -b 32000 --sbr-softness 6 -o out.m4a in.wav
     fdkaac-franken-x64.exe -p 5 -b 32000 --sbr-invf-max 2 --sbr-invf-hyst 1.5 -o out.m4a in.wav
 
-`--sbr-noise-floor-offset <n>` — offset poziomu szumu wstrzykiwanego przez SBR.
-Większe wartości = więcej szumu wypełniającego rekonstrukcję.
+`--sbr-noise-floor-offset <0..11>` — offset poziomu szumu wstrzykiwanego przez SBR.
+Większe wartości = więcej szumu wypełniającego rekonstrukcję. FDK przyjmuje tylko 0..11;
+inne wartości są odrzucane z błędem.
 
 `--sbr-header-period <n>` — co ile ramek zapisywane są nagłówki SBR, co decyduje,
 jak szybko górne pasmo SBR "wchodzi", gdy dekoder podłącza się do strumienia
@@ -740,7 +743,8 @@ hi-hatem, nie po nim. To jest pre-echo i w paśmie SBR należy do bardziej
 rozpoznawalnych artefaktów kodowania.
 
 `--sbr-tran-thr <n>` skaluje główny próg decydujący o tym, jak łatwo detektor
-się odpala (value*100, więc 100 to brak zmiany). Okazało się najskuteczniejszym
+się odpala (value*100, więc 100 to brak zmiany; poniżej 100 odpala chętniej, powyżej
+100 rzadziej). Okazało się najskuteczniejszym
 pokrętłem w tej grupie. Pomiar na sygnale z 24 atakami perkusyjnymi i tonami
 wygaszającymi się między 8 a 13 kHz, licząc energię pasma górnego pojawiającą się
 przed atakiem, a nieobecną w źródle: stock daje 1,610 przy 32 kbps, a obniżenie
@@ -753,11 +757,10 @@ w górę, gdzie wyjście jest bit-identyczne ze stockiem. Na materiale perkusyjn
 się jako atak — to surowa stała 0,90, wpisywana jako 90. `--sbr-tran-split <n>`
 rządzi tym, jak chętnie ramka bez wykrytego transjentu jest i tak dzielona na
 dwie obwiednie, co kupuje rozdzielczość czasową kosztem bitów. Dwa kolejne
-pokrętła, `--sbr-tran-quiet` i `--sbr-tran-dom`, istnieją dla kompletności, ale w
-tym buildzie nie robią nic: siedzą w szybkim detektorze transjentów, używanym
-tylko przy AAC-LD i ELD, a te profile nie inicjalizują się tutaj — również w
-oryginalnej binarce, więc to ograniczenie odziedziczone, a nie coś, co te
-pokrętła zepsuły.
+pokrętła, `--sbr-tran-quiet` i `--sbr-tran-dom`, siedzą w szybkim detektorze
+transjentów, który działa tylko w AAC-ELD z SBR (`-p 39 -L 1`; ELD i LD wymagają M4A,
+LATM albo LOAS, nie ADTS). `--sbr-tran-quiet` zmienia strumień ELD+SBR przy wartościach
+poniżej 100; dla `--sbr-tran-dom` nie zaobserwowaliśmy zmiany na naszym materiale.
 
 **Detektor missing harmonics** zajmuje się problemem odwrotnym. Gdy SBR kopiuje
 pasmo dolne w górę, ton obecny w oryginale może trafić w złe miejsce albo zniknąć.

@@ -677,14 +677,12 @@ artistic, low-bitrate mangling of the width. The value is in decibels
 (decimal), and <code>0</code> means off — bit-identical to stock
 FDK.</p>
 <p>Fractions work. You can type a dot or a comma and up to three decimal
-places (<code>-0,23</code>, <code>-0.75</code>, <code>1,125</code>).
-<code>-0,23</code> used to be read as zero, and everything between -0.1
-and -0.9 gave the same result; that was a parser bug, now fixed. One
-real boundary remains: at about -0.97 dB the raised side threshold
-crosses the minimum-SNR line built into FDK and most side bands drop out
-at once. That is why -0.95 and -0.98 sound clearly different, while -1,
--4 and -12 sound the same: the side is simply cut by then. For gentle
-narrowing use 0 to -0.95.</p>
+places (<code>-0,23</code>, <code>-0.75</code>, <code>1,125</code>);
+anything else is rejected with an error. One real boundary exists: at
+about -0.97 dB the raised side threshold crosses the minimum-SNR line
+built into FDK and most side bands drop out at once. That is why -0.95
+and -0.98 sound clearly different, while -1, -4 and -12 sound the same:
+the side is simply cut by then. For gentle narrowing use 0 to -0.95.</p>
 <p>SHAPING THE SIDE CUTOFF. <code>--side-knee &lt;dB&gt;</code> controls
 HOW SHARPLY a side band flips between "coded" and "zeroed" at that
 threshold. Stock FDK is a hard cliff: the instant a band's energy drops
@@ -797,8 +795,11 @@ upper band</h2>
 <p><code>--sbr-start &lt;n&gt;</code> /
 <code>--sbr-stop &lt;n&gt;</code> — the start and stop indices of the
 SBR band. NOTE: FDK validates the combination — a bad pair will give
-"encoder initialization failed." Pick proven pairs (e.g. for 64k stereo
-start=5 stop=9 works).</p>
+"encoder initialization failed." Legal pairs form a diagonal band and
+depend on bitrate and sample rate. At HE-AAC 64 kbps stereo from 48 kHz,
+for example, start 0..4 is illegal with every stop, while 8/9, 8/14 and
+14/12 work. Try one change at a time and read <code>--verbose</code>;
+the reference card lists the measured values.</p>
 <p><code>--sbr-freqscale &lt;n&gt;</code> — frequency grouping (0
 linear, higher = finer logarithmic).
 <code>--sbr-noise-bands &lt;0..3&gt;</code> — the density of the SBR
@@ -868,9 +869,10 @@ changes nothing. Pair it with <code>--sbr-noise-max 3</code> or
 <code>6</code>.</p>
 <pre><code>fdkaac-franken-x64.exe -p 5 -b 32000 --sbr-softness 6 -o out.m4a in.wav
 fdkaac-franken-x64.exe -p 5 -b 32000 --sbr-invf-max 2 --sbr-invf-hyst 1.5 -o out.m4a in.wav</code></pre>
-<p><code>--sbr-noise-floor-offset &lt;n&gt;</code> — the offset of the
-noise level injected by SBR. Larger values = more fill noise in the
-reconstruction.</p>
+<p><code>--sbr-noise-floor-offset &lt;0..11&gt;</code> — the offset of
+the noise level injected by SBR. Larger values = more fill noise in the
+reconstruction. FDK accepts only 0..11; anything else is rejected with
+an error.</p>
 <p><code>--sbr-header-period &lt;n&gt;</code> — how many frames apart
 the SBR headers are written, which decides how fast the SBR upper band
 "kicks in" when a decoder tunes into a LIVE HE-AAC stream
@@ -1120,25 +1122,27 @@ hi-hat, not after it. That is pre-echo, and in the SBR band it is one of
 the more recognisable coding artefacts.</p>
 <p><code>--sbr-tran-thr &lt;n&gt;</code> scales the master threshold
 that decides how easily the detector fires (value*100, so 100 is
-unchanged). This turned out to be the single most effective knob in the
-group. Measured on a signal of 24 percussive attacks plus decaying tones
-between 8 and 13 kHz, counting high-band energy that appears before an
-attack but is absent from the source: stock scores 1.610 at 32 kbps, and
-lowering the threshold to 40 drops that to 0.041 — pre-echo essentially
-gone. The same thing happens at 64 kbps (1.186 to 0.059). The effect
-saturates below 60 and disappears entirely at 100 and above, where
-output is byte-identical to stock. On percussive material
+unchanged; values below 100 make it fire more readily, values above 100
+less readily). This turned out to be the single most effective knob in
+the group. Measured on a signal of 24 percussive attacks plus decaying
+tones between 8 and 13 kHz, counting high-band energy that appears
+before an attack but is absent from the source: stock scores 1.610 at 32
+kbps, and lowering the threshold to 40 drops that to 0.041 — pre-echo
+essentially gone. The same thing happens at 64 kbps (1.186 to 0.059).
+The effect saturates below 60 and disappears entirely at 100 and above,
+where output is byte-identical to stock. On percussive material
 <code>--sbr-tran-thr 40</code> is the place to start.</p>
 <p><code>--sbr-tran-peak &lt;n&gt;</code> controls how <em>peaky</em> a
 candidate must be to count as an attack — the raw 0.90 constant, entered
 as 90. <code>--sbr-tran-split &lt;n&gt;</code> governs how readily a
 frame with no detected transient is still split into two envelopes,
 which buys time resolution at the cost of bits. Two further knobs,
-<code>--sbr-tran-quiet</code> and <code>--sbr-tran-dom</code>, exist for
-completeness but do nothing in this build: they live in the fast
-transient detector, which is only used for AAC-LD and ELD, and those
-profiles fail to initialise here — in the stock binary too, so it is an
-inherited limitation rather than something these knobs broke.</p>
+<code>--sbr-tran-quiet</code> and <code>--sbr-tran-dom</code>, live in
+the fast transient detector, which runs only for AAC-ELD with SBR
+(<code>-p 39 -L 1</code>; ELD and LD need M4A, LATM or LOAS, not ADTS).
+<code>--sbr-tran-quiet</code> changes ELD+SBR streams at values below
+100; for <code>--sbr-tran-dom</code> we have not observed a change on
+our test material.</p>
 <p>The <strong>missing harmonics detector</strong> handles the opposite
 problem. When SBR copies a low band upwards, a tone that existed in the
 original can land in the wrong place or vanish. The detector notices

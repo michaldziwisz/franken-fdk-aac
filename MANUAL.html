@@ -670,13 +670,12 @@ niszczenia szerokości przy niskim bitrate. Wartość jest w decybelach
 stockowym FDK.</p>
 <p>Ułamki działają. Możesz wpisać kropkę albo przecinek i do trzech
 miejsc po przecinku (<code>-0,23</code>, <code>-0.75</code>,
-<code>1,125</code>). Dawniej <code>-0,23</code> było czytane jako zero,
-a wszystko między -0,1 a -0,9 dawało ten sam wynik; to był błąd parsera,
-naprawiony. Zostaje jedna prawdziwa granica: przy około -0,97 dB
-podniesiony próg side przecina wbudowaną w FDK linię minimalnego SNR i
-większość pasm side wypada naraz. Dlatego -0,95 i -0,98 brzmią wyraźnie
-inaczej, a -1, -4 i -12 już tak samo: side jest wtedy po prostu wycięty.
-Do delikatnego zwężania używaj wartości od 0 do -0,95.</p>
+<code>1,125</code>); wszystko inne zostaje odrzucone z błędem. Istnieje
+jedna prawdziwa granica: przy około -0,97 dB podniesiony próg side
+przecina wbudowaną w FDK linię minimalnego SNR i większość pasm side
+wypada naraz. Dlatego -0,95 i -0,98 brzmią wyraźnie inaczej, a -1, -4 i
+-12 już tak samo: side jest wtedy po prostu wycięty. Do delikatnego
+zwężania używaj wartości od 0 do -0,95.</p>
 <p>KSZTAŁTOWANIE ODCIĘCIA SIDE. <code>--side-knee &lt;dB&gt;</code>
 steruje tym, JAK OSTRO pasmo side przełącza się między „kodowane" a
 „wyzerowane" na tym progu. Stock FDK to twardy klif: w chwili gdy
@@ -788,8 +787,11 @@ pasmem</h2>
 <p><code>--sbr-start &lt;n&gt;</code> /
 <code>--sbr-stop &lt;n&gt;</code> — indeksy początku i końca pasma SBR.
 UWAGA: FDK waliduje kombinację — zła para da "encoder initialization
-failed". Dobieraj sprawdzone pary (np. dla 64k stereo działa start=5
-stop=9).</p>
+failed". Dozwolone pary tworzą ukośny pas i zależą od bitrate'u oraz
+częstotliwości próbkowania. Na przykład przy HE-AAC 64 kbps stereo z 48
+kHz start 0..4 jest niedozwolony z każdym stopem, a 8/9, 8/14 i 14/12
+działają. Zmieniaj jedną rzecz naraz i czytaj <code>--verbose</code>;
+karta w opisie przełączników podaje zmierzone wartości.</p>
 <p><code>--sbr-freqscale &lt;n&gt;</code> — grupowanie częstotliwości (0
 liniowe, wyżej = drobniejsze logarytmiczne).
 <code>--sbr-noise-bands &lt;0..3&gt;</code> — gęstość opisu szumu SBR: 0
@@ -857,9 +859,10 @@ więc sama waga często nic nie zmienia. Łącz ją z
 <code>--sbr-noise-max 3</code> albo <code>6</code>.</p>
 <pre><code>fdkaac-franken-x64.exe -p 5 -b 32000 --sbr-softness 6 -o out.m4a in.wav
 fdkaac-franken-x64.exe -p 5 -b 32000 --sbr-invf-max 2 --sbr-invf-hyst 1.5 -o out.m4a in.wav</code></pre>
-<p><code>--sbr-noise-floor-offset &lt;n&gt;</code> — offset poziomu
+<p><code>--sbr-noise-floor-offset &lt;0..11&gt;</code> — offset poziomu
 szumu wstrzykiwanego przez SBR. Większe wartości = więcej szumu
-wypełniającego rekonstrukcję.</p>
+wypełniającego rekonstrukcję. FDK przyjmuje tylko 0..11; inne wartości
+są odrzucane z błędem.</p>
 <p><code>--sbr-header-period &lt;n&gt;</code> — co ile ramek zapisywane
 są nagłówki SBR, co decyduje, jak szybko górne pasmo SBR "wchodzi", gdy
 dekoder podłącza się do strumienia HE-AAC NA ŻYWO (Icecast/Shoutcast).
@@ -1110,26 +1113,28 @@ To jest pre-echo i w paśmie SBR należy do bardziej rozpoznawalnych
 artefaktów kodowania.</p>
 <p><code>--sbr-tran-thr &lt;n&gt;</code> skaluje główny próg decydujący
 o tym, jak łatwo detektor się odpala (value*100, więc 100 to brak
-zmiany). Okazało się najskuteczniejszym pokrętłem w tej grupie. Pomiar
-na sygnale z 24 atakami perkusyjnymi i tonami wygaszającymi się między 8
-a 13 kHz, licząc energię pasma górnego pojawiającą się przed atakiem, a
-nieobecną w źródle: stock daje 1,610 przy 32 kbps, a obniżenie progu do
-40 zbija to do 0,041 — pre-echo praktycznie znika. To samo dzieje się
-przy 64 kbps (1,186 do 0,059). Efekt saturuje poniżej 60 i zanika
-zupełnie od 100 w górę, gdzie wyjście jest bit-identyczne ze stockiem.
-Na materiale perkusyjnym <code>--sbr-tran-thr 40</code> to miejsce, od
-którego warto zacząć.</p>
+zmiany; poniżej 100 odpala chętniej, powyżej 100 rzadziej). Okazało się
+najskuteczniejszym pokrętłem w tej grupie. Pomiar na sygnale z 24
+atakami perkusyjnymi i tonami wygaszającymi się między 8 a 13 kHz,
+licząc energię pasma górnego pojawiającą się przed atakiem, a nieobecną
+w źródle: stock daje 1,610 przy 32 kbps, a obniżenie progu do 40 zbija
+to do 0,041 — pre-echo praktycznie znika. To samo dzieje się przy 64
+kbps (1,186 do 0,059). Efekt saturuje poniżej 60 i zanika zupełnie od
+100 w górę, gdzie wyjście jest bit-identyczne ze stockiem. Na materiale
+perkusyjnym <code>--sbr-tran-thr 40</code> to miejsce, od którego warto
+zacząć.</p>
 <p><code>--sbr-tran-peak &lt;n&gt;</code> steruje tym, jak
 <em>szpilkowy</em> musi być kandydat, żeby liczyć się jako atak — to
 surowa stała 0,90, wpisywana jako 90.
 <code>--sbr-tran-split &lt;n&gt;</code> rządzi tym, jak chętnie ramka
 bez wykrytego transjentu jest i tak dzielona na dwie obwiednie, co
 kupuje rozdzielczość czasową kosztem bitów. Dwa kolejne pokrętła,
-<code>--sbr-tran-quiet</code> i <code>--sbr-tran-dom</code>, istnieją
-dla kompletności, ale w tym buildzie nie robią nic: siedzą w szybkim
-detektorze transjentów, używanym tylko przy AAC-LD i ELD, a te profile
-nie inicjalizują się tutaj — również w oryginalnej binarce, więc to
-ograniczenie odziedziczone, a nie coś, co te pokrętła zepsuły.</p>
+<code>--sbr-tran-quiet</code> i <code>--sbr-tran-dom</code>, siedzą w
+szybkim detektorze transjentów, który działa tylko w AAC-ELD z SBR
+(<code>-p 39 -L 1</code>; ELD i LD wymagają M4A, LATM albo LOAS, nie
+ADTS). <code>--sbr-tran-quiet</code> zmienia strumień ELD+SBR przy
+wartościach poniżej 100; dla <code>--sbr-tran-dom</code> nie
+zaobserwowaliśmy zmiany na naszym materiale.</p>
 <p><strong>Detektor missing harmonics</strong> zajmuje się problemem
 odwrotnym. Gdy SBR kopiuje pasmo dolne w górę, ton obecny w oryginale
 może trafić w złe miejsce albo zniknąć. Detektor to zauważa i dorabia

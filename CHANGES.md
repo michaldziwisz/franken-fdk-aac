@@ -21,6 +21,23 @@ shaping off below 20 kbps per channel, i.e. below 40 kbps stereo.
 always signals as sine. 396 extreme-value encodes across LC, HE-AAC, LD and ELD
 decode with 0 errors in the Fraunhofer decoder and ffmpeg.
 
+#### Fixes found while rewriting the documentation
+
+- The x100 SBR knobs (`--sbr-tran-thr`, `--sbr-tran-split`, `--sbr-tran-quiet`, the
+  `--sbr-mh-*` scale knobs) silently ignored every value above 100: the Q31 factor was
+  clamped to 1.0. They now scale in both directions; below 100 results are unchanged.
+- `--is-aggression 100` wrapped a Q31 threshold negative and turned intensity stereo OFF.
+  It now saturates, so 100 is the real maximum.
+- `--max-bits-frame` (and `--min-bits-frame`) were overwritten later in the encoder setup
+  and had no effect. They are now applied after the bitrate-mode block; with
+  `--peak-bitrate` the explicit cap wins.
+- `--sbr-noise-floor-offset` outside 0..11 aborted the encoder on an FDK assertion. The
+  frontend now rejects it with an error.
+- `--help` groups renumbered A..G; `--sbr-tran-quiet` / `--sbr-tran-dom` help text
+  corrected (they act in ELD+SBR, LD/ELD do work, only ADTS is not possible for them).
+- README rewritten as a guide plus a full switch reference (one card per switch, with
+  examples in both directions and measured values) in English and Polish.
+
 #### Decimal switches: fractions were silently dropped
 
 `--side-bias`, `--side-knee`, `--mask-slope` and every other decimal switch were
