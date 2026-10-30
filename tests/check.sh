@@ -978,6 +978,46 @@ done
 enc "$X64" -f2 -p5 -b32000 --sbr-noise-floor-offset 11 -o "${OUT}_nf.aac" "$WAV"
 [ -s "${OUT}_nf.aac" ] && [ "$(derr ${OUT}_nf.aac)" = "0" ] && ok "--sbr-noise-floor-offset 11 koduje" || bad "--sbr-noise-floor-offset 11"
 
+# --- Pokrycie a precyzja: --coverage, --band-knee, --quant-round, --pns-above, --thr-hold, --scf-range ---
+echo "--- pokrycie/precyzja: nowe przelaczniki ---"
+hc=$("$X64" --help 2>&1 | tr -d '\r' | grep -cE '^ --(coverage|band-knee|quant-round|pns-above|thr-hold|scf-range) ')
+[ "$hc" = 6 ] && ok "help: 6 przelacznikow pokrycia/precyzji" || bad "help: tylko $hc z 6 przelacznikow pokrycia/precyzji"
+python3 tools/core/gen_core.py . >/dev/null
+mv dense48.wav _check_cov_dense.wav; rm -f attacks48.wav attacks48.txt
+for knob in "--coverage 3" "--coverage -3" "--band-knee 6" "--band-knee -6" "--quant-round 0.48" \
+            "--pns-above 8000" "--thr-hold 8" "--scf-range 0"; do
+  enc "$X64" -f2 -p2 -b32 -w 17000 -o "${OUT}_v0.aac" _check_cov_dense.wav
+  enc "$X64" -f2 -p2 -b32 -w 17000 $knob -o "${OUT}_v1.aac" _check_cov_dense.wav
+  if [ -s "${OUT}_v1.aac" ] && [ "$(md5 ${OUT}_v1.aac)" != "$(md5 ${OUT}_v0.aac)" ] && [ "$(derr ${OUT}_v1.aac)" = "0" ]; then
+    ok "$knob: zmienia strumien, 0 bledow dekodera"
+  else
+    bad "$knob: brak efektu, brak pliku albo bledy dekodera"
+  fi
+done
+# Wartosci neutralne = stock (bit w bit).
+enc "$X64" -f2 -p2 -b32 -w 17000 --coverage 0 --band-knee 0 --thr-hold 1 --scf-range 60 -o "${OUT}_v2.aac" _check_cov_dense.wav
+[ "$(md5 ${OUT}_v2.aac)" = "$(md5 ${OUT}_v0.aac)" ] && ok "wartosci neutralne (--coverage 0, --band-knee 0, --thr-hold 1, --scf-range 60) = stock" || bad "wartosci neutralne zmieniaja strumien"
+# Kierunek osi po dekodowaniu: + mniej dziur, - wiecej dziur niz stock.
+hol(){ ffmpeg -y -loglevel error -i "$1" -c:a pcm_s16le _check_cov_d.wav; python3 tools/core/core_measure.py _check_cov_dense.wav _check_cov_d.wav | grep -o 'holes=[0-9.]*' | cut -d= -f2; }
+enc "$X64" -f2 -p2 -b32 -w 17000 --coverage 3 -o "${OUT}_vp.aac" _check_cov_dense.wav
+enc "$X64" -f2 -p2 -b32 -w 17000 --coverage -3 -o "${OUT}_vm.aac" _check_cov_dense.wav
+h0=$(hol ${OUT}_v0.aac); hp=$(hol ${OUT}_vp.aac); hm=$(hol ${OUT}_vm.aac)
+python3 -c "import sys; sys.exit(0 if float('${hp:-999}') < float('${h0:-0}')*0.5 < float('${hm:-0}') else 1)" \
+  && ok "--coverage: dziury +3 ${hp}% < stock ${h0}% < -3 ${hm}%" || bad "--coverage: kierunek osi zly (+3 '${hp}', stock '${h0}', -3 '${hm}')"
+# Jawny przelacznik wygrywa z makrem.
+enc "$X64" -f2 -p2 -b32 -w 17000 --coverage 3 --hole-ladder 8 --band-knee 0.001 --quant-round 0.405 --avoid-holes 0 -o "${OUT}_vx.aac" _check_cov_dense.wav
+[ "$(md5 ${OUT}_vx.aac)" != "$(md5 ${OUT}_vp.aac)" ] && ok "jawne przelaczniki nadpisuja --coverage" || bad "jawne przelaczniki nie nadpisuja --coverage"
+# Skrajne: 14 kbps, wymuszone 22 kHz, wszystko naraz; bez awarii i bledow dekodera.
+for knob in "--band-knee 24" "--coverage 5 --scf-range 0 --thr-hold 32" "--coverage -5" "--pns-above 1000"; do
+  "$X64" -p2 -b14000 -w 22000 --uncap-bandwidth --unlock-bitrate $knob -f2 -o "${OUT}_vz.aac" _check_cov_dense.wav >/dev/null 2>&1; rc=$?
+  [ $rc = 0 ] && [ "$(derr ${OUT}_vz.aac)" = "0" ] && ok "14 kbps / 22 kHz $knob: koduje, 0 bledow" || bad "14 kbps / 22 kHz $knob: rc=$rc"
+done
+for v in "--coverage 6" "--band-knee 25" "--quant-round 0.6" "--pns-above 500" "--thr-hold 33" "--scf-range 61"; do
+  "$X64" -p2 -b32000 $v -f2 -o "${OUT}_vz.aac" _check_cov_dense.wav >/dev/null 2>&1; rc=$?
+  [ $rc = 1 ] && ok "$v odrzucone (rc=1)" || bad "$v rc=$rc"
+done
+rm -f _check_cov_*.wav
+
 echo "==================================="
 echo "WYNIK: PASS=$PASS FAIL=$FAIL"
 [ "$FAIL" = "0" ] && { echo "ALL PASS"; exit 0; } || { echo "SA BLEDY"; exit 1; }

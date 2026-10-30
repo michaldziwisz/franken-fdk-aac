@@ -17,6 +17,8 @@ dziury    : ramki 1024, pasma 1/3 oktawy w [fmin, fmax]. Dziura = pasmo,
 nsr       : sredni stosunek energii bledu do sygnalu w tych pasmach (dB,
             nizej = lepiej). Pilnuje, czy mniej dziur nie znaczy po prostu
             wiecej szumu w pozostalych pasmach. Dziura daje nsr ~0 dB.
+nsr_kept  : to samo, ale tylko w pasmach, ktore NIE sa dziura. Mowi, jak
+            czysto zakodowano to, co zostalo (os "mniej, ale dokladnie").
 """
 import argparse
 import sys
@@ -74,6 +76,7 @@ def holes(o, d, sr, fmin, fmax, hole_db):
     tot = hole = 0
     loss = []
     nsr = []
+    nsr_kept = []
     for ch in range(o.shape[1]):
         for s in range(0, len(o) - n, n):
             O = np.abs(np.fft.rfft(o[s:s + n, ch] * win)) ** 2
@@ -93,9 +96,12 @@ def holes(o, d, sr, fmin, fmax, hole_db):
                 loss.append(min(0.0, dl))
                 if dl < -hole_db:
                     hole += 1
+                else:
+                    nsr_kept.append(nsr[-1])
     return ((100.0 * hole / tot if tot else 0.0),
             (float(np.mean(loss)) if loss else 0.0),
-            (float(np.mean(nsr)) if nsr else 0.0))
+            (float(np.mean(nsr)) if nsr else 0.0),
+            (float(np.mean(nsr_kept)) if nsr_kept else 0.0))
 
 
 def main():
@@ -118,8 +124,8 @@ def main():
         pe = preecho(o, d, pos)
         out.append("preecho_mean=%.2f preecho_worst=%.2f n=%d" %
                    (float(np.mean(pe)), float(np.max(pe)), len(pe)))
-    hp, hl, ns = holes(o, d, sr, a.fmin, a.fmax, a.hole_db)
-    out.append("holes=%.2f%% loss=%.2fdB nsr=%.2fdB" % (hp, hl, ns))
+    hp, hl, ns, nk = holes(o, d, sr, a.fmin, a.fmax, a.hole_db)
+    out.append("holes=%.2f%% loss=%.2fdB nsr=%.2fdB nsr_kept=%.2fdB" % (hp, hl, ns, nk))
     print(" ".join(out))
 
 
