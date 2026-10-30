@@ -3,7 +3,7 @@
 # Generuje <outbase>.pdf (dostepny PDF/UA), <outbase>.rtf, <outbase>.html
 set -u
 IN="$1"; LANG="$2"; TITLE="$3"; OUT="$4"
-DIR=/mnt/d/projekty/aacfdk
+DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$DIR"
 
 # HTML: standalone, dostepny (lang, semantyczne naglowki, TOC)
@@ -21,7 +21,7 @@ BASE=$(basename "$OUT.docx" .docx)
 [ "$BASE.pdf" != "$OUT.pdf" ] && [ -f "$BASE.pdf" ] && mv "$BASE.pdf" "$OUT.pdf"
 # Ustaw tytul PDF (dostepnosc PDF/UA - czytnik ekranu oglasza tytul dokumentu).
 # soffice/pandoc nie przenosza --metadata title do PDF Title, wiec robimy to przez fitz.
-python3 - "$OUT.pdf" "$TITLE" <<'PY' 2>/dev/null || true
+/usr/bin/python3 - "$OUT.pdf" "$TITLE" <<'PY' 2>/dev/null || true
 import sys, fitz
 d = fitz.open(sys.argv[1]); m = d.metadata; m["title"] = sys.argv[2]
 d.set_metadata(m); d.saveIncr(); d.close()

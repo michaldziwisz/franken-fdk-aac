@@ -866,51 +866,76 @@ direction with the band forced to 18 kHz (`-w 18000`): side error -1.13 dB at 0,
 Which quantity shows the step depends on material and bandwidth: at the default band on
 the same signal the step shows in the mid error instead (-8.72 to -9.04 dB at -0.97).
 
+#### `--side-cutoff <Hz>`
+
+**From this frequency up, code every stereo band as pure mid.**
+
+- Applies to: stereo AAC core (LC, LD, ELD). Off by default.
+- Values: `1000..24000` Hz, rounded to the scalefactor band that starts at or above it
+
+Above the cutoff the side signal is dropped and the band is written as mid only, with the
+cheap MS mask. FDK's own intensity stereo decision is cleared there, because pure mid is
+cheaper (IS needs positions and forbids the one-code MS mask); forced IS from
+`--is-force-lo/-hi` still wins. Bands that both channels code as PNS are left as they are.
+Below the cutoff stereo is untouched. `--verbose` prints the band where it starts.
+
+Examples (acoustic stereo music):
+- Mild: `-b 48000 --side-cutoff 8000`. Side info 238 to 235 bits per frame, mid a little cleaner.
+- Strong: `-b 48000 --side-cutoff 5000`. Side info 222 bits, mid error 0.7 dB lower, side above
+  5 kHz about 27..31 dB down.
+- Exaggerated: `-b 48000 --side-cutoff 1000`. Practically mono with a stereo bass.
+
+At 14 kbps the gain is small, because FDK already zeroes almost all of the side there;
+`--is-admit 0` is the bigger lever at that rate.
+
+#### `--is-admit <x>`
+
+**Move FDK's gate that decides whether intensity stereo may be used at all.**
+
+- Applies to: stereo AAC core. Stock `5`.
+- Values: `0.0..20.0`; `0` = never. `--is-aggression` still opens the gate.
+
+FDK allows intensity stereo only when bitrate divided by the core bandwidth (bits per second
+per Hz) is below 5. At very low rates IS is expensive: it forces the per-band MS mask (about
+22 bits per frame) and adds IS positions. Measured at 14 kbps stereo on dense material:
+`--is-admit 0` lowers zeroed bands from 85% to 70%.
+
 #### `--side-knee <dB>`
 
-**Shape how abruptly a side band flips between coded and zeroed at the threshold.**
+**Give every side band near the coded/zeroed edge a precision that follows its own level.**
 
 - Applies to: stereo AAC core, MS bands. No effect in HE-AAC v2, and nothing to do under
   `--msmask 0`.
-- Values: `-24.0..50.0` dB, `0` = off (default, hard cliff as in stock)
+- Values: `-24.0..50.0` dB, `0` = off (default, stock behaviour)
 - Input: decimal, up to 3 places, `.` or `,`
 
-`--side-bias` moves where the coded/zeroed line sits. This switch changes the character of
-the line itself. Stock behaviour is a cliff: the moment a band's energy falls to the
-threshold, the entire band is thrown away, and the band next to it that cleared the
-threshold by a hair is coded normally. On decaying material that produces a brittle edge,
-because the side content of a reverb tail does not fade out, it switches off band by band.
+`--side-bias` moves where the coded/zeroed line sits. This switch works on the margin of
+each band: how far its energy lies above its masking threshold, which decides how finely
+the band is coded and whether it survives at all. The value is an offset added to that
+margin, so a band keeps the precision its real level deserves, just shifted.
 
-A positive value makes the knee soft. Bands sitting up to N dB below the threshold are
-still kept, coded at the coarsest scalefactor rather than dropped, so the side fades
-instead of stopping. Air and reverb decay more smoothly and the stereo picture stays
-coherent while it gets quiet. It costs bits, spent on bands the encoder had already judged
-inaudible, so it is a quality setting rather than an efficiency one.
+One detail of FDK makes this necessary. When bits run out, FDK does not drop a weak band at
+once: it pins the band at about 0.97 dB above its threshold and keeps it at the coarsest
+step. On real music some 10% of the side bands end up stacked on that one value, whatever
+their real level was. The switch reads the margin the rate control wanted before that
+rescue, so those bands are spread out again by their real level instead of moving as one
+block. Measured on acoustic music at 96 kbps, coded side bands per frame fall evenly from
+30.2 (stock) through 25.4 (-1), 22.2 (-3), 18.1 (-6), 10.5 (-12) to 1.1 (-24): no jump.
 
-A negative value makes the knee hard. Bands that only just clear the threshold, within N dB
-above it, are zeroed anyway, which cuts the side off earlier than stock. The result is
-leaner and more aggressive, and it frees bits for the bands that clearly matter.
+A positive value adds precision: bands up to N dB below the threshold are kept, graded by
+how far below they were, and bands near the edge get up to N dB finer. A negative value
+takes precision away: the bands closest to the edge leave first and the bits go to mid.
+The offset is full near the edge and fades out above it, so the loud, well coded part of
+the side channel is not touched (the fade-out zone is `--side-knee-zone`).
 
-The negative direction saturates early: by -6 dB everything marginal has already been
-cut, and -6, -12 and -24 produce the same result. Treat -6 as the floor of the control and
-do not bother typing bigger numbers. The positive direction keeps changing across the
-range, so there is genuine room to explore upward.
-
-Examples:
-- Mild, soft knee: `--side-knee 2`. Near miss bands survive at a coarse scalefactor. A
-  slightly gentler end to decays.
-- Strong, soft knee: `--side-knee 6`. Clearly smoother side fade out, with a real bit cost
-  on sparse material. The usual working region is +3 to +6.
-- Exaggerated, soft knee: `--side-knee 24`. A very wide band of inaudible side content
-  dragged into the stream at the coarsest resolution. A caricature: you are spending bits
-  on material that was below the masking threshold by a wide margin.
-- Mild, hard knee: `--side-knee -1`. The weakest surviving side bands are dropped. Slightly
-  leaner, slightly tighter.
-- Strong, hard knee: `--side-knee -3`. An early side cutoff, with the freed bits going to
-  the loud content. Audibly narrower on ambience.
-- Exaggerated, hard knee: `--side-knee -6`. The end of the control: every marginal side
-  band is gone. A caricature, and the point past which the switch stops responding, since
-  -12 and -24 behave identically.
+Examples (acoustic stereo music, 96 kbps):
+- Mild, finer: `--side-knee 2`. Side holes 6.9% to 2.2%, mid error up 0.8 dB.
+- Strong, finer: `--side-knee 6`. Side holes 0.6%, side error 2.4 dB lower, mid pays 3.5 dB.
+- Exaggerated, finer: `--side-knee 24`. More bits go to side than to mid. A caricature.
+- Mild, coarser: `--side-knee -1`. The weakest side bands go, about 5 of 37 per frame.
+- Strong, coarser: `--side-knee -6`. Side holes 29%, mid error 2.4 dB lower.
+- Exaggerated, coarser: `--side-knee -24`. Practically no side left; a mono image with
+  stereo bookkeeping.
 
 Works with / against: orthogonal to `--side-bias` and designed to be used with it; bias
 sets where the threshold is, knee sets how soft its edge is. Inert under `--msmask 0`.
@@ -6269,51 +6294,76 @@ Kierunek ujemny przy paśmie wymuszonym na 18 kHz (`-w 18000`): błąd side -1,1
 domyślnym na tym samym sygnale skok pojawia się w błędzie mid (z -8,72 na -9,04 dB przy
 -0,97).
 
+#### `--side-cutoff <Hz>`
+
+**Od tej częstotliwości w górę koduj każde pasmo stereo jako czysty mid.**
+
+- Dotyczy: rdzeń AAC w stereo (LC, LD, ELD). Domyślnie wyłączone.
+- Wartości: `1000..24000` Hz, zaokrąglane do pasma współczynnika skali, które zaczyna się na tej częstotliwości lub wyżej
+
+Powyżej granicy sygnał side jest porzucany, a pasmo zapisywane tylko jako mid, z tanią maską
+MS. Własna decyzja FDK o intensity stereo jest tam kasowana, bo czysty mid jest tańszy (IS
+potrzebuje pozycji i blokuje maskę MS zapisywaną jednym kodem); wymuszone IS z
+`--is-force-lo/-hi` nadal wygrywa. Pasma, które oba kanały kodują jako PNS, zostają bez zmian.
+Poniżej granicy stereo jest nietknięte. `--verbose` pokazuje pasmo, od którego działa.
+
+Przykłady (akustyczna muzyka stereo):
+- Łagodnie: `-b 48000 --side-cutoff 8000`. Informacje boczne z 238 do 235 bitów na ramkę, mid trochę czystszy.
+- Mocno: `-b 48000 --side-cutoff 5000`. Informacje boczne 222 bity, błąd mid o 0,7 dB mniejszy, side
+  powyżej 5 kHz niżej o około 27 do 31 dB.
+- Przesadnie: `-b 48000 --side-cutoff 1000`. Praktycznie mono ze stereofonicznym basem.
+
+Przy 14 kbps zysk jest mały, bo FDK i tak zeruje tam prawie cały side; przy tej prędkości
+większą dźwignią jest `--is-admit 0`.
+
+#### `--is-admit <x>`
+
+**Przesuń bramkę FDK, która decyduje, czy intensity stereo w ogóle wolno użyć.**
+
+- Dotyczy: rdzeń AAC w stereo. Stock `5`.
+- Wartości: `0.0..20.0`; `0` = nigdy. `--is-aggression` nadal otwiera bramkę.
+
+FDK dopuszcza intensity stereo tylko wtedy, gdy bitrate podzielony przez pasmo rdzenia (bity
+na sekundę na Hz) jest mniejszy niż 5. Przy bardzo niskich prędkościach IS jest drogie:
+wymusza maskę MS pasmo po paśmie (około 22 bity na ramkę) i dokłada pozycje IS. Zmierzone przy
+14 kbps stereo na gęstym materiale: `--is-admit 0` zmniejsza udział wyzerowanych pasm z 85% do 70%.
+
 #### `--side-knee <dB>`
 
-**Ukształtuj, jak gwałtownie pasmo side przeskakuje na progu między kodowanym a wyzerowanym.**
+**Nadaj każdemu pasmu side przy krawędzi kodowane/wyzerowane precyzję zależną od jego własnego poziomu.**
 
 - Dotyczy: rdzeń AAC w stereo, pasma MS. Brak działania w HE-AAC v2, a przy `--msmask 0`
   nie ma tu nic do roboty.
-- Wartości: `-24.0..50.0` dB, `0` = wyłączone (domyślnie, twardy klif jak w stock)
+- Wartości: `-24.0..50.0` dB, `0` = wyłączone (domyślnie, zachowanie stock)
 - Wpisywanie: liczba dziesiętna, do 3 miejsc, `.` albo `,`
 
-`--side-bias` przesuwa to, gdzie leży linia kodowane/wyzerowane. Ten przełącznik zmienia
-charakter samej linii. Zachowanie stock to klif: w chwili, gdy energia pasma spada do
-progu, całe pasmo jest wyrzucane, a sąsiednie pasmo, które przeszło próg o włos, jest
-kodowane normalnie. Przy materiale wybrzmiewającym daje to kruchą krawędź, bo treść side
-ogona pogłosu nie wygasa, lecz wyłącza się pasmo po pasmie.
+`--side-bias` przesuwa to, gdzie leży linia kodowane/wyzerowane. Ten przełącznik działa na
+zapasie każdego pasma: o ile jego energia leży nad progiem maskowania, co decyduje, jak
+dokładnie pasmo jest kodowane i czy w ogóle przetrwa. Wartość to przesunięcie dodawane do
+tego zapasu, więc pasmo zachowuje precyzję należną jego prawdziwemu poziomowi, tylko
+przesuniętą.
 
-Wartość dodatnia robi kolano miękkim. Pasma leżące do N dB poniżej progu są nadal
-zachowywane, kodowane najgrubszym współczynnikiem skali, a nie porzucane, więc side
-wybrzmiewa, zamiast się urwać. Powietrze i pogłos wygasają gładziej, a obraz stereo
-zostaje spójny, gdy się ścisza. Kosztuje to bity, wydane na pasma, które koder uznał już
-za niesłyszalne, więc jest to ustawienie jakościowe, a nie oszczędnościowe.
+Potrzebne jest to przez jeden szczegół FDK. Gdy brakuje bitów, FDK nie wyrzuca słabego pasma
+od razu: przypina je około 0,97 dB nad progiem i trzyma na najgrubszym kroku. W prawdziwej
+muzyce około 10% pasm side ląduje na tej jednej wartości, niezależnie od ich rzeczywistego
+poziomu. Przełącznik czyta zapas, którego pętla bitów chciała przed tym ratunkiem, więc
+takie pasma znów rozkładają się według prawdziwego poziomu, zamiast ruszać się jednym
+blokiem. Zmierzone na muzyce akustycznej przy 96 kbps: kodowanych pasm side na ramkę ubywa
+równo z 30,2 (stock) przez 25,4 (-1), 22,2 (-3), 18,1 (-6), 10,5 (-12) do 1,1 (-24), bez skoku.
 
-Wartość ujemna robi kolano twardym. Pasma, które ledwie przechodzą próg, w granicach N dB
-nad nim, są mimo to zerowane, co odcina side wcześniej niż stock. Wynik jest chudszy i
-bardziej agresywny, a uwolnione bity idą do pasm, które wyraźnie mają znaczenie.
+Wartość dodatnia dodaje precyzji: pasma do N dB pod progiem zostają, stopniowane według
+tego, jak daleko pod nim były, a pasma przy krawędzi dostają do N dB dokładniej. Wartość
+ujemna odbiera precyzję: najpierw odchodzą pasma najbliżej krawędzi, a bity idą do mid.
+Przesunięcie działa w pełni przy krawędzi i wygasa wyżej, więc głośna, dobrze zakodowana
+część side zostaje nietknięta (strefę wygasania ustawia `--side-knee-zone`).
 
-Kierunek ujemny nasyca się szybko: przy -6 dB wszystko brzegowe jest już odcięte, a -6,
--12 i -24 dają ten sam wynik. Traktuj -6 jako podłogę tej kontroli i nie wpisuj większych
-liczb. Kierunek dodatni zmienia wynik w całym zakresie, więc w górę jest naprawdę miejsce
-na eksplorację.
-
-Przykłady:
-- Łagodnie, miękkie kolano: `--side-knee 2`. Pasma, którym zabrakło niewiele, przeżywają
-  na grubym współczynniku skali. Trochę łagodniejszy koniec wybrzmień.
-- Mocno, miękkie kolano: `--side-knee 6`. Wyraźnie gładsze wygasanie side, z realnym
-  kosztem bitowym przy materiale rzadkim. Zwykły obszar roboczy to +3 do +6.
-- Przesadnie, miękkie kolano: `--side-knee 24`. Bardzo szerokie pasmo niesłyszalnej treści
-  side wciągnięte do strumienia w najgrubszej rozdzielczości. Karykatura: wydajesz bity na
-  materiał, który był poniżej progu maskowania z dużym zapasem.
-- Łagodnie, twarde kolano: `--side-knee -1`. Najsłabsze z ocalałych pasm side są
-  porzucane. Trochę chudziej, trochę ciaśniej.
-- Mocno, twarde kolano: `--side-knee -3`. Wczesne odcięcie side, a uwolnione bity idą do
-  treści głośnej. Słyszalnie węziej na ambience.
-- Przesadnie, twarde kolano: `--side-knee -6`. Koniec tej kontroli: każde brzegowe pasmo
-  side zniknęło. Karykatura i punkt, za którym przełącznik przestaje odpowiadać, bo -12 i
-  -24 zachowują się identycznie.
+Przykłady (akustyczna muzyka stereo, 96 kbps):
+- Łagodnie, dokładniej: `--side-knee 2`. Dziury w side z 6,9% do 2,2%, błąd mid o 0,8 dB większy.
+- Mocno, dokładniej: `--side-knee 6`. Dziury w side 0,6%, błąd side o 2,4 dB mniejszy, mid płaci 3,5 dB.
+- Przesadnie, dokładniej: `--side-knee 24`. Więcej bitów idzie do side niż do mid. Karykatura.
+- Łagodnie, grubiej: `--side-knee -1`. Odchodzą najsłabsze pasma side, około 5 z 37 na ramkę.
+- Mocno, grubiej: `--side-knee -6`. Dziury w side 29%, błąd mid o 2,4 dB mniejszy.
+- Przesadnie, grubiej: `--side-knee -24`. Side praktycznie znika; obraz mono z księgowością stereo.
 
 Współpraca i konflikty: ortogonalne wobec `--side-bias` i zaprojektowane do używania razem
 z nim; bias ustala, gdzie jest próg, kolano ustala, jak miękka jest jego krawędź.
