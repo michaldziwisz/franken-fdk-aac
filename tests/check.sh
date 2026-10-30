@@ -1016,6 +1016,21 @@ for v in "--coverage 6" "--band-knee 25" "--quant-round 0.6" "--pns-above 500" "
   "$X64" -p2 -b32000 $v -f2 -o "${OUT}_vz.aac" _check_cov_dense.wav >/dev/null 2>&1; rc=$?
   [ $rc = 1 ] && ok "$v odrzucone (rc=1)" || bad "$v rc=$rc"
 done
+
+# --- --enfac-patch: wazenie energii plaskich ramek (CBR i VBR) ---
+"$X64" --help 2>&1 | tr -d '\r' | grep -qE '^ --enfac-patch ' && ok "--enfac-patch w --help" || bad "--enfac-patch brak w --help"
+enc "$X64" -f2 -p2 -b32 -w 17000 -o "${OUT}_e0.aac" _check_cov_dense.wav
+for v in 0 1; do
+  enc "$X64" -f2 -p2 -b32 -w 17000 --enfac-patch $v -o "${OUT}_e$((v+1)).aac" _check_cov_dense.wav
+  [ "$(md5 ${OUT}_e$((v+1)).aac)" != "$(md5 ${OUT}_e0.aac)" ] && [ "$(derr ${OUT}_e$((v+1)).aac)" = "0" ] \
+    && ok "--enfac-patch $v zmienia strumien CBR, 0 bledow dekodera" || bad "--enfac-patch $v: brak efektu albo bledy"
+done
+"$X64" -p2 -b14000 -w 22000 --uncap-bandwidth --unlock-bitrate --enfac-patch 1 -f2 -o "${OUT}_ez.aac" _check_cov_dense.wav >/dev/null 2>&1; rc=$?
+[ $rc = 0 ] && [ "$(derr ${OUT}_ez.aac)" = "0" ] && ok "14 kbps / 22 kHz --enfac-patch 1: koduje, 0 bledow" || bad "14 kbps / 22 kHz --enfac-patch 1: rc=$rc"
+for v in "--enfac-patch 2" "--enfac-patch -1"; do
+  "$X64" -p2 -b32000 $v -f2 -o "${OUT}_vz.aac" _check_cov_dense.wav >/dev/null 2>&1; rc=$?
+  [ $rc = 1 ] && ok "$v odrzucone (rc=1)" || bad "$v rc=$rc"
+done
 rm -f _check_cov_*.wav
 
 echo "==================================="

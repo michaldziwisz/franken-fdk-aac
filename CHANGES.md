@@ -48,6 +48,13 @@ is unchanged byte for byte.
   rescued.
 - `tools/core/core_measure.py` also reports `nsr_kept`, the error in the
   bands that were not cut.
+- `--enfac-patch <0|1>`: the flat-spectrum energy re-weighting (FDK
+  `calcWeighting`, CBR and VBR). Stock applies it only to long frames whose
+  audible spectrum is flat (noise-like); 0 never (every frame treated as
+  tonal), 1 every long frame. Measured LC 14..32 kbps CBR: zeroed bands move by
+  under 1 point, error within 0.1 dB, so in CBR it is a fine knob, not a lever.
+  In VBR it changes the size (`-m 3`: 1 sets +29% on tonal-plus-noise, 0 sets
+  -3% on dense noise).
 
 #### Fixes found while rewriting the documentation
 
