@@ -21,6 +21,34 @@ shaping off below 20 kbps per channel, i.e. below 40 kbps stereo.
 always signals as sine. 396 extreme-value encodes across LC, HE-AAC, LD and ELD
 decode with 0 errors in the Fraunhofer decoder and ffmpeg.
 
+#### Coverage vs precision: what the bits are spent on
+
+At a fixed bitrate the encoder can code every band coarsely, or fewer bands
+cleanly. New switches move that balance; all are opt-in, the default output
+is unchanged byte for byte.
+
+- `--coverage -5..5`: one macro for the axis. + = everything filled, no holes,
+  grainier; - = marginal bands dropped, what remains is cleaner. Explicit
+  switches below win; `--verbose` prints the effective values.
+- `--band-knee <dB>`: the `--side-knee` idea for every band of every channel.
+  + keeps bands just under their threshold at the coarsest step; - gives up
+  bands that only just clear it, and the bits go to the rest.
+- `--quant-round <x>`: rounding offset of the quantizer (stock 0.405).
+- `--pns-above <Hz>`: every long-block band above is noise-substituted, a high
+  band "like SBR, without SBR". Works below the PNS bitrate gate.
+- `--thr-hold <n>`: the masking model is refreshed only every n frames.
+- `--scf-range <n>`: maximum scalefactor spread, i.e. how much the noise may be
+  shaped across the spectrum.
+- Measured at LC 32 kbps, 17 kHz: zeroed bands 51% (-5) .. 11.7% (stock) ..
+  0.2% (+4) on mixed material; error in the bands that remain -4.75 dB (-5)
+  against -1.96 dB (stock).
+- Fix: `--side-knee +N` computed `threshold - energy` in 32 bits; for a silent
+  band that overflowed (undefined behaviour), so the same source could encode
+  differently depending on the compiler. Now 64 bit; silent bands are never
+  rescued.
+- `tools/core/core_measure.py` also reports `nsr_kept`, the error in the
+  bands that were not cut.
+
 #### Fixes found while rewriting the documentation
 
 - The x100 SBR knobs (`--sbr-tran-thr`, `--sbr-tran-split`, `--sbr-tran-quiet`, the
