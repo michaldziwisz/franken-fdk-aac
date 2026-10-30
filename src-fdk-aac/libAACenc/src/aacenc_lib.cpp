@@ -2959,6 +2959,12 @@ AACENC_ERROR aacEncoder_SetParam(const HANDLE_AACENCODER hAacEncoder,
       g_franken.enfacPatch = (INT)value;
       hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
       break;
+    case AACENC_FRANKEN_SIDE_KNEE_ZONE:
+      g_franken.sideKneeZoneX1000 = (INT)value;
+      break;
+    case AACENC_FRANKEN_SIDE_KNEE_SPREAD:
+      g_franken.sideKneeSpreadX1000 = (INT)value;
+      break;
     case AACENC_FRANKEN_BIT_STATS:
       g_franken.bitStats = (INT)value;
       break;

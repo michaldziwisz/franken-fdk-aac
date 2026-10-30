@@ -311,9 +311,14 @@ PROGNAME " %s\n"
 "                               is the same energy-vs-threshold lever LAME and MusePack --ms\n"
 "                               ride for their stereo. Try +3..+9.\n"
 " --side-knee <dB>            -24.0..50.0, 0=off. Shape where a side SFB flips coded<->\n"
-"                               zeroed. + = SOFT: keep near-miss bands (just under thr) at\n"
-"                               the coarsest scf so side fades out smoothly; - = HARD: drop\n"
-"                               bands that only just clear thr = early cutoff. Try +3..+6.\n"
+"                               zeroed, as an OFFSET on each band's own margin: precision\n"
+"                               follows how loud the band really is (also bands FDK\n"
+"                               rescued at 0.97 dB). + = finer, bands under thr kept;\n"
+"                               - = coarser, the weakest leave first. Try -3..+6.\n"
+" --side-knee-zone <x>        1.0..20.0, stock 3. Diagnostic: the offset fades out\n"
+"                               between |knee| and x*|knee| dB above the threshold.\n"
+" --side-knee-spread <dB>     0.1..24.0, stock 1. Diagnostic: knee (-) needed to spread\n"
+"                               the rescued bands fully by their real margin.\n"
 " --mask-slope <dB>           -24.0..50.0, 0=off. Global (mid+side) non-masking heuristic:\n"
 "                               FDK relaxes required SNR for SFBs whose energy sits far\n"
 "                               (>~10 dB stock) below the frame average - starving quiet\n"
@@ -768,6 +773,8 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
 #define OPT_FR_COVERAGE           M4AF_FOURCC('f','q','c','v')
 #define OPT_FR_ENFAC_PATCH        M4AF_FOURCC('f','q','e','f')
 #define OPT_FR_BIT_STATS          M4AF_FOURCC('f','q','b','s')
+#define OPT_FR_SIDE_KNEE_ZONE     M4AF_FOURCC('f','s','k','z')
+#define OPT_FR_SIDE_KNEE_SPREAD   M4AF_FOURCC('f','s','k','s')
 #define OPT_FR_PS_IPD            M4AF_FOURCC('f','p','i','d')
 #define OPT_FR_PS_OPD            M4AF_FOURCC('f','p','o','d')
 #define OPT_FR_IS_BAND_LO        M4AF_FOURCC('f','i','l','o')
@@ -935,6 +942,8 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
         { "coverage",             required_argument, 0, OPT_FR_COVERAGE },
         { "enfac-patch",          required_argument, 0, OPT_FR_ENFAC_PATCH },
         { "bit-stats",            no_argument,       0, OPT_FR_BIT_STATS },
+        { "side-knee-zone",       required_argument, 0, OPT_FR_SIDE_KNEE_ZONE },
+        { "side-knee-spread",     required_argument, 0, OPT_FR_SIDE_KNEE_SPREAD },
         { "ps-ipd",              required_argument, 0, OPT_FR_PS_IPD            },
         { "ps-opd",              required_argument, 0, OPT_FR_PS_OPD            },
         { "is-lo",               required_argument, 0, OPT_FR_IS_BAND_LO        },
@@ -1060,6 +1069,8 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
     params->fr_coverage = AACENC_FRANKEN_OFF;
     params->fr_enfac_patch = -1;
     params->fr_bit_stats = 0;
+    params->fr_side_knee_zone = -1;
+    params->fr_side_knee_spread = -1;
     params->fr_ps_ipd = -1;
     params->fr_ps_opd = -1;
     params->fr_is_band_lo = -1;
@@ -1544,6 +1555,12 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
         case OPT_FR_COVERAGE:
             if (fr_scan_int(optarg, &n) != 1 || n < -5 || n > 5) { fprintf(stderr, "invalid arg for coverage (-5..5: - = fewer bands coded cleanly, + = everything coded coarsely, 0 = stock)\n"); return -1; }
             params->fr_coverage = (n == 0) ? AACENC_FRANKEN_OFF : n; break;
+        case OPT_FR_SIDE_KNEE_ZONE:
+            if (fr_parse_dec(optarg, 1.0, 20.0, 1000, &params->fr_side_knee_zone)) { fprintf(stderr, "invalid arg for side-knee-zone (1.0..20.0, stock 3)\n"); return -1; }
+            break;
+        case OPT_FR_SIDE_KNEE_SPREAD:
+            if (fr_parse_dec(optarg, 0.1, 24.0, 1000, &params->fr_side_knee_spread)) { fprintf(stderr, "invalid arg for side-knee-spread (0.1..24.0 dB, stock 1)\n"); return -1; }
+            break;
         case OPT_FR_BIT_STATS:
             params->fr_bit_stats = 1; break;
         case OPT_FR_ENFAC_PATCH:

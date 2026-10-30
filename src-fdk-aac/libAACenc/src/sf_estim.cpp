@@ -1106,36 +1106,80 @@ static void FDKaacEnc_EstimateScaleFactorsChannel(
           threshLdData -= off; /* +dB -> lower thr; -dB -> raise thr */
           qcOutChannel->sfbThresholdLdData[sfbOffs + sfb] = threshLdData;
         }
-        /* Suwak 2 --side-knee <dB>: shape the coded<->zeroed cliff. + softens
-         * it (bands up to N dB BELOW threshold are kept at the coarsest scf
-         * instead of dropped, fading out gradually). - sharpens it past hard
-         * (bands up to N dB ABOVE the energy=thr line are forced to zero, so
-         * the side cuts off early = extreme destruction). */
+        /* Suwak 2 --side-knee <dB>: an OFFSET on each band's own margin
+         * (energy minus threshold) near the coded<->zeroed edge, so every band
+         * keeps a precision in proportion to how loud it really is.
+         *
+         * The margin used is the one the rate control really wanted. When FDK
+         * runs out of bits it does not drop a weak band at once: avoid-holes
+         * pins its threshold to energy + minSnr (about 0.97 dB), so a whole
+         * crowd of bands ends up with the very same margin. adj_thr.cpp keeps
+         * the threshold it wanted before that rescue (frAhWantThrLd); here the
+         * band gets back a margin that follows its real level.
+         *
+         *  + N: bands up to N dB below their threshold are kept, graded by
+         *       how far below they were; bands just above gain up to N dB;
+         *       a rescued band never ends up coarser than stock.
+         *  - N: bands near the edge lose up to N dB, the ones that had less
+         *       than that are dropped; rescued bands are spread by their real
+         *       margin first (spread = --side-knee-spread dB), so they leave
+         *       one by one instead of all at -0.97 dB.
+         * The offset is full up to |N| dB above the threshold and fades out
+         * linearly to zero at zone*|N| dB (--side-knee-zone, stock 3), so the
+         * loud, well coded part of the side channel is not touched. */
         if (g_franken.sideKneeDbX1000 != FRANKEN_OFF &&
-            g_franken.sideKneeDbX1000 != 0) {
-          double kneeDb = g_franken.sideKneeDbX1000 / 1000.0;
-          double kneeAbs = kneeDb < 0.0 ? -kneeDb : kneeDb;
-          FIXP_DBL knee = (FIXP_DBL)((INT)(kneeAbs * 0.00519 * 2147483648.0));
-          FIXP_DBL eps = (FIXP_DBL)((INT)(0.00519 * 2147483648.0));
-          /* 64-bit differences: a silent band has energyLdData = -1.0
-           * (INT_MIN), and the 32-bit "threshold - energy" overflowed (UB),
-           * so silent bands were "rescued" or not depending on the compiler.
-           * Silent bands (below -0.99 in ld64) are never rescued. */
-          const long long dTE = (long long)threshLdData - (long long)energyLdData;
-          if (kneeDb > 0.0) {
-            /* soft knee: rescue near-miss bands just under the threshold */
-            if (energyLdData > FL2FXCONST_DBL(-0.99f) && dTE >= 0 &&
-                dTE <= (long long)knee) {
-              threshLdData = energyLdData - eps; /* thresh<energy -> coded coarse */
-              qcOutChannel->sfbThresholdLdData[sfbOffs + sfb] = threshLdData;
+            g_franken.sideKneeDbX1000 != 0 &&
+            energyLdData > FL2FXCONST_DBL(-0.99f)) {
+          const double kDbLd = 0.00519 * 2147483648.0; /* 1 dB in ld64 */
+          const double N = g_franken.sideKneeDbX1000 / 1000.0;
+          const double W = N < 0.0 ? -N : N;
+          const double zoneMul =
+              (g_franken.sideKneeZoneX1000 > 0) ? g_franken.sideKneeZoneX1000 / 1000.0 : 3.0;
+          const double spreadDb =
+              (g_franken.sideKneeSpreadX1000 > 0) ? g_franken.sideKneeSpreadX1000 / 1000.0 : 1.0;
+          const double xCur = ((double)energyLdData - (double)threshLdData) / kDbLd;
+          const FIXP_DBL want = qcOutChannel->frAhWantThrLd[sfbOffs + sfb];
+          const int rescued = (want != FR_AH_NONE) && (xCur > 0.0);
+          const double xTrue =
+              rescued ? ((double)energyLdData - (double)want) / kDbLd : xCur;
+          double w = 1.0; /* weight of the offset for coded bands */
+          if (xCur > W) {
+            const double zEnd = zoneMul * W;
+            w = (zEnd > W) ? (zEnd - xCur) / (zEnd - W) : 0.0;
+            if (w < 0.0) w = 0.0;
+          }
+          double out;
+          if (N > 0.0) {
+            if (rescued) {
+              out = xTrue + N;
+              if (out < xCur) out = xCur; /* never coarser than stock */
+            } else if (xCur <= 0.0) {
+              out = xCur + N; /* zeroed: rescue it if it was within N */
+            } else {
+              out = xCur + N * w;
             }
           } else {
-            /* hard knee: drop bands that only just clear the threshold */
-            if (dTE < 0 && -dTE <= (long long)knee &&
-                energyLdData < (FIXP_DBL)MAXVAL_DBL - eps) {
-              threshLdData = energyLdData + eps; /* thresh>energy -> zeroed */
-              qcOutChannel->sfbThresholdLdData[sfbOffs + sfb] = threshLdData;
+            double xEff = xCur;
+            if (rescued) {
+              double s = W / spreadDb;
+              if (s > 1.0) s = 1.0;
+              xEff = xCur + s * (xTrue - xCur);
             }
+            out = (xCur <= 0.0) ? xCur : xEff - W * (rescued ? 1.0 : w);
+          }
+          if (out != xCur) {
+            const double minOut = 0.05; /* still coded, at the coarsest step */
+            double newThr;
+            if (out > 0.0) {
+              if (out < minOut) out = minOut;
+              newThr = (double)energyLdData - out * kDbLd;
+            } else {
+              newThr = (double)energyLdData + kDbLd; /* thr above energy: zero */
+            }
+            if (newThr < (double)FL2FXCONST_DBL(-0.99f)) newThr = (double)FL2FXCONST_DBL(-0.99f);
+            if (newThr > (double)(MAXVAL_DBL - 1)) newThr = (double)(MAXVAL_DBL - 1);
+            threshLdData = (FIXP_DBL)(INT)newThr;
+            qcOutChannel->sfbThresholdLdData[sfbOffs + sfb] = threshLdData;
           }
         }
       }

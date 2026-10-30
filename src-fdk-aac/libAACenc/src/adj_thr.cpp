@@ -700,6 +700,8 @@ static void FDKaacEnc_initAvoidHoleFlag(
   for (ch = 0; ch < nChannels; ch++) {
     QC_OUT_CHANNEL *qcOutChan = qcOutChannel[ch];
     const PSY_OUT_CHANNEL *const psyOutChan = psyOutChannel[ch];
+    for (sfb = 0; sfb < MAX_GROUPED_SFB; sfb++)
+      qcOutChan->frAhWantThrLd[sfb] = FR_AH_NONE; /* Frankenstein --side-knee */
     for (sfbGrp = 0; sfbGrp < psyOutChan->sfbCnt;
          sfbGrp += psyOutChan->sfbPerGroup) {
       for (sfb = 0; sfb < psyOutChan->maxSfbPerGroup; sfb++) {
@@ -1046,10 +1048,12 @@ static void FDKaacEnc_reduceThresholdsCBR(
               (FIXP_DBL)(minScale << (DFRACT_BITS - 1 - LD_DATA_SHIFT));
           sfbThrReducedLdData <<= 2;
 
+          qcOutChan->frAhWantThrLd[sfbGrp + sfb] = FR_AH_NONE;
           /* avoid holes */
           if ((sfbThrReducedLdData >
                (qcOutChan->sfbMinSnrLdData[sfbGrp + sfb] + sfbEnLdData)) &&
               (ahFlag[ch][sfbGrp + sfb] != NO_AH)) {
+            qcOutChan->frAhWantThrLd[sfbGrp + sfb] = sfbThrReducedLdData;
             if (qcOutChan->sfbMinSnrLdData[sfbGrp + sfb] >
                 (FL2FXCONST_DBL(-1.0f) - sfbEnLdData)) {
               sfbThrReducedLdData = fixMax(
@@ -1315,9 +1319,11 @@ static void FDKaacEnc_reduceThresholdsVBR(
           }
 
           /* avoid holes */
+          qcOutChan->frAhWantThrLd[sfbGrp + sfb] = FR_AH_NONE;
           if (((sfbThrReducedLdData - sfbEnLdData) >
                qcOutChan->sfbMinSnrLdData[sfbGrp + sfb]) &&
               (ahFlag[ch][sfbGrp + sfb] != NO_AH)) {
+            qcOutChan->frAhWantThrLd[sfbGrp + sfb] = sfbThrReducedLdData;
             if (qcOutChan->sfbMinSnrLdData[sfbGrp + sfb] >
                 (FL2FXCONST_DBL(-1.0f) - sfbEnLdData)) {
               sfbThrReducedLdData = fixMax(
@@ -1514,6 +1520,7 @@ static void FDKaacEnc_correctThresh(
               if ((sfbThrReducedLdData - sfbEnLdData >
                    qcOutChan->sfbMinSnrLdData[sfbGrp + sfb]) &&
                   (ahFlag[elementId][ch][sfbGrp + sfb] == AH_INACTIVE)) {
+                qcOutChan->frAhWantThrLd[sfbGrp + sfb] = sfbThrReducedLdData;
                 /* sfbThrReduced = max(psyOutChan[ch]->sfbMinSnr[i] * sfbEn,
                  * sfbThr); */
                 if (sfbEnLdData >
@@ -2901,6 +2908,15 @@ void FDKaacEnc_AdjustThresholds(
     const INT CBRbitrateMode, const CHANNEL_MAPPING *const cm) {
   int i;
 
+  /* Frankenstein --side-knee: no band is "rescued" until avoid-holes says so
+   * in this frame (the buffer lives in shared dynamic RAM). */
+  for (i = 0; i < cm->nElements; i++) {
+    if (cm->elInfo[i].elType == ID_DSE) continue;
+    for (int ch = 0; ch < cm->elInfo[i].nChannelsInEl; ch++)
+      for (int k = 0; k < MAX_GROUPED_SFB; k++)
+        qcElement[i]->qcOutChannel[ch]->frAhWantThrLd[k] = FR_AH_NONE;
+  }
+
   if (CBRbitrateMode) {
     /* In case, no bits must be shifted between different elements, */
     /* an element-wise execution of the pe-dependent threshold- */
@@ -2987,6 +3003,9 @@ void FDKaacEnc_AdjustThresholds(
              sfb++) {
           pQcOutCh->sfbThresholdLdData[sfb + sfbGrp] +=
               pQcOutCh->sfbEnFacLd[sfb + sfbGrp];
+          if (pQcOutCh->frAhWantThrLd[sfb + sfbGrp] != FR_AH_NONE)
+            pQcOutCh->frAhWantThrLd[sfb + sfbGrp] +=
+                pQcOutCh->sfbEnFacLd[sfb + sfbGrp];
         }
       }
     }

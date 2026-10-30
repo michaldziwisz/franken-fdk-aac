@@ -171,11 +171,16 @@ typedef struct FRANKEN_CFG {
                          MS bands by dB*1000 (6000 = 6.0 dB). SIGN = EFFECT: + steers
                          MORE bits to side (lowers thr); - deliberately DEGRADES
                          side (raises thr). Range -24000..+50000. 0 = off. */
-  int sideKneeDbX1000;  /* FRANKEN_OFF=off; shape the SIDE coded<->zeroed cliff, dB*1000.
-                         + = SOFT knee (keep near-miss bands just under threshold at
-                         coarsest scf instead of dropping = smoother fade). - = HARD
-                         knee (drop bands that only just clear threshold = early
-                         cutoff, extreme destruction). Range -24000..+50000. 0 = off. */
+  int sideKneeDbX1000;  /* FRANKEN_OFF=off; OFFSET on the energy-to-threshold margin of
+                         side (MS) bands near the coded<->zeroed edge, dB*1000. Uses
+                         the margin the rate control wanted before the avoid-holes
+                         0.97 dB rescue, so precision follows each band's real level.
+                         + = more precision / bands below thr kept (graded); - = less,
+                         bands with a margin under N dropped. Range -24000..+50000. */
+  int sideKneeZoneX1000;   /* -1 stock 3.0; offset fades out between |N| and zone*|N| dB
+                              above the threshold (diagnostic). */
+  int sideKneeSpreadX1000; /* -1 stock 1.0 dB; for - knee: how many dB of knee are needed
+                              to fully spread the rescued crowd by its real margin. */
   int msaSlopeDbX1000;  /* FRANKEN_OFF=off; shift the Masking-Slope-Adaptation START
                          threshold (dB*1000). MSA is a NON-masking heuristic that
                          relaxes the required min-SNR for SFBs whose energy sits

@@ -114,6 +114,8 @@
     int fr_scf_range; \
     int fr_enfac_patch; \
     int fr_bit_stats; \
+    int fr_side_knee_zone; \
+    int fr_side_knee_spread; \
     int fr_coverage; \
     int fr_ps_ipd; \
     int fr_ps_opd; \

@@ -196,7 +196,15 @@ typedef struct {
 
   FIXP_DBL sfbSpreadEnergy[MAX_GROUPED_SFB];
 
+  /* Frankenstein: threshold the rate control WANTED for a band before the
+   * avoid-holes rule pinned it to energy + minSnr (the ~0.97 dB "rescue").
+   * FR_AH_NONE when the band was not rescued. Read by --side-knee to give a
+   * rescued band the precision its real energy-to-threshold margin deserves. */
+  FIXP_DBL frAhWantThrLd[MAX_GROUPED_SFB];
+
 } QC_OUT_CHANNEL;
+
+#define FR_AH_NONE ((FIXP_DBL)0x80000000)
 
 typedef struct {
   EXT_PAYLOAD_TYPE type; /* type of the extension payload */

@@ -1634,6 +1634,8 @@ typedef enum {
   AACENC_FRANKEN_THR_HOLD = 0xF089,               /*!< Hold per-band thresholds for N long frames, 2..32 (-1 = off). */
   AACENC_FRANKEN_SCF_RANGE = 0xF08A,              /*!< Max scalefactor spread per channel 0..60 (-1 = stock 60). */
   AACENC_FRANKEN_COVERAGE = 0xF08B,               /*!< Coverage vs precision macro -5..5 (AACENC_FRANKEN_OFF = off). */
+  AACENC_FRANKEN_SIDE_KNEE_ZONE = 0xF093,         /*!< --side-knee fade-out zone, multiple of |knee| x1000 (-1 = 3.0). Diagnostic. */
+  AACENC_FRANKEN_SIDE_KNEE_SPREAD = 0xF094,       /*!< --side-knee: dB of knee to fully spread rescued bands, x1000 (-1 = 1.0). Diagnostic. */
   AACENC_FRANKEN_BIT_STATS = 0xF092,              /*!< 1 = count written bits per part, print on close (read-only). */
   AACENC_FRANKEN_ENFAC_PATCH = 0xF091,            /*!< Flat-spectrum energy re-weighting: 0 never, 1 every long frame (-1 = stock auto). */
   AACENC_FRANKEN_VERBOSE = 0xF016,     /*!< Verbose init dump 0/1. */
