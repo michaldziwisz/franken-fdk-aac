@@ -841,6 +841,13 @@ static void FDKaacEnc_calcWeighting(
       usePatch = (adjThrStateElement->chaosMeasureEnFac[ch] >
                   FL2FXCONST_DBL(0.78125f));
       exePatch = ((usePatch) && (adjThrStateElement->lastEnFacPatch[ch]));
+      /* Frankenstein --enfac-patch 1: skip the flatness gate (and its one-frame
+       * delay), every long frame is re-weighted as if it were noise-like. The
+       * exponent below still follows the measured flatness. */
+      if (g_franken.enfacPatch == 1) {
+        usePatch = 1;
+        exePatch = 1;
+      }
 
       for (sfbGrp = 0; sfbGrp < psyOutChannel[ch]->sfbCnt;
            sfbGrp += psyOutChannel[ch]->sfbPerGroup) {
@@ -931,8 +938,11 @@ void FDKaacEnc_peCalculation(PE_DATA *const peData,
                       adjThrStateElement->peOffset);
 
   /* calculate weighting factor for threshold adjustment */
+  /* Frankenstein --enfac-patch 0: the weighting tool is off, every frame is
+   * treated as tonal (stock always passes 1 here). */
   FDKaacEnc_calcWeighting(peData, psyOutChannel, qcOutChannel, toolsInfo,
-                          adjThrStateElement, nChannels, 1);
+                          adjThrStateElement, nChannels,
+                          (g_franken.enfacPatch == 0) ? 0 : 1);
   {
     /* no weighting of threholds and energies for mlout */
     /* weight energies and thresholds */

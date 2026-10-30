@@ -341,6 +341,7 @@ int aacenc_init(HANDLE_AACENCODER *encoder, const aacenc_param_t *params,
     FR_SET(params->fr_pns_above != -1, AACENC_FRANKEN_PNS_ABOVE, params->fr_pns_above);
     FR_SET(params->fr_thr_hold != -1, AACENC_FRANKEN_THR_HOLD, params->fr_thr_hold);
     FR_SET(params->fr_scf_range != -1, AACENC_FRANKEN_SCF_RANGE, params->fr_scf_range);
+    FR_SET(params->fr_enfac_patch != -1, AACENC_FRANKEN_ENFAC_PATCH, params->fr_enfac_patch);
     FR_SET(params->fr_coverage != AACENC_FRANKEN_OFF, AACENC_FRANKEN_COVERAGE, params->fr_coverage);
     FR_SET(params->fr_ps_ipd != -1, AACENC_FRANKEN_PS_IPD, params->fr_ps_ipd);
     FR_SET(params->fr_ps_opd != -1, AACENC_FRANKEN_PS_OPD, params->fr_ps_opd);
@@ -682,6 +683,7 @@ int aacenc_init(HANDLE_AACENCODER *encoder, const aacenc_param_t *params,
             if (params->fr_pns_above != -1) { FRV_HDR(); fprintf(stderr, " pns-above             : %d Hz (every long-block band above becomes noise)\n", params->fr_pns_above); }
             if (params->fr_thr_hold != -1) { FRV_HDR(); fprintf(stderr, " thr-hold              : %d frames\n", params->fr_thr_hold); }
             if (params->fr_scf_range != -1) { FRV_HDR(); fprintf(stderr, " scf-range             : %d steps (%.1f dB)\n", params->fr_scf_range, params->fr_scf_range*1.5); }
+            if (params->fr_enfac_patch != -1) { FRV_HDR(); fprintf(stderr, " enfac-patch           : %d (%s)\n", params->fr_enfac_patch, params->fr_enfac_patch ? "every long frame re-weighted as noise-like" : "never, every frame treated as tonal"); }
             if (params->fr_sbr_invf_min >= 0)   { FRV_HDR(); fprintf(stderr, " sbr-invf-min          : %d (dynamic invf floor)\n", params->fr_sbr_invf_min); }
             if (params->fr_sbr_invf_max >= 0)   { FRV_HDR(); fprintf(stderr, " sbr-invf-max          : %d (dynamic invf ceiling)\n", params->fr_sbr_invf_max); }
             if (params->fr_sbr_invf_bias != AACENC_FRANKEN_OFF) { FRV_HDR(); fprintf(stderr, " sbr-invf-bias         : %+d step(s) on every dynamic decision\n", params->fr_sbr_invf_bias); }

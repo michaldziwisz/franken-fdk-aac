@@ -584,6 +584,10 @@ PROGNAME " %s\n"
 " --scf-range <n>             0..60, stock 60. Max spread between the finest and the\n"
 "                               coarsest band of a channel, steps of 1.5 dB. Lower =\n"
 "                               flatter noise, less psychoacoustic shaping.\n"
+" --enfac-patch <0|1>         Energy re-weighting of flat (noise-like) long frames,\n"
+"                               CBR and VBR. Stock: only when the audible spectrum is\n"
+"                               flat; it moves bits between bands. 0 = never (every\n"
+"                               frame treated as tonal), 1 = every long frame.\n"
 "\n== F. Block switching & bitrate control ==\n"
 " --block-bias <n>            Bias short/long block decision. 128=default(unchanged),\n"
 "                               >128 favours short (transient-like), <128 long, 0=long\n"
@@ -758,6 +762,7 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
 #define OPT_FR_THR_HOLD           M4AF_FOURCC('f','q','t','h')
 #define OPT_FR_SCF_RANGE          M4AF_FOURCC('f','q','s','r')
 #define OPT_FR_COVERAGE           M4AF_FOURCC('f','q','c','v')
+#define OPT_FR_ENFAC_PATCH        M4AF_FOURCC('f','q','e','f')
 #define OPT_FR_PS_IPD            M4AF_FOURCC('f','p','i','d')
 #define OPT_FR_PS_OPD            M4AF_FOURCC('f','p','o','d')
 #define OPT_FR_IS_BAND_LO        M4AF_FOURCC('f','i','l','o')
@@ -923,6 +928,7 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
         { "thr-hold",             required_argument, 0, OPT_FR_THR_HOLD },
         { "scf-range",            required_argument, 0, OPT_FR_SCF_RANGE },
         { "coverage",             required_argument, 0, OPT_FR_COVERAGE },
+        { "enfac-patch",          required_argument, 0, OPT_FR_ENFAC_PATCH },
         { "ps-ipd",              required_argument, 0, OPT_FR_PS_IPD            },
         { "ps-opd",              required_argument, 0, OPT_FR_PS_OPD            },
         { "is-lo",               required_argument, 0, OPT_FR_IS_BAND_LO        },
@@ -1046,6 +1052,7 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
     params->fr_thr_hold = -1;
     params->fr_scf_range = -1;
     params->fr_coverage = AACENC_FRANKEN_OFF;
+    params->fr_enfac_patch = -1;
     params->fr_ps_ipd = -1;
     params->fr_ps_opd = -1;
     params->fr_is_band_lo = -1;
@@ -1530,6 +1537,9 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
         case OPT_FR_COVERAGE:
             if (fr_scan_int(optarg, &n) != 1 || n < -5 || n > 5) { fprintf(stderr, "invalid arg for coverage (-5..5: - = fewer bands coded cleanly, + = everything coded coarsely, 0 = stock)\n"); return -1; }
             params->fr_coverage = (n == 0) ? AACENC_FRANKEN_OFF : n; break;
+        case OPT_FR_ENFAC_PATCH:
+            if (fr_scan_int(optarg, &n) != 1 || n < 0 || n > 1) { fprintf(stderr, "invalid arg for enfac-patch (0 never, 1 every long frame)\n"); return -1; }
+            params->fr_enfac_patch = n; break;
         case OPT_FR_PS_IPD:
             if (fr_scan_int(optarg, &n) != 1 || n < 0 || n > 1) { fprintf(stderr, "invalid arg for ps-ipd (0,1)\n"); return -1; }
             params->fr_ps_ipd = n; break;

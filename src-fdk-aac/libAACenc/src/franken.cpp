@@ -107,6 +107,7 @@ extern "C" void frankenResetDefaults(void) {
   g_franken.thrHold = -1;
   g_franken.scfRange = -1;
   g_franken.coverage = FRANKEN_OFF;
+  g_franken.enfacPatch = -1;
   g_franken.psBands = -1;
   g_franken.psEnvelopes = -1;
   g_franken.psEnvReduce = -1;

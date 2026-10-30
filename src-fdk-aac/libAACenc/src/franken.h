@@ -340,6 +340,10 @@ typedef struct FRANKEN_CFG {
                               Lower = flatter noise shaping (closer to white noise). */
   int coverage;            /* FRANKEN_OFF; macro -5..5: + = fill everything coarsely,
                               - = code fewer bands more precisely. Explicit knobs win. */
+  int enfacPatch;          /* -1 stock (auto: band energies are re-weighted only in long
+                              frames whose audible spectrum is flat, i.e. noise-like);
+                              0 never (every frame is treated as tonal); 1 every long
+                              frame (every frame is treated as noise-like). */
 
   /* ---- Read-back: effective values chosen by the encoder (for --verbose) ----
    * Populated by the encoder during init regardless of overrides. -1 = unknown. */

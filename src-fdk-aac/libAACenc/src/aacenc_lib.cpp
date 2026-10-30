@@ -2953,6 +2953,10 @@ AACENC_ERROR aacEncoder_SetParam(const HANDLE_AACENCODER hAacEncoder,
       g_franken.scfRange = (INT)value;
       hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
       break;
+    case AACENC_FRANKEN_ENFAC_PATCH:
+      g_franken.enfacPatch = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
     case AACENC_FRANKEN_COVERAGE:
       g_franken.coverage = (INT)value;
       hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
