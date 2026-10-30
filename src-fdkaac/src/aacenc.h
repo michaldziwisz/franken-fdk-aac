@@ -107,6 +107,12 @@
     int fr_hole_start_short; \
     int fr_hole_spread; \
     int fr_hole_ladder; \
+    int fr_band_knee; \
+    int fr_quant_round; \
+    int fr_pns_above; \
+    int fr_thr_hold; \
+    int fr_scf_range; \
+    int fr_coverage; \
     int fr_ps_ipd; \
     int fr_ps_opd; \
     int fr_is_band_lo; \

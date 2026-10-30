@@ -113,6 +113,7 @@ typedef struct {
   FIXP_DBL minCorrelationEnergy;
   FIXP_DBL noiseCorrelationThresh;
   INT usePns;
+  INT frankenAboveLine; /* --pns-above: first long-block line forced to noise */
 } PNS_CONFIG;
 
 typedef struct {

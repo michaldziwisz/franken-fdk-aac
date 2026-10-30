@@ -101,6 +101,12 @@ extern "C" void frankenResetDefaults(void) {
   g_franken.holeStartShort = -1;
   g_franken.holeSpreadDbX1000 = FRANKEN_OFF;
   g_franken.holeLadder = -1;
+  g_franken.bandKneeDbX1000 = FRANKEN_OFF;
+  g_franken.quantRoundX1000 = -1;
+  g_franken.pnsAboveHz = -1;
+  g_franken.thrHold = -1;
+  g_franken.scfRange = -1;
+  g_franken.coverage = FRANKEN_OFF;
   g_franken.psBands = -1;
   g_franken.psEnvelopes = -1;
   g_franken.psEnvReduce = -1;
@@ -267,6 +273,76 @@ extern "C" int frankenEffInvfSbrThrX100(void) {
 
 extern "C" int frankenEffInvfOrigThrX100(void) {
   return g_franken.sbrInvfOrigThrX100;
+}
+
+/* ---- Coverage macro (--coverage -5..5) ----
+ * One axis for a fixed bitrate: + spends the bits on coding EVERY band coarsely
+ * (no holes, everything filled, more granular), - spends them on coding fewer
+ * bands cleanly (marginal bands dropped, dead-zone rounding, holes allowed).
+ * Columns: band knee dB*1000 (FRANKEN_OFF = none), quantizer rounding x1000
+ * (-1 = stock), hole ladder (-1 = stock), avoid-holes (-1 = stock), first long
+ * SFB where holes may be cut (-1 = stock), noise substitution from this
+ * frequency up (-1 = off). Index = level + 5.
+ * Measured (LC 32 kbps, 17 kHz, dense test signal): the + side saturates at
+ * about 8..10 % zeroed bands with the knobs of +2/+3; a larger knee is
+ * counterproductive (rescued coarse bands cost bits, the rate loop then cuts
+ * elsewhere), so +4/+5 add noise substitution instead. The - side drops
+ * marginal bands; the gain in cleanliness of what is left is about 1 dB. */
+static const struct {
+  int kneeX1000;
+  short roundX1000;
+  signed char ladder, avoidHoles, holeStart;
+  int pnsAboveHz;
+} kCoverage[11] = {
+    {-10000, -1, -1, 0, -1, -1},          /* -5 */
+    {-8000, -1, -1, 0, -1, -1},           /* -4 */
+    {-6000, -1, -1, 0, -1, -1},           /* -3 */
+    {-4000, -1, -1, -1, -1, -1},          /* -2 */
+    {-2000, -1, -1, -1, -1, -1},          /* -1 */
+    {FRANKEN_OFF, -1, -1, -1, -1, -1},    /*  0 = stock */
+    {3000, 420, 4, 1, -1, -1},            /* +1 */
+    {6000, 430, 2, 1, -1, -1},            /* +2 */
+    {6000, 440, 1, 1, -1, -1},            /* +3 */
+    {6000, 440, 1, 1, -1, 11000},         /* +4: and noise from 11 kHz up */
+    {6000, 450, 1, 1, -1, 7000},          /* +5: and noise from 7 kHz up */
+};
+
+static int covIdx(void) {
+  if (g_franken.coverage == FRANKEN_OFF) return -1;
+  if (g_franken.coverage < -5 || g_franken.coverage > 5) return -1;
+  return g_franken.coverage + 5;
+}
+
+extern "C" int frankenEffBandKnee(void) {
+  if (g_franken.bandKneeDbX1000 != FRANKEN_OFF) return g_franken.bandKneeDbX1000;
+  if (covIdx() >= 0) return kCoverage[covIdx()].kneeX1000;
+  return FRANKEN_OFF;
+}
+extern "C" int frankenEffQuantRound(void) {
+  if (g_franken.quantRoundX1000 >= 0) return g_franken.quantRoundX1000;
+  if (covIdx() >= 0) return kCoverage[covIdx()].roundX1000;
+  return -1;
+}
+extern "C" int frankenEffHoleLadder(void) {
+  if (g_franken.holeLadder >= 1) return g_franken.holeLadder;
+  if (covIdx() >= 0) return kCoverage[covIdx()].ladder;
+  return -1;
+}
+extern "C" int frankenEffAvoidHoles(void) {
+  if (g_franken.avoidHoles == 0 || g_franken.avoidHoles == 1) return g_franken.avoidHoles;
+  if (covIdx() >= 0) return kCoverage[covIdx()].avoidHoles;
+  return -1;
+}
+extern "C" int frankenEffHoleStartLong(void) {
+  if (g_franken.holeStartLong >= 0) return g_franken.holeStartLong;
+  if (covIdx() >= 0) return kCoverage[covIdx()].holeStart;
+  return -1;
+}
+
+extern "C" int frankenEffPnsAbove(void) {
+  if (g_franken.pnsAboveHz > 0) return g_franken.pnsAboveHz;
+  if (covIdx() >= 0) return kCoverage[covIdx()].pnsAboveHz;
+  return -1;
 }
 
 /* Ensure defaults are set even if the frontend never calls the reset

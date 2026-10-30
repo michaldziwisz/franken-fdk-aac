@@ -101,6 +101,7 @@ amm-info@iis.fraunhofer.de
 *******************************************************************************/
 
 #include "quantize.h"
+#include "franken.h"
 
 #include "aacEnc_rom.h"
 
@@ -126,6 +127,13 @@ static void FDKaacEnc_quantizeLines(INT gain, INT noOfLines,
     k = FL2FXCONST_DBL(0.23f) >> kShift;
   else
     k = FL2FXCONST_DBL(-0.0946f + 0.5f) >> kShift;
+  /* Frankenstein --quant-round: rounding offset of the quantizer. 0.5 rounds to
+   * nearest, the stock 0.4054 (0.23 in the LD mono dead-zone mode) leans
+   * towards the lower level. Higher = fewer small lines fall to zero. */
+  {
+    const INT qr = frankenEffQuantRound();
+    if (qr >= 0) k = ((FIXP_DBL)((INT)((double)qr / 1000.0 * 2147483647.0))) >> kShift;
+  }
 
   for (line = 0; line < noOfLines; line++) {
     FIXP_DBL accu = fMultDiv2(mdctSpectrum[line], quantizer);

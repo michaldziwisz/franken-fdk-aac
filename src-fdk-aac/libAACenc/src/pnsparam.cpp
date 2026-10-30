@@ -518,7 +518,7 @@ AAC_ENCODER_ERROR FDKaacEnc_GetPnsParam(NOISEPARAMS *np, INT bitRate,
     if (hUsePns == 0) {
       /* Frankenstein: --force-pns bypasses the low-bitrate PNS gate (the tuning
        * table returns 0 below ~28 kbps). Fall back to the first active row. */
-      if (g_franken.forcePns == 1) {
+      if (g_franken.forcePns == 1 || frankenEffPnsAbove() > 0) {
         hUsePns = 1;
       } else {
         *usePns = 0;
@@ -540,7 +540,7 @@ AAC_ENCODER_ERROR FDKaacEnc_GetPnsParam(NOISEPARAMS *np, INT bitRate,
     /* new pns params */
     hUsePns = FDKaacEnc_lookUpPnsUse(bitRate, sampleRate, numChan, isLC);
     if (hUsePns == 0) {
-      if (g_franken.forcePns == 1) {
+      if (g_franken.forcePns == 1 || frankenEffPnsAbove() > 0) {
         hUsePns = 1;
       } else {
         *usePns = 0;

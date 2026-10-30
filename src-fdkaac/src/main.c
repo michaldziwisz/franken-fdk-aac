@@ -560,6 +560,30 @@ PROGNAME " %s\n"
 " --hole-ladder <1..8>         Energy steps of the hole cutting. Stock 8. Fewer = only\n"
 "                               the quietest bands may be cut; the rate loop then gets\n"
 "                               coarser instead of cutting more bands.\n"
+"\n== E2. Coverage vs precision (what the bits are spent on) ==\n"
+" --coverage <-5..5>          One axis at a fixed bitrate. + = code EVERY band, coarsely\n"
+"                               (no holes, everything filled, grainier). - = code fewer\n"
+"                               bands, cleanly (marginal bands dropped, holes allowed).\n"
+"                               0 = stock. Sets the five switches below; any of them\n"
+"                               given explicitly wins.\n"
+" --band-knee <dB>            -24.0..24.0, 0 = off. Every band of every channel: + keeps\n"
+"                               bands up to N dB under their threshold at the coarsest\n"
+"                               scalefactor instead of zeroing them; - zeroes bands that\n"
+"                               clear the threshold by less than N dB. (--side-knee does\n"
+"                               the same for the side channel only and wins there.)\n"
+" --quant-round <x>           0.0..0.5. Rounding offset of the quantizer. Stock 0.405.\n"
+"                               0.5 = round to nearest (fewer small lines become zero,\n"
+"                               costs bits); lower = more lines to zero (cheaper).\n"
+" --pns-above <Hz>            1000..48000. Every long-block band from this frequency up\n"
+"                               is replaced by noise of the right level (PNS), whatever\n"
+"                               its tonality: a high band \"like SBR, without SBR\".\n"
+"                               Turns PNS on even below its bitrate gate. AAC-LC only.\n"
+" --thr-hold <n>              1..32 frames, 1 = off. The masking model is re-measured\n"
+"                               only every n long frames; between, each band keeps its\n"
+"                               last noise-to-signal offset. Noise lags the music.\n"
+" --scf-range <n>             0..60, stock 60. Max spread between the finest and the\n"
+"                               coarsest band of a channel, steps of 1.5 dB. Lower =\n"
+"                               flatter noise, less psychoacoustic shaping.\n"
 "\n== F. Block switching & bitrate control ==\n"
 " --block-bias <n>            Bias short/long block decision. 128=default(unchanged),\n"
 "                               >128 favours short (transient-like), <128 long, 0=long\n"
@@ -728,6 +752,12 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
 #define OPT_FR_HOLE_START_SHORT   M4AF_FOURCC('f','q','h','s')
 #define OPT_FR_HOLE_SPREAD        M4AF_FOURCC('f','q','h','p')
 #define OPT_FR_HOLE_LADDER        M4AF_FOURCC('f','q','h','d')
+#define OPT_FR_BAND_KNEE          M4AF_FOURCC('f','q','b','k')
+#define OPT_FR_QUANT_ROUND        M4AF_FOURCC('f','q','q','r')
+#define OPT_FR_PNS_ABOVE          M4AF_FOURCC('f','q','p','a')
+#define OPT_FR_THR_HOLD           M4AF_FOURCC('f','q','t','h')
+#define OPT_FR_SCF_RANGE          M4AF_FOURCC('f','q','s','r')
+#define OPT_FR_COVERAGE           M4AF_FOURCC('f','q','c','v')
 #define OPT_FR_PS_IPD            M4AF_FOURCC('f','p','i','d')
 #define OPT_FR_PS_OPD            M4AF_FOURCC('f','p','o','d')
 #define OPT_FR_IS_BAND_LO        M4AF_FOURCC('f','i','l','o')
@@ -887,6 +917,12 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
         { "hole-start-short",     required_argument, 0, OPT_FR_HOLE_START_SHORT },
         { "hole-spread",          required_argument, 0, OPT_FR_HOLE_SPREAD },
         { "hole-ladder",          required_argument, 0, OPT_FR_HOLE_LADDER },
+        { "band-knee",            required_argument, 0, OPT_FR_BAND_KNEE },
+        { "quant-round",          required_argument, 0, OPT_FR_QUANT_ROUND },
+        { "pns-above",            required_argument, 0, OPT_FR_PNS_ABOVE },
+        { "thr-hold",             required_argument, 0, OPT_FR_THR_HOLD },
+        { "scf-range",            required_argument, 0, OPT_FR_SCF_RANGE },
+        { "coverage",             required_argument, 0, OPT_FR_COVERAGE },
         { "ps-ipd",              required_argument, 0, OPT_FR_PS_IPD            },
         { "ps-opd",              required_argument, 0, OPT_FR_PS_OPD            },
         { "is-lo",               required_argument, 0, OPT_FR_IS_BAND_LO        },
@@ -1004,6 +1040,12 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
     params->fr_hole_start_short = -1;
     params->fr_hole_spread = AACENC_FRANKEN_OFF;
     params->fr_hole_ladder = -1;
+    params->fr_band_knee = AACENC_FRANKEN_OFF;
+    params->fr_quant_round = -1;
+    params->fr_pns_above = -1;
+    params->fr_thr_hold = -1;
+    params->fr_scf_range = -1;
+    params->fr_coverage = AACENC_FRANKEN_OFF;
     params->fr_ps_ipd = -1;
     params->fr_ps_opd = -1;
     params->fr_is_band_lo = -1;
@@ -1469,6 +1511,25 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
         case OPT_FR_HOLE_LADDER:
             if (fr_scan_int(optarg, &n) != 1 || n < 1 || n > 8) { fprintf(stderr, "invalid arg for hole-ladder (1..8)\n"); return -1; }
             params->fr_hole_ladder = n; break;
+        case OPT_FR_BAND_KNEE:
+            if (fr_parse_dec(optarg, -24.0, 24.0, 1000, &params->fr_band_knee)) { fprintf(stderr, "invalid arg for band-knee (-24.0..24.0 dB; + = keep near-miss bands coarse, - = drop marginal bands, 0 = off)\n"); return -1; }
+            if (params->fr_band_knee == 0) params->fr_band_knee = AACENC_FRANKEN_OFF;
+            break;
+        case OPT_FR_QUANT_ROUND:
+            if (fr_parse_dec(optarg, 0.0, 0.5, 1000, &params->fr_quant_round)) { fprintf(stderr, "invalid arg for quant-round (0.0..0.5, stock 0.405)\n"); return -1; }
+            break;
+        case OPT_FR_PNS_ABOVE:
+            if (fr_scan_int(optarg, &n) != 1 || n < 1000 || n > 48000) { fprintf(stderr, "invalid arg for pns-above (1000..48000 Hz)\n"); return -1; }
+            params->fr_pns_above = n; break;
+        case OPT_FR_THR_HOLD:
+            if (fr_scan_int(optarg, &n) != 1 || n < 1 || n > 32) { fprintf(stderr, "invalid arg for thr-hold (1..32 frames, 1 = off)\n"); return -1; }
+            params->fr_thr_hold = (n == 1) ? -1 : n; break;
+        case OPT_FR_SCF_RANGE:
+            if (fr_scan_int(optarg, &n) != 1 || n < 0 || n > 60) { fprintf(stderr, "invalid arg for scf-range (0..60 steps of 1.5 dB, stock 60)\n"); return -1; }
+            params->fr_scf_range = (n == 60) ? -1 : n; break;
+        case OPT_FR_COVERAGE:
+            if (fr_scan_int(optarg, &n) != 1 || n < -5 || n > 5) { fprintf(stderr, "invalid arg for coverage (-5..5: - = fewer bands coded cleanly, + = everything coded coarsely, 0 = stock)\n"); return -1; }
+            params->fr_coverage = (n == 0) ? AACENC_FRANKEN_OFF : n; break;
         case OPT_FR_PS_IPD:
             if (fr_scan_int(optarg, &n) != 1 || n < 0 || n > 1) { fprintf(stderr, "invalid arg for ps-ipd (0,1)\n"); return -1; }
             params->fr_ps_ipd = n; break;

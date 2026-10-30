@@ -1628,6 +1628,12 @@ typedef enum {
   AACENC_FRANKEN_HOLE_START_SHORT = 0xF083,       /*!< First short SFB where holes may be cut (-1 = stock). */
   AACENC_FRANKEN_HOLE_SPREAD = 0xF084,            /*!< Spread-energy reduction deciding maskable holes, dB*1000 (FRANKEN_OFF = stock 3/2 dB). */
   AACENC_FRANKEN_HOLE_LADDER = 0xF085,            /*!< Energy steps of the hole cutting 1..8 (-1 = stock 8). */
+  AACENC_FRANKEN_BAND_KNEE = 0xF086,              /*!< Coded<->zeroed knee for every band, dB*1000 (AACENC_FRANKEN_OFF = off). */
+  AACENC_FRANKEN_QUANT_ROUND = 0xF087,            /*!< Quantizer rounding offset x1000, 0..500 (-1 = stock 405). */
+  AACENC_FRANKEN_PNS_ABOVE = 0xF088,              /*!< Noise-substitute every long-block band from this Hz up (-1 = off). */
+  AACENC_FRANKEN_THR_HOLD = 0xF089,               /*!< Hold per-band thresholds for N long frames, 2..32 (-1 = off). */
+  AACENC_FRANKEN_SCF_RANGE = 0xF08A,              /*!< Max scalefactor spread per channel 0..60 (-1 = stock 60). */
+  AACENC_FRANKEN_COVERAGE = 0xF08B,               /*!< Coverage vs precision macro -5..5 (AACENC_FRANKEN_OFF = off). */
   AACENC_FRANKEN_VERBOSE = 0xF016,     /*!< Verbose init dump 0/1. */
 
   /* Read-only (GetParam) mirrors of internal encoder-chosen values, for --verbose. */
@@ -1654,6 +1660,11 @@ typedef enum {
   AACENC_FRANKEN_GET_PS_BANDS = 0xF059,     /*!< Effective PS stereo bands (10/20, -1 n/a). */
   AACENC_FRANKEN_GET_PS_ENV = 0xF05A,       /*!< Effective PS max envelopes (1/2/4, -1 n/a). */
   AACENC_FRANKEN_GET_TP_CONFIG_PERIOD = 0xF06C, /*!< Effective LATM/LOAS StreamMuxConfig period, frames (-1 n/a). */
+  AACENC_FRANKEN_GET_EFF_BAND_KNEE = 0xF08C,  /*!< Effective band knee dB*1000 after --coverage (AACENC_FRANKEN_OFF none). */
+  AACENC_FRANKEN_GET_EFF_QUANT_ROUND = 0xF08D,/*!< Effective quantizer rounding x1000 (-1 stock). */
+  AACENC_FRANKEN_GET_EFF_HOLE_LADDER = 0xF08E,/*!< Effective hole ladder (-1 stock). */
+  AACENC_FRANKEN_GET_EFF_AVOID_HOLES = 0xF08F,/*!< Effective avoid-holes (-1 stock). */
+  AACENC_FRANKEN_GET_EFF_PNS_ABOVE = 0xF090,  /*!< Effective PNS-above Hz (-1 off). */
 
   AACENC_NONE = 0xFFFF /*!< ------ */
 

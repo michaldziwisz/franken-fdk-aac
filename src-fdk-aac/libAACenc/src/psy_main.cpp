@@ -241,6 +241,8 @@ AAC_ENCODER_ERROR FDKaacEnc_psyInitStates(PSY_INTERNAL *hPsy,
   FDKaacEnc_InitBlockSwitching(&psyStatic->blockSwitchingControl,
                                isLowDelay(audioObjectType));
 
+  psyStatic->frHoldCount = 0;
+
   return AAC_ENC_OK;
 }
 
@@ -1137,6 +1139,37 @@ AAC_ENCODER_ERROR FDKaacEnc_psyMain(INT channels, PSY_ELEMENT *psyElement,
             fixMax(psyOutChannel[ch]->sfbThresholdLdData[i],
                    FL2FXCONST_DBL(-0.515625f));
       }
+    }
+  }
+
+  /* Frankenstein --thr-hold N: the masking model is re-measured only every N
+   * long frames. In between each band keeps its last threshold-to-energy
+   * offset, so the noise follows the signal level but its spectral shape lags
+   * behind (a slow, "lazy" psychoacoustic model). Short blocks restart it. */
+  if (g_franken.thrHold >= 2) {
+    for (ch = 0; ch < channels; ch++) {
+      PSY_STATIC *ps = psyStatic[ch];
+      INT i;
+      if (ps->isLFE) continue;
+      if (isShortWindow[ch]) {
+        ps->frHoldCount = 0;
+        continue;
+      }
+      const INT n = fixMin(psyData[ch]->sfbActive, (INT)MAX_GROUPED_SFB);
+      FIXP_DBL *thr = psyOutChannel[ch]->sfbThresholdLdData;
+      const FIXP_DBL *en = psyOutChannel[ch]->sfbEnergyLdData;
+      if (ps->frHoldCount == 0) {
+        for (i = 0; i < n; i++) ps->frHeldSmrLd[i] = (thr[i] >> 1) - (en[i] >> 1);
+      } else {
+        for (i = 0; i < n; i++) {
+          long long v = (long long)en[i] + 2 * (long long)ps->frHeldSmrLd[i];
+          if (v > (long long)MAXVAL_DBL) v = (long long)MAXVAL_DBL;
+          if (v < (long long)FL2FXCONST_DBL(-0.515625f))
+            v = (long long)FL2FXCONST_DBL(-0.515625f);
+          thr[i] = (FIXP_DBL)v;
+        }
+      }
+      ps->frHoldCount = (ps->frHoldCount + 1) % g_franken.thrHold;
     }
   }
 

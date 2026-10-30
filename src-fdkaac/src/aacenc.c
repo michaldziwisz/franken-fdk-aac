@@ -336,6 +336,12 @@ int aacenc_init(HANDLE_AACENCODER *encoder, const aacenc_param_t *params,
     FR_SET(params->fr_hole_start_short != -1, AACENC_FRANKEN_HOLE_START_SHORT, params->fr_hole_start_short);
     FR_SET(params->fr_hole_spread != AACENC_FRANKEN_OFF, AACENC_FRANKEN_HOLE_SPREAD, params->fr_hole_spread);
     FR_SET(params->fr_hole_ladder != -1, AACENC_FRANKEN_HOLE_LADDER, params->fr_hole_ladder);
+    FR_SET(params->fr_band_knee != AACENC_FRANKEN_OFF, AACENC_FRANKEN_BAND_KNEE, params->fr_band_knee);
+    FR_SET(params->fr_quant_round != -1, AACENC_FRANKEN_QUANT_ROUND, params->fr_quant_round);
+    FR_SET(params->fr_pns_above != -1, AACENC_FRANKEN_PNS_ABOVE, params->fr_pns_above);
+    FR_SET(params->fr_thr_hold != -1, AACENC_FRANKEN_THR_HOLD, params->fr_thr_hold);
+    FR_SET(params->fr_scf_range != -1, AACENC_FRANKEN_SCF_RANGE, params->fr_scf_range);
+    FR_SET(params->fr_coverage != AACENC_FRANKEN_OFF, AACENC_FRANKEN_COVERAGE, params->fr_coverage);
     FR_SET(params->fr_ps_ipd != -1, AACENC_FRANKEN_PS_IPD, params->fr_ps_ipd);
     FR_SET(params->fr_ps_opd != -1, AACENC_FRANKEN_PS_OPD, params->fr_ps_opd);
     FR_SET(params->fr_is_band_lo != -1, AACENC_FRANKEN_IS_BAND_LO, params->fr_is_band_lo);
@@ -651,6 +657,31 @@ int aacenc_init(HANDLE_AACENCODER *encoder, const aacenc_param_t *params,
             if (params->fr_hole_start_short != -1) { FRV_HDR(); fprintf(stderr, " hole-start-short      : %d\n", params->fr_hole_start_short); }
             if (params->fr_hole_spread != AACENC_FRANKEN_OFF) { FRV_HDR(); fprintf(stderr, " hole-spread           : %.3f\n", params->fr_hole_spread/1000.0); }
             if (params->fr_hole_ladder != -1) { FRV_HDR(); fprintf(stderr, " hole-ladder           : %d\n", params->fr_hole_ladder); }
+            if (params->fr_coverage != AACENC_FRANKEN_OFF) {
+                int ek = (int)aacEncoder_GetParam(*encoder, AACENC_FRANKEN_GET_EFF_BAND_KNEE);
+                int eq = (int)aacEncoder_GetParam(*encoder, AACENC_FRANKEN_GET_EFF_QUANT_ROUND);
+                int el = (int)aacEncoder_GetParam(*encoder, AACENC_FRANKEN_GET_EFF_HOLE_LADDER);
+                int ea = (int)aacEncoder_GetParam(*encoder, AACENC_FRANKEN_GET_EFF_AVOID_HOLES);
+                int ep = (int)aacEncoder_GetParam(*encoder, AACENC_FRANKEN_GET_EFF_PNS_ABOVE);
+                FRV_HDR();
+                fprintf(stderr, " coverage              : %+d (+ = fill everything coarsely, - = fewer bands cleanly)\n", params->fr_coverage);
+                fprintf(stderr, "   -> band-knee ");
+                if (ek == AACENC_FRANKEN_OFF) fprintf(stderr, "off"); else fprintf(stderr, "%+.1f dB", ek/1000.0);
+                fprintf(stderr, ", quant-round ");
+                if (eq < 0) fprintf(stderr, "stock"); else fprintf(stderr, "%.3f", eq/1000.0);
+                fprintf(stderr, ", hole-ladder ");
+                if (el < 0) fprintf(stderr, "stock"); else fprintf(stderr, "%d", el);
+                fprintf(stderr, ", avoid-holes ");
+                if (ea < 0) fprintf(stderr, "stock"); else fprintf(stderr, "%d", ea);
+                fprintf(stderr, ", pns-above ");
+                if (ep < 0) fprintf(stderr, "off"); else fprintf(stderr, "%d Hz", ep);
+                fprintf(stderr, " (explicit switches already applied)\n");
+            }
+            if (params->fr_band_knee != AACENC_FRANKEN_OFF) { FRV_HDR(); fprintf(stderr, " band-knee             : %+.3f dB\n", params->fr_band_knee/1000.0); }
+            if (params->fr_quant_round != -1) { FRV_HDR(); fprintf(stderr, " quant-round           : %.3f (stock 0.405)\n", params->fr_quant_round/1000.0); }
+            if (params->fr_pns_above != -1) { FRV_HDR(); fprintf(stderr, " pns-above             : %d Hz (every long-block band above becomes noise)\n", params->fr_pns_above); }
+            if (params->fr_thr_hold != -1) { FRV_HDR(); fprintf(stderr, " thr-hold              : %d frames\n", params->fr_thr_hold); }
+            if (params->fr_scf_range != -1) { FRV_HDR(); fprintf(stderr, " scf-range             : %d steps (%.1f dB)\n", params->fr_scf_range, params->fr_scf_range*1.5); }
             if (params->fr_sbr_invf_min >= 0)   { FRV_HDR(); fprintf(stderr, " sbr-invf-min          : %d (dynamic invf floor)\n", params->fr_sbr_invf_min); }
             if (params->fr_sbr_invf_max >= 0)   { FRV_HDR(); fprintf(stderr, " sbr-invf-max          : %d (dynamic invf ceiling)\n", params->fr_sbr_invf_max); }
             if (params->fr_sbr_invf_bias != AACENC_FRANKEN_OFF) { FRV_HDR(); fprintf(stderr, " sbr-invf-bias         : %+d step(s) on every dynamic decision\n", params->fr_sbr_invf_bias); }

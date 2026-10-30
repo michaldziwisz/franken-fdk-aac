@@ -151,6 +151,13 @@ AAC_ENCODER_ERROR FDKaacEnc_InitPnsConfiguration(
 
   pnsConf->usePns = usePns;
 
+  /* --pns-above: first spectral line (long block) that is forced to noise */
+  pnsConf->frankenAboveLine = 0x7FFFFFFF;
+  if (frankenEffPnsAbove() > 0 && sampleRate > 0) {
+    long long line = ((long long)frankenEffPnsAbove() * 2 * sfbOffset[sfbCnt] + sampleRate / 2) / sampleRate;
+    pnsConf->frankenAboveLine = (INT)line;
+  }
+
   return AAC_ENC_OK;
 }
 
@@ -283,6 +290,18 @@ void FDKaacEnc_PnsDetect(PNS_CONFIG *pnsConf, PNS_DATA *pnsData,
   for (sfb = 1; sfb < maxSfbPerGroup - 1; sfb++) {
     if ((pnsData->pnsFlag[sfb - 1] == 0) && (pnsData->pnsFlag[sfb + 1] == 0)) {
       pnsData->pnsFlag[sfb] = 0;
+    }
+  }
+
+  /* Frankenstein --pns-above <Hz>: every band from this frequency up becomes
+   * noise, whatever its tonality and masking ("SBR without SBR"). Silent bands
+   * stay silent. Long blocks only, as the stock PNS. */
+  if (frankenEffPnsAbove() > 0) {
+    for (sfb = 0; sfb < maxSfbPerGroup; sfb++) {
+      if (sfbOffset[sfb] >= pnsConf->frankenAboveLine &&
+          sfbEnergyLdData[sfb] > FL2FXCONST_DBL(-0.5f)) {
+        pnsData->pnsFlag[sfb] = 1;
+      }
     }
   }
 

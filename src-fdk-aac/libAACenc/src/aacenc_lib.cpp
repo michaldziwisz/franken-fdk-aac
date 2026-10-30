@@ -944,8 +944,8 @@ static AACENC_ERROR FDKaacEnc_AdjustEncSettings(HANDLE_AACENCODER hAacEncoder,
   }
   if (g_franken.usePns == 0) {
     hAacConfig->usePns = 0;
-  } else if (g_franken.usePns == 1) {
-    hAacConfig->usePns = 1;
+  } else if (g_franken.usePns == 1 || frankenEffPnsAbove() > 0) {
+    hAacConfig->usePns = 1; /* --pns-above implies PNS unless --pns 0 */
   }
   if (g_franken.afterburner == 0 || g_franken.afterburner == 1) {
     hAacConfig->useRequant = g_franken.afterburner;
@@ -2933,6 +2933,30 @@ AACENC_ERROR aacEncoder_SetParam(const HANDLE_AACENCODER hAacEncoder,
       g_franken.holeLadder = (INT)value;
       hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
       break;
+    case AACENC_FRANKEN_BAND_KNEE:
+      g_franken.bandKneeDbX1000 = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_QUANT_ROUND:
+      g_franken.quantRoundX1000 = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_PNS_ABOVE:
+      g_franken.pnsAboveHz = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_THR_HOLD:
+      g_franken.thrHold = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_SCF_RANGE:
+      g_franken.scfRange = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_COVERAGE:
+      g_franken.coverage = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
     case AACENC_FRANKEN_PNS_GAIN:
       g_franken.pnsGainX100 = (INT)value;
       hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
@@ -3069,6 +3093,21 @@ UINT aacEncoder_GetParam(const HANDLE_AACENCODER hAacEncoder,
       break;
 
     /* ---- Frankenstein read-only mirrors of effective encoder settings ---- */
+    case AACENC_FRANKEN_GET_EFF_BAND_KNEE:
+      value = (UINT)frankenEffBandKnee();
+      break;
+    case AACENC_FRANKEN_GET_EFF_QUANT_ROUND:
+      value = (UINT)frankenEffQuantRound();
+      break;
+    case AACENC_FRANKEN_GET_EFF_HOLE_LADDER:
+      value = (UINT)frankenEffHoleLadder();
+      break;
+    case AACENC_FRANKEN_GET_EFF_AVOID_HOLES:
+      value = (UINT)frankenEffAvoidHoles();
+      break;
+    case AACENC_FRANKEN_GET_EFF_PNS_ABOVE:
+      value = (UINT)frankenEffPnsAbove();
+      break;
     case AACENC_FRANKEN_GET_USETNS:
       value = (UINT)hAacEncoder->aacConfig.useTns;
       break;

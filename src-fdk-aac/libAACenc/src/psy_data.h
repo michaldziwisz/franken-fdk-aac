@@ -148,6 +148,9 @@ typedef struct {
   INT mdctScalenm1; /* scale of last block's mdct (FDKaacEnc_PreEchoControl) */
   INT calcPreEcho;
   INT isLFE;
+  /* Frankenstein --thr-hold: held threshold-to-energy offsets per band */
+  FIXP_DBL frHeldSmrLd[MAX_GROUPED_SFB];
+  INT frHoldCount;
 } PSY_STATIC;
 
 typedef struct {

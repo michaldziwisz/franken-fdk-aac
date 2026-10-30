@@ -321,6 +321,26 @@ typedef struct FRANKEN_CFG {
   int holeLadder;          /* -1 stock 8; else 1..8 energy steps of the hole cutting:
                               fewer = cut only the quietest bands first, coarser. */
 
+  /* ---- Coverage vs precision (fill everything coarsely <-> code less, cleanly) ---- */
+  int bandKneeDbX1000;     /* FRANKEN_OFF; like sideKnee but for EVERY band of every
+                              channel (PNS and IS bands excluded, side-knee wins on MS
+                              side bands). + = bands up to N dB below their threshold are
+                              coded at the coarsest scalefactor instead of zeroed; - =
+                              bands that clear the threshold by less than N dB are zeroed. */
+  int quantRoundX1000;     /* -1 stock (0.4054, or 0.23 in the LD mono dead-zone mode);
+                              else rounding offset of the quantizer x1000, 0..500. Higher
+                              = fewer small lines fall to zero. */
+  int pnsAboveHz;          /* -1 off; else every band starting at or above this frequency
+                              is noise-substituted (PNS) in long blocks, whatever its
+                              tonality or masking. Implies the low-bitrate PNS gate bypass. */
+  int thrHold;             /* -1/1 off; else per-band thresholds (their spectral shape)
+                              are refreshed only every N long frames and held between. */
+  int scfRange;            /* -1 stock 60; else max spread between the finest and the
+                              coarsest scalefactor of a channel, 0..60 steps of 1.5 dB.
+                              Lower = flatter noise shaping (closer to white noise). */
+  int coverage;            /* FRANKEN_OFF; macro -5..5: + = fill everything coarsely,
+                              - = code fewer bands more precisely. Explicit knobs win. */
+
   /* ---- Read-back: effective values chosen by the encoder (for --verbose) ----
    * Populated by the encoder during init regardless of overrides. -1 = unknown. */
   int effSbrActive;
@@ -359,6 +379,14 @@ int frankenEffNfWeightFrom(void);
 int frankenEffInvfSbrThrX100(void);  /* FRANKEN_OFF = no shift */
 int frankenEffInvfOrigThrX100(void); /* FRANKEN_OFF = no shift */
 int frankenEffNoiseMax(void); /* 0 = tuning table, else 6/3/-3 */
+/* Coverage macro resolution (explicit knob wins over --coverage). Each returns
+ * the stock sentinel when neither is set, so the default path is unchanged. */
+int frankenEffBandKnee(void);   /* dB*1000 or FRANKEN_OFF */
+int frankenEffQuantRound(void); /* x1000 or -1 */
+int frankenEffHoleLadder(void); /* 1..8 or -1 */
+int frankenEffAvoidHoles(void); /* 0/1 or -1 */
+int frankenEffHoleStartLong(void); /* sfb or -1 */
+int frankenEffPnsAbove(void);      /* Hz or -1 */
 #ifdef __cplusplus
 }
 #endif

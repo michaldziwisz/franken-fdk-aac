@@ -102,6 +102,7 @@ amm-info@iis.fraunhofer.de
 
 #include "sf_estim.h"
 #include "franken.h"
+#include "aacenc_pns.h"
 #include "aacEnc_rom.h"
 #include "quantize.h"
 #include "bit_cnt.h"
@@ -1116,21 +1117,56 @@ static void FDKaacEnc_EstimateScaleFactorsChannel(
           double kneeAbs = kneeDb < 0.0 ? -kneeDb : kneeDb;
           FIXP_DBL knee = (FIXP_DBL)((INT)(kneeAbs * 0.00519 * 2147483648.0));
           FIXP_DBL eps = (FIXP_DBL)((INT)(0.00519 * 2147483648.0));
+          /* 64-bit differences: a silent band has energyLdData = -1.0
+           * (INT_MIN), and the 32-bit "threshold - energy" overflowed (UB),
+           * so silent bands were "rescued" or not depending on the compiler.
+           * Silent bands (below -0.99 in ld64) are never rescued. */
+          const long long dTE = (long long)threshLdData - (long long)energyLdData;
           if (kneeDb > 0.0) {
             /* soft knee: rescue near-miss bands just under the threshold */
-            if (energyLdData <= threshLdData &&
-                threshLdData - energyLdData <= knee) {
+            if (energyLdData > FL2FXCONST_DBL(-0.99f) && dTE >= 0 &&
+                dTE <= (long long)knee) {
               threshLdData = energyLdData - eps; /* thresh<energy -> coded coarse */
               qcOutChannel->sfbThresholdLdData[sfbOffs + sfb] = threshLdData;
             }
           } else {
             /* hard knee: drop bands that only just clear the threshold */
-            if (energyLdData > threshLdData &&
-                energyLdData - threshLdData <= knee) {
+            if (dTE < 0 && -dTE <= (long long)knee &&
+                energyLdData < (FIXP_DBL)MAXVAL_DBL - eps) {
               threshLdData = energyLdData + eps; /* thresh>energy -> zeroed */
               qcOutChannel->sfbThresholdLdData[sfbOffs + sfb] = threshLdData;
             }
           }
+        }
+      }
+
+      /* Frankenstein --band-knee (or --coverage): the same coded<->zeroed knee
+       * as --side-knee, for every band of every channel. PNS and intensity
+       * bands are left alone (their thresholds are markers, not masking), and
+       * --side-knee keeps priority on the MS side bands it shapes. */
+      {
+        const INT bk = frankenEffBandKnee();
+        const INT sideKneeHere =
+            isSide && toolsInfo != NULL && toolsInfo->msMask[sfbOffs + sfb] &&
+            g_franken.sideKneeDbX1000 != FRANKEN_OFF &&
+            g_franken.sideKneeDbX1000 != 0;
+        if (bk != FRANKEN_OFF && bk != 0 && !sideKneeHere &&
+            psyOutChannel->noiseNrg[sfbOffs + sfb] == NO_NOISE_PNS &&
+            psyOutChannel->isBook[sfbOffs + sfb] == 0) {
+          double kneeDb = bk / 1000.0;
+          double kneeAbs = kneeDb < 0.0 ? -kneeDb : kneeDb;
+          FIXP_DBL knee = (FIXP_DBL)((INT)(kneeAbs * 0.00519 * 2147483648.0));
+          FIXP_DBL eps = (FIXP_DBL)((INT)(0.00519 * 2147483648.0));
+          /* + only here: rescue bands the rate loop has just cut. The -
+           * direction acts earlier, after the first threshold guess in
+           * adj_thr.cpp, so the freed bits go to the bands that remain. */
+          const long long dTE = (long long)threshLdData - (long long)energyLdData;
+          if (kneeDb > 0.0 && energyLdData > FL2FXCONST_DBL(-0.99f) &&
+              dTE >= 0 && dTE <= (long long)knee) {
+            threshLdData = energyLdData - eps;
+            qcOutChannel->sfbThresholdLdData[sfbOffs + sfb] = threshLdData;
+          }
+          (void)kneeAbs;
         }
       }
 
@@ -1255,13 +1291,56 @@ static void FDKaacEnc_EstimateScaleFactorsChannel(
     }
   }
 
-  /* limit scf delta */
+  /* limit scf delta. Frankenstein --scf-range N narrows the allowed spread:
+   * the coarsest band may be at most N steps (1.5 dB each) coarser than the
+   * finest one, so the noise is shaped less and lies flatter. */
+  const INT scfDeltaMax = (g_franken.scfRange >= 0 && g_franken.scfRange < MAX_SCF_DELTA)
+                              ? g_franken.scfRange
+                              : MAX_SCF_DELTA;
+  /* Guard for the Frankenstein knee/range knobs: the clamp below makes coarse
+   * bands FINER. If a band rescued by a knee got a very fine scalefactor, a
+   * loud band could be pushed finer than its overflow limit (minSfMaxQuant)
+   * and the quantizer would overflow. So first lift every band to at least
+   * (largest overflow limit - allowed spread): that only makes bands coarser,
+   * which is always legal. Off on the stock path. */
+  if (frankenEffBandKnee() != FRANKEN_OFF || g_franken.scfRange >= 0) {
+    INT maxMinQ = FDK_INT_MIN;
+    for (sfbOffs = 0; sfbOffs < psyOutChannel->sfbCnt;
+         sfbOffs += psyOutChannel->sfbPerGroup)
+      for (sfb = 0; sfb < psyOutChannel->maxSfbPerGroup; sfb++)
+        if (scf[sfbOffs + sfb] != FDK_INT_MIN)
+          maxMinQ = fixMax(maxMinQ, minSfMaxQuant[sfbOffs + sfb]);
+    if (maxMinQ != FDK_INT_MIN) {
+      const INT floorScf = maxMinQ - scfDeltaMax;
+      for (sfbOffs = 0; sfbOffs < psyOutChannel->sfbCnt;
+           sfbOffs += psyOutChannel->sfbPerGroup) {
+        for (sfb = 0; sfb < psyOutChannel->maxSfbPerGroup; sfb++) {
+          if (scf[sfbOffs + sfb] != FDK_INT_MIN && scf[sfbOffs + sfb] < floorScf) {
+            scf[sfbOffs + sfb] = floorScf;
+            if (invQuant > 0)
+              sfbDistLdData[sfbOffs + sfb] = FDKaacEnc_calcSfbDist(
+                  qcOutChannel->mdctSpectrum + psyOutChannel->sfbOffsets[sfbOffs + sfb],
+                  quantSpec + psyOutChannel->sfbOffsets[sfbOffs + sfb],
+                  psyOutChannel->sfbOffsets[sfbOffs + sfb + 1] -
+                      psyOutChannel->sfbOffsets[sfbOffs + sfb],
+                  scf[sfbOffs + sfb], dZoneQuantEnable);
+          }
+        }
+      }
+      minSf = FDK_INT_MAX;
+      for (sfbOffs = 0; sfbOffs < psyOutChannel->sfbCnt;
+           sfbOffs += psyOutChannel->sfbPerGroup)
+        for (sfb = 0; sfb < psyOutChannel->maxSfbPerGroup; sfb++)
+          if (scf[sfbOffs + sfb] != FDK_INT_MIN)
+            minSf = fixMin(minSf, scf[sfbOffs + sfb]);
+    }
+  }
   for (sfbOffs = 0; sfbOffs < psyOutChannel->sfbCnt;
        sfbOffs += psyOutChannel->sfbPerGroup) {
     for (sfb = 0; sfb < psyOutChannel->maxSfbPerGroup; sfb++) {
       if ((scf[sfbOffs + sfb] != FDK_INT_MIN) &&
-          (minSf + MAX_SCF_DELTA) < scf[sfbOffs + sfb]) {
-        scf[sfbOffs + sfb] = minSf + MAX_SCF_DELTA;
+          (minSf + scfDeltaMax) < scf[sfbOffs + sfb]) {
+        scf[sfbOffs + sfb] = minSf + scfDeltaMax;
         if (invQuant > 0) { /* changed bands need to be quantized again */
           sfbDistLdData[sfbOffs + sfb] = FDKaacEnc_calcSfbDist(
               qcOutChannel->mdctSpectrum +

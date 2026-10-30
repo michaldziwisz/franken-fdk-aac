@@ -104,6 +104,7 @@ amm-info@iis.fraunhofer.de
 #include "sf_estim.h"
 #include "aacEnc_ram.h"
 #include "franken.h"
+#include "aacenc_pns.h"
 #include <math.h>
 
 #define NUM_NRG_LEVS (8)
@@ -1864,9 +1865,9 @@ static void FDKaacEnc_allowMoreHoles(
          * of 8, so only the quietest bands may be cut. If the budget is then
          * still exceeded, the rate loop raises thresholds instead (coarser
          * but no extra holes). */
-        if (enIdx >= ((g_franken.holeLadder >= 1 &&
-                       g_franken.holeLadder < NUM_NRG_LEVS)
-                          ? g_franken.holeLadder
+        if (enIdx >= ((frankenEffHoleLadder() >= 1 &&
+                       frankenEffHoleLadder() < NUM_NRG_LEVS)
+                          ? frankenEffHoleLadder()
                           : NUM_NRG_LEVS)) {
           done = 1;
         }
@@ -2014,6 +2015,37 @@ static void FDKaacEnc_adaptThresholdsToPe(
           qcElement[elementId]->qcOutChannel,
           psyOutElement[elementId]->psyOutChannel, pAhFlag[elementId],
           pThrExp[elementId], nChannels, reductionValue_m, reductionValue_e);
+
+      /* Frankenstein --band-knee < 0 (or --coverage < 0): after the first
+       * guess of the threshold reduction, give up every band whose energy
+       * clears its (raised) threshold by less than N dB. Such a band would be
+       * coded at nearly the coarsest step; dropping it now lets the second
+       * guess below hand its bits to the bands that remain. */
+      {
+        const INT bk = frankenEffBandKnee();
+        if (bk != FRANKEN_OFF && bk < 0) {
+          const FIXP_DBL knee =
+              (FIXP_DBL)((INT)((-bk / 1000.0) * 0.00519 * 2147483648.0));
+          for (INT ch = 0; ch < nChannels; ch++) {
+            QC_OUT_CHANNEL *qc = qcElement[elementId]->qcOutChannel[ch];
+            const PSY_OUT_CHANNEL *po =
+                psyOutElement[elementId]->psyOutChannel[ch];
+            for (INT sfbGrp = 0; sfbGrp < po->sfbCnt; sfbGrp += po->sfbPerGroup) {
+              for (INT sfb = 0; sfb < po->maxSfbPerGroup; sfb++) {
+                const INT k = sfbGrp + sfb;
+                const FIXP_DBL en = qc->sfbWeightedEnergyLdData[k];
+                const FIXP_DBL thr = qc->sfbThresholdLdData[k];
+                if (po->noiseNrg[k] != NO_NOISE_PNS || po->isBook[k] != 0)
+                  continue;
+                if (en > thr && (long long)en - (long long)thr <= (long long)knee) {
+                  pAhFlag[elementId][ch][k] = NO_AH;
+                  qc->sfbThresholdLdData[k] = FL2FXCONST_DBL(0.015625f) + en;
+                }
+              }
+            }
+          }
+        }
+      }
 
       /* pe after first guess */
       FDKaacEnc_calcPe(psyOutElement[elementId]->psyOutChannel,
@@ -2596,15 +2628,15 @@ void FDKaacEnc_AdjThrInit(
      * 0. With the knob it can be forced either way; the start SFBs say from
      * which band the energy-ladder may zero bands at all (higher = the lower
      * spectrum is protected from holes). */
-    if (g_franken.avoidHoles == 0 || g_franken.avoidHoles == 1) {
-      atsElem->ahParam.modifyMinSnr = g_franken.avoidHoles ? TRUE : FALSE;
-      if (g_franken.avoidHoles == 1 && chBitrate < 20000) {
+    if (frankenEffAvoidHoles() == 0 || frankenEffAvoidHoles() == 1) {
+      atsElem->ahParam.modifyMinSnr = frankenEffAvoidHoles() ? TRUE : FALSE;
+      if (frankenEffAvoidHoles() == 1 && chBitrate < 20000) {
         atsElem->ahParam.startSfbL = 15;
         atsElem->ahParam.startSfbS = 3;
       }
     }
-    if (g_franken.holeStartLong >= 0)
-      atsElem->ahParam.startSfbL = fMin(g_franken.holeStartLong, MAX_SFB_LONG);
+    if (frankenEffHoleStartLong() >= 0)
+      atsElem->ahParam.startSfbL = fMin(frankenEffHoleStartLong(), MAX_SFB_LONG);
     if (g_franken.holeStartShort >= 0)
       atsElem->ahParam.startSfbS = fMin(g_franken.holeStartShort, MAX_SFB_SHORT);
 
