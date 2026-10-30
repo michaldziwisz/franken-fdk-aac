@@ -1636,6 +1636,9 @@ typedef enum {
   AACENC_FRANKEN_COVERAGE = 0xF08B,               /*!< Coverage vs precision macro -5..5 (AACENC_FRANKEN_OFF = off). */
   AACENC_FRANKEN_SIDE_KNEE_ZONE = 0xF093,         /*!< --side-knee fade-out zone, multiple of |knee| x1000 (-1 = 3.0). Diagnostic. */
   AACENC_FRANKEN_SIDE_KNEE_SPREAD = 0xF094,       /*!< --side-knee: dB of knee to fully spread rescued bands, x1000 (-1 = 1.0). Diagnostic. */
+  AACENC_FRANKEN_SIDE_CUTOFF = 0xF095,            /*!< Pure mid (side zeroed) from this Hz up, -1 = off. */
+  AACENC_FRANKEN_IS_ADMIT = 0xF096,               /*!< IS gate bitrate/bandwidth < x/100 (-1 = stock 500, 0 = never). */
+  AACENC_FRANKEN_GET_SIDE_CUT_SFB = 0xF097,       /*!< Effective first long SFB of --side-cutoff (-1 off). */
   AACENC_FRANKEN_BIT_STATS = 0xF092,              /*!< 1 = count written bits per part, print on close (read-only). */
   AACENC_FRANKEN_ENFAC_PATCH = 0xF091,            /*!< Flat-spectrum energy re-weighting: 0 never, 1 every long frame (-1 = stock auto). */
   AACENC_FRANKEN_VERBOSE = 0xF016,     /*!< Verbose init dump 0/1. */

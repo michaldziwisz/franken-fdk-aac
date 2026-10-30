@@ -233,6 +233,21 @@ void FDKaacEnc_MsStereoProcessing(PSY_DATA *RESTRICT psyData[(2)],
           if (g_franken.msBandHi >= 0 && band > g_franken.msBandHi) useMS = 0;
         }
 
+        /* Frankenstein --side-cutoff: from the cutoff SFB up the band is pure
+         * mid (MS, side zeroed below). Wins over the MS range knobs. A band that
+         * both channels code as PNS is left alone: there ms_used means
+         * "correlated noise", not mid/side, and zeroing R would silence it. */
+        INT frCut = 0;
+        if (g_franken.curSideCutSfb >= 0 && sfboffs >= g_franken.curSideCutSfb) {
+          const INT k = sfb + sfboffs;
+          const INT pnsBoth = (g_franken.curPnsFlagL != 0 && g_franken.curPnsFlagR != 0 &&
+                               g_franken.curPnsFlagL[k] && g_franken.curPnsFlagR[k]);
+          if (!pnsBoth) {
+            useMS = 1;
+            frCut = 1;
+          }
+        }
+
         if (useMS) {
           msMask[sfb + sfboffs] = 1;
           msMaskTrueSomewhere = 1;
@@ -290,6 +305,18 @@ void FDKaacEnc_MsStereoProcessing(PSY_DATA *RESTRICT psyData[(2)],
               fixMin(sfbSpreadEnLeft[sfb + sfboffs],
                      sfbSpreadEnRight[sfb + sfboffs]) >>
               1;
+
+          if (frCut) {
+            /* --side-cutoff: drop the side of this band entirely, the same way
+             * intensity.cpp empties the right channel of an IS band. */
+            for (j = sfbOffset[sfb + sfboffs]; j < sfbOffset[sfb + sfboffs + 1]; j++)
+              mdctSpectrumRight[j] = FL2FXCONST_DBL(0.0f);
+            sfbEnergyRight[sfb + sfboffs] = FL2FXCONST_DBL(0.0f);
+            sfbEnergyRightLdData[sfb + sfboffs] = FL2FXCONST_DBL(-1.0f);
+            sfbThresholdRight[sfb + sfboffs] = FL2FXCONST_DBL(0.0f);
+            sfbThresholdRightLdData[sfb + sfboffs] = FL2FXCONST_DBL(-0.515625f);
+            sfbSpreadEnRight[sfb + sfboffs] = FL2FXCONST_DBL(0.0f);
+          }
 
         } else {
           msMask[sfb + sfboffs] = 0;

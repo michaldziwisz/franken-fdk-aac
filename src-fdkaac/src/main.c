@@ -315,6 +315,12 @@ PROGNAME " %s\n"
 "                               follows how loud the band really is (also bands FDK\n"
 "                               rescued at 0.97 dB). + = finer, bands under thr kept;\n"
 "                               - = coarser, the weakest leave first. Try -3..+6.\n"
+" --side-cutoff <Hz>          1000..24000, off by default. Above it every stereo band is\n"
+"                               pure mid: side zeroed, no IS there, cheap MS mask. The\n"
+"                               side bits go to the rest. Stereo stays below the cutoff.\n"
+" --is-admit <x>              0.0..20.0, stock 5. FDK allows intensity stereo only when\n"
+"                               bitrate / bandwidth (bit/s per Hz) is below x. 0 = never.\n"
+"                               --is-aggression still opens the gate.\n"
 " --side-knee-zone <x>        1.0..20.0, stock 3. Diagnostic: the offset fades out\n"
 "                               between |knee| and x*|knee| dB above the threshold.\n"
 " --side-knee-spread <dB>     0.1..24.0, stock 1. Diagnostic: knee (-) needed to spread\n"
@@ -774,6 +780,8 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
 #define OPT_FR_ENFAC_PATCH        M4AF_FOURCC('f','q','e','f')
 #define OPT_FR_BIT_STATS          M4AF_FOURCC('f','q','b','s')
 #define OPT_FR_SIDE_KNEE_ZONE     M4AF_FOURCC('f','s','k','z')
+#define OPT_FR_SIDE_CUTOFF        M4AF_FOURCC('f','s','c','o')
+#define OPT_FR_IS_ADMIT           M4AF_FOURCC('f','i','a','d')
 #define OPT_FR_SIDE_KNEE_SPREAD   M4AF_FOURCC('f','s','k','s')
 #define OPT_FR_PS_IPD            M4AF_FOURCC('f','p','i','d')
 #define OPT_FR_PS_OPD            M4AF_FOURCC('f','p','o','d')
@@ -943,6 +951,8 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
         { "enfac-patch",          required_argument, 0, OPT_FR_ENFAC_PATCH },
         { "bit-stats",            no_argument,       0, OPT_FR_BIT_STATS },
         { "side-knee-zone",       required_argument, 0, OPT_FR_SIDE_KNEE_ZONE },
+        { "side-cutoff",          required_argument, 0, OPT_FR_SIDE_CUTOFF },
+        { "is-admit",             required_argument, 0, OPT_FR_IS_ADMIT },
         { "side-knee-spread",     required_argument, 0, OPT_FR_SIDE_KNEE_SPREAD },
         { "ps-ipd",              required_argument, 0, OPT_FR_PS_IPD            },
         { "ps-opd",              required_argument, 0, OPT_FR_PS_OPD            },
@@ -1070,6 +1080,8 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
     params->fr_enfac_patch = -1;
     params->fr_bit_stats = 0;
     params->fr_side_knee_zone = -1;
+    params->fr_side_cutoff = -1;
+    params->fr_is_admit = -1;
     params->fr_side_knee_spread = -1;
     params->fr_ps_ipd = -1;
     params->fr_ps_opd = -1;
@@ -1555,6 +1567,12 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
         case OPT_FR_COVERAGE:
             if (fr_scan_int(optarg, &n) != 1 || n < -5 || n > 5) { fprintf(stderr, "invalid arg for coverage (-5..5: - = fewer bands coded cleanly, + = everything coded coarsely, 0 = stock)\n"); return -1; }
             params->fr_coverage = (n == 0) ? AACENC_FRANKEN_OFF : n; break;
+        case OPT_FR_SIDE_CUTOFF:
+            if (fr_scan_int(optarg, &n) != 1 || n < 1000 || n > 24000) { fprintf(stderr, "invalid arg for side-cutoff (1000..24000 Hz)\n"); return -1; }
+            params->fr_side_cutoff = n; break;
+        case OPT_FR_IS_ADMIT:
+            if (fr_parse_dec(optarg, 0.0, 20.0, 100, &params->fr_is_admit)) { fprintf(stderr, "invalid arg for is-admit (0.0..20.0, stock 5)\n"); return -1; }
+            break;
         case OPT_FR_SIDE_KNEE_ZONE:
             if (fr_parse_dec(optarg, 1.0, 20.0, 1000, &params->fr_side_knee_zone)) { fprintf(stderr, "invalid arg for side-knee-zone (1.0..20.0, stock 3)\n"); return -1; }
             break;

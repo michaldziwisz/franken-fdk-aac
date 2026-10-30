@@ -728,6 +728,16 @@ void FDKaacEnc_IntensityStereoProcessing(
     }
   }
 
+  /* Frankenstein --side-cutoff: above the cutoff the band becomes pure mid in
+   * ms_stereo.cpp, which is cheaper than IS (no IS positions, and IS forbids the
+   * one-code MS_MASK_ALL). So FDK's own IS decision is cleared there; explicitly
+   * forced IS (--is-force-lo/-hi, below) still wins. */
+  if (g_franken.curSideCutSfb >= 0) {
+    for (sfb = 0; sfb < sfbCnt; sfb += sfbPerGroup)
+      for (sfboffs = g_franken.curSideCutSfb; sfboffs < maxSfbPerGroup; sfboffs++)
+        isMask[sfb + sfboffs] = 0;
+  }
+
   /* Frankenstein: FORCE intensity stereo across [is-force-lo, is-force-hi],
    * bypassing the correlation / min-sfbs / loudness gates. This is the
    * "I-know-what-I'm-doing" laboratory mode: IS is applied even where FDK

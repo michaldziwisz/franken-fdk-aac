@@ -181,6 +181,17 @@ typedef struct FRANKEN_CFG {
                               above the threshold (diagnostic). */
   int sideKneeSpreadX1000; /* -1 stock 1.0 dB; for - knee: how many dB of knee are needed
                               to fully spread the rescued crowd by its real margin. */
+  int sideCutoffHz;        /* -1 off; above this frequency every stereo band is coded as
+                              pure mid: MS forced, side zeroed (replaces IS there too).
+                              Bands where both channels are PNS stay as FDK decides. */
+  int isAdmitX100;         /* -1 stock 5.00; IS is allowed only when bitrate/bandwidth is
+                              below this value (FDK gate). 0 = never. --is-aggression
+                              still lifts the gate. */
+  int effSideCutSfbLong;   /* read-back: first long SFB of the side cutoff (-1 off) */
+  int effSideCutSfbShort;  /* read-back: first short SFB of the side cutoff (-1 off) */
+  int curSideCutSfb;       /* per-call: cutoff SFB for the block type being processed */
+  const int *curPnsFlagL;  /* per-call (long blocks): PNS flags of L/R, 0 in short */
+  const int *curPnsFlagR;
   int msaSlopeDbX1000;  /* FRANKEN_OFF=off; shift the Masking-Slope-Adaptation START
                          threshold (dB*1000). MSA is a NON-masking heuristic that
                          relaxes the required min-SNR for SFBs whose energy sits

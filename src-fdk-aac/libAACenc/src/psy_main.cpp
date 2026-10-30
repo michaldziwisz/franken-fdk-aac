@@ -1230,6 +1230,21 @@ AAC_ENCODER_ERROR FDKaacEnc_psyMain(INT channels, PSY_ELEMENT *psyElement,
   if (channels == 2) {
     psyOutElement->toolsInfo.msDigest = MS_NONE;
     psyOutElement->commonWindow = commonWindow;
+    /* Frankenstein --side-cutoff: cutoff SFB for this block type; PNS flags are
+     * known only for long blocks (PNS is off in short windows). Needs a common
+     * window (MS is impossible without it). */
+    g_franken.curSideCutSfb = -1;
+    g_franken.curPnsFlagL = 0;
+    g_franken.curPnsFlagR = 0;
+    if (g_franken.sideCutoffHz > 0 && commonWindow) {
+      if (psyStatic[0]->blockSwitchingControl.lastWindowSequence != SHORT_WINDOW) {
+        g_franken.curSideCutSfb = g_franken.effSideCutSfbLong;
+        g_franken.curPnsFlagL = pnsData[0]->pnsFlag;
+        g_franken.curPnsFlagR = pnsData[1]->pnsFlag;
+      } else {
+        g_franken.curSideCutSfb = g_franken.effSideCutSfbShort;
+      }
+    }
     if (psyOutElement->commonWindow)
       maxSfbPerGroup[0] = maxSfbPerGroup[1] =
           fixMax(maxSfbPerGroup[0], maxSfbPerGroup[1]);
@@ -1293,6 +1308,9 @@ AAC_ENCODER_ERROR FDKaacEnc_psyMain(INT channels, PSY_ELEMENT *psyElement,
           hPsyConfShort->sfbCnt, maxSfbPerGroup[0],
           psyOutChannel[0]->sfbOffsets);
     }
+    g_franken.curSideCutSfb = -1;
+    g_franken.curPnsFlagL = 0;
+    g_franken.curPnsFlagR = 0;
   } /* (channels == 2) */
 
   /*

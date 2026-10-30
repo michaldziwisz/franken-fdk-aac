@@ -773,6 +773,10 @@ AAC_ENCODER_ERROR FDKaacEnc_InitPsyConfiguration(INT bitrate, INT samplerate,
    * is fully removed so IS may be considered on any band. 0/-1 = FDK default. */
   if (useIS && g_franken.isAggression >= 1) {
     psyConf->allowIS = 1;
+  } else if (g_franken.isAdmitX100 >= 0) {
+    /* Frankenstein --is-admit <x>: the same gate with x instead of 5. */
+    psyConf->allowIS = (useIS) && ((INT64)bitrate * 100 <
+                                   (INT64)g_franken.isAdmitX100 * bandwidth);
   } else {
     psyConf->allowIS = (useIS) && ((bitrate / bandwidth) < 5);
   }
@@ -853,6 +857,20 @@ AAC_ENCODER_ERROR FDKaacEnc_InitPsyConfiguration(INT bitrate, INT samplerate,
   }
   psyConf->sfbActiveLFE = sfb;
   psyConf->sfbActive = fMax(psyConf->sfbActive, psyConf->sfbActiveLFE);
+
+  /* Frankenstein --side-cutoff <Hz>: first SFB that starts at or above the
+   * cutoff, per block type (the SFB tables differ). */
+  {
+    INT cut = -1;
+    if (g_franken.sideCutoffHz > 0) {
+      const INT fl = (blocktype != SHORT_WINDOW) ? frameLengthLong : frameLengthShort;
+      const INT line = (INT)(((INT64)2 * g_franken.sideCutoffHz * fl) / (samplerate * downscaleFactor));
+      for (cut = 0; cut < psyConf->sfbCnt; cut++)
+        if (psyConf->sfbOffset[cut] >= line) break;
+    }
+    if (blocktype != SHORT_WINDOW) g_franken.effSideCutSfbLong = cut;
+    else g_franken.effSideCutSfbShort = cut;
+  }
 
   /* calculate minSnr */
   FDKaacEnc_initMinSnr(bitrate, samplerate * downscaleFactor,

@@ -2968,6 +2968,14 @@ AACENC_ERROR aacEncoder_SetParam(const HANDLE_AACENCODER hAacEncoder,
     case AACENC_FRANKEN_BIT_STATS:
       g_franken.bitStats = (INT)value;
       break;
+    case AACENC_FRANKEN_SIDE_CUTOFF:
+      g_franken.sideCutoffHz = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_IS_ADMIT:
+      g_franken.isAdmitX100 = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
     case AACENC_FRANKEN_COVERAGE:
       g_franken.coverage = (INT)value;
       hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
@@ -3122,6 +3130,9 @@ UINT aacEncoder_GetParam(const HANDLE_AACENCODER hAacEncoder,
       break;
     case AACENC_FRANKEN_GET_EFF_PNS_ABOVE:
       value = (UINT)frankenEffPnsAbove();
+      break;
+    case AACENC_FRANKEN_GET_SIDE_CUT_SFB:
+      value = (UINT)g_franken.effSideCutSfbLong;
       break;
     case AACENC_FRANKEN_GET_USETNS:
       value = (UINT)hAacEncoder->aacConfig.useTns;

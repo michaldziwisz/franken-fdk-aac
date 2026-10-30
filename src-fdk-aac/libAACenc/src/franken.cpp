@@ -133,6 +133,13 @@ extern "C" void frankenResetDefaults(void) {
   g_franken.sideKneeDbX1000 = FRANKEN_OFF;
   g_franken.sideKneeZoneX1000 = -1;
   g_franken.sideKneeSpreadX1000 = -1;
+  g_franken.sideCutoffHz = -1;
+  g_franken.isAdmitX100 = -1;
+  g_franken.effSideCutSfbLong = -1;
+  g_franken.effSideCutSfbShort = -1;
+  g_franken.curSideCutSfb = -1;
+  g_franken.curPnsFlagL = 0;
+  g_franken.curPnsFlagR = 0;
   g_franken.msaSlopeDbX1000 = FRANKEN_OFF;
 
   g_franken.sbrHeaderPeriod = -1;
