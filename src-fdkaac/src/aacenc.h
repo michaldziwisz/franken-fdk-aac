@@ -113,6 +113,7 @@
     int fr_thr_hold; \
     int fr_scf_range; \
     int fr_enfac_patch; \
+    int fr_bit_stats; \
     int fr_coverage; \
     int fr_ps_ipd; \
     int fr_ps_opd; \

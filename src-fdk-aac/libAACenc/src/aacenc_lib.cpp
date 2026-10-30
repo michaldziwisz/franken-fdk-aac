@@ -1783,6 +1783,8 @@ AACENC_ERROR aacEncClose(HANDLE_AACENCODER *phAacEncoder) {
   if (*phAacEncoder != NULL) {
     HANDLE_AACENCODER hAacEncoder = *phAacEncoder;
 
+    frankenBitStatsPrint(); /* --bit-stats (no-op when off) */
+
     if (hAacEncoder->inputBuffer != NULL) {
       FDKfree(hAacEncoder->inputBuffer);
       hAacEncoder->inputBuffer = NULL;
@@ -2956,6 +2958,9 @@ AACENC_ERROR aacEncoder_SetParam(const HANDLE_AACENCODER hAacEncoder,
     case AACENC_FRANKEN_ENFAC_PATCH:
       g_franken.enfacPatch = (INT)value;
       hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
+    case AACENC_FRANKEN_BIT_STATS:
+      g_franken.bitStats = (INT)value;
       break;
     case AACENC_FRANKEN_COVERAGE:
       g_franken.coverage = (INT)value;

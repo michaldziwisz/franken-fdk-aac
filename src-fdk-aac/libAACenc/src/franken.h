@@ -344,6 +344,10 @@ typedef struct FRANKEN_CFG {
                               frames whose audible spectrum is flat, i.e. noise-like);
                               0 never (every frame is treated as tonal); 1 every long
                               frame (every frame is treated as noise-like). */
+  int bitStats;            /* 0 off; 1 = count where the bits of every written frame go
+                              (header, side info, scalefactors, spectrum per channel, fill)
+                              and print a table when the encoder is closed. Read-only:
+                              the stream is not changed. */
 
   /* ---- Read-back: effective values chosen by the encoder (for --verbose) ----
    * Populated by the encoder during init regardless of overrides. -1 = unknown. */
@@ -370,6 +374,27 @@ extern "C" {
 #endif
 extern FRANKEN_CFG g_franken;
 void frankenResetDefaults(void);
+
+/* --bit-stats accounting (franken.cpp). Categories of written bits. */
+enum {
+  FRBS_ELEM_HDR = 0, /* element id, instance tag, common_window, ics_info, global_gain,
+                        ltp/pulse/gain-control/tns present flags */
+  FRBS_MS,           /* ms_mask_present + per-band ms_used */
+  FRBS_SECTION,      /* section_data: codebook + section lengths */
+  FRBS_SCF,          /* scalefactor deltas (incl. IS positions) */
+  FRBS_PNS,          /* PNS noise energies */
+  FRBS_TNS,          /* TNS filter data */
+  FRBS_SPECTRUM,     /* Huffman coded spectral lines */
+  FRBS_EXT,          /* element extension payloads (SBR, PS) */
+  FRBS_FILL,         /* global extensions + fill bits */
+  FRBS_END_ALIGN,    /* ID_END + byte alignment */
+  FRBS_NUM
+};
+void frankenBitStatsAdd(int cat, int ch, int bits);
+void frankenBitStatsBands(int ch, int coded, int zero, int pns, int is, int ms,
+                          int isShort);
+void frankenBitStatsFrame(int frameBits, int hdrBits);
+void frankenBitStatsPrint(void);
 /* Effective SBR estimator settings after resolving --sbr-softness and the
  * explicit knobs (explicit wins). stockSpeech = 1 when the encoder runs the
  * speech tuning. Return values: table 0/1; bias -3..3; min/max -1 = none;

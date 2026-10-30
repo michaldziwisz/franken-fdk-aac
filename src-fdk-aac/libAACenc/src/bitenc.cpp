@@ -110,6 +110,7 @@ amm-info@iis.fraunhofer.de
 #include "tpenc_lib.h"
 
 #include "FDK_tools_rom.h" /* needed for the bitstream syntax tables */
+#include "franken.h"
 
 static const int globalGainOffset = 100;
 static const int icsReservedBit = 0;
@@ -949,6 +950,7 @@ AAC_ENCODER_ERROR FDKaacEnc_ChannelElementWrite(
   if (!(syntaxFlags & (AC_SCALABLE | AC_ER))) {
     if (hBitStream != NULL) {
       FDKwriteBits(hBitStream, pElInfo->elType, EL_ID_BITS);
+      if (g_franken.bitStats) frankenBitStatsAdd(FRBS_ELEM_HDR, 0, EL_ID_BITS);
     }
     bitDemand += EL_ID_BITS;
   }
@@ -993,6 +995,12 @@ AAC_ENCODER_ERROR FDKaacEnc_ChannelElementWrite(
     if (qcOutChannel == NULL) {
       chBlockType = psyOutChannel[ch]->lastWindowSequence;
     }
+
+    /* Frankenstein --bit-stats: bits written by this list item (real write only) */
+    const INT frBsCh = ch;
+    const INT frBsId = list->id[i];
+    const INT frBsBefore =
+        (g_franken.bitStats && hBitStream != NULL) ? (INT)FDKgetValidBits(hBitStream) : 0;
 
     switch (list->id[i]) {
       case element_instance_tag:
@@ -1165,6 +1173,44 @@ AAC_ENCODER_ERROR FDKaacEnc_ChannelElementWrite(
       return error;
     }
 
+    if (g_franken.bitStats && hBitStream != NULL) {
+      INT d = (INT)FDKgetValidBits(hBitStream) - frBsBefore;
+      int cat = FRBS_ELEM_HDR;
+      switch (frBsId) {
+        case ms: cat = FRBS_MS; break;
+        case section_data: cat = FRBS_SECTION; break;
+        case scale_factor_data: {
+          /* split PNS energies off the scalefactor bits */
+          INT pnsBits = (pChSectionData != NULL) ? pChSectionData->noiseNrgBits : 0;
+          if (pnsBits > d) pnsBits = d;
+          frankenBitStatsAdd(FRBS_PNS, frBsCh, pnsBits);
+          d -= pnsBits;
+          cat = FRBS_SCF;
+        } break;
+        case tns_data: cat = FRBS_TNS; break;
+        case spectral_data: cat = FRBS_SPECTRUM; break;
+        default: cat = FRBS_ELEM_HDR; break;
+      }
+      if (d) frankenBitStatsAdd(cat, frBsCh, d);
+      if (frBsId == section_data && pChSectionData != NULL) {
+        int nc = 0, nz = 0, np = 0, ni = 0, nm = 0;
+        for (int s = 0; s < pChSectionData->noOfSections; s++) {
+          int cb = pChSectionData->huffsection[s].codeBook;
+          int n = pChSectionData->huffsection[s].sfbCnt;
+          if (cb == CODE_BOOK_ZERO_NO) nz += n;
+          else if (cb == CODE_BOOK_PNS_NO) np += n;
+          else if (cb == CODE_BOOK_IS_OUT_OF_PHASE_NO || cb == CODE_BOOK_IS_IN_PHASE_NO) ni += n;
+          else nc += n;
+        }
+        if (frBsCh == 1 && psyOutElement->toolsInfo.msDigest != MS_NONE) {
+          for (int g = 0; g < chSfbCnt; g += chSfbPerGrp)
+            for (int b = 0; b < chMaxSfbPerGrp; b++)
+              if (psyOutElement->toolsInfo.msMask[g + b] & MS_ON) nm++;
+        }
+        frankenBitStatsBands(frBsCh, nc, nz, np, ni, nm, chBlockType == SHORT_WINDOW);
+      }
+    }
+
     i++;
 
   } while (list->id[i] != end_of_sequence);
@@ -1221,11 +1267,14 @@ AAC_ENCODER_ERROR FDKaacEnc_WriteBitstream(HANDLE_TRANSPORTENC hTpEnc,
 
         if (!(syntaxFlags & AC_ER)) {
           /* Write associated extension payload */
+          INT frBs0 = (INT)FDKgetValidBits(hBs);
           for (n = 0; n < qcOut->qcElement[i]->nExtensions; n++) {
             FDKaacEnc_writeExtensionData(
                 hTpEnc, &qcOut->qcElement[i]->extension[n], 0, alignAnchor,
                 syntaxFlags, aot, epConfig);
           }
+          if (g_franken.bitStats)
+            frankenBitStatsAdd(FRBS_EXT, 0, (INT)FDKgetValidBits(hBs) - frBs0);
         }
       } break;
 
@@ -1244,6 +1293,7 @@ AAC_ENCODER_ERROR FDKaacEnc_WriteBitstream(HANDLE_TRANSPORTENC hTpEnc,
 
   } /* for (i=0; i<channelMapping.nElements; i++) */
 
+  INT frBsErExt0 = (INT)FDKgetValidBits(hBs);
   if ((syntaxFlags & AC_ER) && !(syntaxFlags & AC_DRM)) {
     UCHAR channelElementExtensionWritten[((8))][(
         1)]; /* 0: extension not touched, 1: extension already written */
@@ -1279,6 +1329,9 @@ AAC_ENCODER_ERROR FDKaacEnc_WriteBitstream(HANDLE_TRANSPORTENC hTpEnc,
     }   /* i */
   }     /* if AC_ER */
 
+  if (g_franken.bitStats)
+    frankenBitStatsAdd(FRBS_EXT, 0, (INT)FDKgetValidBits(hBs) - frBsErExt0);
+
   /* Extend global extension payload table with fill bits */
   n = qcOut->nExtensions;
 
@@ -1291,6 +1344,7 @@ AAC_ENCODER_ERROR FDKaacEnc_WriteBitstream(HANDLE_TRANSPORTENC hTpEnc,
   if (syntaxFlags & AC_DAB) doByteAlign = 0;
 
   /* Write global extension payload and fill data */
+  INT frBsFill0 = (INT)FDKgetValidBits(hBs);
   for (n = 0; (n < qcOut->nExtensions) && (n < (2 + 2)); n++) {
     FDKaacEnc_writeExtensionData(hTpEnc, &qcOut->extension[n], 0, alignAnchor,
                                  syntaxFlags, aot, epConfig);
@@ -1298,6 +1352,9 @@ AAC_ENCODER_ERROR FDKaacEnc_WriteBitstream(HANDLE_TRANSPORTENC hTpEnc,
     /* For EXT_FIL or EXT_FILL_DATA we could do an additional sanity check here
      */
   }
+
+  INT frBsEnd0 = (INT)FDKgetValidBits(hBs);
+  if (g_franken.bitStats) frankenBitStatsAdd(FRBS_FILL, 0, frBsEnd0 - frBsFill0);
 
   if (!(syntaxFlags & (AC_SCALABLE | AC_ER | AC_DAB))) {
     FDKwriteBits(hBs, ID_END, EL_ID_BITS);
@@ -1312,10 +1369,15 @@ AAC_ENCODER_ERROR FDKaacEnc_WriteBitstream(HANDLE_TRANSPORTENC hTpEnc,
     FDKaacEnc_ByteAlignment(hBs, qcOut->alignBits);
   }
 
+  if (g_franken.bitStats)
+    frankenBitStatsAdd(FRBS_END_ALIGN, 0, (INT)FDKgetValidBits(hBs) - frBsEnd0);
+
   frameBits -= bitMarkUp;
   frameBits += FDKgetValidBits(hBs);
 
   transportEnc_EndAccessUnit(hTpEnc, &frameBits);
+
+  if (g_franken.bitStats) frankenBitStatsFrame(frameBits, qcKernel->globHdrBits);
 
   if (frameBits != qcOut->totalBits + qcKernel->globHdrBits) {
     return AAC_ENC_WRITTEN_BITS_ERROR;

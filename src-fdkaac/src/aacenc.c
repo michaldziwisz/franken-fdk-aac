@@ -342,6 +342,7 @@ int aacenc_init(HANDLE_AACENCODER *encoder, const aacenc_param_t *params,
     FR_SET(params->fr_thr_hold != -1, AACENC_FRANKEN_THR_HOLD, params->fr_thr_hold);
     FR_SET(params->fr_scf_range != -1, AACENC_FRANKEN_SCF_RANGE, params->fr_scf_range);
     FR_SET(params->fr_enfac_patch != -1, AACENC_FRANKEN_ENFAC_PATCH, params->fr_enfac_patch);
+    FR_SET(params->fr_bit_stats > 0, AACENC_FRANKEN_BIT_STATS, 1);
     FR_SET(params->fr_coverage != AACENC_FRANKEN_OFF, AACENC_FRANKEN_COVERAGE, params->fr_coverage);
     FR_SET(params->fr_ps_ipd != -1, AACENC_FRANKEN_PS_IPD, params->fr_ps_ipd);
     FR_SET(params->fr_ps_opd != -1, AACENC_FRANKEN_PS_OPD, params->fr_ps_opd);

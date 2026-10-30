@@ -108,6 +108,7 @@ extern "C" void frankenResetDefaults(void) {
   g_franken.scfRange = -1;
   g_franken.coverage = FRANKEN_OFF;
   g_franken.enfacPatch = -1;
+  g_franken.bitStats = 0;
   g_franken.psBands = -1;
   g_franken.psEnvelopes = -1;
   g_franken.psEnvReduce = -1;
@@ -344,6 +345,83 @@ extern "C" int frankenEffPnsAbove(void) {
   if (g_franken.pnsAboveHz > 0) return g_franken.pnsAboveHz;
   if (covIdx() >= 0) return kCoverage[covIdx()].pnsAboveHz;
   return -1;
+}
+
+/* ---- --bit-stats: where the bits of the written frames go ----
+ * Counted in bitenc.cpp while the real bitstream is written (never in the
+ * bit-demand dry runs), so the sum equals the file size minus container. */
+#include <stdio.h>
+namespace {
+struct FrBitStats {
+  long long cat[FRBS_NUM][2];
+  long long frames, frameBits, hdrBits;
+  long long coded[2], zero[2], pns[2], is[2], ms, shortFrames, chFrames[2];
+} s_bs;
+const char *const kCatName[FRBS_NUM] = {
+    "element/ics header", "MS mask", "section data", "scalefactors",
+    "PNS energies", "TNS data", "spectrum (Huffman)", "SBR/PS payload",
+    "fill + global ext", "ID_END + align"};
+}  // namespace
+
+extern "C" void frankenBitStatsAdd(int cat, int ch, int bits) {
+  if (cat < 0 || cat >= FRBS_NUM) return;
+  s_bs.cat[cat][(ch == 1) ? 1 : 0] += bits;
+}
+
+extern "C" void frankenBitStatsBands(int ch, int coded, int zero, int pns,
+                                     int is, int ms, int isShort) {
+  int c = (ch == 1) ? 1 : 0;
+  s_bs.coded[c] += coded;
+  s_bs.zero[c] += zero;
+  s_bs.pns[c] += pns;
+  s_bs.is[c] += is;
+  s_bs.chFrames[c]++;
+  if (c == 1) s_bs.ms += ms;
+  if (c == 0 && isShort) s_bs.shortFrames++;
+}
+
+extern "C" void frankenBitStatsFrame(int frameBits, int hdrBits) {
+  s_bs.frames++;
+  s_bs.frameBits += frameBits;
+  s_bs.hdrBits += hdrBits;
+}
+
+extern "C" void frankenBitStatsPrint(void) {
+  if (!g_franken.bitStats || s_bs.frames == 0) return;
+  double fr = (double)s_bs.frames, tot = (double)s_bs.frameBits;
+  fprintf(stderr, "=== bit-stats: %lld frames, %.1f bits/frame on average ===\n",
+          s_bs.frames, tot / fr);
+  fprintf(stderr, "  %-22s %10s %7s %10s %10s\n", "part", "bits/frm", "share",
+          "ch0/mid", "ch1/side");
+  fprintf(stderr, "  %-22s %10.1f %6.1f%%\n", "transport header",
+          s_bs.hdrBits / fr, 100.0 * s_bs.hdrBits / tot);
+  for (int k = 0; k < FRBS_NUM; k++) {
+    long long a = s_bs.cat[k][0] + s_bs.cat[k][1];
+    if (a == 0) continue;
+    fprintf(stderr, "  %-22s %10.1f %6.1f%%", kCatName[k], a / fr, 100.0 * a / tot);
+    if (s_bs.cat[k][1] != 0)
+      fprintf(stderr, " %10.1f %10.1f", s_bs.cat[k][0] / fr, s_bs.cat[k][1] / fr);
+    fprintf(stderr, "\n");
+  }
+  long long side = 0;
+  for (int k = 0; k < FRBS_NUM; k++) side += s_bs.cat[k][0] + s_bs.cat[k][1];
+  side -= s_bs.cat[FRBS_SPECTRUM][0] + s_bs.cat[FRBS_SPECTRUM][1] +
+          s_bs.cat[FRBS_EXT][0] + s_bs.cat[FRBS_EXT][1] +
+          s_bs.cat[FRBS_FILL][0] + s_bs.cat[FRBS_FILL][1] +
+          s_bs.cat[FRBS_END_ALIGN][0] + s_bs.cat[FRBS_END_ALIGN][1];
+  fprintf(stderr, "  %-22s %10.1f %6.1f%%  (everything but spectrum, SBR/PS, fill, header)\n",
+          "= side info total", side / fr, 100.0 * side / tot);
+  for (int c = 0; c < 2; c++) {
+    if (s_bs.chFrames[c] == 0) continue;
+    double n = (double)s_bs.chFrames[c];
+    fprintf(stderr, "  ch%d bands/frame: coded %.1f, zero %.1f, PNS %.1f, IS %.1f\n", c,
+            s_bs.coded[c] / n, s_bs.zero[c] / n, s_bs.pns[c] / n, s_bs.is[c] / n);
+  }
+  if (s_bs.chFrames[1])
+    fprintf(stderr, "  MS bands/frame: %.1f; short-block frames: %.1f%%\n",
+            s_bs.ms / (double)s_bs.chFrames[1], 100.0 * s_bs.shortFrames / fr);
+  else
+    fprintf(stderr, "  short-block frames: %.1f%%\n", 100.0 * s_bs.shortFrames / fr);
 }
 
 /* Ensure defaults are set even if the frontend never calls the reset
