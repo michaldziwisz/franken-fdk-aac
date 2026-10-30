@@ -944,6 +944,40 @@ enc "$X64" -f2 -p2 -b40 -w 18000 --short-groups 0 --hole-ladder 8 -o "${OUT}_cn1
 [ "$(md5 ${OUT}_cn1.aac)" = "$(md5 ${OUT}_cn0.aac)" ] && ok "wartosci neutralne (--short-groups 0, --hole-ladder 8) = stock" || bad "wartosci neutralne zmieniaja strumien"
 rm -f _check_core_*.wav _check_core_*.txt
 
+# --- Poprawki znalezione przy przepisywaniu dokumentacji ---
+echo "--- regresje: x100 > 100, --is-aggression 100, --max-bits-frame, --sbr-noise-floor-offset ---"
+# x100 > 100 bylo cichym no-op (mnoznik Q31 obciety do 1.0).
+enc "$X64" -f2 -p5 -b32000 -o "${OUT}_x0.aac" "$WAV"
+enc "$X64" -f2 -p5 -b32000 --sbr-tran-thr 100 -o "${OUT}_x1.aac" "$WAV"
+enc "$X64" -f2 -p5 -b32000 --sbr-tran-thr 400 -o "${OUT}_x4.aac" "$WAV"
+[ "$(md5 ${OUT}_x1.aac)" = "$(md5 ${OUT}_x0.aac)" ] && ok "--sbr-tran-thr 100 = stock" || bad "--sbr-tran-thr 100 != stock"
+[ "$(md5 ${OUT}_x4.aac)" != "$(md5 ${OUT}_x0.aac)" ] && [ "$(derr ${OUT}_x4.aac)" = "0" ] && ok "--sbr-tran-thr 400 dziala (powyzej 100 nie jest no-op)" || bad "--sbr-tran-thr 400 bez efektu"
+enc "$X64" -f2 -p5 -b32000 --sbr-tran-split 300 -o "${OUT}_x5.aac" "$WAV"
+[ "$(md5 ${OUT}_x5.aac)" != "$(md5 ${OUT}_x0.aac)" ] && ok "--sbr-tran-split 300 dziala" || bad "--sbr-tran-split 300 bez efektu"
+# --is-aggression 100 zawijalo prog kierunku w liczbe ujemna = IS wylaczone.
+enc "$X64" -f2 -p2 -b48000 --is 0 -o "${OUT}_i0.aac" "$WAV"
+enc "$X64" -f2 -p2 -b48000 --is-aggression 100 -o "${OUT}_i100.aac" "$WAV"
+[ "$(md5 ${OUT}_i100.aac)" != "$(md5 ${OUT}_i0.aac)" ] && [ "$(derr ${OUT}_i100.aac)" = "0" ] && ok "--is-aggression 100 != --is 0 (maksimum dziala)" || bad "--is-aggression 100 = IS wylaczone"
+# --max-bits-frame bylo nadpisywane pozniej w inicjalizacji.
+maxpay(){ python3 - "$1" <<'PY'
+import sys
+d=open(sys.argv[1],'rb').read(); i=0; m=0
+while i+7<=len(d) and d[i]==0xFF and (d[i+1]&0xF0)==0xF0:
+    n=((d[i+3]&3)<<11)|(d[i+4]<<3)|(d[i+5]>>5); m=max(m,n*8); i+=n
+print(m)
+PY
+}
+enc "$X64" -f2 -p2 -b128000 --max-bits-frame 3000 -o "${OUT}_mb.aac" "$WAV"
+mb=$(maxpay ${OUT}_mb.aac)
+[ -n "$mb" ] && [ "$mb" -le 3056 ] && [ "$(derr ${OUT}_mb.aac)" = "0" ] && ok "--max-bits-frame 3000: najwieksza ramka ADTS $mb bitow (z naglowkiem 56)" || bad "--max-bits-frame 3000: najwieksza ramka '$mb' bitow"
+# --sbr-noise-floor-offset poza 0..11 = asercja FDK (abort); frontend ma odrzucic.
+for v in -1 12; do
+  "$X64" -p5 -b32000 --sbr-noise-floor-offset $v -f2 -o "${OUT}_nf.aac" "$WAV" >/dev/null 2>&1; rc=$?
+  [ $rc = 1 ] && ok "--sbr-noise-floor-offset $v odrzucone czysto (rc=1)" || bad "--sbr-noise-floor-offset $v rc=$rc"
+done
+enc "$X64" -f2 -p5 -b32000 --sbr-noise-floor-offset 11 -o "${OUT}_nf.aac" "$WAV"
+[ -s "${OUT}_nf.aac" ] && [ "$(derr ${OUT}_nf.aac)" = "0" ] && ok "--sbr-noise-floor-offset 11 koduje" || bad "--sbr-noise-floor-offset 11"
+
 echo "==================================="
 echo "WYNIK: PASS=$PASS FAIL=$FAIL"
 [ "$FAIL" = "0" ] && { echo "ALL PASS"; exit 0; } || { echo "SA BLEDY"; exit 1; }
