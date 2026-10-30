@@ -1031,6 +1031,16 @@ for v in "--enfac-patch 2" "--enfac-patch -1"; do
   "$X64" -p2 -b32000 $v -f2 -o "${OUT}_vz.aac" _check_cov_dense.wav >/dev/null 2>&1; rc=$?
   [ $rc = 1 ] && ok "$v odrzucone (rc=1)" || bad "$v rc=$rc"
 done
+# --- --bit-stats: tylko liczy, strumien bit w bit ten sam; tabela sie drukuje ---
+enc "$X64" -f2 -p2 -b14000 --uncap-bandwidth --unlock-bitrate -o "${OUT}_bs0.aac" _check_cov_dense.wav
+"$X64" -f2 -p2 -b14000 --uncap-bandwidth --unlock-bitrate --bit-stats -o "${OUT}_bs1.aac" _check_cov_dense.wav 2> "${OUT}_bs.txt" >/dev/null
+[ -s "${OUT}_bs1.aac" ] && [ "$(md5 ${OUT}_bs1.aac)" = "$(md5 ${OUT}_bs0.aac)" ] && ok "--bit-stats nie zmienia strumienia" || bad "--bit-stats zmienia strumien albo brak pliku"
+tr -d '\r' < "${OUT}_bs.txt" | grep -q "spectrum (Huffman)" && tr -d '\r' < "${OUT}_bs.txt" | grep -q "transport header" \
+  && ok "--bit-stats drukuje tabele budzetu" || bad "--bit-stats: brak tabeli"
+bpf=$(tr -d '\r' < "${OUT}_bs.txt" | sed -n 's/.*frames, \([0-9.]*\) bits\/frame.*/\1/p')
+fsz=$(stat -c%s "${OUT}_bs1.aac"); nfr=$(tr -d '\r' < "${OUT}_bs.txt" | sed -n 's/=== bit-stats: \([0-9]*\) frames.*/\1/p')
+python3 -c "import sys; sys.exit(0 if abs(float('${bpf:-0}')*${nfr:-1}-${fsz}*8) < ${fsz}*8*0.01 else 1)" \
+  && ok "--bit-stats: suma bitow zgadza sie z plikiem ADTS (<1%)" || bad "--bit-stats: suma ${bpf}x${nfr} != ${fsz} B"
 rm -f _check_cov_*.wav
 
 echo "==================================="

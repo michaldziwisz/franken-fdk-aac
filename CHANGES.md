@@ -48,6 +48,11 @@ is unchanged byte for byte.
   rescued.
 - `tools/core/core_measure.py` also reports `nsr_kept`, the error in the
   bands that were not cut.
+- `--bit-stats`: counts where the bits of the written frames go (transport
+  header, element and ics headers, MS mask, section data, scalefactors, PNS,
+  TNS, spectrum, SBR/PS payload, fill), per channel where it applies, plus coded,
+  zero, PNS and IS bands per frame. Printed when the encoder closes; the
+  stream is unchanged byte for byte.
 - `--enfac-patch <0|1>`: the flat-spectrum energy re-weighting (FDK
   `calcWeighting`, CBR and VBR). Stock applies it only to long frames whose
   audible spectrum is flat (noise-like); 0 never (every frame treated as
