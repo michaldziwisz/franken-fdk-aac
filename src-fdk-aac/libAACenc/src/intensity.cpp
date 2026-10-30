@@ -245,9 +245,14 @@ static void FDKaacEnc_initIsParams(INTENSITY_PARAMETERS *isParams) {
     /* min_is_sfbs: 6 -> 1 (allow shorter IS regions) */
     isParams->min_is_sfbs = fMax(1, IS_MIN_SFBS - (a * (IS_MIN_SFBS - 1)) / 100);
     /* direction deviation: widened up to ~2x at a=100 (accept more panning) */
-    isParams->direction_deviation_thresh =
-        IS_DIRECTION_DEVIATION_THRESH +
-        (FIXP_DBL)(((INT64)(IS_DIRECTION_DEVIATION_THRESH) * a) / 100);
+    {
+      /* at a=100 the sum is exactly 1.0, which does not fit Q31 and used to
+       * wrap negative (= every band rejected, i.e. IS off). Saturate. */
+      INT64 d = (INT64)IS_DIRECTION_DEVIATION_THRESH +
+                ((INT64)(IS_DIRECTION_DEVIATION_THRESH) * a) / 100;
+      if (d > (INT64)MAXVAL_DBL) d = (INT64)MAXVAL_DBL;
+      isParams->direction_deviation_thresh = (FIXP_DBL)d;
+    }
   }
 
   /* Frankenstein: bias when the encoder uses intensity stereo. Q8 (256 = 1.0)

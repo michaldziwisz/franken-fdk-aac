@@ -956,14 +956,6 @@ static AACENC_ERROR FDKaacEnc_AdjustEncSettings(HANDLE_AACENCODER hAacEncoder,
     hAacConfig->bandWidth = g_franken.coreCutoff;
   }
 
-  /* Frankenstein quasi-CVBR: hard per-frame bit caps routed into the config,
-   * honoured by both CBR and VBR bit-allocation paths (qc init). */
-  if (g_franken.maxBitsFrame > 0) {
-    hAacConfig->maxBitsPerFrame = g_franken.maxBitsFrame;
-  }
-  if (g_franken.minBitsFrame >= 0) {
-    hAacConfig->minBitsPerFrame = g_franken.minBitsFrame;
-  }
 
   hAacConfig->anc_Rate = config->userAncDataRate;
   hAacConfig->syntaxFlags = 0;
@@ -1172,6 +1164,16 @@ static AACENC_ERROR FDKaacEnc_AdjustEncSettings(HANDLE_AACENCODER hAacEncoder,
       break;
     default:
       return AACENC_INVALID_CONFIG;
+  }
+
+  /* Frankenstein quasi-CVBR: hard per-frame bit caps. Applied AFTER the
+   * bitrate-mode block above, which recomputes maxBitsPerFrame (from the peak
+   * bitrate, or -1) and minBitsPerFrame and would otherwise overwrite them. */
+  if (g_franken.maxBitsFrame > 0) {
+    hAacConfig->maxBitsPerFrame = g_franken.maxBitsFrame;
+  }
+  if (g_franken.minBitsFrame >= 0) {
+    hAacConfig->minBitsPerFrame = g_franken.minBitsFrame;
   }
 
   /* Max bits per frame limitation depending on transport format. */

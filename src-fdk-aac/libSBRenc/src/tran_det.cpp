@@ -116,8 +116,20 @@ amm-info@iis.fraunhofer.de
   ((FIXP_DBL)(((INT64)(knob) << 31) / 100 > (INT64)MAXVAL_DBL    \
                   ? (INT64)MAXVAL_DBL                            \
                   : ((INT64)(knob) << 31) / 100))
-#define FR_TRAN_SCALE(val, knob) \
-  (((knob) > 0 && (knob) != 100) ? fMult((val), FR_FIXP_MUL100(knob)) : (val))
+/* Above 100 the factor is > 1.0, which a Q31 multiplier cannot hold (it used
+ * to clamp to 1.0, so every value above 100 was silently a no-op). Scale in
+ * 64 bit and saturate instead. Below 100 the original fMult path is kept, so
+ * results for values that already worked are unchanged. */
+static inline FIXP_DBL fr_scale_up100(FIXP_DBL v, INT knob) {
+  INT64 r = ((INT64)v * knob) / 100;
+  if (r > (INT64)MAXVAL_DBL) r = (INT64)MAXVAL_DBL;
+  if (r < (INT64)MINVAL_DBL) r = (INT64)MINVAL_DBL;
+  return (FIXP_DBL)r;
+}
+#define FR_TRAN_SCALE(val, knob)                                   \
+  (((knob) > 0 && (knob) < 100)                                    \
+       ? fMult((val), FR_FIXP_MUL100(knob))                        \
+       : (((knob) > 100) ? fr_scale_up100((val), (knob)) : (val)))
 #define FR_TRAN_RAW100(stock, knob) \
   (((knob) > 0) ? FR_FIXP_MUL100(knob) : (stock))
 

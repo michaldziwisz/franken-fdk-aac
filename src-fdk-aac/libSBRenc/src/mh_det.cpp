@@ -180,9 +180,18 @@ static FIXP_DBL frankenMhFixpMul100(int knobX100) {
   return (FIXP_DBL)m;
 }
 
+/* Scale v by knob/100. Below 100: the original fMult path (unchanged
+ * results). Above 100 a Q31 multiplier cannot exceed 1.0 (it used to clamp, so
+ * every value above 100 was a silent no-op): scale in 64 bit and saturate. */
 static FIXP_DBL frankenMhScale(FIXP_DBL v, int knobX100) {
   if (knobX100 <= 0 || knobX100 == 100) return v;
-  return fMult(v, frankenMhFixpMul100(knobX100));
+  if (knobX100 < 100) return fMult(v, frankenMhFixpMul100(knobX100));
+  {
+    INT64 r = ((INT64)v * knobX100) / 100;
+    if (r > (INT64)MAXVAL_DBL) r = (INT64)MAXVAL_DBL;
+    if (r < (INT64)MINVAL_DBL) r = (INT64)MINVAL_DBL;
+    return (FIXP_DBL)r;
+  }
 }
 
 static int frankenMhActive(void) {
@@ -209,9 +218,12 @@ static const DETECTOR_PARAMETERS_MH *frankenMhOverride(
   /* invThresHoldTone is the reciprocal of thresHoldTone, so it must move the
    * OPPOSITE way to stay consistent with it. */
   if (g_franken.sbrMhToneX100 > 0 && g_franken.sbrMhToneX100 != 100) {
-    INT64 inv = ((INT64)100 << 31) / g_franken.sbrMhToneX100;
-    if (inv > (INT64)MAXVAL_DBL) inv = (INT64)MAXVAL_DBL;
-    t->invThresHoldTone = fMult(t->invThresHoldTone, (FIXP_DBL)inv);
+    /* reciprocal factor 100/knob: > 1.0 when the knob is below 100, which a
+     * Q31 multiplier cannot hold, so scale in 64 bit and saturate. */
+    INT64 r = ((INT64)t->invThresHoldTone * 100) / g_franken.sbrMhToneX100;
+    if (r > (INT64)MAXVAL_DBL) r = (INT64)MAXVAL_DBL;
+    if (r < (INT64)MINVAL_DBL) r = (INT64)MINVAL_DBL;
+    t->invThresHoldTone = (FIXP_DBL)r;
   }
 
   /* Tonality difference between the original and the patched band. */
