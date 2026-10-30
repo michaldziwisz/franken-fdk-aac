@@ -48,6 +48,16 @@ is unchanged byte for byte.
   rescued.
 - `tools/core/core_measure.py` also reports `nsr_kept`, the error in the
   bands that were not cut.
+- `--side-cutoff <Hz>`: from this frequency up every stereo band is coded as pure
+  mid: MS forced, side zeroed, FDK's own IS decision cleared there (forced IS still
+  wins). Bands that both channels code as PNS are left alone (their ms_used means
+  correlated noise). Measured on acoustic music at 48 kbps, 5 kHz: side info 238 to
+  222 bits per frame, mid error 0.7 dB lower, side above the cutoff 26..31 dB down,
+  below it untouched. At 14 kbps the gain is small (FDK already zeroes most of the
+  side there); the big lever at that rate is IS, see the next item.
+- `--is-admit <x>`: FDK's IS gate (`bitrate / bandwidth < 5`) with x instead of 5;
+  0 = never. At 14 kbps stereo on dense material `--is-admit 0` cuts zeroed bands
+  from 85% to 70% (IS forces the per-band MS mask, ~22 bits, plus IS positions).
 - `--side-knee` rebuilt as an offset on each side band's own margin (energy above
   threshold) near the coded/zeroed edge. It reads the threshold the rate control
   wanted before avoid-holes pinned the band at 0.97 dB, so the ~10% of side bands

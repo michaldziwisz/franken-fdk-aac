@@ -866,6 +866,40 @@ direction with the band forced to 18 kHz (`-w 18000`): side error -1.13 dB at 0,
 Which quantity shows the step depends on material and bandwidth: at the default band on
 the same signal the step shows in the mid error instead (-8.72 to -9.04 dB at -0.97).
 
+#### `--side-cutoff <Hz>`
+
+**From this frequency up, code every stereo band as pure mid.**
+
+- Applies to: stereo AAC core (LC, LD, ELD). Off by default.
+- Values: `1000..24000` Hz, rounded to the scalefactor band that starts at or above it
+
+Above the cutoff the side signal is dropped and the band is written as mid only, with the
+cheap MS mask. FDK's own intensity stereo decision is cleared there, because pure mid is
+cheaper (IS needs positions and forbids the one-code MS mask); forced IS from
+`--is-force-lo/-hi` still wins. Bands that both channels code as PNS are left as they are.
+Below the cutoff stereo is untouched. `--verbose` prints the band where it starts.
+
+Examples (acoustic stereo music):
+- Mild: `-b 48000 --side-cutoff 8000`. Side info 238 to 235 bits per frame, mid a little cleaner.
+- Strong: `-b 48000 --side-cutoff 5000`. Side info 222 bits, mid error 0.7 dB lower, side above
+  5 kHz about 27..31 dB down.
+- Exaggerated: `-b 48000 --side-cutoff 1000`. Practically mono with a stereo bass.
+
+At 14 kbps the gain is small, because FDK already zeroes almost all of the side there;
+`--is-admit 0` is the bigger lever at that rate.
+
+#### `--is-admit <x>`
+
+**Move FDK's gate that decides whether intensity stereo may be used at all.**
+
+- Applies to: stereo AAC core. Stock `5`.
+- Values: `0.0..20.0`; `0` = never. `--is-aggression` still opens the gate.
+
+FDK allows intensity stereo only when bitrate divided by the core bandwidth (bits per second
+per Hz) is below 5. At very low rates IS is expensive: it forces the per-band MS mask (about
+22 bits per frame) and adds IS positions. Measured at 14 kbps stereo on dense material:
+`--is-admit 0` lowers zeroed bands from 85% to 70%.
+
 #### `--side-knee <dB>`
 
 **Give every side band near the coded/zeroed edge a precision that follows its own level.**

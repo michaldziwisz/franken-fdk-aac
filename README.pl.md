@@ -890,6 +890,40 @@ Kierunek ujemny przy paśmie wymuszonym na 18 kHz (`-w 18000`): błąd side -1,1
 domyślnym na tym samym sygnale skok pojawia się w błędzie mid (z -8,72 na -9,04 dB przy
 -0,97).
 
+#### `--side-cutoff <Hz>`
+
+**Od tej częstotliwości w górę koduj każde pasmo stereo jako czysty mid.**
+
+- Dotyczy: rdzeń AAC w stereo (LC, LD, ELD). Domyślnie wyłączone.
+- Wartości: `1000..24000` Hz, zaokrąglane do pasma współczynnika skali, które zaczyna się na tej częstotliwości lub wyżej
+
+Powyżej granicy sygnał side jest porzucany, a pasmo zapisywane tylko jako mid, z tanią maską
+MS. Własna decyzja FDK o intensity stereo jest tam kasowana, bo czysty mid jest tańszy (IS
+potrzebuje pozycji i blokuje maskę MS zapisywaną jednym kodem); wymuszone IS z
+`--is-force-lo/-hi` nadal wygrywa. Pasma, które oba kanały kodują jako PNS, zostają bez zmian.
+Poniżej granicy stereo jest nietknięte. `--verbose` pokazuje pasmo, od którego działa.
+
+Przykłady (akustyczna muzyka stereo):
+- Łagodnie: `-b 48000 --side-cutoff 8000`. Informacje boczne z 238 do 235 bitów na ramkę, mid trochę czystszy.
+- Mocno: `-b 48000 --side-cutoff 5000`. Informacje boczne 222 bity, błąd mid o 0,7 dB mniejszy, side
+  powyżej 5 kHz niżej o około 27 do 31 dB.
+- Przesadnie: `-b 48000 --side-cutoff 1000`. Praktycznie mono ze stereofonicznym basem.
+
+Przy 14 kbps zysk jest mały, bo FDK i tak zeruje tam prawie cały side; przy tej prędkości
+większą dźwignią jest `--is-admit 0`.
+
+#### `--is-admit <x>`
+
+**Przesuń bramkę FDK, która decyduje, czy intensity stereo w ogóle wolno użyć.**
+
+- Dotyczy: rdzeń AAC w stereo. Stock `5`.
+- Wartości: `0.0..20.0`; `0` = nigdy. `--is-aggression` nadal otwiera bramkę.
+
+FDK dopuszcza intensity stereo tylko wtedy, gdy bitrate podzielony przez pasmo rdzenia (bity
+na sekundę na Hz) jest mniejszy niż 5. Przy bardzo niskich prędkościach IS jest drogie:
+wymusza maskę MS pasmo po paśmie (około 22 bity na ramkę) i dokłada pozycje IS. Zmierzone przy
+14 kbps stereo na gęstym materiale: `--is-admit 0` zmniejsza udział wyzerowanych pasm z 85% do 70%.
+
 #### `--side-knee <dB>`
 
 **Nadaj każdemu pasmu side przy krawędzi kodowane/wyzerowane precyzję zależną od jego własnego poziomu.**

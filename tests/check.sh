@@ -1050,6 +1050,37 @@ enc "$X64" -f2 -p2 -b96000 -o "${OUT}_sz0.aac" _check_cov_dense.wav
 enc "$X64" -f2 -p2 -b96000 --side-knee-zone 5 --side-knee-spread 2 -o "${OUT}_sz1.aac" _check_cov_dense.wav
 [ "$(md5 ${OUT}_sz1.aac)" = "$(md5 ${OUT}_sz0.aac)" ] && ok "--side-knee-zone/-spread bez --side-knee = stock" || bad "--side-knee-zone/-spread zmieniaja strumien bez --side-knee"
 
+# --- --side-cutoff / --is-admit ---
+enc "$X64" -f2 -p2 -b48000 -o "${OUT}_sc0.aac" _check_cov_dense.wav
+enc "$X64" -f2 -p2 -b48000 --side-cutoff 24000 -o "${OUT}_sc1.aac" _check_cov_dense.wav
+[ "$(md5 ${OUT}_sc1.aac)" = "$(md5 ${OUT}_sc0.aac)" ] && ok "--side-cutoff ponad pasmem rdzenia = stock" || bad "--side-cutoff 24000 zmienia strumien"
+enc "$X64" -f2 -p2 -b48000 --side-cutoff 3000 -o "${OUT}_sc2.aac" _check_cov_dense.wav
+ffmpeg -v error -y -i "${OUT}_sc0.aac" -ac 2 -c:a pcm_s16le "${OUT}_sc0.wav" 2>/dev/null
+ffmpeg -v error -y -i "${OUT}_sc2.aac" -ac 2 -c:a pcm_s16le "${OUT}_sc2.wav" 2>/dev/null
+python3 - "${OUT}_sc0.wav" "${OUT}_sc2.wav" <<'PY' && ok "--side-cutoff 3000: side ponad 4 kHz wyciete (>= 20 dB), ponizej 2 kHz nietkniete" || bad "--side-cutoff 3000: zly rozklad side"
+import wave,sys,numpy as np
+def sm(p):
+    w=wave.open(p); x=np.frombuffer(w.readframes(w.getnframes()),'<i2').astype(float).reshape(-1,2)
+    s=np.abs(np.fft.rfft((x[:,0]-x[:,1])/2))**2; f=np.fft.rfftfreq(len(x),1/w.getframerate()); return s,f
+a,f=sm(sys.argv[1]); b,_=sm(sys.argv[2])
+hi=(f>4000)&(f<12000); lo=(f>300)&(f<2000)
+dh=10*np.log10(a[hi].sum()/max(b[hi].sum(),1e-9)); dl=10*np.log10(a[lo].sum()/max(b[lo].sum(),1e-9))
+print(f"  side hi -{dh:.1f} dB, lo {dl:+.1f} dB"); sys.exit(0 if dh>=20 and abs(dl)<3 else 1)
+PY
+[ "$(derr ${OUT}_sc2.aac)" = "0" ] && ok "--side-cutoff 3000: 0 bledow dekodera" || bad "--side-cutoff 3000: bledy dekodera"
+enc "$X64" -f2 -p2 -b14000 --uncap-bandwidth --unlock-bitrate -o "${OUT}_ia0.aac" _check_cov_dense.wav
+enc "$X64" -f2 -p2 -b14000 --uncap-bandwidth --unlock-bitrate --is 0 -o "${OUT}_ia1.aac" _check_cov_dense.wav
+enc "$X64" -f2 -p2 -b14000 --uncap-bandwidth --unlock-bitrate --is-admit 0 -o "${OUT}_ia2.aac" _check_cov_dense.wav
+[ "$(md5 ${OUT}_ia2.aac)" = "$(md5 ${OUT}_ia1.aac)" ] && [ "$(md5 ${OUT}_ia2.aac)" != "$(md5 ${OUT}_ia0.aac)" ] \
+  && ok "--is-admit 0 = --is 0 przy 14 kbps (i rozne od stock)" || bad "--is-admit 0 nie dziala jak --is 0"
+enc "$X64" -f2 -p2 -b14000 --uncap-bandwidth --unlock-bitrate --is-admit 5 -o "${OUT}_ia3.aac" _check_cov_dense.wav
+[ "$(md5 ${OUT}_ia3.aac)" = "$(md5 ${OUT}_ia0.aac)" ] && ok "--is-admit 5 = stock" || bad "--is-admit 5 != stock"
+for v in "--side-cutoff 999" "--side-cutoff 24001" "--is-admit 20.01" "--is-admit -1"; do
+  "$X64" -p2 -b32000 $v -f2 -o "${OUT}_vz.aac" _check_cov_dense.wav >/dev/null 2>&1; rc=$?
+  [ $rc = 1 ] && ok "$v odrzucone (rc=1)" || bad "$v rc=$rc"
+done
+rm -f "${OUT}"_sc*.wav
+
 # --- --bit-stats: tylko liczy, strumien bit w bit ten sam; tabela sie drukuje ---
 enc "$X64" -f2 -p2 -b14000 --uncap-bandwidth --unlock-bitrate -o "${OUT}_bs0.aac" _check_cov_dense.wav
 "$X64" -f2 -p2 -b14000 --uncap-bandwidth --unlock-bitrate --bit-stats -o "${OUT}_bs1.aac" _check_cov_dense.wav 2> "${OUT}_bs.txt" >/dev/null
