@@ -698,12 +698,17 @@ void FDKaacEnc_IntensityStereoProcessing(
   /* Frankenstein: cap the number of intensity-coded SFBs. Clearing isMask here
    * (before the application loop) keeps isBook/isScale consistent with the
    * mask, so the decoder sees exactly what was encoded. */
+  /* The cap is counted per window group: a short frame repeats the band table
+   * in every group (each group is a slice of time), so counting across the
+   * groups let the first groups use up the cap and left the later part of the
+   * frame without IS. For short blocks the cap is also scaled to the coarser
+   * table (frankenBuildBandMaps). Long blocks have one group = unchanged. */
   if (g_franken.isMaxBands >= 0) {
-    INT isUsed = 0;
     for (sfb = 0; sfb < sfbCnt; sfb += sfbPerGroup) {
+      INT isUsed = 0;
       for (sfboffs = 0; sfboffs < maxSfbPerGroup; sfboffs++) {
         if (isMask[sfb + sfboffs]) {
-          if (isUsed >= g_franken.isMaxBands)
+          if (isUsed >= g_franken.curBandMap->isMax)
             isMask[sfb + sfboffs] = 0;
           else
             isUsed++;
@@ -720,9 +725,9 @@ void FDKaacEnc_IntensityStereoProcessing(
     for (sfb = 0; sfb < sfbCnt; sfb += sfbPerGroup) {
       for (sfboffs = 0; sfboffs < maxSfbPerGroup; sfboffs++) {
         INT band = sfboffs; /* SFB index within the group */
-        if (g_franken.isBandLo >= 0 && band < g_franken.isBandLo)
+        if (g_franken.isBandLo >= 0 && band < g_franken.curBandMap->isLo)
           isMask[sfb + sfboffs] = 0;
-        if (g_franken.isBandHi >= 0 && band > g_franken.isBandHi)
+        if (g_franken.isBandHi >= 0 && band > g_franken.curBandMap->isHi)
           isMask[sfb + sfboffs] = 0;
       }
     }
@@ -746,9 +751,10 @@ void FDKaacEnc_IntensityStereoProcessing(
    * energy of each forced band, the decoder just gets a panning it wouldn't
    * normally see. Setting the mask here (before the application loop) keeps
    * isBook/isScale in sync with the mask. */
-  if (g_franken.isForceLo >= 0 || g_franken.isForceHi >= 0) {
-    INT flo = (g_franken.isForceLo >= 0) ? g_franken.isForceLo : 0;
-    INT fhi = (g_franken.isForceHi >= 0) ? g_franken.isForceHi : (maxSfbPerGroup - 1);
+  if ((g_franken.isForceLo >= 0 || g_franken.isForceHi >= 0) &&
+      g_franken.curBandMap->isForceLo >= 0) {
+    INT flo = g_franken.curBandMap->isForceLo;
+    INT fhi = fixMin(g_franken.curBandMap->isForceHi, maxSfbPerGroup - 1);
     for (sfb = 0; sfb < sfbCnt; sfb += sfbPerGroup) {
       for (sfboffs = 0; sfboffs < maxSfbPerGroup; sfboffs++) {
         INT band = sfboffs;

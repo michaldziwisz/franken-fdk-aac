@@ -1675,6 +1675,11 @@ typedef enum {
   AACENC_FRANKEN_GET_EFF_HOLE_LADDER = 0xF08E,/*!< Effective hole ladder (-1 stock). */
   AACENC_FRANKEN_GET_EFF_AVOID_HOLES = 0xF08F,/*!< Effective avoid-holes (-1 stock). */
   AACENC_FRANKEN_GET_EFF_PNS_ABOVE = 0xF090,  /*!< Effective PNS-above Hz (-1 off). */
+  AACENC_FRANKEN_GET_BANDMAP = 0xF0A0,        /*!< Band map read-back, 0xF0A0 + tab*32 + hz*16 + what
+                                                   (what 0..8: msMax msLo msHi isMax isLo isHi
+                                                   isForceLo isForceHi holeStart; tab 0 long 1 short;
+                                                   hz 1 = edge in Hz). Up to 0xF0DF. */
+  AACENC_FRANKEN_GET_SIDE_CUT_SFB_SHORT = 0xF0E0, /*!< First short SFB of --side-cutoff (-1 off). */
 
   AACENC_NONE = 0xFFFF /*!< ------ */
 

@@ -462,6 +462,41 @@ int aacenc_init(HANDLE_AACENCODER *encoder, const aacenc_param_t *params,
         if (params->fr_is_force_lo >= 0 || params->fr_is_force_hi >= 0)
             fprintf(stderr, "  [FORCED range %d..%d]", params->fr_is_force_lo, params->fr_is_force_hi);
         fprintf(stderr, "\n");
+        /* Band switches take LONG SFB numbers; short frames use the same
+         * frequencies on their coarser table. Show both, in bands and Hz. */
+        {
+#define FRBM(tab, hz, what) ((int)aacEncoder_GetParam(*encoder, (AACENC_PARAM)(0xF0A0 + (tab) * 32 + (hz) * 16 + (what))))
+            static const struct { int what, flagLo, flagHi; const char *name; } rows[] = {
+                {0, -1, 0, "msbands"}, {1, 1, 2, "msbands-lo/-hi"},
+                {4, 4, 5, "is-lo/-hi"}, {6, 6, 7, "is-force-lo/-hi"}, {3, -1, 3, "isbands"},
+            };
+            int given[8] = { params->fr_ms_bands >= 0, params->fr_ms_band_lo >= 0,
+                             params->fr_ms_band_hi >= 0, params->fr_is_bands >= 0,
+                             params->fr_is_band_lo >= 0, params->fr_is_band_hi >= 0,
+                             params->fr_is_force_lo >= 0, params->fr_is_force_hi >= 0 };
+            int k;
+            for (k = 0; k < 5; k++) {
+                int w = rows[k].what, lo, hi, slo, shi;
+                if (!(given[w] || (rows[k].flagHi >= 0 && given[rows[k].flagHi]))) continue;
+                if (w == 0) {
+                    fprintf(stderr, " %-21s : long bands 0..%d (0..%d Hz) -> short 0..%d (0..%d Hz)\n",
+                            "msbands", FRBM(0,0,0) - 1, FRBM(0,1,0), FRBM(1,0,0) - 1, FRBM(1,1,0));
+                } else if (w == 3) {
+                    fprintf(stderr, " %-21s : %d per frame in long, %d per window group in short\n",
+                            "isbands", FRBM(0,0,3), FRBM(1,0,3));
+                } else {
+                    lo = FRBM(0,0,w); hi = FRBM(0,0,w+1); slo = FRBM(1,0,w); shi = FRBM(1,0,w+1);
+                    if (slo > shi)
+                        fprintf(stderr, " %-21s : long %d..%d (%d..%d Hz) -> short none\n", rows[k].name,
+                                lo, hi, FRBM(0,1,w), FRBM(0,1,w+1));
+                    else
+                        fprintf(stderr, " %-21s : long %d..%d (%d..%d Hz) -> short %d..%d (%d..%d Hz)\n",
+                                rows[k].name, lo, hi, FRBM(0,1,w), FRBM(0,1,w+1), slo, shi,
+                                FRBM(1,1,w), FRBM(1,1,w+1));
+                }
+            }
+#undef FRBM
+        }
         fprintf(stderr, " IS min contiguous SFBs: %d\n", (int)aacEncoder_GetParam(*encoder, AACENC_FRANKEN_GET_IS_MINSFBS));
         fprintf(stderr, " IS corr threshold     : %d\n", (int)aacEncoder_GetParam(*encoder, AACENC_FRANKEN_GET_IS_CORR));
         fprintf(stderr, " IS L/R ratio thresh   : %d\n", (int)aacEncoder_GetParam(*encoder, AACENC_FRANKEN_GET_IS_LRRATIO));
@@ -621,7 +656,7 @@ int aacenc_init(HANDLE_AACENCODER *encoder, const aacenc_param_t *params,
             if (params->fr_pns_shared >= 0) { FRV_HDR(); fprintf(stderr, " pns-shared            : %s\n", params->fr_pns_shared ? "1 (one shared noise in both channels, cheap MS mask)" : "0 (independent noise in each channel)"); }
             if (params->fr_pns_hold > 0) { FRV_HDR(); fprintf(stderr, " pns-hold              : %.3f dB (neighbour noise levels within this share one level)\n", params->fr_pns_hold/1000.0); }
             if (params->fr_pns_budget >= 0) { FRV_HDR(); fprintf(stderr, " pns-budget            : %s\n", params->fr_pns_budget ? "1 (PNS energy bits booked in the bit target and crash recovery)" : "0 (stock booking)"); }
-            if (params->fr_side_cutoff > 0) { FRV_HDR(); fprintf(stderr, " side-cutoff           : %d Hz (pure mid from long SFB %d up)\n", params->fr_side_cutoff, (int)aacEncoder_GetParam(*encoder, AACENC_FRANKEN_GET_SIDE_CUT_SFB)); }
+            if (params->fr_side_cutoff > 0) { FRV_HDR(); fprintf(stderr, " side-cutoff           : %d Hz (pure mid from long SFB %d, short SFB %d up)\n", params->fr_side_cutoff, (int)aacEncoder_GetParam(*encoder, AACENC_FRANKEN_GET_SIDE_CUT_SFB), (int)aacEncoder_GetParam(*encoder, AACENC_FRANKEN_GET_SIDE_CUT_SFB_SHORT)); }
             if (params->fr_is_admit >= 0) { FRV_HDR(); fprintf(stderr, " is-admit              : %.2f (IS allowed when bitrate/bandwidth is below; stock 5)\n", params->fr_is_admit/100.0); }
             if (params->fr_side_knee != AACENC_FRANKEN_OFF) { FRV_HDR(); fprintf(stderr, " side-knee             : %+.3f dB offset on side band margins (zone x%.2f, spread %.2f dB)\n", params->fr_side_knee/1000.0, params->fr_side_knee_zone > 0 ? params->fr_side_knee_zone/1000.0 : 3.0, params->fr_side_knee_spread > 0 ? params->fr_side_knee_spread/1000.0 : 1.0); }
             if (params->fr_mask_slope != AACENC_FRANKEN_OFF) { FRV_HDR(); fprintf(stderr, " mask-slope            : %+.3f dB (+ = more detail in quiet bands, - = starve harder)\n", params->fr_mask_slope/1000.0); }
@@ -667,7 +702,7 @@ int aacenc_init(HANDLE_AACENCODER *encoder, const aacenc_param_t *params,
             if (params->fr_window_shape != -1) { FRV_HDR(); fprintf(stderr, " window-shape          : %d\n", params->fr_window_shape); }
             if (params->fr_short_groups != -1) { FRV_HDR(); fprintf(stderr, " short-groups          : %d\n", params->fr_short_groups); }
             if (params->fr_avoid_holes != -1) { FRV_HDR(); fprintf(stderr, " avoid-holes           : %d\n", params->fr_avoid_holes); }
-            if (params->fr_hole_start != -1) { FRV_HDR(); fprintf(stderr, " hole-start            : %d\n", params->fr_hole_start); }
+            if (params->fr_hole_start != -1) { FRV_HDR(); fprintf(stderr, " hole-start            : %d (short blocks: %s%d)\n", params->fr_hole_start, params->fr_hole_start_short != -1 ? "given " : "moved to ", params->fr_hole_start_short != -1 ? params->fr_hole_start_short : (int)aacEncoder_GetParam(*encoder, (AACENC_PARAM)(0xF0A0 + 32 + 8))); }
             if (params->fr_hole_start_short != -1) { FRV_HDR(); fprintf(stderr, " hole-start-short      : %d\n", params->fr_hole_start_short); }
             if (params->fr_hole_spread != AACENC_FRANKEN_OFF) { FRV_HDR(); fprintf(stderr, " hole-spread           : %.3f\n", params->fr_hole_spread/1000.0); }
             if (params->fr_hole_ladder != -1) { FRV_HDR(); fprintf(stderr, " hole-ladder           : %d\n", params->fr_hole_ladder); }

@@ -222,15 +222,18 @@ void FDKaacEnc_MsStereoProcessing(PSY_DATA *RESTRICT psyData[(2)],
            * convention intensity.cpp uses for --is-lo/--is-hi. Using
            * sfb + sfboffs made groups 1..n fall outside any range. */
           int band = sfboffs;
+          /* The switches are long-block SFB numbers; curBandMap holds them for
+           * the block type at hand (short: moved to the short table by
+           * frequency, franken.cpp frankenBuildBandMaps). */
+          const FR_BANDMAP *bm = g_franken.curBandMap;
           if (g_franken.forceMsMask == 1) useMS = 1;      /* force MS everywhere */
           else if (g_franken.forceMsMask == 0) useMS = 0; /* force pure L/R */
           /* Legacy cap: no MS at/above msMaxBands (keeps N lowest bands). */
-          if (g_franken.msMaxBands >= 0 && band >= g_franken.msMaxBands)
-            useMS = 0;
+          if (g_franken.msMaxBands >= 0 && band >= bm->msMax) useMS = 0;
           /* New: explicit MS band RANGE [msBandLo, msBandHi] so MS can sit on the
            * HIGH bands, not only the lowest N. Bands outside the range = L/R. */
-          if (g_franken.msBandLo >= 0 && band < g_franken.msBandLo) useMS = 0;
-          if (g_franken.msBandHi >= 0 && band > g_franken.msBandHi) useMS = 0;
+          if (g_franken.msBandLo >= 0 && band < bm->msLo) useMS = 0;
+          if (g_franken.msBandHi >= 0 && band > bm->msHi) useMS = 0;
         }
 
         /* Frankenstein --side-cutoff: from the cutoff SFB up the band is pure

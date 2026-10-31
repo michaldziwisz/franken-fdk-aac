@@ -5,10 +5,14 @@ Dla kazdej ramki: pierwszy element musi byc CPE ze wspolnym oknem. Czytamy
 ics_info (window_sequence, max_sfb, grupowanie) i ms_mask_present oraz
 ms_used[g][sfb]. Tylko stdlib.
 
-Uzycie: parse_ms.py plik.aac [--lo N] [--hi N] [--max N] [--json]
+Uzycie: parse_ms.py plik.aac [--lo N] [--hi N] [--max N]
+                   [--slo N] [--shi N] [--smax N] [--json]
 Z --lo/--hi/--max sprawdza zgodnosc maski z zakresem pasm liczonym
 W OBREBIE GRUPY (numer SFB czestotliwosciowego), tak jak definiuja to
-przelaczniki --msbands-lo/--msbands-hi/--msbands.
+przelaczniki --msbands-lo/--msbands-hi/--msbands. Przelaczniki podaja numery
+pasm LONG; ramka short ma wlasna, grubsza tablice, wiec dla niej podaje sie
+zakres przelozony (--slo/--shi/--smax, z --verbose enkodera). Bez nich ramki
+short sprawdza sie zakresem long (zachowanie sprzed 1.4.0-beta.2).
 """
 import sys, json, argparse
 
@@ -86,6 +90,9 @@ def main():
     ap.add_argument("--lo", type=int)
     ap.add_argument("--hi", type=int)
     ap.add_argument("--max", type=int)
+    ap.add_argument("--slo", type=int)
+    ap.add_argument("--shi", type=int)
+    ap.add_argument("--smax", type=int)
     ap.add_argument("--json", action="store_true")
     a = ap.parse_args()
     data = open(a.f, "rb").read()
@@ -100,6 +107,13 @@ def main():
           "used_in_range_gN": 0,  # MS w zakresie w grupach >0 (dowod, ze dziala)
           }
     restricted = any(v is not None and v >= 0 for v in (a.lo, a.hi, a.max))
+    short_own = any(v is not None for v in (a.slo, a.shi, a.smax))
+    st["short_ms_in_range"] = 0   # MS w ramkach short w zakresie (dowod dzialania)
+
+    def ok(s, short):
+        if short and short_own:
+            return allowed(s, a.slo, a.shi, a.smax)
+        return allowed(s, a.lo, a.hi, a.max)
     for fr, hdr, nblk in frames(data):
         st["frames"] += 1
         if nblk != 0:
@@ -115,7 +129,7 @@ def main():
         if r["mmp"] == 2 and restricted:
             # MS na WSZYSTKICH pasmach - narusza, jesli jakies pasmo < max_sfb
             # jest poza dozwolonym zakresem
-            if any(not allowed(s, a.lo, a.hi, a.max) for s in range(r["max_sfb"])):
+            if any(not ok(s, r["short"]) for s in range(r["max_sfb"])):
                 st["viol_all"] += 1
         if r["mmp"] == 1:
             for g, row in enumerate(r["used"]):
@@ -124,11 +138,13 @@ def main():
                         continue
                     if r["short"]:
                         st["short_ms_g0" if g == 0 else "short_ms_gN"] += 1
-                        if g > 0 and allowed(s, a.lo, a.hi, a.max):
+                        if g > 0 and ok(s, True):
                             st["used_in_range_gN"] += 1
+                        if ok(s, True):
+                            st["short_ms_in_range"] += 1
                     else:
                         st["long_ms"] += 1
-                    if restricted and not allowed(s, a.lo, a.hi, a.max):
+                    if restricted and not ok(s, r["short"]):
                         st["viol_band"] += 1
     if a.json:
         print(json.dumps(st))

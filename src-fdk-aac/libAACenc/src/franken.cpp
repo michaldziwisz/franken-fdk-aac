@@ -1,5 +1,8 @@
 /* franken.cpp - definition + defaults for Frankenstein debug overrides. */
 #include "franken.h"
+#include "psy_const.h"
+#include <stdio.h>
+#include <stdlib.h>
 
 FRANKEN_CFG g_franken;
 
@@ -143,6 +146,18 @@ extern "C" void frankenResetDefaults(void) {
   g_franken.curSideCutSfb = -1;
   g_franken.curPnsFlagL = 0;
   g_franken.curPnsFlagR = 0;
+  for (int t = 0; t < 2; t++) {
+    g_franken.bandMap[t].msMax = FR_BAND_ALL;
+    g_franken.bandMap[t].msLo = 0;
+    g_franken.bandMap[t].msHi = FR_BAND_ALL;
+    g_franken.bandMap[t].isMax = FR_BAND_ALL;
+    g_franken.bandMap[t].isLo = 0;
+    g_franken.bandMap[t].isHi = FR_BAND_ALL;
+    g_franken.bandMap[t].isForceLo = -1;
+    g_franken.bandMap[t].isForceHi = -1;
+  }
+  g_franken.curBandMap = &g_franken.bandMap[0];
+  g_franken.effHoleStartShort = -1;
   g_franken.msaSlopeDbX1000 = FRANKEN_OFF;
 
   g_franken.sbrHeaderPeriod = -1;
@@ -357,6 +372,226 @@ extern "C" int frankenEffPnsAbove(void) {
   if (g_franken.pnsAboveHz > 0) return g_franken.pnsAboveHz;
   if (covIdx() >= 0) return kCoverage[covIdx()].pnsAboveHz;
   return -1;
+}
+
+/* ---- Long -> short band translation ----
+ * Every band switch takes LONG-block SFB numbers. A short block has its own,
+ * much coarser table (48 kHz: 49 long bands, 14 short ones), so the same number
+ * means another frequency there: long SFB 18 starts at 2.5 kHz, short SFB 13 at
+ * 21 kHz. Until 1.4.0-beta.1 the numbers were compared directly, so for example
+ * --msbands-lo 18 left short frames without any MS and --msbands 18 put MS on
+ * every short band up to 24 kHz.
+ *
+ * Here each edge of a long range is moved to the short band border nearest to
+ * it in Hz; an exact tie goes to the higher border. A band of the short table
+ * is therefore inside the range when at least half of its width is. If a
+ * non-empty long range would leave no short band at all (a narrow range inside
+ * one wide short band), the short band that overlaps it most is used, ties to
+ * the higher band. The map is computed once at init for the real tables of the
+ * sample rate and frame length (1024/128, 960/120), so the number of window
+ * groups and --short-groups play no part: groups only repeat the same table. */
+static int s_offL[MAX_GROUPED_SFB + 1], s_offS[MAX_GROUPED_SFB + 1];
+static int s_cntL, s_cntS, s_actL, s_actS, s_rate, s_haveShort;
+
+/* band border nearest to a long border (expressed as a fraction of the
+ * spectrum, i.e. long line * lenS == short line * lenL), ties upwards */
+static int frNearestBorder(long long lineL, long long lenL, const int *offS,
+                           int cntS, long long lenS) {
+  int best = 0;
+  long long bestD = -1;
+  for (int b = 0; b <= cntS; b++) {
+    long long d = (long long)offS[b] * lenL - lineL * lenS;
+    if (d < 0) d = -d;
+    if (bestD < 0 || d <= bestD) { /* <= : a tie moves to the higher border */
+      bestD = d;
+      best = b;
+    }
+  }
+  return best;
+}
+
+/* long band range [lo, hiEx) (exclusive end) -> short range [*sLo, *sHiEx) */
+static void frMapRange(int lo, int hiEx, int *sLo, int *sHiEx) {
+  const long long lenL = s_offL[s_cntL], lenS = s_offS[s_cntS];
+  if (lo < 0) lo = 0;
+  if (hiEx > s_cntL) hiEx = s_cntL;
+  if (lo >= hiEx) { /* empty long range stays empty */
+    *sLo = 0;
+    *sHiEx = 0;
+    return;
+  }
+  int a = frNearestBorder(s_offL[lo], lenL, s_offS, s_cntS, lenS);
+  int b = frNearestBorder(s_offL[hiEx], lenL, s_offS, s_cntS, lenS);
+  if (b <= a) { /* the range lies inside one short band: take the best overlap */
+    long long best = -1;
+    int bb = a;
+    for (int k = 0; k < s_cntS; k++) {
+      long long x0 = (long long)s_offS[k] * lenL, x1 = (long long)s_offS[k + 1] * lenL;
+      long long y0 = (long long)s_offL[lo] * lenS, y1 = (long long)s_offL[hiEx] * lenS;
+      long long ov = (x1 < y1 ? x1 : y1) - (x0 > y0 ? x0 : y0);
+      if (ov >= best && ov > 0) { best = ov; bb = k; }
+    }
+    a = bb;
+    b = bb + 1;
+  }
+  *sLo = a;
+  *sHiEx = b;
+}
+
+extern "C" void frankenBuildBandMaps(const int *offL, int cntL, int actL,
+                                     const int *offS, int cntS, int actS,
+                                     int sampleRate) {
+  FR_BANDMAP *L = &g_franken.bandMap[0], *S = &g_franken.bandMap[1];
+  /* long table: the switches as given, as effective values */
+  L->msMax = (g_franken.msMaxBands >= 0) ? g_franken.msMaxBands : FR_BAND_ALL;
+  L->msLo = (g_franken.msBandLo >= 0) ? g_franken.msBandLo : 0;
+  L->msHi = (g_franken.msBandHi >= 0) ? g_franken.msBandHi : FR_BAND_ALL;
+  L->isMax = (g_franken.isMaxBands >= 0) ? g_franken.isMaxBands : FR_BAND_ALL;
+  L->isLo = (g_franken.isBandLo >= 0) ? g_franken.isBandLo : 0;
+  L->isHi = (g_franken.isBandHi >= 0) ? g_franken.isBandHi : FR_BAND_ALL;
+  if (g_franken.isForceLo >= 0 || g_franken.isForceHi >= 0) {
+    L->isForceLo = (g_franken.isForceLo >= 0) ? g_franken.isForceLo : 0;
+    L->isForceHi = (g_franken.isForceHi >= 0) ? g_franken.isForceHi : FR_BAND_ALL;
+  } else {
+    L->isForceLo = L->isForceHi = -1;
+  }
+  *S = *L;
+  g_franken.curBandMap = L;
+  g_franken.effHoleStartShort = -1;
+  s_haveShort = 0;
+  if (offL == 0 || offS == 0 || cntL <= 0 || cntS <= 0) return; /* LD/ELD: no short */
+  s_cntL = (cntL > MAX_GROUPED_SFB) ? MAX_GROUPED_SFB : cntL;
+  s_cntS = (cntS > MAX_GROUPED_SFB) ? MAX_GROUPED_SFB : cntS;
+  for (int i = 0; i <= s_cntL; i++) s_offL[i] = offL[i];
+  for (int i = 0; i <= s_cntS; i++) s_offS[i] = offS[i];
+  s_actL = actL;
+  s_actS = actS;
+  s_rate = sampleRate;
+  s_haveShort = 1;
+
+  int a, b;
+  /* --msbands N: MS on long bands 0..N-1 */
+  if (L->msMax != FR_BAND_ALL) {
+    frMapRange(0, L->msMax, &a, &b);
+    S->msMax = b;
+  }
+  /* --msbands-lo/-hi: inclusive long range */
+  if (g_franken.msBandLo >= 0 || g_franken.msBandHi >= 0) {
+    frMapRange(L->msLo, (L->msHi == FR_BAND_ALL) ? s_cntL : L->msHi + 1, &a, &b);
+    S->msLo = (g_franken.msBandLo >= 0) ? a : 0;
+    S->msHi = (g_franken.msBandHi >= 0) ? b - 1 : FR_BAND_ALL;
+    if (b <= a) { S->msLo = 1; S->msHi = 0; } /* empty */
+  }
+  if (g_franken.isBandLo >= 0 || g_franken.isBandHi >= 0) {
+    frMapRange(L->isLo, (L->isHi == FR_BAND_ALL) ? s_cntL : L->isHi + 1, &a, &b);
+    S->isLo = (g_franken.isBandLo >= 0) ? a : 0;
+    S->isHi = (g_franken.isBandHi >= 0) ? b - 1 : FR_BAND_ALL;
+    if (b <= a) { S->isLo = 1; S->isHi = 0; }
+  }
+  if (L->isForceLo >= 0) {
+    frMapRange(L->isForceLo, (L->isForceHi == FR_BAND_ALL) ? s_cntL : L->isForceHi + 1,
+               &a, &b);
+    if (b > a) {
+      S->isForceLo = (g_franken.isForceLo >= 0) ? a : 0;
+      S->isForceHi = (g_franken.isForceHi >= 0) ? b - 1 : FR_BAND_ALL;
+    } else {
+      S->isForceLo = S->isForceHi = -1;
+    }
+  }
+  /* --isbands N is a COUNT. A short frame repeats the whole (coarser) table in
+   * every window group, so the cap applies per group, scaled by the ratio of
+   * active short to active long bands; N > 0 keeps at least one band. */
+  if (L->isMax != FR_BAND_ALL) {
+    if (L->isMax <= 0 || actL <= 0) {
+      S->isMax = 0;
+    } else {
+      int n = (int)(((long long)L->isMax * actS * 2 + actL) / (2LL * actL));
+      S->isMax = (n < 1) ? 1 : n;
+    }
+  }
+  /* --side-cutoff <Hz>: the long table takes the first band border at or above
+   * the frequency (psy_configuration.cpp). The short border used to be found
+   * the same way on its own, coarser table, so 9 kHz became 10.5 kHz in short
+   * frames. Now the short border is the one nearest to the LONG edge, ties
+   * upwards, like every other band switch. */
+  if (g_franken.sideCutoffHz > 0 && g_franken.effSideCutSfbLong >= 0) {
+    const int cl = g_franken.effSideCutSfbLong;
+    g_franken.effSideCutSfbShort =
+        (cl >= s_cntL) ? s_cntS
+                       : frNearestBorder(s_offL[cl], s_offL[s_cntL], s_offS, s_cntS,
+                                         s_offS[s_cntS]);
+  }
+  /* --hole-start without --hole-start-short: the long start moved to the
+   * short table the same way (stock pair 15 / 3 maps onto itself at 44.1 and
+   * 48 kHz). An explicit --hole-start-short wins. */
+  if (g_franken.holeStartShort < 0 && frankenEffHoleStartLong() >= 0) {
+    int hs = frankenEffHoleStartLong();
+    if (hs >= s_cntL) {
+      g_franken.effHoleStartShort = s_cntS;
+    } else {
+      g_franken.effHoleStartShort =
+          frNearestBorder(s_offL[hs], s_offL[s_cntL], s_offS, s_cntS, s_offS[s_cntS]);
+    }
+  }
+}
+
+extern "C" int frankenBandMapGet(int tab, int what, int hz) {
+  const FR_BANDMAP *m = &g_franken.bandMap[(tab == 1) ? 1 : 0];
+  int v;
+  switch (what) {
+    case 0: v = m->msMax; break;
+    case 1: v = m->msLo; break;
+    case 2: v = m->msHi; break;
+    case 3: v = m->isMax; break;
+    case 4: v = m->isLo; break;
+    case 5: v = m->isHi; break;
+    case 6: v = m->isForceLo; break;
+    case 7: v = m->isForceHi; break;
+    case 8: v = (tab == 1) ? g_franken.effHoleStartShort : frankenEffHoleStartLong(); break;
+    default: return -1;
+  }
+  if (!hz) {
+    /* "no limit" shown as the real top of the table */
+    if (v == FR_BAND_ALL && s_haveShort) {
+      const int act = (tab == 1) ? s_actS : s_actL;
+      if (what == 2 || what == 5 || what == 7) return act - 1;
+      return act;
+    }
+    return v;
+  }
+  if (!s_haveShort || v < 0) return -1;
+  const int *off = (tab == 1) ? s_offS : s_offL;
+  const int cnt = (tab == 1) ? s_cntS : s_cntL;
+  const int act = (tab == 1) ? s_actS : s_actL;
+  if (v == FR_BAND_ALL) v = (what == 2 || what == 5 || what == 7) ? act - 1 : act;
+  int k = v;
+  if (what == 2 || what == 5 || what == 7) k = v + 1; /* inclusive top: band end */
+  if (what == 3) return -1;                           /* a count, not a band */
+  if (k > cnt) k = cnt;
+  return (int)(((long long)off[k] * s_rate + off[cnt]) / (2LL * off[cnt]));
+}
+
+/* ---- FRANKEN_BANDLOG test aid (see franken.h) ---- */
+static FILE *s_bandLog = 0;
+static int s_bandLogInit = 0;
+static long s_bandLogFrame = 0;
+extern "C" void frankenBandLog(int ch, int isShort, int sfbPerGroup, int sfbStart,
+                               int sfbCnt, int codeBook) {
+  if (!s_bandLogInit) {
+    const char *f = getenv("FRANKEN_BANDLOG");
+    s_bandLogInit = 1;
+    if (f && f[0]) s_bandLog = fopen(f, "w");
+  }
+  if (!s_bandLog) return;
+  const int per = (sfbPerGroup > 0) ? sfbPerGroup : 1;
+  fprintf(s_bandLog, "%ld %d %c %d %d %d %d\n", s_bandLogFrame, ch, isShort ? 'S' : 'L',
+          sfbStart / per, sfbStart % per, sfbCnt, codeBook);
+}
+extern "C" void frankenBandLogFrame(void) {
+  if (s_bandLog) {
+    s_bandLogFrame++;
+    fflush(s_bandLog);
+  }
 }
 
 /* ---- --bit-stats: where the bits of the written frames go ----

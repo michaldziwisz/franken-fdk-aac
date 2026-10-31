@@ -382,6 +382,15 @@ AAC_ENCODER_ERROR FDKaacEnc_psyMainInit(
     }
   }
 
+  /* Frankenstein: long -> short translation of the band switches, from the
+   * real SFB tables of this sample rate and frame length. */
+  frankenBuildBandMaps(hPsy->psyConf[0].sfbOffset, hPsy->psyConf[0].sfbCnt,
+                       hPsy->psyConf[0].sfbActive,
+                       (granuleLength > 512) ? hPsy->psyConf[1].sfbOffset : 0,
+                       (granuleLength > 512) ? hPsy->psyConf[1].sfbCnt : 0,
+                       (granuleLength > 512) ? hPsy->psyConf[1].sfbActive : 0,
+                       sampleRate);
+
   ErrorStatus = FDKaacEnc_InitPnsConfiguration(
       &hPsy->psyConf[0].pnsConf, bitRate / channelsEff, sampleRate, usePns,
       hPsy->psyConf[0].sfbCnt, hPsy->psyConf[0].sfbOffset,
@@ -1236,6 +1245,11 @@ AAC_ENCODER_ERROR FDKaacEnc_psyMain(INT channels, PSY_ELEMENT *psyElement,
     g_franken.curSideCutSfb = -1;
     g_franken.curPnsFlagL = 0;
     g_franken.curPnsFlagR = 0;
+    /* band switches (--msbands*, --is-lo/-hi, --is-force-*, --isbands) for this
+     * block type: long numbers as given, short ones moved by frequency */
+    g_franken.curBandMap =
+        &g_franken.bandMap[(psyStatic[0]->blockSwitchingControl.lastWindowSequence ==
+                            SHORT_WINDOW) ? 1 : 0];
     if (g_franken.sideCutoffHz > 0 && commonWindow) {
       if (psyStatic[0]->blockSwitchingControl.lastWindowSequence != SHORT_WINDOW) {
         g_franken.curSideCutSfb = g_franken.effSideCutSfbLong;
@@ -1329,6 +1343,7 @@ AAC_ENCODER_ERROR FDKaacEnc_psyMain(INT channels, PSY_ELEMENT *psyElement,
     g_franken.curSideCutSfb = -1;
     g_franken.curPnsFlagL = 0;
     g_franken.curPnsFlagR = 0;
+    g_franken.curBandMap = &g_franken.bandMap[0];
   } /* (channels == 2) */
 
   /*

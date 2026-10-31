@@ -3033,6 +3033,10 @@ UINT aacEncoder_GetParam(const HANDLE_AACENCODER hAacEncoder,
   }
 
   /* apply param value */
+  if ((UINT)param >= 0xF0A0 && (UINT)param <= 0xF0DF) {
+    const UINT k = (UINT)param - 0xF0A0;
+    return (UINT)frankenBandMapGet((INT)(k >> 5), (INT)(k & 15), (INT)((k >> 4) & 1));
+  }
   switch (param) {
     case AACENC_AOT:
       value = (UINT)hAacEncoder->aacConfig.audioObjectType;
@@ -3142,6 +3146,9 @@ UINT aacEncoder_GetParam(const HANDLE_AACENCODER hAacEncoder,
       break;
     case AACENC_FRANKEN_GET_SIDE_CUT_SFB:
       value = (UINT)g_franken.effSideCutSfbLong;
+      break;
+    case AACENC_FRANKEN_GET_SIDE_CUT_SFB_SHORT:
+      value = (UINT)g_franken.effSideCutSfbShort;
       break;
     case AACENC_FRANKEN_GET_USETNS:
       value = (UINT)hAacEncoder->aacConfig.useTns;

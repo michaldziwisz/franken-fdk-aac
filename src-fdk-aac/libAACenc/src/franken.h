@@ -15,6 +15,15 @@
 /* sentinel for signed knobs where -1 is a legal value (e.g. dB biases) */
 #define FRANKEN_OFF (-2147483647)
 
+#define FR_BAND_ALL 9999 /* "no upper limit" in FR_BANDMAP */
+typedef struct FR_BANDMAP {
+  int msMax;              /* MS only on bands < msMax (--msbands) */
+  int msLo, msHi;         /* MS only on bands msLo..msHi (--msbands-lo/-hi) */
+  int isMax;              /* at most isMax IS bands per window group (--isbands) */
+  int isLo, isHi;         /* IS allowed only on isLo..isHi (--is-lo/-hi) */
+  int isForceLo, isForceHi; /* IS forced on isForceLo..isForceHi (--is-force-lo/-hi) */
+} FR_BANDMAP;
+
 typedef struct FRANKEN_CFG {
   /* ---- 1. Joint stereo / MS / IS ---- */
   int forceMsMask;   /* -1 auto (FDK), 0 force MS off (all bands), 1 force MS on (all bands) */
@@ -202,6 +211,16 @@ typedef struct FRANKEN_CFG {
   int curSideCutSfb;       /* per-call: cutoff SFB for the block type being processed */
   const int *curPnsFlagL;  /* per-call (long blocks): PNS flags of L/R, 0 in short */
   const int *curPnsFlagR;
+  /* Band switches resolved per block type. The switches are given as LONG-block
+   * SFB numbers; short blocks have their own, much coarser SFB table (14 bands
+   * at 48 kHz instead of 49), so a long number means a different frequency
+   * there. bandMap[0] holds the switches as given, bandMap[1] the same edges
+   * moved to the short table by frequency (frankenBuildBandMaps). Values are
+   * EFFECTIVE: an unset lower bound is 0, an unset upper bound / cap is
+   * FR_BAND_ALL, so the users need no sentinel checks. */
+  FR_BANDMAP bandMap[2];
+  const FR_BANDMAP *curBandMap; /* per call: bandMap[0] long, bandMap[1] short */
+  int effHoleStartShort;        /* read-back: short SFB where holes may start (-1 stock) */
   int msaSlopeDbX1000;  /* FRANKEN_OFF=off; shift the Masking-Slope-Adaptation START
                          threshold (dB*1000). MSA is a NON-masking heuristic that
                          relaxes the required min-SNR for SFBs whose energy sits
@@ -442,6 +461,24 @@ int frankenEffHoleLadder(void); /* 1..8 or -1 */
 int frankenEffAvoidHoles(void); /* 0/1 or -1 */
 int frankenEffHoleStartLong(void); /* sfb or -1 */
 int frankenEffPnsAbove(void);      /* Hz or -1 */
+/* Short-block band map (franken.cpp). offL/offS: SFB start lines of the long
+ * and short tables (cnt+1 entries), actL/actS: active band counts, sampleRate
+ * of the core. Long-only codecs (LD/ELD) pass offS == 0. */
+void frankenBuildBandMaps(const int *offL, int cntL, int actL, const int *offS,
+                          int cntS, int actS, int sampleRate);
+/* Short-band read-back for --verbose (frontend): what = 0..7 picks msMax, msLo,
+ * msHi, isMax, isLo, isHi, isForceLo, isForceHi; tab 0 long, 1 short. Returns
+ * the effective band (FR_BAND_ALL = no limit), or the edge in Hz when hz = 1
+ * (start of the band; for the "hi" fields the end of the band). */
+int frankenBandMapGet(int tab, int what, int hz);
+/* Test aid: with the environment variable FRANKEN_BANDLOG=<file> every written
+ * section of every channel (block type, window group, first band, band count,
+ * codebook) is appended to <file>. Taken from the section data that goes into
+ * the bitstream, so the tests can check IS/PNS/zero bands per window group
+ * without a full spectral decoder. Variable unset = no effect at all. */
+void frankenBandLog(int ch, int isShort, int sfbPerGroup, int sfbStart,
+                    int sfbCnt, int codeBook);
+void frankenBandLogFrame(void);
 #ifdef __cplusplus
 }
 #endif

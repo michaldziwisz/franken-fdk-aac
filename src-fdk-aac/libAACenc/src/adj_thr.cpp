@@ -2656,6 +2656,8 @@ void FDKaacEnc_AdjThrInit(
       atsElem->ahParam.startSfbL = fMin(frankenEffHoleStartLong(), MAX_SFB_LONG);
     if (g_franken.holeStartShort >= 0)
       atsElem->ahParam.startSfbS = fMin(g_franken.holeStartShort, MAX_SFB_SHORT);
+    else if (g_franken.effHoleStartShort >= 0) /* --hole-start moved to short */
+      atsElem->ahParam.startSfbS = fMin(g_franken.effHoleStartShort, MAX_SFB_SHORT);
 
     /* minSnr adaptation */
     msaParam->maxRed = FL2FXCONST_DBL(0.00390625f); /* 0.25f/64.0f */

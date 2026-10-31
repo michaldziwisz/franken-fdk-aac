@@ -1173,6 +1173,15 @@ AAC_ENCODER_ERROR FDKaacEnc_ChannelElementWrite(
       return error;
     }
 
+    /* FRANKEN_BANDLOG test aid: the sections really written (no-op unless the
+     * environment variable is set) */
+    if (hBitStream != NULL && frBsId == section_data && pChSectionData != NULL)
+      for (int s = 0; s < pChSectionData->noOfSections; s++)
+        frankenBandLog(frBsCh, chBlockType == SHORT_WINDOW, chSfbPerGrp,
+                       pChSectionData->huffsection[s].sfbStart,
+                       pChSectionData->huffsection[s].sfbCnt,
+                       pChSectionData->huffsection[s].codeBook);
+
     if (g_franken.bitStats && hBitStream != NULL) {
       INT d = (INT)FDKgetValidBits(hBitStream) - frBsBefore;
       int cat = FRBS_ELEM_HDR;
@@ -1378,6 +1387,7 @@ AAC_ENCODER_ERROR FDKaacEnc_WriteBitstream(HANDLE_TRANSPORTENC hTpEnc,
   transportEnc_EndAccessUnit(hTpEnc, &frameBits);
 
   if (g_franken.bitStats) frankenBitStatsFrame(frameBits, qcKernel->globHdrBits);
+  frankenBandLogFrame();
 
   if (frameBits != qcOut->totalBits + qcKernel->globHdrBits) {
     return AAC_ENC_WRITTEN_BITS_ERROR;
