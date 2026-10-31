@@ -369,16 +369,28 @@ Fractions work. You can type a dot or a comma and up to three decimal places (`-
 bands drop out at once. That is why -0.95 and -0.98 sound clearly different, while -1, -4 and
 -12 sound the same: the side is simply cut by then. For gentle narrowing use 0 to -0.95.
 
-SHAPING THE SIDE CUTOFF. `--side-knee <dB>` controls HOW SHARPLY a side band flips between
-"coded" and "zeroed" at that threshold. Stock FDK is a hard cliff: the instant a band's energy
-drops to or below the threshold, the whole band is thrown away. A POSITIVE value gives you a
-SOFT knee — bands sitting up to N dB *below* the threshold are still kept (coded at the coarsest
-scale factor) instead of dropped, so the side fades out gradually rather than switching off
-abruptly; reverb and "air" decay more smoothly. A NEGATIVE value gives a HARD knee — bands that
-only just clear the threshold (within N dB *above* it) are forced to zero anyway, cutting the
-side off earlier for a leaner, more aggressive result. It is orthogonal to `--side-bias` and
-combines with it: bias sets *where* the threshold sits, knee sets *how soft the edge is*. Sane
-range **+3 to +6**. `0` = off.
+SHAPING THE SIDE CUTOFF. `--side-knee <dB>` works on the margin of each side band: how far
+its energy lies above its masking threshold, which decides how finely the band is coded and
+whether it survives. The value is an offset added to that margin, so every band keeps a
+precision that follows its real level, just shifted. When FDK runs out of bits it pins weak
+bands at about 0.97 dB above the threshold; on real music some 10% of the side bands sit on
+that one value. The switch reads the margin the encoder wanted before that rescue, so those
+bands are spread out again by their real level instead of moving as one block.
+
+A POSITIVE value adds precision: bands up to N dB below the threshold are kept, graded by how
+far below they were, and bands near the edge get finer. A NEGATIVE value takes precision away:
+the weakest side bands leave first and their bits go to mid. Measured on acoustic music at
+96 kbps, coded side bands per frame fall evenly from 30.2 (stock) through 25.4 (-1), 18.1 (-6)
+to 1.1 (-24), with no jump; on the positive side the side holes go from 6.9% to 2.2% (+2) and
+0.6% (+6). It is orthogonal to `--side-bias`: bias sets *where* the edge sits, knee sets how the
+bands near it are treated. Sane range **-6 to +6**. `0` = off. Streams made with `--side-knee`
+in v1.4 differ from v1.3.x, where the knee gave every rescued band the same coarse step.
+
+CUTTING THE SIDE ABOVE A FREQUENCY. `--side-cutoff <Hz>` codes every stereo band above the
+given frequency as pure mid: the side is dropped there, the intensity stereo FDK would use there
+is cleared and the MS mask stays cheap. Stereo below the cutoff is untouched. At 48 kbps a cutoff
+of 5 kHz saved 16 bits per frame of side information and made mid 0.7 dB cleaner. At 14 kbps the
+gain is small, because FDK already zeroes most of the side there.
 
 TUNING THE QUIET BANDS GLOBALLY. `--mask-slope <dB>` is a global (both mid AND side) adjustment
 of FDK's Masking-Slope-Adaptation — a NON-masking heuristic (`adj_thr.cpp`) that relaxes the
@@ -1136,9 +1148,68 @@ Values on the Q8 scale (like the IS thresholds, `--ms-precision`, `--ms-bias`, `
 `--spread-mask`) are numbers where 256 means 1.0 — for example 243 is about 0.95.
 
 
-# Part VIII. DAB+ Digital Radio
+# Part VIII. Squeezing the Most Out of an Extreme Bitrate
 
-## 27. DAB+ output (`--dab`, `--dab-label`)
+## 27. Where the bits go, and what can be won back
+
+At 14 to 24 kbps the frame is so small that what surrounds the music matters as much as the
+music. `--bit-stats` prints, at the end of an encode, how the written frames split up. For
+stereo LC at 14 kbps and 48 kHz a frame has about 307 bits: the ADTS header takes 56 (LOAS 41
+to 44), the channel pair header and alignment about 47, sections 12 to 16%, scalefactors 8 to
+12%, the MS mask 2 bits or 22 to 27 when it is written band by band. Side information together
+is 35 to 47% of the frame; the spectrum gets only 35 to 46%. The table does not change the
+stream, so you can add it to any command line.
+
+Three levers follow from that measurement:
+
+- Intensity stereo is expensive at these rates. It forces the per-band MS mask and adds IS
+  positions. `--is-admit 0` keeps FDK from using it at all (stock allows it when bitrate divided
+  by bandwidth is below 5); on dense material at 14 kbps zeroed bands fell from 85% to 70%.
+- `--side-cutoff <Hz>` turns the upper bands into pure mid. It pays off at mid rates (48 kbps)
+  more than at 14 kbps, where the side is mostly gone anyway.
+- Smoothing the scalefactors is not worth it: they already cost 1.3 to 1.5 bits per band, and
+  even with every difference at zero the gain would be 7 to 13 bits per frame.
+
+## 28. Noise instead of holes: PNS that really saves
+
+Perceptual noise substitution replaces a band by noise of the right level. In a stereo pair the
+noise level is written for each channel separately; the format has no shared level. What a pair
+can share is the noise itself: a flag on the MS mask tells the decoder to use the same noise in
+both channels.
+
+Forcing PNS at a low rate (`--pns-above 2200` at 24 kbps, for example) used to crackle in the
+rhythm of the frames. The cause was the bit accounting of FDK: it plans a PNS band as free,
+although every noise level costs bits in the stream. Some frames then ran over budget, and the
+emergency cut removed bands from the top, through the noise region and on into the coded
+spectrum, down to about 1.5 kHz. Three switches fix that:
+
+- `--pns-budget 1` books the noise levels in the bit target and lets the emergency cut get their
+  bits back. In the case above the frames hit by the cut went from 42 of 766 to 1.
+- `--pns-shared 1` uses one shared noise in every band both channels code as PNS, so the MS mask
+  can fall back to its 2-bit form (28 to 2 bits per frame on correlated material). `0` gives
+  independent noise in each channel instead.
+- `--pns-hold <dB>` lets neighbouring noise bands share one level, so the noise envelope costs
+  less (94 to 70 bits per frame at 6 dB).
+
+With `--pns-budget 1 --pns-shared 1` the frame-rhythm modulation of the noise band fell from
+19.7 dB to 8.3 dB, below the 11.6 dB of the same file without PNS. A good starting point for any
+forced PNS at a low rate is `--pns-budget 1 --pns-shared 1 --pns-hold 3`. Note that ffmpeg 6.1.1
+plays shared noise as independent noise; the Fraunhofer decoder plays it as shared.
+
+## 29. Coverage or precision
+
+`--coverage -5..5` moves one balance with one number: + codes every band coarsely and fills
+everything, - codes fewer bands cleanly and lets holes appear. It drives `--band-knee`,
+`--quant-round`, `--thr-hold`, `--scf-range` and, at +4 and +5, `--pns-above`; each of them can
+also be set on its own and then wins over the macro. At LC 32 kbps and 17 kHz `-5` left 51% of
+the bands empty with the rest 4.75 dB cleaner, stock 11.7% and 1.96 dB, `+4` 0.2% holes.
+`--enfac-patch 0|1` switches FDK's re-weighting of flat, noise-like frames off or on for every
+frame; in CBR it is a fine knob (at most 1 point of holes), in VBR it changes the file size by up
+to 29%.
+
+# Part IX. DAB+ Digital Radio
+
+## 30. DAB+ output (`--dab`, `--dab-label`)
 
 So far we've been making files — MP4/M4A for players, ADTS for streaming. DAB+ is
 something else: it's the format of terrestrial digital radio (the standard is ETSI
@@ -1222,7 +1293,7 @@ nothing changes, and the ordinary file output stays bit-identical to stock FDK.
 
 ---
 
-# Part IX. Glossary
+# Part X. Glossary
 
 For quick recall — all the terms from this manual, explained in
 one or two sentences, in the language of the audio engineer.

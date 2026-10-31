@@ -5,7 +5,7 @@ Library** (per section 2 of the FDK AAC license, see `NOTICE.fdk-aac`).
 
 ## Releases
 
-### Unreleased — SBR estimator knobs, `--sbr-softness`, real low-bitrate unlock
+### v1.4.0-beta.1 — side knee as an offset, side cutoff, IS gate, PNS that saves bits, bit statistics, documentation audit (plus the SBR estimator knobs, `--sbr-softness`, real low-bitrate unlock)
 
 #### Core transients, pre-echo and spectral holes (LC / LD / ELD)
 
@@ -48,6 +48,18 @@ is unchanged byte for byte.
   rescued.
 - `tools/core/core_measure.py` also reports `nsr_kept`, the error in the
   bands that were not cut.
+- Documentation and help checked switch by switch against the parser (151 switches, 449
+  examples from the README run on the binary). Fixed: `-1`, documented as "off" for 61
+  switches, was rejected by the parser; it now means the same as leaving the switch out
+  (also after an earlier value on the same line). `--ath-scale`, `--core-cutoff` and
+  `--ms-bias` now reject out-of-range values instead of silently ignoring or clamping them.
+  Corrected directions: `--sbr-freqscale 1` is the finest grid (12 bands per octave), `3`
+  the coarsest; a higher `--pns-refpower` means FEWER PNS bands. Corrected numbers: the
+  6144-bit frame ceiling at 48 kHz stereo is about 576 kbps, `--dab` keeps `-b` in kbps
+  also with `--unlock-bitrate`. New cards for `--coverage`, `--band-knee`, `--quant-round`,
+  `--pns-above`, `--thr-hold`, `--scf-range`, `--bit-stats`, `--enfac-patch` and the
+  `--side-knee` diagnostics; MANUAL EN/PL rewritten for `--side-knee` and given a new part
+  on extreme bitrates.
 - `--pns-budget 0|1`: books the bits of PNS noise levels. Stock plans a PNS band as
   free; with a lot of PNS at a low rate the frame overflows and crash recovery cuts
   through the noise region into the coded spectrum (whole frames lose everything above

@@ -1116,6 +1116,22 @@ for v in "--pns-shared 2" "--pns-budget -1" "--pns-hold 0" "--pns-hold 12.01"; d
   [ $rc = 1 ] && ok "$v odrzucone (rc=1)" || bad "$v rc=$rc"
 done
 
+# --- "-1" = przelacznik pominiety (dokumentowane "-1 off") i domkniete zakresy ---
+enc "$X64" -f2 -p2 -b32000 -o "${OUT}_m10.aac" _check_cov_dense.wav
+m1ok=1
+for s in --block-bias --bitres-mode --ms-bias --pns-gain --pns-refpower --max-bits-frame --vbr-reservoir --peak-bitrate --msbands-lo; do
+  "$X64" -f2 -p2 -b32000 $s -1 -o "${OUT}_m11.aac" _check_cov_dense.wav >/dev/null 2>&1 || { m1ok=0; echo "    $s -1 odrzucone"; continue; }
+  [ "$(md5 ${OUT}_m11.aac)" = "$(md5 ${OUT}_m10.aac)" ] || { m1ok=0; echo "    $s -1 zmienia strumien"; }
+done
+[ $m1ok = 1 ] && ok "-1 = przelacznik pominiety (9 przelacznikow, strumien = stock)" || bad "-1 nie dziala jak pominiecie"
+enc "$X64" -f2 -p5 -b32000 -o "${OUT}_m12.aac" _check_cov_dense.wav
+enc "$X64" -f2 -p5 -b32000 --sbr-tran-thr 50 --sbr-tran-thr -1 -o "${OUT}_m13.aac" _check_cov_dense.wav
+[ "$(md5 ${OUT}_m13.aac)" = "$(md5 ${OUT}_m12.aac)" ] && ok "-1 po wczesniejszej wartosci przywraca stock" || bad "-1 nie kasuje wczesniejszej wartosci"
+for v in "--block-bias -2" "--ath-scale 0" "--ath-scale 4097" "--core-cutoff -1000" "--core-cutoff 48001" "--ms-bias 256"; do
+  "$X64" -p2 -b32000 $v -f2 -o "${OUT}_vz.aac" _check_cov_dense.wav >/dev/null 2>&1; rc=$?
+  [ $rc = 1 ] && ok "$v odrzucone (rc=1)" || bad "$v rc=$rc"
+done
+
 # --- --bit-stats: tylko liczy, strumien bit w bit ten sam; tabela sie drukuje ---
 enc "$X64" -f2 -p2 -b14000 --uncap-bandwidth --unlock-bitrate -o "${OUT}_bs0.aac" _check_cov_dense.wav
 "$X64" -f2 -p2 -b14000 --uncap-bandwidth --unlock-bitrate --bit-stats -o "${OUT}_bs1.aac" _check_cov_dense.wav 2> "${OUT}_bs.txt" >/dev/null

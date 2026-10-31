@@ -372,16 +372,29 @@ linię minimalnego SNR i większość pasm side wypada naraz. Dlatego -0,95 i -0
 wyraźnie inaczej, a -1, -4 i -12 już tak samo: side jest wtedy po prostu wycięty. Do
 delikatnego zwężania używaj wartości od 0 do -0,95.
 
-KSZTAŁTOWANIE ODCIĘCIA SIDE. `--side-knee <dB>` steruje tym, JAK OSTRO pasmo side przełącza się
-między „kodowane" a „wyzerowane" na tym progu. Stock FDK to twardy klif: w chwili gdy energia
-pasma spadnie do progu lub poniżej, całe pasmo jest wyrzucane. Wartość DODATNIA daje MIĘKKIE
-kolano — pasma leżące do N dB *poniżej* progu są nadal zachowane (kodowane na najzgrubszym
-współczynniku skali) zamiast wyrzucane, więc side gaśnie stopniowo zamiast wyłączać się nagle;
-pogłos i „powietrze" wybrzmiewają łagodniej. Wartość UJEMNA daje TWARDE kolano — pasma, które
-ledwo przekraczają próg (do N dB *nad* nim), są mimo to zerowane, odcinając side wcześniej, dla
-chudszego, agresywniejszego efektu. Jest ortogonalny do `--side-bias` i łączy się z nim: bias
-ustawia, *gdzie* leży próg, a knee — *jak miękka jest jego krawędź*. Rozsądny zakres **+3 do +6**.
-`0` = off.
+KSZTAŁTOWANIE ODCIĘCIA SIDE. `--side-knee <dB>` działa na zapasie każdego pasma side: o ile
+jego energia leży nad progiem maskowania, co decyduje, jak dokładnie pasmo jest kodowane i czy w
+ogóle przetrwa. Wartość to przesunięcie dodawane do tego zapasu, więc każde pasmo zachowuje
+precyzję należną jego prawdziwemu poziomowi, tylko przesuniętą. Gdy FDK brakuje bitów, przypina
+słabe pasma około 0,97 dB nad progiem; w prawdziwej muzyce około 10% pasm side ląduje na tej
+jednej wartości. Przełącznik czyta zapas, którego koder chciał przed tym ratunkiem, więc te pasma
+znów rozkładają się według prawdziwego poziomu, zamiast ruszać się jednym blokiem.
+
+Wartość DODATNIA dodaje precyzji: pasma do N dB pod progiem zostają, stopniowane według tego, jak
+daleko pod nim były, a pasma przy krawędzi kodowane są dokładniej. Wartość UJEMNA odbiera
+precyzję: najsłabsze pasma side odchodzą pierwsze, a ich bity idą do mid. Zmierzone na muzyce
+akustycznej przy 96 kbps: kodowanych pasm side na ramkę ubywa równo z 30,2 (stock) przez 25,4
+(-1) i 18,1 (-6) do 1,1 (-24), bez skoku; po stronie dodatniej dziury w side spadają z 6,9% do
+2,2% (+2) i 0,6% (+6). Jest ortogonalny do `--side-bias`: bias ustawia, *gdzie* leży krawędź, a
+knee, jak traktowane są pasma przy niej. Rozsądny zakres **-6 do +6**. `0` = off. Strumienie z
+`--side-knee` w v1.4 różnią się od v1.3.x, gdzie knee dawał każdemu uratowanemu pasmu ten sam
+gruby krok.
+
+ODCIĘCIE SIDE POWYŻEJ CZĘSTOTLIWOŚCI. `--side-cutoff <Hz>` koduje każde pasmo stereo powyżej
+podanej częstotliwości jako czysty mid: side jest tam porzucany, intensity stereo, którego FDK by
+tam użył, jest kasowane, a maska MS zostaje tania. Stereo poniżej granicy jest nietknięte. Przy
+48 kbps granica 5 kHz oszczędziła 16 bitów informacji bocznych na ramkę, a mid był o 0,7 dB
+czystszy. Przy 14 kbps zysk jest mały, bo FDK i tak zeruje tam większość side.
 
 STROJENIE CICHYCH PASM GLOBALNIE. `--mask-slope <dB>` to globalna (mid ORAZ side) regulacja
 Masking-Slope-Adaptation FDK — heurystyki NIE-maskującej (`adj_thr.cpp`), która rozluźnia
@@ -1158,9 +1171,67 @@ Wartości w skali Q8 (jak progi IS, `--ms-precision`, `--ms-bias`, `--ath-scale`
 `--spread-mask`) to liczby, gdzie 256 znaczy 1,0 — na przykład 243 to około 0,95.
 
 
-# Część VIII. Radio cyfrowe DAB+
+# Część VIII. Jak wycisnąć najwięcej ze skrajnego bitrate
 
-## 27. Wyjście DAB+ (`--dab`, `--dab-label`)
+## 27. Na co idą bity i co da się odzyskać
+
+Przy 14 do 24 kbps ramka jest tak mała, że to, co otacza muzykę, waży tyle co sama muzyka.
+`--bit-stats` wypisuje na końcu kodowania, jak dzielą się zapisane ramki. Dla stereo LC przy
+14 kbps i 48 kHz ramka ma około 307 bitów: nagłówek ADTS zajmuje 56 (LOAS 41 do 44), nagłówek
+pary kanałów i wyrównanie około 47, sekcje 12 do 16%, współczynniki skali 8 do 12%, maska MS 2
+bity albo 22 do 27, gdy jest zapisywana pasmo po paśmie. Informacje boczne razem to 35 do 47%
+ramki; na widmo zostaje tylko 35 do 46%. Tabela nie zmienia strumienia, więc można ją dopisać do
+każdego polecenia.
+
+Z tego pomiaru wynikają trzy dźwignie:
+
+- Intensity stereo jest przy tych prędkościach drogie. Wymusza maskę MS pasmo po paśmie i
+  dokłada pozycje IS. `--is-admit 0` nie pozwala FDK go użyć (stock dopuszcza je, gdy bitrate
+  podzielony przez pasmo jest mniejszy niż 5); na gęstym materiale przy 14 kbps udział
+  wyzerowanych pasm spadł z 85% do 70%.
+- `--side-cutoff <Hz>` zamienia górne pasma w czysty mid. Opłaca się bardziej przy średnich
+  prędkościach (48 kbps) niż przy 14 kbps, gdzie side i tak w większości znika.
+- Wygładzanie współczynników skali się nie opłaca: kosztują już 1,3 do 1,5 bitu na pasmo, a
+  nawet przy wszystkich różnicach równych zeru zysk wyniósłby 7 do 13 bitów na ramkę.
+
+## 28. Szum zamiast dziur: PNS, który naprawdę oszczędza
+
+Podstawianie szumu (PNS) zastępuje pasmo szumem o właściwym poziomie. W parze stereo poziom szumu
+jest zapisywany dla każdego kanału osobno; format nie ma wspólnego poziomu. Para może współdzielić
+sam szum: flaga na masce MS mówi dekoderowi, żeby w obu kanałach użył tego samego szumu.
+
+Wymuszony PNS przy niskim bitrate (na przykład `--pns-above 2200` przy 24 kbps) trzeszczał w
+rytmie ramek. Przyczyną było księgowanie bitów FDK: planuje ono pasmo PNS jako darmowe, choć każdy
+poziom szumu kosztuje bity w strumieniu. Część ramek przekraczała wtedy budżet, a awaryjne cięcie
+zdejmowało pasma od góry, przez obszar szumu i dalej w kodowane widmo, aż do około 1,5 kHz. Trzy
+przełączniki to naprawiają:
+
+- `--pns-budget 1` księguje poziomy szumu w celu bitowym i pozwala awaryjnemu cięciu odzyskać
+  ich bity. W opisanym przypadku liczba obciętych ramek spadła z 42 na 766 do 1.
+- `--pns-shared 1` używa jednego wspólnego szumu we wszystkich pasmach, które oba kanały kodują
+  jako PNS, więc maska MS może wrócić do postaci 2-bitowej (z 28 do 2 bitów na ramkę na
+  materiale skorelowanym). `0` daje zamiast tego niezależny szum w każdym kanale.
+- `--pns-hold <dB>` pozwala sąsiednim pasmom szumu dzielić jeden poziom, więc obwiednia szumu
+  kosztuje mniej (z 94 do 70 bitów na ramkę przy 6 dB).
+
+Z `--pns-budget 1 --pns-shared 1` modulacja pasma szumu w rytmie ramek spadła z 19,7 dB do 8,3 dB,
+poniżej 11,6 dB tego samego pliku bez PNS. Dobry punkt wyjścia dla każdego wymuszonego PNS przy
+niskim bitrate to `--pns-budget 1 --pns-shared 1 --pns-hold 3`. ffmpeg 6.1.1 gra wspólny szum jako
+niezależny; dekoder Fraunhofera gra go jako wspólny.
+
+## 29. Pokrycie albo precyzja
+
+`--coverage -5..5` przesuwa jedną równowagę jedną liczbą: plus koduje każde pasmo grubo i wypełnia
+wszystko, minus koduje mniej pasm czysto i dopuszcza dziury. Steruje `--band-knee`,
+`--quant-round`, `--thr-hold`, `--scf-range`, a przy +4 i +5 także `--pns-above`; każdy z nich
+można też ustawić osobno i wtedy wygrywa z makrem. Przy LC 32 kbps i 17 kHz `-5` zostawiło puste
+51% pasm, a reszta była o 4,75 dB czystsza, stock 11,7% i 1,96 dB, `+4` 0,2% dziur.
+`--enfac-patch 0|1` wyłącza przeważanie płaskich, szumowych ramek w FDK albo włącza je dla każdej
+ramki; w CBR to drobne pokrętło (najwyżej 1 punkt dziur), w VBR zmienia rozmiar pliku nawet o 29%.
+
+# Część IX. Radio cyfrowe DAB+
+
+## 30. Wyjście DAB+ (`--dab`, `--dab-label`)
 
 Do tej pory robiliśmy pliki — MP4/M4A dla odtwarzaczy, ADTS do streamingu. DAB+ to
 coś innego: to format naziemnego radia cyfrowego (standard ETSI TS 102 563), a ten
@@ -1246,7 +1317,7 @@ pliku pozostaje bit-identyczne ze stockowym FDK.
 
 ---
 
-# Część IX. Słownik pojęć
+# Część X. Słownik pojęć
 
 Dla szybkiego przypomnienia — wszystkie terminy z tego manuala, wyjaśnione
 jednym–dwoma zdaniami, językiem dźwiękowca.

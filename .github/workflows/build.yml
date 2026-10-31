@@ -162,3 +162,5 @@ jobs:
             to you. These files are built and hosted by GitHub. See NOTICE.fdk-aac.
           files: assets/*.zip
           fail_on_unmatched_files: true
+          # Tags like v1.4.0-beta.1 are published as pre-releases (not "latest").
+          prerelease: ${{ contains(github.ref_name, '-') }}
