@@ -559,7 +559,13 @@ static void FDKaacEnc_initAvoidHoleFlag(
        * energy is lowered before deciding that a band is masked by its
        * neighbours and may become a hole. Stock 3 dB long / 2 dB short.
        * Larger = fewer bands look "covered" = more bands are protected. */
-      double f = pow(10.0, -(g_franken.holeSpreadDbX1000 / 1000.0) / 10.0);
+      /* The value is for long blocks. Stock lowers short blocks by 2 dB
+       * against 3 dB in long ones, so short blocks get 2/3 of the value: the
+       * same value as stock (3.0) then means stock in both block types. Until
+       * 1.4.0-beta.1 one value replaced both, so 3.0 changed short frames. */
+      double dB = g_franken.holeSpreadDbX1000 / 1000.0;
+      if (psyOutChannel[ch]->lastWindowSequence == SHORT_WINDOW) dB *= 2.0 / 3.0;
+      double f = pow(10.0, -dB / 10.0);
       FIXP_DBL fac = (FIXP_DBL)(LONG)(f * 2147483647.0);
       for (sfbGrp = 0; sfbGrp < psyOutChannel[ch]->sfbCnt;
            sfbGrp += psyOutChannel[ch]->sfbPerGroup)

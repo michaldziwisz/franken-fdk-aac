@@ -423,6 +423,16 @@ AAC_ENCODER_ERROR FDKaacEnc_InitTnsConfiguration(
        * filter mismatch */
       if (blockType == SHORT_WINDOW) {
         tC->lpcStartBand[LOFILT] = 0;
+        /* Frankenstein --tns-start <Hz> also in short blocks: the same
+         * frequency on the short table, nearest band border (stock short
+         * starts at 0 Hz). Until 1.4.0-beta.1 only long blocks followed it. */
+        if (g_franken.tnsStartHz >= 0) {
+          INT b = FDKaacEnc_FreqToBandWidthRounding(
+              g_franken.tnsStartHz, sampleRate, pC->sfbCnt, pC->sfbOffset);
+          if (b < 0) b = 0;
+          if (b > tC->lpcStopBand - 1) b = fMax(0, tC->lpcStopBand - 1);
+          tC->lpcStartBand[LOFILT] = b;
+        }
       } else {
         tC->lpcStartBand[LOFILT] =
             (sampleRate < 9391) ? 2 : ((sampleRate < 18783) ? 4 : 8);
