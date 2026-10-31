@@ -465,11 +465,13 @@ PROGNAME " %s\n"
 "                               over 4 frames). -1 off.\n"
 
 " --core-cutoff <hz>          Force core bandwidth in Hz even under SBR (where -w is\n"
-"                               ignored). 0=default, max sr/2. See also --uncap-bandwidth.\n"
+"                               ignored). 0..48000, 0=default; the encoder stops at the core\n"
+"                               Nyquist (half the core sample rate). See --uncap-bandwidth.\n"
 " --sbr-start <n>             SBR bs_start_freq index: -1 def, 0..15. (Validated by FDK;\n"
 "                               bad start/stop pair => init fails.)\n"
 " --sbr-stop <n>              SBR bs_stop_freq index: -1 def, 0..13.\n"
-" --sbr-freqscale <n>         Freq grouping: -1 def, 0..3 (0=linear).\n"
+" --sbr-freqscale <n>         Freq grouping: -1 def, 0..3. 0 = linear, 1/2/3 = 12/10/8\n"
+"                               bands per octave (1 finest, 3 coarsest and cheapest).\n"
 " --sbr-alterscale <n>        Alternative scale resolution: -1 def, 0/1.\n"
 " --sbr-noise-bands <n>       SBR noise-floor density (bs_noise_bands, 2-bit field):\n"
 "                               -1 def, 0 = one band, 1/2/3 = ~1/2/3 bands per octave.\n"
@@ -498,8 +500,8 @@ PROGNAME " %s\n"
 "                               LATM/LOAS StreamMuxConfig period (-f 6/7/10).\n"
 "\n== D. Masking / noise shaping / detail ==\n"
 " --ath-scale <n>             Global masking-threshold scale Q8 (256=x1.0 def). >256 =\n"
-"                               noisier/fewer bits, <256 = cleaner/more detail. min 1,\n"
-"                               max ~4096. This is the main global SMR knob.\n"
+"                               noisier/fewer bits, <256 = cleaner/more detail. 1..4096.\n"
+"                               This is the main global SMR knob.\n"
 " --spread-mask <n>           Q8, scales inter-band masking spread. <256 = LESS masking =\n"
 "                               more detail kept (like relaxing tone-masks-noise). Biggest\n"
 "                               effect where bits are tight (96-192k). 256=no change.\n"
@@ -541,6 +543,7 @@ PROGNAME " %s\n"
 "                               higher = more (also less-noisy) bands become PNS = wider\n"
 "                               noise substitution.\n"
 " --pns-refpower <x>          Scales the PNS reference-power detection threshold. 1.0=def.\n"
+"                               Higher = stricter gate, FEWER PNS bands; lower = more.\n"
 " --pns-gapfill <x>           Scales the PNS gap-fill threshold. 1.0=default.\n"
 " --pns-min-width <n>         Minimum SFB width for PNS (raw). Lower = PNS on narrower bands.\n"
 "\n== E. Core transients, pre-echo and spectral holes (LC/LD/ELD core) ==\n"
@@ -589,7 +592,8 @@ PROGNAME " %s\n"
 " --coverage <-5..5>          One axis at a fixed bitrate. + = code EVERY band, coarsely\n"
 "                               (no holes, everything filled, grainier). - = code fewer\n"
 "                               bands, cleanly (marginal bands dropped, holes allowed).\n"
-"                               0 = stock. Sets the five switches below; any of them\n"
+"                               0 = stock. Sets the six switches below (+4/+5 also\n"
+"                               --pns-above); any of them\n"
 "                               given explicitly wins.\n"
 " --band-knee <dB>            -24.0..24.0, 0 = off. Every band of every channel: + keeps\n"
 "                               bands up to N dB under their threshold at the coarsest\n"
@@ -1135,6 +1139,148 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
     aacenc_getmainargs(&argc, &argv);
     while ((ch = getopt_long(argc, argv, "hp:b:m:w:a:L:s:f:CP:G:Io:SR",
                              long_options, 0)) != EOF) {
+        /* Frankenstein: the documented "-1 = off / stock" of these switches.
+         * -1 is the internal "not given" sentinel and is outside their parse
+         * ranges, so it is handled here: -1 means the same as leaving the
+         * switch out (the stock value stays; an earlier value is reset). */
+        if (optarg && strcmp(optarg, "-1") == 0) {
+            int frOff = 0;
+            switch (ch) {
+        case OPT_FR_BITRES_MODE:
+        case OPT_FR_BLOCK_BIAS:
+        case OPT_FR_IS_AGGRESSION:
+        case OPT_FR_IS_FORCE_HI:
+        case OPT_FR_IS_FORCE_LO:
+        case OPT_FR_IS_BAND_HI:
+        case OPT_FR_IS_BAND_LO:
+        case OPT_FR_MAX_BITS_FRAME:
+        case OPT_FR_MID_BIAS:
+        case OPT_FR_MIN_BITS_FRAME:
+        case OPT_FR_MINSNR_CLAMP_HI:
+        case OPT_FR_MINSNR_CLAMP_LO:
+        case OPT_FR_MINSNR_SCALE:
+        case OPT_FR_MS_BIAS:
+        case OPT_FR_MS_PRECISION:
+        case OPT_FR_MS_BAND_HI:
+        case OPT_FR_MS_BAND_LO:
+        case OPT_FR_PEAK_BITRATE:
+        case OPT_FR_PNS_GAIN:
+        case OPT_FR_PNS_GAPFILL:
+        case OPT_FR_PNS_MIN_WIDTH:
+        case OPT_FR_PNS_REFPOWER:
+        case OPT_FR_PNS_TONALITY:
+        case OPT_FR_PS_BANDS:
+        case OPT_FR_PS_ENV:
+        case OPT_FR_PS_ENV_REDUCE:
+        case OPT_FR_PS_ICC:
+        case OPT_FR_PS_ICC_MODE:
+        case OPT_FR_PS_IPD:
+        case OPT_FR_PS_NOENV_SKIP:
+        case OPT_FR_SBR_FREQRES_FIXFIX:
+        case OPT_FR_SBR_HEADER_PERIOD:
+        case OPT_FR_SBR_HEADER_TIME:
+        case OPT_FR_SBR_INVF:
+        case OPT_FR_SBR_INVF_HYST:
+        case OPT_FR_SBR_INVF_MAX:
+        case OPT_FR_SBR_INVF_MIN:
+        case OPT_FR_SBR_INVF_SMOOTH:
+        case OPT_FR_SBR_INVF_TABLE:
+        case OPT_FR_SBR_MH_DECAY_DIFF:
+        case OPT_FR_SBR_MH_DECAY_ORIG:
+        case OPT_FR_SBR_MH_DELTATIME:
+        case OPT_FR_SBR_MH_DIFF:
+        case OPT_FR_SBR_MH_MAXCOMP:
+        case OPT_FR_SBR_MH_SFM_ORIG:
+        case OPT_FR_SBR_MH_SFM_SBR:
+        case OPT_FR_SBR_MH_TONE:
+        case OPT_FR_SBR_NF_SMOOTH:
+        case OPT_FR_SBR_NF_WEIGHT:
+        case OPT_FR_SBR_NF_WFROM:
+        case OPT_FR_SBR_NOISE_MAX:
+        case OPT_FR_SBR_NUM_ENV:
+        case OPT_FR_SBR_SOFTNESS:
+        case OPT_FR_SBR_STEREO_MODE:
+        case OPT_FR_SBR_TRAN_DOM:
+        case OPT_FR_SBR_TRAN_PEAK:
+        case OPT_FR_SBR_TRAN_QUIET:
+        case OPT_FR_SBR_TRAN_SPLIT:
+        case OPT_FR_SBR_TRAN_THR:
+        case OPT_FR_SPREAD_MASK:
+        case OPT_FR_VBR_RESERVOIR:
+                frOff = 1;
+                break;
+            default:
+                break;
+            }
+            if (frOff) {
+                aacenc_param_ex_t *p = params;
+                switch (ch) {
+        case OPT_FR_BITRES_MODE: p->fr_bitres_mode = -1; break;
+        case OPT_FR_BLOCK_BIAS: p->fr_block_bias = -1; break;
+        case OPT_FR_IS_AGGRESSION: p->fr_is_aggression = -1; break;
+        case OPT_FR_IS_FORCE_HI: p->fr_is_force_hi = -1; break;
+        case OPT_FR_IS_FORCE_LO: p->fr_is_force_lo = -1; break;
+        case OPT_FR_IS_BAND_HI: p->fr_is_band_hi = -1; break;
+        case OPT_FR_IS_BAND_LO: p->fr_is_band_lo = -1; break;
+        case OPT_FR_MAX_BITS_FRAME: p->fr_max_bits_frame = -1; break;
+        case OPT_FR_MID_BIAS: p->fr_mid_bias = -1; break;
+        case OPT_FR_MIN_BITS_FRAME: p->fr_min_bits_frame = -1; break;
+        case OPT_FR_MINSNR_CLAMP_HI: p->fr_minsnr_clamp_hi = -1; break;
+        case OPT_FR_MINSNR_CLAMP_LO: p->fr_minsnr_clamp_lo = -1; break;
+        case OPT_FR_MINSNR_SCALE: p->fr_minsnr_scale = -1; break;
+        case OPT_FR_MS_BIAS: p->fr_ms_bias = -1; break;
+        case OPT_FR_MS_PRECISION: p->fr_ms_precision = -1; break;
+        case OPT_FR_MS_BAND_HI: p->fr_ms_band_hi = -1; break;
+        case OPT_FR_MS_BAND_LO: p->fr_ms_band_lo = -1; break;
+        case OPT_FR_PEAK_BITRATE: p->fr_peak_bitrate = -1; break;
+        case OPT_FR_PNS_GAIN: p->fr_pns_gain = -1; break;
+        case OPT_FR_PNS_GAPFILL: p->fr_pns_gapfill = -1; break;
+        case OPT_FR_PNS_MIN_WIDTH: p->fr_pns_min_width = -1; break;
+        case OPT_FR_PNS_REFPOWER: p->fr_pns_refpower = -1; break;
+        case OPT_FR_PNS_TONALITY: p->fr_pns_tonality = -1; break;
+        case OPT_FR_PS_BANDS: p->fr_ps_bands = -1; break;
+        case OPT_FR_PS_ENV: p->fr_ps_env = -1; break;
+        case OPT_FR_PS_ENV_REDUCE: p->fr_ps_env_reduce = -1; break;
+        case OPT_FR_PS_ICC: p->fr_ps_icc = -1; break;
+        case OPT_FR_PS_ICC_MODE: p->fr_ps_icc_mode = -1; break;
+        case OPT_FR_PS_IPD: p->fr_ps_ipd = -1; break;
+        case OPT_FR_PS_NOENV_SKIP: p->fr_ps_noenv_skip = -1; break;
+        case OPT_FR_SBR_FREQRES_FIXFIX: p->fr_sbr_freqres_fixfix = -1; break;
+        case OPT_FR_SBR_HEADER_PERIOD: p->fr_sbr_header_period = -1; break;
+        case OPT_FR_SBR_HEADER_TIME: p->fr_sbr_header_time = -1; break;
+        case OPT_FR_SBR_INVF: p->fr_sbr_invf = -1; break;
+        case OPT_FR_SBR_INVF_HYST: p->fr_sbr_invf_hyst = -1; break;
+        case OPT_FR_SBR_INVF_MAX: p->fr_sbr_invf_max = -1; break;
+        case OPT_FR_SBR_INVF_MIN: p->fr_sbr_invf_min = -1; break;
+        case OPT_FR_SBR_INVF_SMOOTH: p->fr_sbr_invf_smooth = -1; break;
+        case OPT_FR_SBR_INVF_TABLE: p->fr_sbr_invf_table = -1; break;
+        case OPT_FR_SBR_MH_DECAY_DIFF: p->fr_sbr_mh_decay_diff = -1; break;
+        case OPT_FR_SBR_MH_DECAY_ORIG: p->fr_sbr_mh_decay_orig = -1; break;
+        case OPT_FR_SBR_MH_DELTATIME: p->fr_sbr_mh_deltatime = -1; break;
+        case OPT_FR_SBR_MH_DIFF: p->fr_sbr_mh_diff = -1; break;
+        case OPT_FR_SBR_MH_MAXCOMP: p->fr_sbr_mh_maxcomp = -1; break;
+        case OPT_FR_SBR_MH_SFM_ORIG: p->fr_sbr_mh_sfm_orig = -1; break;
+        case OPT_FR_SBR_MH_SFM_SBR: p->fr_sbr_mh_sfm_sbr = -1; break;
+        case OPT_FR_SBR_MH_TONE: p->fr_sbr_mh_tone = -1; break;
+        case OPT_FR_SBR_NF_SMOOTH: p->fr_sbr_nf_smooth = -1; break;
+        case OPT_FR_SBR_NF_WEIGHT: p->fr_sbr_nf_weight = -1; break;
+        case OPT_FR_SBR_NF_WFROM: p->fr_sbr_nf_weight_from = -1; break;
+        case OPT_FR_SBR_NOISE_MAX: p->fr_sbr_noise_max = -1; break;
+        case OPT_FR_SBR_NUM_ENV: p->fr_sbr_num_env = -1; break;
+        case OPT_FR_SBR_SOFTNESS: p->fr_sbr_softness = -1; break;
+        case OPT_FR_SBR_STEREO_MODE: p->fr_sbr_stereo_mode = -1; break;
+        case OPT_FR_SBR_TRAN_DOM: p->fr_sbr_tran_dom = -1; break;
+        case OPT_FR_SBR_TRAN_PEAK: p->fr_sbr_tran_peak = -1; break;
+        case OPT_FR_SBR_TRAN_QUIET: p->fr_sbr_tran_quiet = -1; break;
+        case OPT_FR_SBR_TRAN_SPLIT: p->fr_sbr_tran_split = -1; break;
+        case OPT_FR_SBR_TRAN_THR: p->fr_sbr_tran_thr = -1; break;
+        case OPT_FR_SPREAD_MASK: p->fr_spread_mask = -1; break;
+        case OPT_FR_VBR_RESERVOIR: p->fr_vbr_reservoir = -1; break;
+                default: break;
+                }
+                continue;
+            }
+        }
         switch (ch) {
         case 'h':
             return usage(), -1;
@@ -1333,7 +1479,7 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
             if (fr_scan_int(optarg, &n) != 1) { fprintf(stderr, "invalid arg for is-lr-ratio\n"); return -1; }
             params->fr_is_lrratio = n; break;
         case OPT_FR_CORE_CUTOFF:
-            if (fr_scan_int(optarg, &n) != 1) { fprintf(stderr, "invalid arg for core-cutoff\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || n < 0 || n > 48000) { fprintf(stderr, "invalid arg for core-cutoff (0..48000 Hz, 0 = stock)\n"); return -1; }
             params->fr_core_cutoff = n; break;
         case OPT_FR_SBR_START:
             if (fr_scan_int(optarg, &n) != 1) { fprintf(stderr, "invalid arg for sbr-start\n"); return -1; }
@@ -1378,7 +1524,7 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
             if (fr_scan_int(optarg, &n) != 1) { fprintf(stderr, "invalid arg for pns-start\n"); return -1; }
             params->fr_pns_start = n; break;
         case OPT_FR_ATH_SCALE:
-            if (fr_scan_int(optarg, &n) != 1) { fprintf(stderr, "invalid arg for ath-scale\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || n < 1 || n > 4096) { fprintf(stderr, "invalid arg for ath-scale (1..4096, 256 = x1.0)\n"); return -1; }
             params->fr_ath_scale = n; break;
         case OPT_FR_BLOCK_BIAS:
             if (fr_scan_int(optarg, &n) != 1 || n < 0 || n > 255) { fprintf(stderr, "invalid arg for block-bias (0..255)\n"); return -1; }
@@ -1396,7 +1542,7 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
             if (fr_scan_int(optarg, &n) != 1 || n < 0 || n > 2) { fprintf(stderr, "invalid arg for bitres-mode (0..2)\n"); return -1; }
             params->fr_bitres_mode = n; break;
         case OPT_FR_MS_BIAS:
-            if (fr_scan_int(optarg, &n) != 1 || n < 0) { fprintf(stderr, "invalid arg for ms-bias\n"); return -1; }
+            if (fr_scan_int(optarg, &n) != 1 || n < 0 || n > 255) { fprintf(stderr, "invalid arg for ms-bias (0..255)\n"); return -1; }
             params->fr_ms_bias = n; break;
         case OPT_FR_UNCAP_BW:
             params->fr_uncap_bw = 1; break;
