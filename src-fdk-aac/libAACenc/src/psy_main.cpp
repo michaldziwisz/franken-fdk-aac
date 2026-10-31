@@ -1205,6 +1205,14 @@ AAC_ENCODER_ERROR FDKaacEnc_psyMain(INT channels, PSY_ELEMENT *psyElement,
           tnsData[ch]->dataRaw.Long.subBlockInfo.predictionGain[HIFILT],
           tnsData[ch]->dataRaw.Long.subBlockInfo.tnsActive[HIFILT],
           psyOutChannel[ch]->sfbEnergyLdData, psyOutChannel[ch]->noiseNrg);
+      if (isShortWindow[ch] && g_franken.pnsShort == 1 && frankenEffPnsAbove() > 0 &&
+          psyConf[1].pnsConf.usePns)
+        FDKaacEnc_FrankenShortPns(
+            &psyConf[1].pnsConf, pnsData[ch],
+            psyStatic[ch]->blockSwitchingControl.noOfGroups,
+            psyStatic[ch]->blockSwitchingControl.groupLen, hPsyConfShort->sfbCnt,
+            maxSfbPerGroup[ch], psyConf[1].sfbOffset,
+            psyOutChannel[ch]->sfbEnergyLdData, psyOutChannel[ch]->noiseNrg);
     } /* !isLFE */
   }   /* ch */
 
@@ -1339,6 +1347,31 @@ AAC_ENCODER_ERROR FDKaacEnc_psyMain(INT channels, PSY_ELEMENT *psyElement,
               hPsyConfShort->sfbCnt,
           hPsyConfShort->sfbCnt, maxSfbPerGroup[0],
           psyOutChannel[0]->sfbOffsets);
+      /* --pns-short: a band both channels code as noise is L/R independent
+       * noise; a band only one channel would code as noise but MS put into
+       * mid/side is coded normally (as stock does in long blocks). */
+      if (g_franken.pnsShort == 1 && frankenEffPnsAbove() > 0) {
+        const INT n = psyStatic[0]->blockSwitchingControl.noOfGroups * hPsyConfShort->sfbCnt;
+        INT any = 0, changed = 0;
+        for (sfb = 0; sfb < n; sfb++) {
+          const INT p0 = pnsData[0]->pnsFlag[sfb], p1 = pnsData[1]->pnsFlag[sfb];
+          if (psyOutElement->toolsInfo.msMask[sfb] && (p0 || p1)) {
+            changed = 1;
+            if (p0 && p1) psyOutElement->toolsInfo.msMask[sfb] = 0;
+            else {
+              pnsData[0]->pnsFlag[sfb] = pnsData[1]->pnsFlag[sfb] = 0;
+              psyOutChannel[0]->noiseNrg[sfb] = psyOutChannel[1]->noiseNrg[sfb] = NO_NOISE_PNS;
+            }
+          }
+          if (psyOutElement->toolsInfo.msMask[sfb]) any = 1;
+        }
+        /* the digest only follows a mask this block changed (no PNS band in
+         * the frame = stock stream, bit for bit) */
+        if (changed) {
+          if (!any) psyOutElement->toolsInfo.msDigest = MS_NONE;
+          else if (psyOutElement->toolsInfo.msDigest == MS_ALL) psyOutElement->toolsInfo.msDigest = MS_SOME;
+        }
+      }
     }
     g_franken.curSideCutSfb = -1;
     g_franken.curPnsFlagL = 0;
@@ -1357,7 +1390,10 @@ AAC_ENCODER_ERROR FDKaacEnc_psyMain(INT channels, PSY_ELEMENT *psyElement,
       }
     } else {
       FDKaacEnc_CodePnsChannel(
-          psyData[ch]->sfbActive, &(hThisPsyConf[ch]->pnsConf),
+          (isShortWindow[ch] && g_franken.pnsShort == 1 && frankenEffPnsAbove() > 0)
+              ? psyStatic[ch]->blockSwitchingControl.noOfGroups * hPsyConfShort->sfbCnt
+              : psyData[ch]->sfbActive,
+          &(hThisPsyConf[ch]->pnsConf),
           pnsData[ch]->pnsFlag, psyData[ch]->sfbEnergyLdData.Long,
           psyOutChannel[ch]->noiseNrg, /* this is the energy that will be
                                           written to the bitstream */

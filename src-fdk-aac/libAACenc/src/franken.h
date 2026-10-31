@@ -87,6 +87,8 @@ typedef struct FRANKEN_CFG {
   int pnsHoldX1000;   /* -1 off; dB*1000. Neighbouring PNS bands of a channel whose noise
                          levels differ by no more than this share one level (delta 0 =
                          1 bit instead of 3..9). */
+  int pnsShort;  /* -1/0 off; 1 = --pns-above also in short frames coded as one
+                    group of 8 windows (--short-groups 1). Needs --pns-above. */
   int pnsBudget;      /* -1 off; 1 = PNS energies are booked: the bit target for the
                          spectrum is lowered by their cost and crash recovery counts the
                          bits a PNS band saves (stock counts 0 and cuts on into the
@@ -482,5 +484,13 @@ void frankenBandLogFrame(void);
 #ifdef __cplusplus
 }
 #endif
+
+/* --side-cutoff keeps FDK's own IS decision above the cutoff only when one of
+ * the IS decision criteria was set explicitly (intensity.cpp). */
+static inline int frankenIsCriteriaGiven(void) {
+  return g_franken.isAggression >= 1 || g_franken.isCorrThreshQ8 >= 0 ||
+         g_franken.isLRRatioQ8 >= 0 || g_franken.isMinSfbs >= 0 ||
+         g_franken.isAdmitX100 > 500; /* --is-admit above the stock 5.00 */
+}
 
 #endif /* FRANKEN_H */

@@ -318,8 +318,10 @@ PROGNAME " %s\n"
 "                               rescued at 0.97 dB). + = finer, bands under thr kept;\n"
 "                               - = coarser, the weakest leave first. Try -3..+6.\n"
 " --side-cutoff <Hz>          1000..24000, off by default. Above it every stereo band is\n"
-"                               pure mid: side zeroed, no IS there, cheap MS mask. The\n"
-"                               side bits go to the rest. Stereo stays below the cutoff.\n"
+"                               pure mid: side zeroed, cheap MS mask, level kept (mid\n"
+"                               raised to the original energy, max +6 dB). IS there only\n"
+"                               when asked: --is-force-lo/-hi, or loosened IS criteria\n"
+"                               (--is-aggression etc.). Stereo stays below the cutoff.\n"
 " --is-admit <x>              0.0..20.0, stock 5. FDK allows intensity stereo only when\n"
 "                               bitrate / bandwidth (bit/s per Hz) is below x. 0 = never.\n"
 "                               --is-aggression still opens the gate.\n"
@@ -536,6 +538,11 @@ PROGNAME " %s\n"
 " --pns-hold <dB>             0.1..12.0. Neighbouring PNS bands of a channel whose noise\n"
 "                               levels differ by no more than this share one level: the\n"
 "                               delta costs 1 bit instead of 3..9. Coarser noise envelope.\n"
+" --pns-short <0|1>           1 = --pns-above also in short (transient) frames, but only\n"
+"                               when the frame is one group of 8 windows (--short-groups\n"
+"                               1); smaller groups keep spectrum (measured worse). Needs\n"
+"                               --pns-above. Low bitrates; the noise covers the whole\n"
+"                               frame, so the attack itself gets ~2 dB quieter.\n"
 " --pns-budget <0|1>          1 = count the bits PNS noise levels take: the bit target for\n"
 "                               the spectrum is lowered by them, and when a frame overflows\n"
 "                               the emergency cut gets their bits back instead of cutting\n"
@@ -807,6 +814,7 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
 #define OPT_FR_SIDE_CUTOFF        M4AF_FOURCC('f','s','c','o')
 #define OPT_FR_PNS_SHARED         M4AF_FOURCC('f','p','s','h')
 #define OPT_FR_PNS_HOLD           M4AF_FOURCC('f','p','h','d')
+#define OPT_FR_PNS_SHORT          M4AF_FOURCC('f','p','s','b')
 #define OPT_FR_PNS_BUDGET         M4AF_FOURCC('f','p','b','g')
 #define OPT_FR_IS_ADMIT           M4AF_FOURCC('f','i','a','d')
 #define OPT_FR_SIDE_KNEE_SPREAD   M4AF_FOURCC('f','s','k','s')
@@ -981,6 +989,7 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
         { "side-cutoff",          required_argument, 0, OPT_FR_SIDE_CUTOFF },
         { "pns-shared",           required_argument, 0, OPT_FR_PNS_SHARED },
         { "pns-hold",             required_argument, 0, OPT_FR_PNS_HOLD },
+        { "pns-short",            required_argument, 0, OPT_FR_PNS_SHORT },
         { "pns-budget",           required_argument, 0, OPT_FR_PNS_BUDGET },
         { "is-admit",             required_argument, 0, OPT_FR_IS_ADMIT },
         { "side-knee-spread",     required_argument, 0, OPT_FR_SIDE_KNEE_SPREAD },
@@ -1113,6 +1122,7 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
     params->fr_side_cutoff = -1;
     params->fr_pns_shared = -1;
     params->fr_pns_hold = -1;
+    params->fr_pns_short = -1;
     params->fr_pns_budget = -1;
     params->fr_is_admit = -1;
     params->fr_side_knee_spread = -1;
@@ -1745,6 +1755,9 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
         case OPT_FR_PNS_SHARED:
             if (fr_scan_int(optarg, &n) != 1 || n < 0 || n > 1) { fprintf(stderr, "invalid arg for pns-shared (0|1)\n"); return -1; }
             params->fr_pns_shared = n; break;
+        case OPT_FR_PNS_SHORT:
+            if (fr_scan_int(optarg, &n) != 1 || n < 0 || n > 1) { fprintf(stderr, "invalid arg for pns-short (0|1)\n"); return -1; }
+            params->fr_pns_short = n; break;
         case OPT_FR_PNS_HOLD:
             if (fr_parse_dec(optarg, 0.1, 12.0, 1000, &params->fr_pns_hold)) { fprintf(stderr, "invalid arg for pns-hold (0.1..12.0 dB)\n"); return -1; }
             break;

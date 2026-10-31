@@ -119,6 +119,7 @@
     int fr_side_cutoff; \
     int fr_pns_shared; \
     int fr_pns_hold; \
+    int fr_pns_short; \
     int fr_pns_budget; \
     int fr_is_admit; \
     int fr_coverage; \

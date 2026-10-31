@@ -40,18 +40,30 @@ beta.1 (48 kHz, 96 kbps, MS mask read from the bitstream): `--msbands-lo 18
 - Test aid: `FRANKEN_BANDLOG=<file>` logs every written section per window group;
   `tools/msis/bandlog.py` reads it. `parse_ms.py` takes `--slo/--shi/--smax`.
 
-#### Measured, not adopted: PNS in short frames
+#### `--side-cutoff`: level kept, intensity stereo above the cutoff on request
 
-The syntax allows noise substitution in short windows; FDK never does it. An
-experiment (`--pns-above` also in short frames, not in this build) was measured on a
-sample with an attack in every frame: at 32 kbps the PNS energies took 19% of the
-frame instead of 2% and the bits left for the spectrum fell by a third, at the same
-file size. With 4 groups the noise level per group follows the attack poorly
-(pre-echo +0.5..1 dB, the attack itself 1.4..2.8 dB too quiet). It only pays off with
-one group of 8 windows (`--short-groups 1`), where the file was 4% smaller and the
-band came out at the right level instead of 6 dB too quiet at 24 kbps, but there the
-noise is smeared over the whole frame: pre-echo +1.3 dB, attack 2.5 dB too quiet.
-Kept out until it is listened to.
+- Above the cutoff both channels play the mid, which carries less energy than the
+  original whenever L and R differ: uncorrelated L/R lost 3 dB, partly correlated
+  1..2 dB (measured at 96 kbps, beta.1). The mid is now raised to the energy of the
+  original (at most +6 dB, only the side above its masking threshold counts). The
+  band is now as loud as without the switch (-0.2 dB vs -0.2 dB, also on real music
+  within 0.4 dB). Anti-phase content and the direction of a hard pan still cannot
+  be carried by mid; that is what IS is for:
+- IS above the cutoff stays when it is asked for: `--is-force-lo/-hi` as before, and
+  now also FDK's own IS decision when its criteria are set (`--is-aggression`,
+  `--is-corr-thresh`, `--is-lr-ratio`, `--is-min-sfbs`, `--is-admit` > 5). Single
+  panned regions keep their direction (3..6 kHz source panned 4 dB: cutoff alone
+  0 dB, with `--is-aggression 100` 3..4 dB).
+
+#### New: `--pns-short <0|1>`
+
+`--pns-above` also in short frames, but only in a frame coded as one group of 8
+windows (`--short-groups 1`); with the stock grouping it changes nothing, bit for
+bit. Measured on a sample with an attack in every frame: in smaller groups the
+noise energies took 19% of the frame instead of 2% and the attack came out 2.6..6 dB
+quieter, so they keep the spectrum. With one group: 24 kbps file -6%, the noise
+band at the source level (+1.1 dB instead of -1.4 dB), at the cost of the band
+smeared over the frame (pre-echo +1 dB, attack about 2 dB quieter).
 
 ### v1.4.0-beta.1 — side knee as an offset, side cutoff, IS gate, PNS that saves bits, bit statistics, documentation audit (plus the SBR estimator knobs, `--sbr-softness`, real low-bitrate unlock)
 

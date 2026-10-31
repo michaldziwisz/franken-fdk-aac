@@ -911,9 +911,28 @@ domyślnym na tym samym sygnale skok pojawia się w błędzie mid (z -8,72 na -9
 - Wartości: `1000..24000` Hz, zaokrąglane do pasma współczynnika skali, które zaczyna się na tej częstotliwości lub wyżej
 
 Powyżej granicy sygnał side jest porzucany, a pasmo zapisywane tylko jako mid, z tanią maską
-MS. Własna decyzja FDK o intensity stereo jest tam kasowana, bo czysty mid jest tańszy (IS
-potrzebuje pozycji i blokuje maskę MS zapisywaną jednym kodem); wymuszone IS z
-`--is-force-lo/-hi` nadal wygrywa. Pasma, które oba kanały kodują jako PNS, zostają bez zmian.
+MS. Czystego L/R tam nie ma nigdy.
+
+Poziom zostaje: oba kanały grają wtedy mid, który sam ma mniej energii niż kanały oryginału,
+gdy tylko L i R się różnią (nieskorelowane L/R wyszłyby o 3 dB ciszej). Dlatego mid jest
+podnoszony do energii oryginału, najwyżej o 6 dB i tylko tam, gdzie side leży ponad progiem
+maskowania (side, który stock i tak by wyzerował, nie jest dodawany). Zmierzone przy 96 kbps:
+pasmo o 3 dB cichsze od źródła jest z granicą też o 3 dB cichsze, dla nieskorelowanych,
+częściowo skorelowanych i skorelowanych L/R. Do 1.4.0-beta.1 pasmo traciło do 3 dB więcej.
+Dwóch rzeczy mid nie przeniesie przy żadnym poziomie: treści w przeciwfazie (L = -R, jej mid
+to zero) i kierunku twardo spanorowanego dźwięku, który ląduje na środku.
+
+Intensity stereo powyżej granicy: fabryczna decyzja FDK o IS jest tam kasowana, bo czysty mid
+jest tańszy. IS zostaje, gdy prosisz o nie jawnie:
+- `--is-force-lo/-hi`: IS na podanych pasmach, zawsze.
+- poluzowane kryteria IS (`--is-aggression`, `--is-corr-thresh`, `--is-lr-ratio`,
+  `--is-min-sfbs`, `--is-admit` powyżej 5): własna decyzja FDK z tymi kryteriami. Pojedyncze
+  spanorowane obszary powyżej granicy zachowują wtedy swój side (IS niesie kierunek i fazę
+  w paśmie), reszta zostaje mid, jak w intensity stereo z MPEG-1 Layer II. Zmierzone
+  (40 kbps, `--side-cutoff 1000`, źródło 3..6 kHz na przemian 4 dB w lewo i w prawo na tle
+  miksu mono): sama granica 0 dB, z `--is-aggression 100` 3..4 dB, jak w źródle.
+
+Pasma, które oba kanały kodują jako PNS, zostają bez zmian.
 Poniżej granicy stereo jest nietknięte. `--verbose` pokazuje pasmo, od którego działa,
 w tablicy długiej i krótkiej. Obie zaokrąglają w górę do następnej krawędzi pasma, więc na
 grubej tablicy krótkiej granica może się tylko przesunąć w górę (9 kHz: pasmo długie 31 na
@@ -4315,6 +4334,27 @@ Przykłady (muzyka stereo, 24 kbps, PNS od 2,2 kHz):
 - Łagodnie: `--pns-hold 3`. Poziomy szumu z 94 do 87 bitów na ramkę.
 - Mocno: `--pns-hold 6`. 70 bitów na ramkę; uwolnione bity idą do kodowanego widma.
 - Przesadnie: `--pns-hold 12`. Szum jest prawie płaski w całym swoim obszarze.
+
+### `--pns-short <0|1>`
+
+**Używaj `--pns-above` także w ramkach krótkich (transjentach), tam gdzie to się opłaca.**
+
+- Dotyczy: rdzeń AAC-LC z `--pns-above`. Domyślnie wyłączone.
+- Wartości: `1` = włączone, `0` = stock
+
+Format AAC pozwala na podstawianie szumu w oknach krótkich; FDK nigdy tego nie robi, więc
+powyżej `--pns-above` ramka transjentowa koduje pasma szumowe widmem. Z tym przełącznikiem
+one też stają się szumem, ale tylko w ramce zakodowanej jako jedna grupa wszystkich 8 okien
+(`--short-groups 1`). Zmierzone (1.4.0-beta.2) w mniejszych grupach: energie szumu zajmowały
+19% ramki zamiast 2%, a atak wychodził o 2,6 do 6 dB ciszej, więc te grupy zostają przy
+widmie. Przy grupowaniu stock przełącznik nie zmienia więc niczego (bit w bit).
+
+Zmierzone z `--short-groups 1 --pns-above 4000`, próbka z atakiem w każdej ramce: plik przy
+24 kbps z 9810 do 9226 B (-6%), pasmo szumu na poziomie źródła (+1,1 dB zamiast -1,4 dB).
+Koszt: jeden poziom szumu obejmuje 8 okien, więc pasmo rozmazuje się na całą ramkę: pre-echo
++1 dB, atak o około 2 dB ciszej. Na muzyce z nielicznymi ramkami krótkimi nie robi prawie nic
+(-0,3% pliku). Dla niskich bitrate'ów, przy których pasma inaczej by brakowało; najpierw
+odsłuch.
 
 ### `--pns-budget <0|1>`
 

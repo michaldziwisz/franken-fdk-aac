@@ -52,6 +52,7 @@ extern "C" void frankenResetDefaults(void) {
   g_franken.pnsShared = -1;
   g_franken.pnsHoldX1000 = -1;
   g_franken.pnsBudget = -1;
+  g_franken.pnsShort = -1;
   g_franken.unlockBitrate = -1;
   g_franken.speechConfig = -1;
   g_franken.spreadMaskQ8 = -1;

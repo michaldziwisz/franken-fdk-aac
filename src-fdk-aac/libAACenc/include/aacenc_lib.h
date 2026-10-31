@@ -1640,6 +1640,7 @@ typedef enum {
   AACENC_FRANKEN_IS_ADMIT = 0xF096,               /*!< IS gate bitrate/bandwidth < x/100 (-1 = stock 500, 0 = never). */
   AACENC_FRANKEN_GET_SIDE_CUT_SFB = 0xF097,       /*!< Effective first long SFB of --side-cutoff (-1 off). */
   AACENC_FRANKEN_PNS_SHARED = 0xF098,             /*!< PNS bands in both channels: 1 one shared noise, 0 independent, -1 stock. */
+  AACENC_FRANKEN_PNS_SHORT = 0xF0E1,              /*!< 1 = --pns-above also in short frames coded as one 8-window group (-1 off). */
   AACENC_FRANKEN_PNS_HOLD = 0xF099,               /*!< Neighbouring PNS levels within x dB share one level, x1000 (-1 off). */
   AACENC_FRANKEN_PNS_BUDGET = 0xF09A,             /*!< Book PNS energy bits in the bit target and crash recovery: 1 on, 0 off, -1 auto. */
   AACENC_FRANKEN_BIT_STATS = 0xF092,              /*!< 1 = count written bits per part, print on close (read-only). */

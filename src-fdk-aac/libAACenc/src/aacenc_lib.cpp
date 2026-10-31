@@ -2971,6 +2971,10 @@ AACENC_ERROR aacEncoder_SetParam(const HANDLE_AACENCODER hAacEncoder,
     case AACENC_FRANKEN_PNS_SHARED:
       g_franken.pnsShared = (INT)value;
       break;
+    case AACENC_FRANKEN_PNS_SHORT:
+      g_franken.pnsShort = (INT)value;
+      hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;
+      break;
     case AACENC_FRANKEN_PNS_HOLD:
       g_franken.pnsHoldX1000 = (INT)value;
       break;

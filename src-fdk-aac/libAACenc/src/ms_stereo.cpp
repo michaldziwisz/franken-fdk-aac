@@ -311,7 +311,64 @@ void FDKaacEnc_MsStereoProcessing(PSY_DATA *RESTRICT psyData[(2)],
 
           if (frCut) {
             /* --side-cutoff: drop the side of this band entirely, the same way
-             * intensity.cpp empties the right channel of an IS band. */
+             * intensity.cpp empties the right channel of an IS band.
+             * Level: with M = (L+R)/2 and S = (L-R)/2 the decoder plays M in
+             * both channels, which keeps only E_M of the per-channel energy
+             * (E_L+E_R)/2 = E_M + E_S: uncorrelated L/R would come out 3 dB
+             * quieter, one-sided content 3 dB, anti-phase content not at all.
+             * So the mid is scaled by g = sqrt((E_M + E_S) / E_M), capped at
+             * +6 dB (g^2 <= 4): the band keeps the energy of the original, and
+             * the masking threshold moves with it (same SNR as unscaled). A
+             * correlated band has E_S ~ 0 and g ~ 1. Anti-phase content (E_M
+             * ~ 0) cannot be rebuilt from mid; IS can (see intensity.cpp). */
+            {
+              double em = 0.0, es = 0.0;
+              for (j = sfbOffset[sfb + sfboffs]; j < sfbOffset[sfb + sfboffs + 1]; j++) {
+                const double m = (double)mdctSpectrumLeft[j], sd = (double)mdctSpectrumRight[j];
+                em += m * m;
+                es += sd * sd;
+              }
+              /* Only side the stock coder would keep: a side below its masking
+               * threshold is quantised to zero by stock as well (a hole), so
+               * compensating it would make the band louder than without the
+               * cutoff. Both values are energies of the same scale. */
+              const INT kk = sfb + sfboffs;
+              if (em > 0.0 && es > 0.0 &&
+                  sfbEnergySide[kk] > sfbThresholdRight[kk]) {
+                /* count only side lines above the per-line share of the
+                 * threshold: stock quantises the others to zero too. Scale-free:
+                 * line s^2 vs (T / E_S) * es / width. */
+                const INT w = sfbOffset[sfb + sfboffs + 1] - sfbOffset[sfb + sfboffs];
+                const double lim = ((double)sfbThresholdRight[kk] / (double)sfbEnergySide[kk]) * es / (double)w;
+                double esk = 0.0;
+                for (j = sfbOffset[sfb + sfboffs]; j < sfbOffset[sfb + sfboffs + 1]; j++) {
+                  const double sd = (double)mdctSpectrumRight[j];
+                  if (sd * sd > lim) esk += sd * sd;
+                }
+                double g2 = (em + esk) / em;
+                if (g2 > 4.0) g2 = 4.0;
+                const double g = sqrt(g2);
+                for (j = sfbOffset[sfb + sfboffs]; j < sfbOffset[sfb + sfboffs + 1]; j++) {
+                  double v = (double)mdctSpectrumLeft[j] * g;
+                  if (v > 2147483647.0) v = 2147483647.0;
+                  if (v < -2147483648.0) v = -2147483648.0;
+                  mdctSpectrumLeft[j] = (FIXP_DBL)(INT)v;
+                }
+                const INT k = sfb + sfboffs;
+                const FIXP_DBL ldOff = (FIXP_DBL)(INT)((log(g2) / log(2.0)) / 64.0 * 2147483648.0);
+                double e = (double)sfbEnergyLeft[k] * g2;
+                sfbEnergyLeft[k] = (FIXP_DBL)(INT)((e > 2147483647.0) ? 2147483647.0 : e);
+                e = (double)sfbThresholdLeft[k] * g2;
+                sfbThresholdLeft[k] = sfbThresholdRight[k] =
+                    (FIXP_DBL)(INT)((e > 2147483647.0) ? 2147483647.0 : e);
+                e = (double)sfbSpreadEnLeft[k] * g2;
+                sfbSpreadEnLeft[k] = (FIXP_DBL)(INT)((e > 2147483647.0) ? 2147483647.0 : e);
+                sfbEnergyLeftLdData[k] =
+                    fixMin(sfbEnergyLeftLdData[k], (FIXP_DBL)MAXVAL_DBL - ldOff) + ldOff;
+                sfbThresholdLeftLdData[k] =
+                    fixMin(sfbThresholdLeftLdData[k], (FIXP_DBL)MAXVAL_DBL - ldOff) + ldOff;
+              }
+            }
             for (j = sfbOffset[sfb + sfboffs]; j < sfbOffset[sfb + sfboffs + 1]; j++)
               mdctSpectrumRight[j] = FL2FXCONST_DBL(0.0f);
             sfbEnergyRight[sfb + sfboffs] = FL2FXCONST_DBL(0.0f);

@@ -735,9 +735,13 @@ void FDKaacEnc_IntensityStereoProcessing(
 
   /* Frankenstein --side-cutoff: above the cutoff the band becomes pure mid in
    * ms_stereo.cpp, which is cheaper than IS (no IS positions, and IS forbids the
-   * one-code MS_MASK_ALL). So FDK's own IS decision is cleared there; explicitly
-   * forced IS (--is-force-lo/-hi, below) still wins. */
-  if (g_franken.curSideCutSfb >= 0) {
+   * one-code MS_MASK_ALL). So FDK's stock IS decision is cleared there. IS stays
+   * when it is asked for explicitly: forced IS (--is-force-lo/-hi, below) and,
+   * with loosened IS criteria (--is-aggression, --is-corr-thresh, --is-lr-ratio,
+   * --is-min-sfbs), FDK's own IS decision. That keeps single panned regions
+   * above the cutoff placed in the right channel (IS carries the direction and
+   * the phase) while the rest of the band is mid. */
+  if (g_franken.curSideCutSfb >= 0 && !frankenIsCriteriaGiven()) {
     for (sfb = 0; sfb < sfbCnt; sfb += sfbPerGroup)
       for (sfboffs = g_franken.curSideCutSfb; sfboffs < maxSfbPerGroup; sfboffs++)
         isMask[sfb + sfboffs] = 0;

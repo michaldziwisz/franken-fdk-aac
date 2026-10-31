@@ -30,7 +30,7 @@ command -v ffmpeg  >/dev/null || { echo "SKIP: brak ffmpeg";  exit 77; }
 command -v python3 >/dev/null || { echo "SKIP: brak python3"; exit 77; }
 [ -x "$X64" ] || [ -f "$X64" ] || { echo "FAIL: brak $X64"; exit 1; }
 
-cleanup(){ rm -f "$WAV" _check_core_*.wav _check_core_*.txt _check_invf.wav _check_nfw.wav _check_unlock.wav _check_hdr.wav _check_msshort.wav _check_isalt.wav _check_allshort.wav _check_longonly.wav short_ms.wav is_alt.wav _check_dab_in.wav _check_psmulti.wav _check_psnoiid.wav "${OUT}"*.m4a "${OUT}"*.aac "${OUT}"*.txt "${OUT}"*.dabp "${OUT}"*.bin "${OUT}"*.loas; rm -rf _check_dabtmp; }
+cleanup(){ rm -f "$WAV" _check_core_*.wav _check_core_*.txt _check_invf.wav _check_nfw.wav _check_unlock.wav _check_hdr.wav _check_msshort.wav _check_isalt.wav _check_allshort.wav _check_longonly.wav _check_scu.wav _check_scp.wav _check_pss.wav short_ms.wav is_alt.wav _check_dab_in.wav _check_psmulti.wav _check_psnoiid.wav "${OUT}"*.m4a "${OUT}"*.aac "${OUT}"*.txt "${OUT}"*.dabp "${OUT}"*.bin "${OUT}"*.loas; rm -rf _check_dabtmp; }
 trap cleanup EXIT
 
 # --- probka: 2s stereo, ton + lekki szum (rusza MS/IS/TNS) ---
@@ -1266,6 +1266,80 @@ PY
   [ "$shl" = "0" ] && [ $lok = 1 ] && ok "material bez short: 6 przelacznikow pasmowych bit w bit jak binarka referencyjna" || bad "material bez short: short=$shl, przeklad zmienil ramki long"
 fi
 rm -f "$ASH" _check_longonly.wav
+
+# --- --side-cutoff: poziom bez zmian + IS ponad granica (1.4.0-beta.2) ---
+# Ponad granica pasmo jest czystym mid. Do beta.1 dekoder dostawal tylko E_M z
+# energii kanalu E_M + E_S: nieskorelowane L/R -3 dB. Teraz mid jest skalowany do
+# energii oryginalu (do +6 dB, tylko gdy side stock by zakodowal). IS ponad
+# granica zostaje, gdy kryteria IS sa podane jawnie (tu --is-aggression).
+python3 - _check_scu.wav _check_scp.wav <<'PY'
+import numpy as np, wave, sys
+sr=48000; rng=np.random.default_rng(1)
+def bp(x,f1,f2):
+    X=np.fft.rfft(x,axis=0); f=np.fft.rfftfreq(len(x),1/sr); X[(f<f1)|(f>=f2)]=0; return np.fft.irfft(X,n=len(x),axis=0)
+def wr(fn,x):
+    w=wave.open(fn,'wb'); w.setnchannels(2); w.setsampwidth(2); w.setframerate(sr); w.writeframes(np.clip(x,-32767,32767).astype('<i2').tobytes()); w.close()
+n=sr*3; low=bp(rng.standard_normal(n),200,4000)*3000
+hf=bp(rng.standard_normal((n,2)),9000,16000)*3000          # nieskorelowane L/R ponad 9 kHz
+wr(sys.argv[1], low[:,None]+hf)
+n=sr*4; mono=bp(rng.standard_normal(n),100,12000)*2500; src=bp(rng.standard_normal(n),3000,6000)*4000
+env=np.zeros(n)
+for k in range(4):
+    a=int((k+0.2)*sr); b=int((k+0.7)*sr); env[a:b]=np.hanning(b-a)
+gl=np.where((np.arange(n)//sr)%2==0,1.0,0.25); gr=np.where((np.arange(n)//sr)%2==0,0.25,1.0)
+wr(sys.argv[2], np.stack([mono+gl*src*env, mono+gr*src*env],1))  # zrodlo 3-6 kHz na przemian L / P (+-4 dB)
+PY
+dec(){ rm -f "$2"; ffmpeg -y -loglevel error -i "$1" -f wav "$2" >/dev/null 2>&1; }
+scl(){ python3 - "$1" "$2" <<'PY'
+import numpy as np, wave, sys
+def rd(f):
+    w=wave.open(f); return np.frombuffer(w.readframes(w.getnframes()),'<i2').astype(float).reshape(-1,2)
+o=rd('_check_scu.wav'); d=rd(sys.argv[1]); off=int(sys.argv[2]); d=d[off:]
+n=min(len(o),len(d))-8192; o=o[4096:n]; d=d[4096:n]
+X=np.fft.rfft(o,axis=0); Y=np.fft.rfft(d,axis=0); f=np.fft.rfftfreq(len(o),1/48000); s=(f>=9500)&(f<15500)
+print(round(10*np.log10((abs(Y[s])**2).sum()/(abs(X[s])**2).sum()),2))
+PY
+}
+enc "$X64" -f2 -p2 -b96000 --pns 0 -w 16000 -o "${OUT}_scu0.aac" _check_scu.wav
+enc "$X64" -f2 -p2 -b96000 --pns 0 -w 16000 --side-cutoff 9000 -o "${OUT}_scu1.aac" _check_scu.wav
+dec "${OUT}_scu0.aac" "${OUT}_scu0.wav"; dec "${OUT}_scu1.aac" "${OUT}_scu1.wav"
+l0=$(scl "${OUT}_scu0.wav" 2048 2>/dev/null); l1=$(scl "${OUT}_scu1.wav" 2048 2>/dev/null)
+python3 -c "import sys; a,b=float(sys.argv[1]),float(sys.argv[2]); sys.exit(0 if abs(a-b)<=0.5 else 1)" "${l0:-99}" "${l1:--99}" \
+  && ok "--side-cutoff 9000, nieskorelowane L/R: poziom ponad granica $l1 dB = bez przelacznika $l0 dB" || bad "--side-cutoff 9000: poziom $l1 dB, bez przelacznika $l0 dB (beta.1: -3 dB)"
+ild(){ python3 - "$1" <<'PY'
+import numpy as np, wave, sys
+def rd(f):
+    w=wave.open(f); return np.frombuffer(w.readframes(w.getnframes()),'<i2').astype(float).reshape(-1,2)
+o=rd('_check_scp.wav'); d=rd(sys.argv[1])[2048:]; sr=48000; m=[]
+for k in range(4):
+    a=int((k+0.3)*sr); b=int((k+0.6)*sr)
+    def i(x):
+        X=np.fft.rfft(x[a:b],axis=0); f=np.fft.rfftfreq(b-a,1/sr); s=(f>=3000)&(f<6000); e=(abs(X[s])**2).sum(0); return 10*np.log10(e[0]/e[1])
+    m.append(min(abs(i(d)),4.0)*(1 if i(d)*i(o)>0 else -1))
+print(round(min(m),1))
+PY
+}
+enc "$X64" -f2 -p2 -b40000 --side-cutoff 1000 -o "${OUT}_scp0.aac" _check_scp.wav
+enc "$X64" -f2 -p2 -b40000 --side-cutoff 1000 --is-aggression 100 -o "${OUT}_scp1.aac" _check_scp.wav
+dec "${OUT}_scp0.aac" "${OUT}_scp0.wav"; dec "${OUT}_scp1.aac" "${OUT}_scp1.wav"
+i0=$(ild "${OUT}_scp0.wav" 2>/dev/null); i1=$(ild "${OUT}_scp1.wav" 2>/dev/null)
+python3 -c "import sys; sys.exit(0 if float(sys.argv[1])>=2.5 and float(sys.argv[2])<1.5 else 1)" "${i1:--9}" "${i0:-9}" && [ "$(derr ${OUT}_scp1.aac)" = "0" ] \
+  && ok "--side-cutoff 1000 + --is-aggression 100: zrodlo 3-6 kHz zostaje po swojej stronie (ILD $i1 dB; sam cutoff $i0 dB)" || bad "--side-cutoff + IS: ILD z IS $i1, bez IS $i0"
+rm -f _check_scu.wav _check_scp.wav
+
+# --- --pns-short (1.4.0-beta.2): PNS w ramkach short tylko w grupie 8 okien ---
+python3 tools/msis/gen_samples.py . >/dev/null && mv -f all_short.wav _check_pss.wav && rm -f short_ms.wav is_alt.wav
+enc "$X64" -f2 -p2 -b24000 -w 11000 --pns-above 4000 -o "${OUT}_ps0.aac" _check_pss.wav
+enc "$X64" -f2 -p2 -b24000 -w 11000 --pns-above 4000 --pns-short 1 -o "${OUT}_ps1.aac" _check_pss.wav
+[ -s "${OUT}_ps1.aac" ] && cmp -s "${OUT}_ps0.aac" "${OUT}_ps1.aac" \
+  && ok "--pns-short 1 przy grupowaniu stock (brak grupy 8 okien) = bit w bit bez przelacznika" || bad "--pns-short 1 zmienia strumien bez grupy 8 okien"
+enc "$X64" -f2 -p2 -b24000 -w 11000 --pns-above 4000 --short-groups 1 -o "${OUT}_ps2.aac" _check_pss.wav
+blog "${OUT}_ps3.txt" "$X64" -f2 -p2 -b24000 -w 11000 --pns-above 4000 --short-groups 1 --pns-short 1 -o "${OUT}_ps3.aac" _check_pss.wav
+np=$(jget "$(python3 tools/msis/bandlog.py ${OUT}_ps3.txt 13 2>/dev/null)" short_groups_with)
+s2=$(stat -c%s "${OUT}_ps2.aac" 2>/dev/null || echo 0); s3=$(stat -c%s "${OUT}_ps3.aac" 2>/dev/null || echo 0)
+[ "${np:-0}" -gt 0 ] && [ "$s3" -gt 0 ] && [ "$s3" -lt "$s2" ] && [ "$(derr ${OUT}_ps3.aac)" = "0" ] \
+  && ok "--pns-short 1 + --short-groups 1: PNS w $np grupach short, plik $s2 -> $s3 B, dekodowalny" || bad "--pns-short 1: grupy z PNS $np, plik $s2 -> $s3"
+rm -f _check_pss.wav
 
 echo "==================================="
 echo "WYNIK: PASS=$PASS FAIL=$FAIL"

@@ -886,9 +886,30 @@ the same signal the step shows in the mid error instead (-8.72 to -9.04 dB at -0
 - Values: `1000..24000` Hz, rounded to the scalefactor band that starts at or above it
 
 Above the cutoff the side signal is dropped and the band is written as mid only, with the
-cheap MS mask. FDK's own intensity stereo decision is cleared there, because pure mid is
-cheaper (IS needs positions and forbids the one-code MS mask); forced IS from
-`--is-force-lo/-hi` still wins. Bands that both channels code as PNS are left as they are.
+cheap MS mask. Pure L/R never happens there.
+
+The level stays: both channels then play the mid, which alone carries less energy than the
+original channels whenever L and R differ (uncorrelated L/R would come out 3 dB quieter).
+So the mid is raised to the energy of the original, by at most 6 dB, and only where the
+side is above its masking threshold (a side that stock would zero anyway is not added).
+Measured at 96 kbps: a band 3 dB quieter than the source is 3 dB quieter with the cutoff
+too, for uncorrelated, partly correlated and correlated L/R. Up to 1.4.0-beta.1 the band
+lost up to 3 dB more. Two things mid cannot carry, whatever its level: content in
+anti-phase (L = -R, its mid is zero) and the direction of a hard panned sound, which ends
+up in the centre.
+
+Intensity stereo above the cutoff: FDK's stock IS decision is cleared there, because pure
+mid is cheaper. IS stays when it is asked for explicitly:
+- `--is-force-lo/-hi`: IS on the given bands, always.
+- loosened IS criteria (`--is-aggression`, `--is-corr-thresh`, `--is-lr-ratio`,
+  `--is-min-sfbs`, `--is-admit` above 5): FDK's own IS decision with those criteria. Single
+  panned regions above the cutoff then keep their side (IS carries the direction and the
+  phase per band), the rest stays mid, like the intensity stereo of MPEG-1 Layer II.
+  Measured (40 kbps, `--side-cutoff 1000`, a 3..6 kHz source panned 4 dB left and right in
+  turn over a mono mix): cutoff alone 0 dB, with `--is-aggression 100` 3..4 dB, as the
+  source.
+
+Bands that both channels code as PNS are left as they are.
 Below the cutoff stereo is untouched. `--verbose` prints the band where it starts, in the
 long and in the short table. Both round up to the next band edge, so on the coarse short
 table the edge can only move up (9 kHz: long band 31 at 9.0 kHz, short band 9 at 10.5 kHz),
@@ -4214,6 +4235,28 @@ Examples (stereo music, 24 kbps, PNS from 2.2 kHz):
 - Mild: `--pns-hold 3`. Noise levels 94 to 87 bits per frame.
 - Strong: `--pns-hold 6`. 70 bits per frame; the freed bits go to the coded spectrum.
 - Exaggerated: `--pns-hold 12`. The noise is almost flat over its whole region.
+
+### `--pns-short <0|1>`
+
+**Use `--pns-above` also in short (transient) frames, where it pays off.**
+
+- Applies to: AAC-LC core with `--pns-above`. Off by default.
+- Values: `1` = on, `0` = stock
+
+The AAC format allows noise substitution in short windows; FDK never does it, so above
+`--pns-above` a transient frame codes the noise bands as spectrum. With this switch they
+become noise too, but only in a frame coded as one group of all 8 windows
+(`--short-groups 1`). Measured (1.4.0-beta.2) in smaller groups: the noise energies took
+19% of the frame instead of 2%, and the attack came out 2.6..6 dB quieter, so those groups
+keep the spectrum. With the stock grouping the switch therefore changes nothing (bit for
+bit).
+
+Measured with `--short-groups 1 --pns-above 4000`, a sample with an attack in every frame:
+24 kbps file 9810 to 9226 B (-6%), the noise band at the source level (+1.1 dB instead of
+-1.4 dB). The cost: one noise level covers all 8 windows, so the band is smeared over the
+frame: pre-echo +1 dB, attack about 2 dB quieter. On music with few short frames it does
+nearly nothing (-0.3% of the file). For low bitrates where the band would otherwise be
+missing; listen first.
 
 ### `--pns-budget <0|1>`
 

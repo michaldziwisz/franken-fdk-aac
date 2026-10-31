@@ -348,6 +348,7 @@ int aacenc_init(HANDLE_AACENCODER *encoder, const aacenc_param_t *params,
     FR_SET(params->fr_side_cutoff > 0, AACENC_FRANKEN_SIDE_CUTOFF, params->fr_side_cutoff);
     FR_SET(params->fr_pns_shared >= 0, AACENC_FRANKEN_PNS_SHARED, params->fr_pns_shared);
     FR_SET(params->fr_pns_hold > 0, AACENC_FRANKEN_PNS_HOLD, params->fr_pns_hold);
+    FR_SET(params->fr_pns_short == 1, AACENC_FRANKEN_PNS_SHORT, 1);
     FR_SET(params->fr_pns_budget >= 0, AACENC_FRANKEN_PNS_BUDGET, params->fr_pns_budget);
     FR_SET(params->fr_is_admit >= 0, AACENC_FRANKEN_IS_ADMIT, params->fr_is_admit);
     FR_SET(params->fr_coverage != AACENC_FRANKEN_OFF, AACENC_FRANKEN_COVERAGE, params->fr_coverage);
@@ -654,6 +655,7 @@ int aacenc_init(HANDLE_AACENCODER *encoder, const aacenc_param_t *params,
             if (params->fr_mid_bias >= 0)       { FRV_HDR(); fprintf(stderr, " mid-bias              : %d Q8 (>256 = free bits from mid for side)\n", params->fr_mid_bias); }
             if (params->fr_side_bias != AACENC_FRANKEN_OFF) { FRV_HDR(); fprintf(stderr, " side-bias             : %+.3f dB (+ = more side, - = degrade side, vs mid)\n", params->fr_side_bias/1000.0); }
             if (params->fr_pns_shared >= 0) { FRV_HDR(); fprintf(stderr, " pns-shared            : %s\n", params->fr_pns_shared ? "1 (one shared noise in both channels, cheap MS mask)" : "0 (independent noise in each channel)"); }
+            if (params->fr_pns_short == 1) { FRV_HDR(); fprintf(stderr, " pns-short             : 1 (--pns-above also in short frames coded as one 8-window group)\n"); }
             if (params->fr_pns_hold > 0) { FRV_HDR(); fprintf(stderr, " pns-hold              : %.3f dB (neighbour noise levels within this share one level)\n", params->fr_pns_hold/1000.0); }
             if (params->fr_pns_budget >= 0) { FRV_HDR(); fprintf(stderr, " pns-budget            : %s\n", params->fr_pns_budget ? "1 (PNS energy bits booked in the bit target and crash recovery)" : "0 (stock booking)"); }
             if (params->fr_side_cutoff > 0) { FRV_HDR(); fprintf(stderr, " side-cutoff           : %d Hz (pure mid from long SFB %d, short SFB %d up)\n", params->fr_side_cutoff, (int)aacEncoder_GetParam(*encoder, AACENC_FRANKEN_GET_SIDE_CUT_SFB), (int)aacEncoder_GetParam(*encoder, AACENC_FRANKEN_GET_SIDE_CUT_SFB_SHORT)); }

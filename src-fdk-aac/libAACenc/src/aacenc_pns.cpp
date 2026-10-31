@@ -594,3 +594,35 @@ void FDKaacEnc_PostProcessPnsChannelPair(const INT sfbActive,
     }
   }
 }
+
+/* Frankenstein --pns-short 1: --pns-above also in short frames, but only in a
+ * window group of all 8 windows (one group per frame, e.g. --short-groups 1).
+ * Measured (1.4.0-beta.2): in smaller groups the noise level follows the attack
+ * badly and the noise energies cost more than they save, so they keep spectrum.
+ * Every band of such a group that starts at or above the --pns-above frequency
+ * becomes noise. The decoder applies one noise level to each window of a group
+ * and the grouped energy is the sum over the windows, so the level is per
+ * window: 2*log2(E / 8). */
+void FDKaacEnc_FrankenShortPns(const PNS_CONFIG *pnsConfShort, PNS_DATA *pnsData,
+                               const INT noOfGroups, const INT *groupLen,
+                               const INT sfbPerGroup, const INT maxSfbPerGroup,
+                               const INT *sfbOffsetShort,
+                               const FIXP_DBL *sfbEnergyLdData, INT *noiseNrg) {
+  const INT tmp = (-LOG_NORM_PCM) << 2;
+  for (INT g = 0; g < noOfGroups; g++) {
+    INT corr = 0;
+    const INT gl = groupLen[g];
+    if (gl < 8) continue; /* only a whole-frame group */
+    while ((1 << corr) < gl) corr++; /* log2(8) = 3 */
+    for (INT b = 0; b < maxSfbPerGroup; b++) {
+      const INT k = g * sfbPerGroup + b;
+      if (sfbOffsetShort[b] >= pnsConfShort->frankenAboveLine &&
+          sfbEnergyLdData[k] > FL2FXCONST_DBL(-0.5f)) {
+        INT nrg = (-sfbEnergyLdData[k] + FL2FXCONST_DBL(0.5f / 64.0f)) >>
+                  (DFRACT_BITS - 1 - 7);
+        pnsData->pnsFlag[k] = 1;
+        noiseNrg[k] = tmp - nrg - 2 * corr;
+      }
+    }
+  }
+}

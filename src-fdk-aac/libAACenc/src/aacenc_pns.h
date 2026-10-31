@@ -122,4 +122,9 @@ typedef struct {
   INT pnsFlag[MAX_GROUPED_SFB];
 } PNS_DATA;
 
+void FDKaacEnc_FrankenShortPns(const PNS_CONFIG *pnsConfShort, PNS_DATA *pnsData,
+                               const INT noOfGroups, const INT *groupLen,
+                               const INT sfbPerGroup, const INT maxSfbPerGroup,
+                               const INT *sfbOffsetShort,
+                               const FIXP_DBL *sfbEnergyLdData, INT *noiseNrg);
 #endif /* AACENC_PNS_H */
