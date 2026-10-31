@@ -1282,6 +1282,24 @@ AAC_ENCODER_ERROR FDKaacEnc_psyMain(INT channels, PSY_ELEMENT *psyElement,
           psyData[0]->sfbActive, &(psyConf[0].pnsConf), pnsData[0], pnsData[1],
           psyOutElement->toolsInfo.msMask, &psyOutElement->toolsInfo.msDigest);
 
+      /* Frankenstein --pns-shared: the PNS bands now carry a fixed mask bit;
+       * re-derive the digest from the whole mask. All ones = the 2-bit
+       * MS_MASK_ALL form (not with IS: there the mask bit is the IS phase). */
+      if (g_franken.pnsShared >= 0 && psyConf[0].pnsConf.usePns) {
+        INT on = 0, off = 0, anyIs = 0;
+        for (sfb = 0; sfb < maxSfbPerGroup[0]; sfb++) {
+          if (psyOutChannel[1]->isBook[sfb]) anyIs = 1;
+          if (psyOutElement->toolsInfo.msMask[sfb]) on++;
+          else off++;
+        }
+        if (on == 0)
+          psyOutElement->toolsInfo.msDigest = MS_NONE;
+        else if (off == 0 && !anyIs)
+          psyOutElement->toolsInfo.msDigest = MS_ALL;
+        else
+          psyOutElement->toolsInfo.msDigest = MS_SOME;
+      }
+
     } else {
       FDKaacEnc_IntensityStereoProcessing(
           psyData[0]->sfbEnergy.Long, psyData[1]->sfbEnergy.Long,

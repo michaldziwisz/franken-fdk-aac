@@ -117,6 +117,9 @@
     int fr_side_knee_zone; \
     int fr_side_knee_spread; \
     int fr_side_cutoff; \
+    int fr_pns_shared; \
+    int fr_pns_hold; \
+    int fr_pns_budget; \
     int fr_is_admit; \
     int fr_coverage; \
     int fr_ps_ipd; \

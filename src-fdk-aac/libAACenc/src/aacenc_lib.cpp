@@ -2968,6 +2968,15 @@ AACENC_ERROR aacEncoder_SetParam(const HANDLE_AACENCODER hAacEncoder,
     case AACENC_FRANKEN_BIT_STATS:
       g_franken.bitStats = (INT)value;
       break;
+    case AACENC_FRANKEN_PNS_SHARED:
+      g_franken.pnsShared = (INT)value;
+      break;
+    case AACENC_FRANKEN_PNS_HOLD:
+      g_franken.pnsHoldX1000 = (INT)value;
+      break;
+    case AACENC_FRANKEN_PNS_BUDGET:
+      g_franken.pnsBudget = (INT)value;
+      break;
     case AACENC_FRANKEN_SIDE_CUTOFF:
       g_franken.sideCutoffHz = (INT)value;
       hAacEncoder->InitFlags |= AACENC_INIT_CONFIG;

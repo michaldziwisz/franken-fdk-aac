@@ -427,6 +427,22 @@ void FDKaacEnc_CodePnsChannel(const INT sfbActive, PNS_CONFIG *pnsConf,
     return;
   }
 
+  /* Frankenstein --pns-hold <dB>: neighbouring noise bands whose levels differ
+   * by no more than the tolerance share one level, so their delta is 0 (1 bit).
+   * noiseNrg is 2*log2(energy) + const, one step = 1.505 dB. */
+  if (g_franken.pnsHoldX1000 > 0) {
+    const INT tol = (INT)((g_franken.pnsHoldX1000 / 1000.0) / 1.50515 + 1e-9);
+    INT have = 0, last = 0;
+    for (sfb = 0; sfb < sfbActive; sfb++) {
+      if (!pnsFlag[sfb] || noiseNrg[sfb] == NO_NOISE_PNS) continue;
+      if (have && noiseNrg[sfb] - last <= tol && last - noiseNrg[sfb] <= tol)
+        noiseNrg[sfb] = last;
+      else
+        last = noiseNrg[sfb];
+      have = 1;
+    }
+  }
+
   /* code PNS */
   for (sfb = 0; sfb < sfbActive; sfb++) {
     if (pnsFlag[sfb]) {
@@ -562,6 +578,14 @@ void FDKaacEnc_PostProcessPnsChannelPair(const INT sfbActive,
       pns is active in both channels
     */
     if ((pnsDataLeft->pnsFlag[sfb]) && (pnsDataRight->pnsFlag[sfb])) {
+      /* Frankenstein --pns-shared: one shared noise (1) or independent noise
+       * (0) in every band both channels code as PNS, whatever the measured
+       * correlation. psy_main.cpp then re-derives the mask digest, so an
+       * all-ones mask is written in its 2-bit form. */
+      if (g_franken.pnsShared >= 0) {
+        msMask[sfb] = g_franken.pnsShared ? 1 : 0;
+        continue;
+      }
       if (pnsDataLeft->noiseEnergyCorrelation[sfb] >
           pnsConf->noiseCorrelationThresh) {
         msMask[sfb] = 1;

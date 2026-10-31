@@ -72,6 +72,16 @@ typedef struct FRANKEN_CFG {
   int uncapBandwidth; /* -1/0 default; 1 = lift the fMin(20000,sr/2) core-cutoff cap */
   int isAggression;   /* -1 default; 0 = FDK default, 1..100 = progressively more aggressive IS */
   int forcePns;       /* -1/0 default; 1 = bypass low-bitrate PNS gate (lookUpPnsUse) */
+  int pnsShared;      /* -1 stock; 1 = every band that both channels code as PNS carries
+                         ONE shared noise (ms_used = correlated), so the MS mask can fall
+                         back to the 2-bit all-bands form; 0 = independent noise. */
+  int pnsHoldX1000;   /* -1 off; dB*1000. Neighbouring PNS bands of a channel whose noise
+                         levels differ by no more than this share one level (delta 0 =
+                         1 bit instead of 3..9). */
+  int pnsBudget;      /* -1 off; 1 = PNS energies are booked: the bit target for the
+                         spectrum is lowered by their cost and crash recovery counts the
+                         bits a PNS band saves (stock counts 0 and cuts on into the
+                         coded spectrum below). */
   int unlockBitrate;  /* -1/0 default; 1 = remove lower bitrate floor (extreme low rates) */
   int speechConfig;   /* -1/0 default; 1 = enable SBR speech tuning (useSpeechConfig) */
   int spreadMaskQ8;   /* -1 default; else scale psy spreading (mask spread) Q8. <256 = less

@@ -523,6 +523,20 @@ PROGNAME " %s\n"
 " --pns-gain <x>              Loudness of the fabricated PNS noise. x>=0.0, 1.0=unchanged\n"
 "                               (noise energy = original band). >1.0 louder, <1.0 quieter.\n"
 "                               Geeky: deliberately over/under-drive the noise fill.\n"
+" --pns-shared <0|1>          Bands that BOTH channels code as PNS: 1 = one shared noise\n"
+"                               (same noise in L and R), 0 = independent noise. Stock picks\n"
+"                               per band by correlation, which forces a per-band MS mask\n"
+"                               (up to ~25 bits/frame); a uniform choice lets the mask fall\n"
+"                               back to 2 bits. Noise levels stay per channel (format).\n"
+" --pns-hold <dB>             0.1..12.0. Neighbouring PNS bands of a channel whose noise\n"
+"                               levels differ by no more than this share one level: the\n"
+"                               delta costs 1 bit instead of 3..9. Coarser noise envelope.\n"
+" --pns-budget <0|1>          1 = count the bits PNS noise levels take: the bit target for\n"
+"                               the spectrum is lowered by them, and when a frame overflows\n"
+"                               the emergency cut gets their bits back instead of cutting\n"
+"                               on into the coded spectrum below (stock books PNS as free;\n"
+"                               at low rates that zeroes whole frames up to ~1.5 kHz and\n"
+"                               crackles in frame rhythm). 0 = stock.\n"
 " --pns-tonality <x>          Scales the PNS tonality detection threshold. 1.0=default,\n"
 "                               higher = more (also less-noisy) bands become PNS = wider\n"
 "                               noise substitution.\n"
@@ -781,6 +795,9 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
 #define OPT_FR_BIT_STATS          M4AF_FOURCC('f','q','b','s')
 #define OPT_FR_SIDE_KNEE_ZONE     M4AF_FOURCC('f','s','k','z')
 #define OPT_FR_SIDE_CUTOFF        M4AF_FOURCC('f','s','c','o')
+#define OPT_FR_PNS_SHARED         M4AF_FOURCC('f','p','s','h')
+#define OPT_FR_PNS_HOLD           M4AF_FOURCC('f','p','h','d')
+#define OPT_FR_PNS_BUDGET         M4AF_FOURCC('f','p','b','g')
 #define OPT_FR_IS_ADMIT           M4AF_FOURCC('f','i','a','d')
 #define OPT_FR_SIDE_KNEE_SPREAD   M4AF_FOURCC('f','s','k','s')
 #define OPT_FR_PS_IPD            M4AF_FOURCC('f','p','i','d')
@@ -952,6 +969,9 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
         { "bit-stats",            no_argument,       0, OPT_FR_BIT_STATS },
         { "side-knee-zone",       required_argument, 0, OPT_FR_SIDE_KNEE_ZONE },
         { "side-cutoff",          required_argument, 0, OPT_FR_SIDE_CUTOFF },
+        { "pns-shared",           required_argument, 0, OPT_FR_PNS_SHARED },
+        { "pns-hold",             required_argument, 0, OPT_FR_PNS_HOLD },
+        { "pns-budget",           required_argument, 0, OPT_FR_PNS_BUDGET },
         { "is-admit",             required_argument, 0, OPT_FR_IS_ADMIT },
         { "side-knee-spread",     required_argument, 0, OPT_FR_SIDE_KNEE_SPREAD },
         { "ps-ipd",              required_argument, 0, OPT_FR_PS_IPD            },
@@ -1081,6 +1101,9 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
     params->fr_bit_stats = 0;
     params->fr_side_knee_zone = -1;
     params->fr_side_cutoff = -1;
+    params->fr_pns_shared = -1;
+    params->fr_pns_hold = -1;
+    params->fr_pns_budget = -1;
     params->fr_is_admit = -1;
     params->fr_side_knee_spread = -1;
     params->fr_ps_ipd = -1;
@@ -1567,6 +1590,15 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
         case OPT_FR_COVERAGE:
             if (fr_scan_int(optarg, &n) != 1 || n < -5 || n > 5) { fprintf(stderr, "invalid arg for coverage (-5..5: - = fewer bands coded cleanly, + = everything coded coarsely, 0 = stock)\n"); return -1; }
             params->fr_coverage = (n == 0) ? AACENC_FRANKEN_OFF : n; break;
+        case OPT_FR_PNS_SHARED:
+            if (fr_scan_int(optarg, &n) != 1 || n < 0 || n > 1) { fprintf(stderr, "invalid arg for pns-shared (0|1)\n"); return -1; }
+            params->fr_pns_shared = n; break;
+        case OPT_FR_PNS_HOLD:
+            if (fr_parse_dec(optarg, 0.1, 12.0, 1000, &params->fr_pns_hold)) { fprintf(stderr, "invalid arg for pns-hold (0.1..12.0 dB)\n"); return -1; }
+            break;
+        case OPT_FR_PNS_BUDGET:
+            if (fr_scan_int(optarg, &n) != 1 || n < 0 || n > 1) { fprintf(stderr, "invalid arg for pns-budget (0|1)\n"); return -1; }
+            params->fr_pns_budget = n; break;
         case OPT_FR_SIDE_CUTOFF:
             if (fr_scan_int(optarg, &n) != 1 || n < 1000 || n > 24000) { fprintf(stderr, "invalid arg for side-cutoff (1000..24000 Hz)\n"); return -1; }
             params->fr_side_cutoff = n; break;

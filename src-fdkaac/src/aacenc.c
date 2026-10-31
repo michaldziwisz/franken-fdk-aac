@@ -346,6 +346,9 @@ int aacenc_init(HANDLE_AACENCODER *encoder, const aacenc_param_t *params,
     FR_SET(params->fr_side_knee_zone > 0, AACENC_FRANKEN_SIDE_KNEE_ZONE, params->fr_side_knee_zone);
     FR_SET(params->fr_side_knee_spread > 0, AACENC_FRANKEN_SIDE_KNEE_SPREAD, params->fr_side_knee_spread);
     FR_SET(params->fr_side_cutoff > 0, AACENC_FRANKEN_SIDE_CUTOFF, params->fr_side_cutoff);
+    FR_SET(params->fr_pns_shared >= 0, AACENC_FRANKEN_PNS_SHARED, params->fr_pns_shared);
+    FR_SET(params->fr_pns_hold > 0, AACENC_FRANKEN_PNS_HOLD, params->fr_pns_hold);
+    FR_SET(params->fr_pns_budget >= 0, AACENC_FRANKEN_PNS_BUDGET, params->fr_pns_budget);
     FR_SET(params->fr_is_admit >= 0, AACENC_FRANKEN_IS_ADMIT, params->fr_is_admit);
     FR_SET(params->fr_coverage != AACENC_FRANKEN_OFF, AACENC_FRANKEN_COVERAGE, params->fr_coverage);
     FR_SET(params->fr_ps_ipd != -1, AACENC_FRANKEN_PS_IPD, params->fr_ps_ipd);
@@ -615,6 +618,9 @@ int aacenc_init(HANDLE_AACENCODER *encoder, const aacenc_param_t *params,
             if (params->fr_ath_scale >= 0)      { FRV_HDR(); fprintf(stderr, " ath-scale             : %d Q8 (<256 = cleaner/more bits)\n", params->fr_ath_scale); }
             if (params->fr_mid_bias >= 0)       { FRV_HDR(); fprintf(stderr, " mid-bias              : %d Q8 (>256 = free bits from mid for side)\n", params->fr_mid_bias); }
             if (params->fr_side_bias != AACENC_FRANKEN_OFF) { FRV_HDR(); fprintf(stderr, " side-bias             : %+.3f dB (+ = more side, - = degrade side, vs mid)\n", params->fr_side_bias/1000.0); }
+            if (params->fr_pns_shared >= 0) { FRV_HDR(); fprintf(stderr, " pns-shared            : %s\n", params->fr_pns_shared ? "1 (one shared noise in both channels, cheap MS mask)" : "0 (independent noise in each channel)"); }
+            if (params->fr_pns_hold > 0) { FRV_HDR(); fprintf(stderr, " pns-hold              : %.3f dB (neighbour noise levels within this share one level)\n", params->fr_pns_hold/1000.0); }
+            if (params->fr_pns_budget >= 0) { FRV_HDR(); fprintf(stderr, " pns-budget            : %s\n", params->fr_pns_budget ? "1 (PNS energy bits booked in the bit target and crash recovery)" : "0 (stock booking)"); }
             if (params->fr_side_cutoff > 0) { FRV_HDR(); fprintf(stderr, " side-cutoff           : %d Hz (pure mid from long SFB %d up)\n", params->fr_side_cutoff, (int)aacEncoder_GetParam(*encoder, AACENC_FRANKEN_GET_SIDE_CUT_SFB)); }
             if (params->fr_is_admit >= 0) { FRV_HDR(); fprintf(stderr, " is-admit              : %.2f (IS allowed when bitrate/bandwidth is below; stock 5)\n", params->fr_is_admit/100.0); }
             if (params->fr_side_knee != AACENC_FRANKEN_OFF) { FRV_HDR(); fprintf(stderr, " side-knee             : %+.3f dB offset on side band margins (zone x%.2f, spread %.2f dB)\n", params->fr_side_knee/1000.0, params->fr_side_knee_zone > 0 ? params->fr_side_knee_zone/1000.0 : 3.0, params->fr_side_knee_spread > 0 ? params->fr_side_knee_spread/1000.0 : 1.0); }

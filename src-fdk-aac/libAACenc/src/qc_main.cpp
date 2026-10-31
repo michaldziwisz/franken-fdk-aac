@@ -110,6 +110,7 @@ amm-info@iis.fraunhofer.de
 #include "channel_map.h"
 #include "aacEnc_ram.h"
 #include "franken.h"
+#include "aacenc_pns.h"
 
 #include "genericStds.h"
 
@@ -613,6 +614,33 @@ static int FDKaacEnc_getMinimalStaticBitdemand(CHANNEL_MAPPING* cm,
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+/* Frankenstein --pns-budget: bits the PNS noise energies of an element will take
+ * in the stream (9-bit PCM for the first band, then Huffman deltas, the same
+ * chain dyn_bits.cpp counts). Stock books 0 for them in the bit target. */
+static INT frankenPnsBits(PSY_OUT_ELEMENT* psyOutElement, INT nChannels) {
+  INT bits = 0;
+  for (INT ch = 0; ch < nChannels; ch++) {
+    const PSY_OUT_CHANNEL* po = psyOutElement->psyOutChannel[ch];
+    if (po->lastWindowSequence == SHORT_WINDOW) continue; /* no PNS there */
+    INT first = 1, last = 0;
+    for (INT sfb = 0; sfb < po->maxSfbPerGroup; sfb++) {
+      const INT n = po->noiseNrg[sfb];
+      if (n == NO_NOISE_PNS) continue;
+      if (first) {
+        bits += 9;
+        first = 0;
+      } else {
+        INT d = n - last;
+        if (d > 60) d = 60;
+        if (d < -60) d = -60;
+        bits += FDKaacEnc_bitCountScalefactorDelta(d);
+      }
+      last = n;
+    }
+  }
+  return bits;
+}
+
 static AAC_ENCODER_ERROR FDKaacEnc_prepareBitDistribution(
     QC_STATE* hQC, PSY_OUT** psyOut, QC_OUT** qcOut, CHANNEL_MAPPING* cm,
     QC_OUT_ELEMENT* qcElement[(1)][((8))], INT avgTotalBits,
@@ -669,7 +697,11 @@ static AAC_ENCODER_ERROR FDKaacEnc_prepareBitDistribution(
           psyOut[0]->psyOutElement[i]->psyOutChannel, &qcElement[0][i]->peData,
           &qcElement[0][i]->grantedPe, &qcElement[0][i]->grantedPeCorr,
           nChannels, psyOut[0]->psyOutElement[i]->commonWindow,
-          qcElement[0][i]->grantedDynBits, hQC->elementBits[i]->bitResLevelEl,
+          (g_franken.pnsBudget == 1)
+              ? fMax(0, qcElement[0][i]->grantedDynBits -
+                            frankenPnsBits(psyOut[0]->psyOutElement[i], nChannels))
+              : qcElement[0][i]->grantedDynBits,
+          hQC->elementBits[i]->bitResLevelEl,
           hQC->elementBits[i]->maxBitResBitsEl, hQC->maxBitFac,
           hQC->bitResMode);
 
@@ -1020,6 +1052,12 @@ AAC_ENCODER_ERROR FDKaacEnc_QCMain(QC_STATE* RESTRICT hQC, PSY_OUT** psyOut,
           if (hQC->hAdjThr->adjThrStateElem[i]->dynBitsLast == -1) {
             hQC->hAdjThr->adjThrStateElem[i]->dynBitsLast =
                 qcElement[c][i]->dynBitsUsed;
+            /* --pns-budget: the bits2pe correction compares the PE target
+             * with the bits spent on it; PNS energies are outside the target. */
+            if (g_franken.pnsBudget == 1)
+              hQC->hAdjThr->adjThrStateElem[i]->dynBitsLast = fMax(
+                  0, hQC->hAdjThr->adjThrStateElem[i]->dynBitsLast -
+                         frankenPnsBits(psyOut[c]->psyOutElement[i], nChannels));
           }
 
           /* hold total bit consumption in present element below maximum allowed
@@ -1470,6 +1508,25 @@ static void FDKaacEnc_crashRecovery(INT nChannels,
                      qcChannel[ch]->sectionData.huffsection[sect].sfbCnt;
            sfb++) {
         bitsPerScf[ch][sfb] = 0;
+        if (codeBook == CODE_BOOK_PNS_NO && g_franken.pnsBudget == 1) {
+          /* --pns-budget: a PNS band costs its noise-energy code. Cutting from
+           * the top, dropping it saves exactly that (it is the last of the
+           * delta chain). Stock counts 0 and so cuts on into the spectrum. */
+          INT n = psyChannel[ch]->noiseNrg[sfb], prev = NO_NOISE_PNS;
+          for (INT k = sfb - 1; k >= 0; k--)
+            if (psyChannel[ch]->noiseNrg[k] != NO_NOISE_PNS) {
+              prev = psyChannel[ch]->noiseNrg[k];
+              break;
+            }
+          if (prev == NO_NOISE_PNS) {
+            bitsPerScf[ch][sfb] = 9;
+          } else {
+            INT d = n - prev;
+            if (d > 60) d = 60;
+            if (d < -60) d = -60;
+            bitsPerScf[ch][sfb] = FDKaacEnc_bitCountScalefactorDelta(d);
+          }
+        }
         if ((codeBook != CODE_BOOK_PNS_NO) /*&&
              (sfb < (qcChannel[ch]->sectionData.noOfGroups*qcChannel[ch]->sectionData.maxSfbPerGroup))*/) {
           INT sfbStartLine = sfbOffset[sfb];
