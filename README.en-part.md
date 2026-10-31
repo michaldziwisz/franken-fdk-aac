@@ -5495,7 +5495,11 @@ automatically get the more economical tools:
 
 So `-b 96` on a stereo file lands on AAC-LC, `-b 64` on HE-AAC and `-b 32` on HE-AAC v2
 without you thinking about it. You can still force the profile with `-p` (`2` for LC,
-`5` for HE-AAC, `29` for HE-AAC v2) when you know what you want.
+`5` for HE-AAC, `29` for HE-AAC v2) when you know what you want. A forced profile gives
+the same stream as the automatic pick would for that profile, bit for bit. Other `-p`
+values are refused, and so is `-p 29` on a mono input. A forced profile below the FDK
+tuning tables, for example `-p 2` at 8 kbps or `-p 5` at 8 kbps stereo, stops with a
+note: leave out `-p` or add `--unlock-bitrate`.
 
 Values:
 - omitted: normal output, and the encoder behaves exactly as stock.
@@ -5509,8 +5513,15 @@ Examples in context:
 
 Works with / against: `--dab-label` only does something in this mode. `-f` and the MP4
 container switches are inapplicable, since there is no container. `--unlock-bitrate`
-changes how `-b` is read. The group D and F switches still act on the AAC core inside
-the superframes, so the detail and bitrate knobs remain available.
+changes how `-b` is read. The switches of groups B to F still act on the AAC core
+inside the superframes, so the stereo, SBR, detail, transient, coverage and bitrate knobs
+remain available. Frequencies given in Hz are converted on the 960 sample grid, so
+`--verbose` shows slightly different band edges than in a 1024 sample stream. Measured
+on music and on an attack test, 48 and 96 kbps LC, 64 kbps HE-AAC stereo, 48 kbps HE-AAC
+mono and 32 kbps HE-AAC v2: 58 settings of the switches added since v1.3.2 and of the
+band switches, each stream decoded by faad2 behind dablin without an error. A switch
+whose tool is not in the chosen profile does nothing, as in a normal stream: SBR knobs
+in AAC-LC, stereo knobs in mono and in HE-AAC v2.
 
 Measured: the streams decode with the independent faad2 decoder behind dablin, the DLS
 label reads back correctly, and the AAC-LC output is bit identical to what the reference

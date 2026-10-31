@@ -86,6 +86,24 @@ the middle seemed to do nothing. Measured on the encoder: the detector ratio is
   transitions and channel sync. 300 encodes (0..255, LC/HE/HEv2, short groups 1/3,
   silence, sine, music): 0 illegal window transitions, 0 decoder errors.
 
+#### DAB+: forced profile (`-p`) and `-b 8` fixed
+
+- `--dab` with `-p 2`, `-p 5` or `-p 29` stopped with "aacEncEncode() failed" for
+  `-p 2` (and with an assertion in the superframe writer for some other values): the
+  plain profile number did not select the 960 transform. It is now mapped to the DAB+
+  profile, and the stream is the same, bit for bit, as the automatic pick gives for
+  that profile (`-p 5` and `-p 29` used to differ because of the edge extrapolator,
+  which DAB+ does not use). Other `-p` values are refused, `-p 29` on a mono input
+  too.
+- `--dab -b 8` multiplied the bitrate by 1000 twice and aborted; it is now 8 kbps
+  (120 bytes per superframe).
+- A forced profile below the FDK tables (`-p 2` at 8 kbps, `-p 5` at 8 kbps stereo)
+  explains the error and points to the automatic pick or `--unlock-bitrate`; the SBR
+  floor note is no longer printed in DAB+ mode, where it did not apply.
+- Checked: the switches added since v1.3.2 and the band switches in DAB+ (58 settings
+  x LC 96 kbps on music and on attacks, HE-AAC 64 kbps, HE-AAC mono 48 kbps, HE-AAC v2
+  32 kbps): every stream legal and decoded by faad2 behind dablin without an error.
+
 ### v1.4.0-beta.1 — side knee as an offset, side cutoff, IS gate, PNS that saves bits, bit statistics, documentation audit (plus the SBR estimator knobs, `--sbr-softness`, real low-bitrate unlock)
 
 #### Core transients, pre-echo and spectral holes (LC / LD / ELD)

@@ -1283,7 +1283,8 @@ oszczędniejsze narzędzia:
 Więc `-b 96` na pliku stereo trafi na AAC-LC, `-b 64` na HE-AAC, a `-b 32` na
 HE-AAC v2 — nie musisz o tym myśleć. Jeśli się upierasz, profil nadal wymusisz
 przełącznikiem `-p` (2 = LC, 5 = HE-AAC, 29 = HE-AAC v2), tak samo jak w każdym
-innym trybie tego enkodera.
+innym trybie tego enkodera. Wymuszony profil daje ten sam strumień co dobór
+automatyczny dla tego profilu. Inne wartości są odrzucane, tak samo `-p 29` na pliku mono.
 
     fdkaac --dab -b 64 -o out.dabp input.wav    # → HE-AAC automatycznie
     fdkaac --dab -b 32 -o out.dabp input.wav    # → HE-AAC v2 automatycznie

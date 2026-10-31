@@ -514,10 +514,19 @@ BOTTOM of the spectrum. Band 0 is bass, the highest number is the top of the cod
 How many bands exist depends on profile and sample rate: at LC 48 kHz stereo `--verbose`
 prints `active SFBs (long): 49`, so legal band numbers run 0..48. Always read that line
 before setting a range, because the count changes with the configuration and a number you
-remembered from another encode may be out of the spectrum entirely. Short blocks are
-numbered the same way, from 0 inside each window group, and a short frame has far fewer
-bands (around 14 at 44.1 and 48 kHz); a range that reaches above the short band count
-simply leaves short frames in plain L/R.
+remembered from another encode may be out of the spectrum entirely.
+
+**Short blocks.** The numbers you give are always LONG-block bands. A short frame has its
+own, much coarser table (around 14 bands at 44.1 and 48 kHz, counted from 0 inside each
+window group), so the same number would mean another frequency there. The encoder
+therefore moves every range to the short table by frequency: each edge goes to the
+nearest short band edge in Hz, an exact tie goes up. A short band is in the range when
+at least half of it is. A narrow range that falls inside one wide short band takes that
+band. The result is the same region of the spectrum in long and short frames, for every
+sample rate, for DAB+ (960/120) and for every `--short-groups` setting. `--verbose` prints
+both, for example `long 18..30 (2531..9000 Hz) -> short 3..7 (2250..8250 Hz)`. Up to
+1.4.0-beta.1 the numbers were compared directly: `--msbands-lo 18` left short frames with
+no MS at all, and `--msbands 18` (MS up to 2.5 kHz) gave short frames MS up to 24 kHz.
 
 **Why a range above the coded bandwidth does nothing.** The SFB count is the full table
 for the profile, but only bands up to the coded bandwidth carry anything. Bands above the
@@ -669,9 +678,8 @@ anchored at band 0.
 The upper edge of the from..to window described above, and inclusive: `--msbands-hi 5`
 includes band 5. Bands above it go to plain L/R.
 
-In short blocks the number means the same frequency region, counted from 0 inside each
-window group, and short frames have only about 14 bands at 44.1 and 48 kHz. A range whose
-upper edge sits above the short band count leaves short frames in L/R rather than failing.
+In short blocks the range covers the same frequencies on the short table (see *Short
+blocks* above), so `--msbands-lo 18 --msbands-hi 30` at 48 kHz is short bands 3..7.
 
 Examples:
 - Mild: `--msbands-lo 0 --msbands-hi 44`. Top four bands excluded from MS. Small change.
@@ -878,10 +886,34 @@ the same signal the step shows in the mid error instead (-8.72 to -9.04 dB at -0
 - Values: `1000..24000` Hz, rounded to the scalefactor band that starts at or above it
 
 Above the cutoff the side signal is dropped and the band is written as mid only, with the
-cheap MS mask. FDK's own intensity stereo decision is cleared there, because pure mid is
-cheaper (IS needs positions and forbids the one-code MS mask); forced IS from
-`--is-force-lo/-hi` still wins. Bands that both channels code as PNS are left as they are.
-Below the cutoff stereo is untouched. `--verbose` prints the band where it starts.
+cheap MS mask. Pure L/R never happens there.
+
+The level stays: both channels then play the mid, which alone carries less energy than the
+original channels whenever L and R differ (uncorrelated L/R would come out 3 dB quieter).
+So the mid is raised to the energy of the original, by at most 6 dB, and only where the
+side is above its masking threshold (a side that stock would zero anyway is not added).
+Measured at 96 kbps: a band 3 dB quieter than the source is 3 dB quieter with the cutoff
+too, for uncorrelated, partly correlated and correlated L/R. Up to 1.4.0-beta.1 the band
+lost up to 3 dB more. Two things mid cannot carry, whatever its level: content in
+anti-phase (L = -R, its mid is zero) and the direction of a hard panned sound, which ends
+up in the centre.
+
+Intensity stereo above the cutoff: FDK's stock IS decision is cleared there, because pure
+mid is cheaper. IS stays when it is asked for explicitly:
+- `--is-force-lo/-hi`: IS on the given bands, always.
+- loosened IS criteria (`--is-aggression`, `--is-corr-thresh`, `--is-lr-ratio`,
+  `--is-min-sfbs`, `--is-admit` above 5): FDK's own IS decision with those criteria. Single
+  panned regions above the cutoff then keep their side (IS carries the direction and the
+  phase per band), the rest stays mid, like the intensity stereo of MPEG-1 Layer II.
+  Measured (40 kbps, `--side-cutoff 1000`, a 3..6 kHz source panned 4 dB left and right in
+  turn over a mono mix): cutoff alone 0 dB, with `--is-aggression 100` 3..4 dB, as the
+  source.
+
+Bands that both channels code as PNS are left as they are.
+Below the cutoff stereo is untouched. `--verbose` prints the band where it starts, in the
+long and in the short table. Both round up to the next band edge, so on the coarse short
+table the edge can only move up (9 kHz: long band 31 at 9.0 kHz, short band 9 at 10.5 kHz),
+which destroys less side, never more.
 
 Examples (acoustic stereo music):
 - Mild: `-b 48000 --side-cutoff 8000`. Side info 238 to 235 bits per frame, mid a little cleaner.
@@ -1086,6 +1118,12 @@ let it swallow half the spectrum.
 Read the ceiling against `--verbose` `active SFBs`: at LC 48 kHz stereo there are 49
 bands, so a cap of 40 is barely a cap at all and a cap of 4 is severe. Bands beyond the
 cap are coded normally.
+
+In short frames the cap holds for every window group on its own (each group is a slice of
+time with its own copy of the band table) and is scaled to the coarser table: at 48 kHz
+`--isbands 6` allows 2 short bands per group. Up to 1.4.0-beta.1 it counted across the
+groups, so the first groups of a transient frame used it up and the rest of the frame got
+no IS at all.
 
 Examples:
 - Mild cap: `--isbands 24`. Half the spectrum may still go intensity. On most material
@@ -4198,6 +4236,28 @@ Examples (stereo music, 24 kbps, PNS from 2.2 kHz):
 - Strong: `--pns-hold 6`. 70 bits per frame; the freed bits go to the coded spectrum.
 - Exaggerated: `--pns-hold 12`. The noise is almost flat over its whole region.
 
+### `--pns-short <0|1>`
+
+**Use `--pns-above` also in short (transient) frames, where it pays off.**
+
+- Applies to: AAC-LC core with `--pns-above`. Off by default.
+- Values: `1` = on, `0` = stock
+
+The AAC format allows noise substitution in short windows; FDK never does it, so above
+`--pns-above` a transient frame codes the noise bands as spectrum. With this switch they
+become noise too, but only in a frame coded as one group of all 8 windows
+(`--short-groups 1`). Measured (1.4.0-beta.2) in smaller groups: the noise energies took
+19% of the frame instead of 2%, and the attack came out 2.6..6 dB quieter, so those groups
+keep the spectrum. With the stock grouping the switch therefore changes nothing (bit for
+bit).
+
+Measured with `--short-groups 1 --pns-above 4000`, a sample with an attack in every frame:
+24 kbps file 9810 to 9226 B (-6%), the noise band at the source level (+1.1 dB instead of
+-1.4 dB). The cost: one noise level covers all 8 windows, so the band is smeared over the
+frame: pre-echo +1 dB, attack about 2 dB quieter. On music with few short frames it does
+nearly nothing (-0.3% of the file). For low bitrates where the band would otherwise be
+missing; listen first.
+
 ### `--pns-budget <0|1>`
 
 **Count the bits the PNS noise levels take, so a frame does not run out of bits and cut its spectrum.**
@@ -4595,14 +4655,19 @@ Examples, allowing deeper holes:
 - Exaggerated: `--hole-start 0`. Even the bass bands may be cut. Useful only to hear what
   the stock protection prevents.
 
-Works with / against: the mirror switch for short blocks is `--hole-start-short`.
+Short blocks: without `--hole-start-short` the same frequency is used there (the
+nearest short band edge; `--hole-start 25`, 5 kHz at 48 kHz, becomes short band 6, and
+the stock pair 15/3 maps onto itself). `--verbose` shows it.
+
+Works with / against: `--hole-start-short` sets the short value explicitly and wins.
 
 ### `--hole-start-short <sfb>`
 
 **The same protection for short blocks.**
 
 - Applies to: LC and the HE-AAC core, frames coded as short blocks. LD and ELD have none.
-- Values: short-block scalefactor band 0..15; default: off, which is stock behaviour (band 3)
+- Values: short-block scalefactor band 0..15; default: off, which is stock behaviour (band 3),
+  or the frequency of `--hole-start` when that one is given
 - Input: whole number
 
 A short block has about 14 bands at 44.1 or 48 kHz, so each band is wide and the numbers
@@ -4650,8 +4715,9 @@ Examples, allowing more holes:
 - Exaggerated: `--hole-spread 0`. The spread energy is taken at face value; any band
   sitting next to louder ones is a candidate.
 
-Note: setting this switch applies the same margin to long and short blocks, while stock
-uses 3 dB and 2 dB.
+The value is for long blocks; short blocks get two thirds of it, which keeps the stock
+ratio (3 dB long, 2 dB short). `--hole-spread 3` is therefore exactly stock in both. Up to
+1.4.0-beta.1 one value replaced both.
 
 ### `--preecho-rise <dB>`
 
@@ -4868,16 +4934,17 @@ large the filter may be; this switch decides how often it is worth it.
 
 ### `--tns-start <Hz>`
 
-**Sets the lowest frequency the lower TNS filter covers in long blocks.**
+**Sets the lowest frequency the lower TNS filter covers.**
 
-- Applies to: AAC-LC and the LC core of HE-AAC, long blocks. Measured no effect in LD and
-  ELD.
+- Applies to: AAC-LC and the LC core of HE-AAC, long and short blocks. Measured no effect
+  in LD and ELD.
 - Values: 0..24000 Hz; default: off, which is stock behaviour (8 scalefactor bands, about
   1.4 kHz at 48 kHz)
 - Input: whole number
 
-Stock keeps the lowest bands out of TNS. The value is rounded to the nearest scalefactor
-band edge, and it cannot go above the top of the TNS range.
+Stock keeps the lowest bands out of TNS in long blocks and starts at 0 Hz in short ones.
+The value is rounded to the nearest scalefactor band edge of each table, and it cannot go
+above the top of the TNS range. Up to 1.4.0-beta.1 short blocks ignored it.
 
 Examples, reaching lower:
 - Mild: `--tns-start 1000`.
@@ -5081,63 +5148,61 @@ ceilings, which is where you get the numbers to set these switches from.
 
 ### `--block-bias <n>`
 
-**Biases the decision between long and short blocks without ever forcing a block type,
-so the stream stays standards compliant.**
+**Sets the share of short blocks, from long blocks only (0) to short blocks only (255).
+The stream stays standards compliant at every value.**
 
-- Applies to: every profile that has block switching, so AAC-LC. LD and ELD have no
-  short blocks, so there is nothing to bias there.
-- Values: `0..255`, where `128` is the encoder's own threshold; default: `-1`, off
+- Applies to: AAC-LC and the LC core of HE-AAC, which have short blocks. LD and ELD have
+  none (LD switches to a low-overlap window instead, also moved by this switch; ELD has
+  no switching at all).
+- Values: `0..255`, `128` is stock; default: `-1`, off (stock)
 - Input: whole number
 
 A long block gives good frequency resolution and bad time resolution; a short block the
-reverse. The encoder uses an attack detector to decide, frame by frame, which it needs.
-Get it wrong in one direction and a transient smears its quantisation noise backwards in
-time as pre-echo; wrong in the other direction and a steady tonal passage is coded with
-eight short windows that cannot resolve its partials, which costs bits and sounds rough.
+reverse. The encoder's attack detector decides frame by frame: it compares the energy of
+each eighth of the frame with the running energy before it and calls an attack above a
+ratio of 10. On music that ratio is 1.2 to 1.5 in an ordinary frame and above 10 in only
+about 2..3% of frames.
 
-This switch shifts the threshold the detector compares against. Above 128 makes short
-blocks more likely, so the encoder treats the material as more transient than it is.
-Below 128 favours long blocks, and `0` means practically long blocks only.
+This switch moves that threshold along a table calibrated on the encoder itself (six
+excerpts of acoustic stereo, eurodance, vocals and drums at 64 kbps, share of short frames
+read from the bitstream), so that the share of short frames follows the slider evenly:
+- `0`: long blocks only, no attack is ever detected.
+- `1..127`: fewer short frames, down from stock; at `64` about half of the stock share.
+- `128`: stock, bit for bit.
+- `129..240`: more short frames, about 12% of the frames per 16 steps on music; around
+  `192` about half the frames, at `240` about 80..99%.
+- `241..254`: also quiet passages go short (the detector's minimum energy is lowered).
+- `255`: short blocks only, every frame, silence included.
 
-Importantly, it shifts a decision, it does not override it. Forcing a window type
-without recomputing the band layout and grouping produces an illegal stream that
-decoders reject, and this switch never does that; whatever you set, the output is a
-valid AAC stream.
+Material without transients reacts later than music: steady pink noise and a sine stay
+long up to about 208 and go short between 216 and 236, because their ratio stays near 1.
+Material with hard hits only (a drum stem) keeps its hits at every value, so its share
+moves less. Up to 1.4.0-beta.1 the switch scaled the threshold linearly: above 128 it
+only went from 10 to 5 (6.5% short at 255 on eurodance) and just below 128 it jumped past
+most real attacks, which is why the middle seemed to do nothing.
 
-The practical finding is that the middle of the range does little on most material. The
-decision on a given frame is usually not close, so only values near the ends flip it.
-Treat this as a three position switch in practice, with `0` and `255` as the interesting
-settings, and the middle useful only on material that genuinely sits near the decision
-boundary.
+Only the attack decision changes. The window sequence is still built by the encoder's
+own transitions (long, start, short, stop, long) and both channels are synchronised as
+stock, so a decoder always gets a legal sequence. Checked: 300 encodes (0 to 255, LC,
+HE-AAC, HE-AAC v2, short grouping 1 and 3, silence, sine, music), 0 illegal window
+transitions and 0 decoder errors. `--verbose` shows the value.
 
-Examples:
-- Mild, more short blocks: `--block-bias 160`. Marginal frames go short. Visible only
-  on material near the boundary.
-- Strong, more short blocks: `--block-bias 220`. Clearly more short frames. Better
-  time resolution on percussive content, worse frequency resolution and more bits spent
-  on tonal passages.
-- Exaggerated, more short blocks: `--block-bias 255`. Nearly everything short. Tonal
-  material is coded with eight windows that cannot resolve its partials and sounds
-  rough and expensive, which is a good demonstration of what long blocks are for.
-- Mild, more long blocks: `--block-bias 100`. Marginal frames stay long.
-- Strong, more long blocks: `--block-bias 40`. Clearly fewer short frames. Cheaper on
-  tonal material, with pre-echo appearing on real attacks.
-- Exaggerated, more long blocks: `--block-bias 0`. Practically long blocks only. Every
-  transient must be carried by a long block, so pre-echo becomes the dominant artifact
-  on percussive material. This is also the condition in which the group E pre-echo
-  switches finally matter in AAC-LC, since the usual escape route to short blocks is
-  closed.
+Examples (eurodance, 64 kbps; share of short frames):
+- `--block-bias 64`: 0.1% instead of 1.6%. Steady material stays long, hard hits still go
+  short.
+- `--block-bias 160`: 23%. Every larger rise in level gets short blocks.
+- `--block-bias 192`: 57%.
+- `--block-bias 224`: 87%.
+- `--block-bias 255`: 100%. Tonal material sounds rough, a demonstration of what long
+  blocks are for.
+- `--block-bias 0`: 0%. Every transient is carried by a long block, pre-echo becomes the
+  main artefact on percussive material.
 
 Works with / against: with `--block-bias 0`, `--preecho-rise`, `--preecho-depth` and
-`--tns-thresh` from group E become the tools that are left against pre-echo, which is
-the same situation LD and ELD are permanently in. `--short-groups` and `--window-shape`
-only matter where short blocks still occur, so a very low bias makes them irrelevant.
-`--attack-decay` and `--attack-floor` change the detector itself rather than the
-threshold it compares against.
-
-Measured: at AAC-LC 128 kbps on attacks48, only `0` and `255` changed the stream.
-`64`, `128` and `192` were identical to stock, which is the basis for treating the
-middle of the range as inert on ordinary material.
+`--tns-thresh` from group E are the tools left against pre-echo, the situation LD and ELD
+are always in. `--short-groups`, `--window-shape` and `--pns-short` only matter where
+short blocks occur. `--attack-decay` and `--attack-floor` change the detector itself; they
+combine with this switch.
 
 ### `--vbr-reservoir <bits>`
 
@@ -5430,7 +5495,11 @@ automatically get the more economical tools:
 
 So `-b 96` on a stereo file lands on AAC-LC, `-b 64` on HE-AAC and `-b 32` on HE-AAC v2
 without you thinking about it. You can still force the profile with `-p` (`2` for LC,
-`5` for HE-AAC, `29` for HE-AAC v2) when you know what you want.
+`5` for HE-AAC, `29` for HE-AAC v2) when you know what you want. A forced profile gives
+the same stream as the automatic pick would for that profile, bit for bit. Other `-p`
+values are refused, and so is `-p 29` on a mono input. A forced profile below the FDK
+tuning tables, for example `-p 2` at 8 kbps or `-p 5` at 8 kbps stereo, stops with a
+note: leave out `-p` or add `--unlock-bitrate`.
 
 Values:
 - omitted: normal output, and the encoder behaves exactly as stock.
@@ -5444,8 +5513,15 @@ Examples in context:
 
 Works with / against: `--dab-label` only does something in this mode. `-f` and the MP4
 container switches are inapplicable, since there is no container. `--unlock-bitrate`
-changes how `-b` is read. The group D and F switches still act on the AAC core inside
-the superframes, so the detail and bitrate knobs remain available.
+changes how `-b` is read. The switches of groups B to F still act on the AAC core
+inside the superframes, so the stereo, SBR, detail, transient, coverage and bitrate knobs
+remain available. Frequencies given in Hz are converted on the 960 sample grid, so
+`--verbose` shows slightly different band edges than in a 1024 sample stream. Measured
+on music and on an attack test, 48 and 96 kbps LC, 64 kbps HE-AAC stereo, 48 kbps HE-AAC
+mono and 32 kbps HE-AAC v2: 58 settings of the switches added since v1.3.2 and of the
+band switches, each stream decoded by faad2 behind dablin without an error. A switch
+whose tool is not in the chosen profile does nothing, as in a normal stream: SBR knobs
+in AAC-LC, stereo knobs in mono and in HE-AAC v2.
 
 Measured: the streams decode with the independent faad2 decoder behind dablin, the DLS
 label reads back correctly, and the AAC-LC output is bit identical to what the reference
@@ -6157,9 +6233,20 @@ kodowanego zakresu. Ile pasm istnieje, zależy od profilu i częstotliwości pr�
 przy LC 48 kHz stereo `--verbose` wypisuje `active SFBs (long): 49`, więc dozwolone
 numery pasm to 0..48. Zawsze przeczytaj tę linię, zanim ustawisz zakres, bo liczba zmienia
 się wraz z konfiguracją, a numer zapamiętany z innego kodowania może wypadać całkiem poza
-widmo. Bloki krótkie są numerowane tak samo, od `0` wewnątrz każdej grupy okien, a ramka
-krótka ma znacznie mniej pasm (około 14 przy 44,1 i 48 kHz); zakres, który sięga powyżej
-liczby pasm krótkich, po prostu zostawia ramki krótkie w zwykłym L/R.
+widmo.
+
+**Bloki krótkie.** Podawane numery to zawsze pasma bloku DŁUGIEGO. Ramka krótka ma własną,
+dużo grubszą tablicę (około 14 pasm przy 44,1 i 48 kHz, liczonych od `0` wewnątrz każdej
+grupy okien), więc ten sam numer oznaczałby tam inną częstotliwość. Dlatego enkoder
+przenosi każdy zakres na tablicę krótką według częstotliwości: każda krawędź trafia na
+najbliższą w Hz krawędź pasma krótkiego, a przy dokładnym remisie na wyższą. Pasmo krótkie
+należy do zakresu, gdy leży w nim co najmniej połowa jego szerokości. Wąski zakres, który
+mieści się w jednym szerokim paśmie krótkim, dostaje to pasmo. W efekcie ramki długie
+i krótkie obejmują ten sam obszar widma, przy każdej częstotliwości próbkowania, w DAB+
+(960/120) i przy każdym ustawieniu `--short-groups`. `--verbose` wypisuje oba przekłady, np.
+`long 18..30 (2531..9000 Hz) -> short 3..7 (2250..8250 Hz)`. Do 1.4.0-beta.1 numery były
+porównywane wprost: `--msbands-lo 18` zostawiało ramki krótkie całkiem bez MS, a
+`--msbands 18` (MS do 2,5 kHz) dawało w ramkach krótkich MS aż do 24 kHz.
 
 **Dlaczego zakres powyżej kodowanego pasma nie robi nic.** Liczba SFB to pełna tabela dla
 profilu, ale tylko pasma do kodowanego pasma cokolwiek niosą. Pasma powyżej częstotliwości
@@ -6315,10 +6402,9 @@ samą funkcją zakotwiczoną w pasmie 0.
 Górna krawędź opisanego wyżej okna od..do, i to włącznie: `--msbands-hi 5` obejmuje pasmo
 5. Pasma powyżej idą w zwykłe L/R.
 
-W blokach krótkich numer oznacza ten sam obszar częstotliwości, liczony od `0` wewnątrz
-każdej grupy okien, a ramki krótkie mają tylko około 14 pasm przy 44,1 i 48 kHz. Zakres,
-którego górna krawędź leży powyżej liczby pasm krótkich, zostawia ramki krótkie w L/R,
-a nie kończy się błędem.
+W blokach krótkich zakres obejmuje te same częstotliwości na tablicy krótkiej (zobacz
+*Bloki krótkie* wyżej), więc `--msbands-lo 18 --msbands-hi 30` przy 48 kHz to pasma
+krótkie 3..7.
 
 Przykłady:
 - Łagodnie: `--msbands-lo 0 --msbands-hi 44`. Cztery najwyższe pasma wykluczone z MS.
@@ -6532,10 +6618,32 @@ domyślnym na tym samym sygnale skok pojawia się w błędzie mid (z -8,72 na -9
 - Wartości: `1000..24000` Hz, zaokrąglane do pasma współczynnika skali, które zaczyna się na tej częstotliwości lub wyżej
 
 Powyżej granicy sygnał side jest porzucany, a pasmo zapisywane tylko jako mid, z tanią maską
-MS. Własna decyzja FDK o intensity stereo jest tam kasowana, bo czysty mid jest tańszy (IS
-potrzebuje pozycji i blokuje maskę MS zapisywaną jednym kodem); wymuszone IS z
-`--is-force-lo/-hi` nadal wygrywa. Pasma, które oba kanały kodują jako PNS, zostają bez zmian.
-Poniżej granicy stereo jest nietknięte. `--verbose` pokazuje pasmo, od którego działa.
+MS. Czystego L/R tam nie ma nigdy.
+
+Poziom zostaje: oba kanały grają wtedy mid, który sam ma mniej energii niż kanały oryginału,
+gdy tylko L i R się różnią (nieskorelowane L/R wyszłyby o 3 dB ciszej). Dlatego mid jest
+podnoszony do energii oryginału, najwyżej o 6 dB i tylko tam, gdzie side leży ponad progiem
+maskowania (side, który stock i tak by wyzerował, nie jest dodawany). Zmierzone przy 96 kbps:
+pasmo o 3 dB cichsze od źródła jest z granicą też o 3 dB cichsze, dla nieskorelowanych,
+częściowo skorelowanych i skorelowanych L/R. Do 1.4.0-beta.1 pasmo traciło do 3 dB więcej.
+Dwóch rzeczy mid nie przeniesie przy żadnym poziomie: treści w przeciwfazie (L = -R, jej mid
+to zero) i kierunku twardo spanorowanego dźwięku, który ląduje na środku.
+
+Intensity stereo powyżej granicy: fabryczna decyzja FDK o IS jest tam kasowana, bo czysty mid
+jest tańszy. IS zostaje, gdy prosisz o nie jawnie:
+- `--is-force-lo/-hi`: IS na podanych pasmach, zawsze.
+- poluzowane kryteria IS (`--is-aggression`, `--is-corr-thresh`, `--is-lr-ratio`,
+  `--is-min-sfbs`, `--is-admit` powyżej 5): własna decyzja FDK z tymi kryteriami. Pojedyncze
+  spanorowane obszary powyżej granicy zachowują wtedy swój side (IS niesie kierunek i fazę
+  w paśmie), reszta zostaje mid, jak w intensity stereo z MPEG-1 Layer II. Zmierzone
+  (40 kbps, `--side-cutoff 1000`, źródło 3..6 kHz na przemian 4 dB w lewo i w prawo na tle
+  miksu mono): sama granica 0 dB, z `--is-aggression 100` 3..4 dB, jak w źródle.
+
+Pasma, które oba kanały kodują jako PNS, zostają bez zmian.
+Poniżej granicy stereo jest nietknięte. `--verbose` pokazuje pasmo, od którego działa,
+w tablicy długiej i krótkiej. Obie zaokrąglają w górę do następnej krawędzi pasma, więc na
+grubej tablicy krótkiej granica może się tylko przesunąć w górę (9 kHz: pasmo długie 31 na
+9,0 kHz, krótkie 9 na 10,5 kHz), czyli niszczy mniej side, nigdy więcej.
 
 Przykłady (akustyczna muzyka stereo):
 - Łagodnie: `-b 48000 --side-cutoff 8000`. Informacje boczne z 238 do 235 bitów na ramkę, mid trochę czystszy.
@@ -6741,6 +6849,12 @@ połowy widma.
 Czytaj ten pułap wobec `active SFBs` z `--verbose`: przy LC 48 kHz stereo jest 49 pasm,
 więc pułap 40 jest ledwie pułapem, a pułap 4 jest surowy. Pasma za pułapem są kodowane
 normalnie.
+
+W ramkach krótkich pułap obowiązuje w każdej grupie okien osobno (każda grupa to odcinek
+czasu z własną kopią tablicy pasm) i jest przeliczany na grubszą tablicę: przy 48 kHz
+`--isbands 6` pozwala na 2 pasma krótkie w grupie. Do 1.4.0-beta.1 liczył przez grupy po
+kolei, więc pierwsze grupy ramki transjentowej go zużywały, a reszta ramki zostawała
+całkiem bez IS.
 
 Przykłady:
 - Łagodny pułap: `--isbands 24`. Połowa widma nadal może pójść w intensity. Przy
@@ -9928,6 +10042,27 @@ Przykłady (muzyka stereo, 24 kbps, PNS od 2,2 kHz):
 - Mocno: `--pns-hold 6`. 70 bitów na ramkę; uwolnione bity idą do kodowanego widma.
 - Przesadnie: `--pns-hold 12`. Szum jest prawie płaski w całym swoim obszarze.
 
+### `--pns-short <0|1>`
+
+**Używaj `--pns-above` także w ramkach krótkich (transjentach), tam gdzie to się opłaca.**
+
+- Dotyczy: rdzeń AAC-LC z `--pns-above`. Domyślnie wyłączone.
+- Wartości: `1` = włączone, `0` = stock
+
+Format AAC pozwala na podstawianie szumu w oknach krótkich; FDK nigdy tego nie robi, więc
+powyżej `--pns-above` ramka transjentowa koduje pasma szumowe widmem. Z tym przełącznikiem
+one też stają się szumem, ale tylko w ramce zakodowanej jako jedna grupa wszystkich 8 okien
+(`--short-groups 1`). Zmierzone (1.4.0-beta.2) w mniejszych grupach: energie szumu zajmowały
+19% ramki zamiast 2%, a atak wychodził o 2,6 do 6 dB ciszej, więc te grupy zostają przy
+widmie. Przy grupowaniu stock przełącznik nie zmienia więc niczego (bit w bit).
+
+Zmierzone z `--short-groups 1 --pns-above 4000`, próbka z atakiem w każdej ramce: plik przy
+24 kbps z 9810 do 9226 B (-6%), pasmo szumu na poziomie źródła (+1,1 dB zamiast -1,4 dB).
+Koszt: jeden poziom szumu obejmuje 8 okien, więc pasmo rozmazuje się na całą ramkę: pre-echo
++1 dB, atak o około 2 dB ciszej. Na muzyce z nielicznymi ramkami krótkimi nie robi prawie nic
+(-0,3% pliku). Dla niskich bitrate'ów, przy których pasma inaczej by brakowało; najpierw
+odsłuch.
+
 ### `--pns-budget <0|1>`
 
 **Licz bity, które zajmują poziomy szumu PNS, żeby ramce nie zabrakło bitów i nie obcięła widma.**
@@ -10325,8 +10460,11 @@ Przykłady, dopuszczać głębsze dziury:
 - Przesadnie: `--hole-start 0`. Nawet pasma basu wolno ściąć. Przydatne tylko do usłyszenia,
   czemu zapobiega stockowa ochrona.
 
-Współpraca i konflikty: lustrzanym przełącznikiem dla bloków krótkich jest
-`--hole-start-short`.
+Bloki krótkie: bez `--hole-start-short` używana jest tam ta sama częstotliwość (najbliższa
+krawędź pasma krótkiego; `--hole-start 25`, czyli 5 kHz przy 48 kHz, staje się pasmem
+krótkim 6, a para stock 15/3 przechodzi sama na siebie). `--verbose` to pokazuje.
+
+Współpraca i konflikty: `--hole-start-short` ustawia wartość krótką jawnie i wygrywa.
 
 ### `--hole-start-short <sfb>`
 
@@ -10335,7 +10473,7 @@ Współpraca i konflikty: lustrzanym przełącznikiem dla bloków krótkich jest
 - Dotyczy: LC i rdzenia HE-AAC, ramek kodowanych jako bloki krótkie. LD i ELD nie mają
   żadnych.
 - Wartości: pasmo współczynnika skali bloku krótkiego 0..15; domyślnie: wyłączone, czyli
-  zachowanie stock (pasmo 3)
+  zachowanie stock (pasmo 3) albo częstotliwość z `--hole-start`, gdy ten jest podany
 - Wpisywanie: liczba całkowita
 
 Blok krótki ma około 14 pasm przy 44,1 albo 48 kHz, więc każde pasmo jest szerokie, a liczby
@@ -10383,8 +10521,9 @@ Przykłady, dopuszczać więcej dziur:
 - Przesadnie: `--hole-spread 0`. Rozmyta energia jest brana za dobrą monetę; każde pasmo
   stojące obok głośniejszych jest kandydatem.
 
-Uwaga: ustawienie tego przełącznika stosuje ten sam margines do bloków długich i krótkich,
-podczas gdy stock używa 3 dB i 2 dB.
+Wartość dotyczy bloków długich; bloki krótkie dostają dwie trzecie, co zachowuje proporcję
+stock (3 dB długie, 2 dB krótkie). `--hole-spread 3` to więc dokładnie stock w obu. Do
+1.4.0-beta.1 jedna wartość zastępowała obie.
 
 ### `--preecho-rise <dB>`
 
@@ -10605,15 +10744,17 @@ być filtr; ten przełącznik decyduje, jak często się to opłaca.
 
 ### `--tns-start <Hz>`
 
-**Ustawia najniższą częstotliwość, którą dolny filtr TNS obejmuje w blokach długich.**
+**Ustawia najniższą częstotliwość, którą obejmuje dolny filtr TNS.**
 
-- Dotyczy: AAC-LC i rdzenia LC w HE-AAC, bloków długich. Zmierzony brak efektu w LD i ELD.
+- Dotyczy: AAC-LC i rdzenia LC w HE-AAC, bloków długich i krótkich. Zmierzony brak efektu
+  w LD i ELD.
 - Wartości: 0..24000 Hz; domyślnie: wyłączone, czyli zachowanie stock (8 pasm współczynnika
   skali, około 1,4 kHz przy 48 kHz)
 - Wpisywanie: liczba całkowita
 
-Stock trzyma najniższe pasma poza TNS. Wartość jest zaokrąglana do najbliższej krawędzi pasma
-współczynnika skali i nie może przekroczyć górnej granicy zakresu TNS.
+Stock trzyma najniższe pasma poza TNS w blokach długich, a w krótkich zaczyna od 0 Hz.
+Wartość jest zaokrąglana do najbliższej krawędzi pasma w każdej z tablic i nie może
+przekroczyć górnej granicy zakresu TNS. Do 1.4.0-beta.1 bloki krótkie ją pomijały.
 
 Przykłady, sięganie niżej:
 - Łagodnie: `--tns-start 1000`.
@@ -10819,62 +10960,61 @@ bierzesz liczby do ustawienia tych przełączników.
 
 ### `--block-bias <n>`
 
-**Przechyla decyzję między blokami długimi a krótkimi, nigdy nie wymuszając typu bloku, więc
-strumień pozostaje zgodny ze standardem.**
+**Ustawia udział bloków krótkich, od samych długich (0) do samych krótkich (255). Strumień
+jest zgodny ze standardem przy każdej wartości.**
 
-- Dotyczy: każdego profilu, który ma przełączanie bloków, czyli AAC-LC. LD i ELD nie mają
-  bloków krótkich, więc nie ma tam czego przechylać.
-- Wartości: `0..255`, gdzie `128` to własny próg kodera; domyślnie: `-1`, wyłączone
+- Dotyczy: AAC-LC i rdzenia LC w HE-AAC, które mają bloki krótkie. LD i ELD ich nie mają
+  (LD przełącza się zamiast tego na okno o małym nakładaniu, także przesuwane tym
+  przełącznikiem; ELD w ogóle nie przełącza okien).
+- Wartości: `0..255`, `128` to stock; domyślnie: `-1`, wyłączone (stock)
 - Wpisywanie: liczba całkowita
 
 Blok długi daje dobrą rozdzielczość częstotliwościową i złą czasową; blok krótki odwrotnie.
-Koder używa detektora ataku, żeby decydować ramka po ramce, którego potrzebuje. Pomyl się w
-jednym kierunku, a transjent rozmaże swój szum kwantyzacji wstecz w czasie jako pre-echo;
-pomyl się w drugim, a stały fragment tonalny zostanie zakodowany ośmioma krótkimi oknami,
-które nie rozdzielą jego składowych, co kosztuje bity i brzmi szorstko.
+Detektor ataku decyduje ramka po ramce: porównuje energię każdej ósmej części ramki
+z bieżącą energią przed nią i uznaje atak powyżej stosunku 10. Na muzyce ten stosunek wynosi
+1,2 do 1,5 w zwykłej ramce i przekracza 10 tylko w około 2..3% ramek.
 
-Ten przełącznik przesuwa próg, z którym detektor się porównuje. Powyżej 128 bloki krótkie
-stają się bardziej prawdopodobne, więc koder traktuje materiał jako bardziej transjentowy,
-niż jest. Poniżej 128 preferowane są bloki długie, a `0` oznacza praktycznie tylko bloki
-długie.
+Ten przełącznik przesuwa ten próg według tablicy skalibrowanej na samym koderze (sześć
+fragmentów: akustyczne stereo, eurodance, wokal, perkusja, 64 kbps, udział ramek krótkich
+odczytany ze strumienia), tak żeby udział ramek krótkich szedł za suwakiem równo:
+- `0`: tylko bloki długie, atak nie jest wykrywany nigdy.
+- `1..127`: mniej ramek krótkich niż stock; przy `64` około połowy udziału stock.
+- `128`: stock, bit w bit.
+- `129..240`: więcej ramek krótkich, na muzyce około 12% ramek na 16 kroków; w okolicy `192`
+  mniej więcej połowa ramek, przy `240` około 80..99%.
+- `241..254`: na krótkie idą też ciche fragmenty (obniżona minimalna energia detektora).
+- `255`: tylko bloki krótkie, każda ramka, łącznie z ciszą.
 
-Co ważne, przesuwa decyzję, a nie ją nadpisuje. Wymuszenie typu okna bez przeliczenia układu
-pasm i grupowania daje nielegalny strumień, który dekodery odrzucają, i ten przełącznik nigdy
-tego nie robi; cokolwiek ustawisz, wyjściem jest poprawny strumień AAC.
+Materiał bez transjentów reaguje później niż muzyka: stały szum różowy i sinus zostają długie
+mniej więcej do 208 i przechodzą na krótkie między 216 a 236, bo ich stosunek zostaje blisko 1.
+Materiał z samymi mocnymi uderzeniami (ścieżka perkusji) ma swoje uderzenia przy każdej
+wartości, więc jego udział rusza się mniej. Do 1.4.0-beta.1 przełącznik skalował próg
+liniowo: powyżej 128 próg szedł tylko z 10 do 5 (6,5% ramek krótkich przy 255 na eurodance),
+a tuż poniżej 128 przeskakiwał większość prawdziwych ataków, dlatego środek wydawał się nic
+nie robić.
 
-Praktyczne odkrycie jest takie, że środek zakresu robi na większości materiału niewiele.
-Decyzja na danej ramce zwykle nie jest bliska, więc odwracają ją tylko wartości blisko końców.
-W praktyce traktuj to jak przełącznik trójpozycyjny, w którym `0` i `255` są interesującymi
-ustawieniami, a środek jest użyteczny tylko na materiale, który naprawdę siedzi blisko granicy
-decyzji.
+Zmienia się tylko decyzja o ataku. Sekwencję okien dalej budują własne przejścia kodera
+(długie, start, krótkie, stop, długie), a oba kanały są synchronizowane jak w stocku, więc
+dekoder zawsze dostaje legalną sekwencję. Sprawdzone: 300 kodowań (od 0 do 255, LC, HE-AAC,
+HE-AAC v2, grupowanie krótkich 1 i 3, cisza, sinus, muzyka), 0 nielegalnych przejść okien
+i 0 błędów dekodera. `--verbose` pokazuje wartość.
 
-Przykłady:
-- Łagodnie, więcej bloków krótkich: `--block-bias 160`. Ramki graniczne idą na krótkie.
-  Widoczne tylko na materiale blisko granicy.
-- Mocno, więcej bloków krótkich: `--block-bias 220`. Wyraźnie więcej ramek krótkich. Lepsza
-  rozdzielczość czasowa na treści perkusyjnej, gorsza rozdzielczość częstotliwościowa i więcej
-  bitów wydanych na fragmenty tonalne.
-- Przesadnie, więcej bloków krótkich: `--block-bias 255`. Prawie wszystko krótkie. Materiał
-  tonalny jest kodowany ośmioma oknami, które nie rozdzielą jego składowych, i brzmi szorstko
-  i drogo, co jest dobrym pokazem tego, po co są bloki długie.
-- Łagodnie, więcej bloków długich: `--block-bias 100`. Ramki graniczne zostają długie.
-- Mocno, więcej bloków długich: `--block-bias 40`. Wyraźnie mniej ramek krótkich. Taniej na
-  materiale tonalnym, z pre-echem pojawiającym się na prawdziwych atakach.
-- Przesadnie, więcej bloków długich: `--block-bias 0`. Praktycznie tylko bloki długie. Każdy
-  transjent musi być niesiony przez blok długi, więc pre-echo staje się dominującym artefaktem
-  na materiale perkusyjnym. To też warunek, w którym przełączniki pre-echa z grupy E w końcu
-  mają znaczenie w AAC-LC, bo zwykła droga ucieczki do bloków krótkich jest zamknięta.
+Przykłady (eurodance, 64 kbps; udział ramek krótkich):
+- `--block-bias 64`: 0,1% zamiast 1,6%. Materiał stały zostaje długi, mocne uderzenia nadal
+  idą na krótkie.
+- `--block-bias 160`: 23%. Każdy większy wzrost poziomu dostaje bloki krótkie.
+- `--block-bias 192`: 57%.
+- `--block-bias 224`: 87%.
+- `--block-bias 255`: 100%. Materiał tonalny brzmi szorstko, pokaz tego, po co są bloki
+  długie.
+- `--block-bias 0`: 0%. Każdy transjent niesie blok długi, pre-echo staje się głównym
+  artefaktem na materiale perkusyjnym.
 
-Współpraca i konflikty: przy `--block-bias 0` `--preecho-rise`, `--preecho-depth` i
-`--tns-thresh` z grupy E zostają jedynymi narzędziami przeciw pre-echu, czyli w tej samej
-sytuacji, w jakiej LD i ELD są na stałe. `--short-groups` i `--window-shape` mają znaczenie
-tylko tam, gdzie bloki krótkie nadal występują, więc bardzo niskie przechylenie czyni je bez
-znaczenia. `--attack-decay` i `--attack-floor` zmieniają sam detektor, a nie próg, z którym
-się porównuje.
-
-Zmierzone: przy AAC-LC 128 kbps na attacks48 strumień zmieniły tylko `0` i `255`. `64`, `128`
-i `192` były identyczne ze stockiem, i to jest podstawa do traktowania środka zakresu jako
-bezczynnego na zwykłym materiale.
+Współpraca i konflikty: przy `--block-bias 0` `--preecho-rise`, `--preecho-depth`
+i `--tns-thresh` z grupy E zostają jedynymi narzędziami przeciw pre-echu, czyli sytuacja,
+w jakiej LD i ELD są zawsze. `--short-groups`, `--window-shape` i `--pns-short` mają znaczenie
+tylko tam, gdzie występują bloki krótkie. `--attack-decay` i `--attack-floor` zmieniają sam
+detektor; łączą się z tym przełącznikiem.
 
 ### `--vbr-reservoir <bits>`
 
@@ -11159,7 +11299,10 @@ automatycznie dostawały oszczędniejsze narzędzia:
 
 Zatem `-b 96` na pliku stereo trafia na AAC-LC, `-b 64` na HE-AAC, a `-b 32` na HE-AAC v2
 automatycznie. Profil nadal możesz wymusić przez `-p` (`2` dla LC, `5` dla HE-AAC, `29` dla
-HE-AAC v2), kiedy wiesz, czego chcesz.
+HE-AAC v2), kiedy wiesz, czego chcesz. Wymuszony profil daje bit w bit ten sam strumień, który
+dobór automatyczny daje dla tego profilu. Inne wartości `-p` są odrzucane, tak samo `-p 29` na
+wejściu mono. Wymuszony profil poniżej tablic strojenia FDK, na przykład `-p 2` przy 8 kbps albo
+`-p 5` przy 8 kbps stereo, kończy się komunikatem: pomiń `-p` albo dodaj `--unlock-bitrate`.
 
 Wartości:
 - pominięte: normalne wyjście, a koder zachowuje się dokładnie jak stock.
@@ -11173,8 +11316,14 @@ Przykłady w kontekście:
 
 Współpraca i konflikty: `--dab-label` robi coś tylko w tym trybie. `-f` i przełączniki kontenera
 MP4 nie mają zastosowania, bo nie ma kontenera. `--unlock-bitrate` zmienia sposób odczytu `-b`.
-Przełączniki z grup D i F nadal działają na rdzeń AAC wewnątrz superramek, więc pokrętła od
-szczegółu i bitrate'u pozostają dostępne.
+Przełączniki z grup od B do F nadal działają na rdzeń AAC wewnątrz superramek, więc pokrętła
+stereo, SBR, szczegółu, transjentów, pokrycia i bitrate'u pozostają dostępne. Częstotliwości
+podane w Hz są przeliczane na siatce 960 próbek, dlatego `--verbose` pokazuje nieco inne granice
+pasm niż w strumieniu 1024 próbek. Zmierzone na muzyce i na teście ataków, LC 48 i 96 kbps,
+HE-AAC stereo 64 kbps, HE-AAC mono 48 kbps i HE-AAC v2 32 kbps: 58 ustawień przełączników
+dodanych od v1.3.2 oraz przełączników pasmowych, każdy strumień zdekodowany przez faad2 za
+dablinem bez błędu. Przełącznik, którego narzędzia nie ma w wybranym profilu, nic nie robi, tak
+samo jak w zwykłym strumieniu: pokrętła SBR w AAC-LC, pokrętła stereo w mono i w HE-AAC v2.
 
 Zmierzone: strumienie dekodują się niezależnym dekoderem faad2 za dablinem, etykieta DLS
 odczytuje się poprawnie, a wyjście AAC-LC jest identyczne bit w bit z tym, co z tego samego

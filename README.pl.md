@@ -5592,7 +5592,10 @@ automatycznie dostawały oszczędniejsze narzędzia:
 
 Zatem `-b 96` na pliku stereo trafia na AAC-LC, `-b 64` na HE-AAC, a `-b 32` na HE-AAC v2
 automatycznie. Profil nadal możesz wymusić przez `-p` (`2` dla LC, `5` dla HE-AAC, `29` dla
-HE-AAC v2), kiedy wiesz, czego chcesz.
+HE-AAC v2), kiedy wiesz, czego chcesz. Wymuszony profil daje bit w bit ten sam strumień, który
+dobór automatyczny daje dla tego profilu. Inne wartości `-p` są odrzucane, tak samo `-p 29` na
+wejściu mono. Wymuszony profil poniżej tablic strojenia FDK, na przykład `-p 2` przy 8 kbps albo
+`-p 5` przy 8 kbps stereo, kończy się komunikatem: pomiń `-p` albo dodaj `--unlock-bitrate`.
 
 Wartości:
 - pominięte: normalne wyjście, a koder zachowuje się dokładnie jak stock.
@@ -5606,8 +5609,14 @@ Przykłady w kontekście:
 
 Współpraca i konflikty: `--dab-label` robi coś tylko w tym trybie. `-f` i przełączniki kontenera
 MP4 nie mają zastosowania, bo nie ma kontenera. `--unlock-bitrate` zmienia sposób odczytu `-b`.
-Przełączniki z grup D i F nadal działają na rdzeń AAC wewnątrz superramek, więc pokrętła od
-szczegółu i bitrate'u pozostają dostępne.
+Przełączniki z grup od B do F nadal działają na rdzeń AAC wewnątrz superramek, więc pokrętła
+stereo, SBR, szczegółu, transjentów, pokrycia i bitrate'u pozostają dostępne. Częstotliwości
+podane w Hz są przeliczane na siatce 960 próbek, dlatego `--verbose` pokazuje nieco inne granice
+pasm niż w strumieniu 1024 próbek. Zmierzone na muzyce i na teście ataków, LC 48 i 96 kbps,
+HE-AAC stereo 64 kbps, HE-AAC mono 48 kbps i HE-AAC v2 32 kbps: 58 ustawień przełączników
+dodanych od v1.3.2 oraz przełączników pasmowych, każdy strumień zdekodowany przez faad2 za
+dablinem bez błędu. Przełącznik, którego narzędzia nie ma w wybranym profilu, nic nie robi, tak
+samo jak w zwykłym strumieniu: pokrętła SBR w AAC-LC, pokrętła stereo w mono i w HE-AAC v2.
 
 Zmierzone: strumienie dekodują się niezależnym dekoderem faad2 za dablinem, etykieta DLS
 odczytuje się poprawnie, a wyjście AAC-LC jest identyczne bit w bit z tym, co z tego samego

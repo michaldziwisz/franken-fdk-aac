@@ -1012,7 +1012,7 @@ fdkaac-franken-x64.exe -p 5 -b 32000 --sbr-invf-max 2 --sbr-invf-hyst 1.5 -o out
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab stereo przy 48 kbps lub ni\u380 ?ej \u8594 ? {\b HE-AAC v2} (z Parametric Stereo),\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab mono do 64k, albo stereo do 80k \u8594 ? {\b HE-AAC} (z SBR),\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab powy\u380 ?ej \u8594 ? {\b AAC-LC} (zwyk\u322 ?y, pe\u322 ?nopasmowy profil).\sa180\par}
-{\pard \ql \f0 \sa180 \li0 \fi0 Wi\u281 ?c {\f1 -b 96} na pliku stereo trafi na AAC-LC, {\f1 -b 64} na HE-AAC, a {\f1 -b 32} na HE-AAC v2 \u8212- nie musisz o tym my\u347 ?le\u263 ?. Je\u347 ?li si\u281 ? upierasz, profil nadal wymusisz prze\u322 ?\u261 ?cznikiem {\f1 -p} (2 = LC, 5 = HE-AAC, 29 = HE-AAC v2), tak samo jak w ka\u380 ?dym innym trybie tego enkodera.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Wi\u281 ?c {\f1 -b 96} na pliku stereo trafi na AAC-LC, {\f1 -b 64} na HE-AAC, a {\f1 -b 32} na HE-AAC v2 \u8212- nie musisz o tym my\u347 ?le\u263 ?. Je\u347 ?li si\u281 ? upierasz, profil nadal wymusisz prze\u322 ?\u261 ?cznikiem {\f1 -p} (2 = LC, 5 = HE-AAC, 29 = HE-AAC v2), tak samo jak w ka\u380 ?dym innym trybie tego enkodera. Wymuszony profil daje ten sam strumie\u324 ? co dob\u243 ?r automatyczny dla tego profilu. Inne warto\u347 ?ci s\u261 ? odrzucane, tak samo {\f1 -p 29} na pliku mono.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 \f1 fdkaac --dab -b 64 -o out.dabp input.wav    # \u8594 ? HE-AAC automatycznie\line
 fdkaac --dab -b 32 -o out.dabp input.wav    # \u8594 ? HE-AAC v2 automatycznie\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel2 \b \fs28 Etykieta stacji: {\f1 --dab-label}\par}

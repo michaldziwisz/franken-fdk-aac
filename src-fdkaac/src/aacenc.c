@@ -379,6 +379,10 @@ int aacenc_init(HANDLE_AACENCODER *encoder, const aacenc_param_t *params,
 
     if (aacEncEncode(*encoder, 0, 0, 0, 0) != AACENC_OK) {
         fprintf(stderr, "ERROR: encoder initialization failed\n");
+        if (params->fr_dab)
+            fprintf(stderr, "DAB+: this profile/bitrate pair is below the FDK "
+                            "tables (e.g. -p 2 at 8 kbps). Omit -p (auto "
+                            "profile) or add --unlock-bitrate.\n");
         goto FAIL;
     }
     if (aacEncInfo(*encoder, info) != AACENC_OK) {

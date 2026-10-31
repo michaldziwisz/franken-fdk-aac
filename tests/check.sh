@@ -289,6 +289,28 @@ PY
       || bad "DAB+ DLS: round-trip dal '$got'"
   fi
 
+  # 3b) jawny -p z --dab: ten sam strumien co auto-dobor (beta.1: -p2 = aacEncEncode
+  #     failed, -p 5/29 = extrapolater psul zgodnosc), -p spoza DAB+ odrzucony,
+  #     -b 8 to 8 kbps (beta.1: drugie x1000 -> abort).
+  local pp
+  for pp in "LC96:96:2" "HE64:64:5" "PS32:32:29"; do
+    local pn="${pp%%:*}" pr="${pp#*:}"
+    local pb="${pr%%:*}" pq="${pr##*:}"
+    enc "$exe" --dab -b "$pb" -p "$pq" -o "${OUT}_dab_p$pn.dabp" "$DWAV"
+    if [ -s "${OUT}_dab_p$pn.dabp" ] && cmp -s "${OUT}_dab_p$pn.dabp" "${OUT}_dab_$pn.dabp"
+    then ok "DAB+ -p $pq -b $pb = auto-dobor (bit w bit)"
+    else bad "DAB+ -p $pq -b $pb rozny od auto albo pusty"; fi
+  done
+  rm -f "${OUT}_dab_bad.dabp"
+  "$exe" --dab -b 96 -p 129 -o "${OUT}_dab_bad.dabp" "$DWAV" >/dev/null 2>&1
+  local prc=$?
+  if [ "$prc" -ne 0 ] && [ ! -s "${OUT}_dab_bad.dabp" ]; then ok "DAB+ -p 129 odrzucony (rc=$prc, bez pliku)"
+  else bad "DAB+ -p 129 nie odrzucony (rc=$prc)"; fi
+  enc "$exe" --dab -b 8 -o "${OUT}_dab_b8.dabp" "$DWAV"
+  local s8; s8=$(stat -c%s "${OUT}_dab_b8.dabp" 2>/dev/null || echo 0)
+  if [ "$s8" -gt 0 ] && [ $((s8 % 120)) -eq 0 ]; then ok "DAB+ -b 8: 8 kbps, super-ramka 120 B ($s8 B)"
+  else bad "DAB+ -b 8: rozmiar $s8"; fi
+
   # 4) no-regression: --dab bez labela == odr-audioenc (bit-identyczny) - gdy jest
   if [ -x "$ODRENC" ] && [ "$tag" = "x64-native" ]; then
     enc "$exe" --dab -b 96 -o "${OUT}_dab_nl.dabp" "$DWAV"

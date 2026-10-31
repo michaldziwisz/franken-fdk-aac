@@ -1012,7 +1012,7 @@ fdkaac-franken-x64.exe -p 5 -b 32000 --sbr-invf-max 2 --sbr-invf-hyst 1.5 -o out
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab stereo at 48 kbps or below \u8594 ? {\b HE-AAC v2} (with Parametric Stereo),\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab mono up to 64k, or stereo up to 80k \u8594 ? {\b HE-AAC} (with SBR),\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab above that \u8594 ? {\b AAC-LC} (the plain full-band profile).\sa180\par}
-{\pard \ql \f0 \sa180 \li0 \fi0 So {\f1 -b 96} on a stereo file lands on AAC-LC, {\f1 -b 64} on HE-AAC, and {\f1 -b 32} on HE-AAC v2 \u8212- you don't have to think about it. If you insist, you can still force the profile with {\f1 -p} (2 = LC, 5 = HE-AAC, 29 = HE-AAC v2), the same as in every other mode of this encoder.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 So {\f1 -b 96} on a stereo file lands on AAC-LC, {\f1 -b 64} on HE-AAC, and {\f1 -b 32} on HE-AAC v2 \u8212- you don't have to think about it. If you insist, you can still force the profile with {\f1 -p} (2 = LC, 5 = HE-AAC, 29 = HE-AAC v2), the same as in every other mode of this encoder. A forced profile gives the same stream as the automatic pick for that profile. Other values are refused, and so is {\f1 -p 29} on a mono file.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 \f1 fdkaac --dab -b 64 -o out.dabp input.wav    # \u8594 ? HE-AAC automatically\line
 fdkaac --dab -b 32 -o out.dabp input.wav    # \u8594 ? HE-AAC v2 automatically\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel2 \b \fs28 The station label: {\f1 --dab-label}\par}

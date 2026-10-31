@@ -661,7 +661,8 @@ PROGNAME " %s\n"
 "                               Requires sample rate 32000 or 48000 and bitrate a\n"
 "                               multiple of 8 kbps (8..192). Profile is auto-picked\n"
 "                               from bitrate/channels (AAC-LC / HE-AAC / HE-AAC v2),\n"
-"                               override with -p. Output is a raw .dabp superframe\n"
+"                               override with -p 2, 5 or 29 (same stream as the auto\n"
+"                               pick; other -p refused). Output is a raw .dabp superframe\n"
 "                               stream (feed odr-dabmux etc.).\n"
 " --dab-label <text>          Static Dynamic Label (DLS) carried as X-PAD in the\n"
 "                               superframe (shown by DAB receivers). Up to ~48 chars.\n"
@@ -1889,7 +1890,8 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
     /* nu774 convenience: small -b values are treated as kbps (x1000). With
      * --unlock-bitrate the user may want genuine ultra-low bps (e.g. 6000 = 6k),
      * so skip the x1000 promotion in that mode and take -b verbatim. */
-    if (params->bitrate && params->bitrate < 10000 && params->fr_unlock_bitrate != 1)
+    if (params->bitrate && params->bitrate < 10000 && params->fr_unlock_bitrate != 1 &&
+        !params->fr_dab)  /* --dab already turned kbps into bps (8 -> 8000) */
         params->bitrate *= 1000;
 
     /* Disambiguation guard: with --unlock-bitrate, -b is read literally as bps.
@@ -1909,7 +1911,7 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
      * --unlock-bitrate reuses the lowest row and keeps the requested bitrate.
      * The encoder prints the bitrate it really uses in --verbose. */
     if (params->bitrate > 0 && params->bitrate < 16000 &&
-        params->fr_unlock_bitrate != 1 &&
+        params->fr_unlock_bitrate != 1 && !params->fr_dab &&
         (params->profile == 5 || params->profile == 29)) {
         fprintf(stderr,
                 "NOTE: below the lowest SBR tuning row FDK raises -b %d (e.g. to "
@@ -1966,6 +1968,10 @@ int write_sample_dab(FILE *ofp, aacenc_frame_t *frame, int subch)
     if (frame->size != (uint32_t)data_len) {
         fprintf(stderr, "DAB+: unexpected superframe size %u (want %d)\n",
                 frame->size, data_len);
+        if (frame->size > (uint32_t)data_len)
+            fprintf(stderr, "DAB+: FDK raised the bitrate to its lowest table "
+                            "row for this profile. Omit -p (auto profile) or "
+                            "add --unlock-bitrate.\n");
         return -1;
     }
     if (sf_cap < total_len) {
@@ -2255,7 +2261,10 @@ pcm_reader_t *open_input(aacenc_param_ex_t *params)
     if (reader && PCM_IS_FLOAT(pcm_get_format(reader)))
         reader = limiter_open(reader);
     if (reader && (reader = pcm_open_sint16_converter(reader)) != 0) {
-        if (do_smart_padding(params->profile))
+        /* DAB+ is a continuous superframe stream without gapless trimming
+           (is_padding is off for it too), so the edge extrapolator stays off:
+           -p 2/5/29 with --dab must give the same stream as the auto pick. */
+        if (do_smart_padding(params->profile) && !params->fr_dab)
             reader = extrapolater_open(reader);
     }
     return reader;
@@ -2303,6 +2312,25 @@ int main(int argc, char **argv)
             params.profile = AOT_DABPLUS_SBR;     /* HE-AAC */
         else
             params.profile = AOT_DABPLUS_AAC_LC;  /* AAC-LC */
+    } else if (params.fr_dab) {
+        /* -p given with --dab: the plain AOT (2/5/29) does not select the 960
+           transform and the DAB+ syntax flags in the library, so the superframe
+           writer rejects the frames (aacEncEncode failed). Map it to the DAB+
+           virtual AOT; anything that DAB+ cannot carry is refused here. */
+        int ch = sample_format->channels_per_frame;
+        switch (params.profile) {
+        case 2:  case AOT_DABPLUS_AAC_LC: params.profile = AOT_DABPLUS_AAC_LC; break;
+        case 5:  case AOT_DABPLUS_SBR:    params.profile = AOT_DABPLUS_SBR;    break;
+        case 29: case AOT_DABPLUS_PS:     params.profile = AOT_DABPLUS_PS;     break;
+        default:
+            fprintf(stderr, "DAB+: profile %d is not available with --dab "
+                            "(use -p 2, 5 or 29, or omit -p)\n", params.profile);
+            goto END;
+        }
+        if (params.profile == AOT_DABPLUS_PS && ch != 2) {
+            fprintf(stderr, "DAB+: HE-AAC v2 (-p 29) needs a stereo input\n");
+            goto END;
+        }
     }
 
     sbr_mode = aacenc_is_sbr_active((aacenc_param_t*)&params);
