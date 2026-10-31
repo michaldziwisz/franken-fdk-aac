@@ -12,6 +12,10 @@
 https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 }}}
 }\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Beta versions (for example {\f1 v1.4.0-beta.1}) are published as pre-releases, so the link above still shows the last stable version; betas are on the full list: {\b {\field{\*\fldinst{HYPERLINK "https://github.com/michaldziwisz/franken-fdk-aac/releases"}}{\fldrslt{\ul
+https://github.com/michaldziwisz/franken-fdk-aac/releases
+}}}
+}\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 {\f1 franken-fdk-aac-x64-vX.Y.Z.zip} is 64-bit, the {\f1 x86} one is 32-bit. Each zip contains the static encoder (no DLLs) and the full documentation. The repository itself holds sources only; building is described at the end of this document.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 First steps\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 All original frontend options work as before ({\f1 -p}, {\f1 -b}, {\f1 -m}, {\f1 -w}, {\f1 -a}, {\f1 -s}, {\f1 -f}, tagging); {\f1 fdkaac-franken-x64.exe --help} lists them together with the new ones.\par}
@@ -78,7 +82,7 @@ fdkaac-franken-x64.exe -p 2 -b 320000 --uncap-bandwidth --core-cutoff 40000 -o o
 {\pard \ql \f0 \sa180 \li0 \fi0 Three conventions live side by side, and mixing them up is the most common way to get a surprising file size.\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\b Normal operation}: {\f1 -b} is bits per second, but the frontend accepts the short form too. Small numbers are read as kilobits, so {\f1 -b 128} and {\f1 -b 128000} both mean 128 kbps, and {\f1 -b 1152} means 1152 kbps.\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\b With {\f1 --unlock-bitrate}}: {\f1 -b} is read literally as bits per second, with no kilobit shortcut. {\f1 -b 6000} is 6000 bps. {\f1 -b 1152} in this mode is 1152 bps, which is practically nothing; the program warns when a value looks like that mistake.\par}
-{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\b With {\f1 --dab}}: {\f1 -b} is kilobits per second, in the range 8..192 and a multiple of 8. The encoder multiplies by 1000 itself, so {\f1 -b 96} is 96 kbps. If you combine {\f1 --dab} with {\f1 --unlock-bitrate}, {\f1 -b} goes back to being literal bps.\sa180\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\b With {\f1 --dab}}: {\f1 -b} is kilobits per second, in the range 8..192 and a multiple of 8. The encoder multiplies by 1000 itself, so {\f1 -b 96} is 96 kbps, also together with {\f1 --unlock-bitrate}.\sa180\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 The upper ceiling is not a switch and cannot be lifted: an AAC frame holds at most 6144 bits per channel. At 48 kHz that is roughly 576 kbps per channel.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 Transport note for LD and ELD\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 AAC-LD ({\f1 -p 23}) and AAC-ELD ({\f1 -p 39}) work in this encoder, but they cannot be written into ADTS. Asking for {\f1 -f 2} with those profiles ends in "encoder initialization failed", and the failure is the transport format, not the profile. Use M4A ({\f1 -f 0}, the default), LATM ({\f1 -f 6} or {\f1 -f 7}) or LOAS ({\f1 -f 10}). LOAS is the practical choice when you want a bare stream to measure or to feed somewhere, because it is a self contained byte stream the way ADTS is for LC and HE-AAC.\par}
@@ -449,6 +453,9 @@ fdkaac-franken-x64.exe -p 2 -b 320000 --uncap-bandwidth --core-cutoff 40000 -o o
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Mild, coarser: {\f1 --side-knee -1}. The weakest side bands go, about 5 of 37 per frame.\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Strong, coarser: {\f1 --side-knee -6}. Side holes 29%, mid error 2.4 dB lower.\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Exaggerated, coarser: {\f1 --side-knee -24}. Practically no side left; a mono image with stereo bookkeeping.\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Diagnostic companions (may be removed in a later version):\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\f1 --side-knee-zone <x>}, {\f1 1.0..20.0}, stock {\f1 3}: the offset is full up to |knee| dB above the threshold and fades out linearly to zero at x times |knee| dB.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\f1 --side-knee-spread <dB>}, {\f1 0.1..24.0}, stock {\f1 1}: on the negative side, how many dB of knee are needed to spread the rescued crowd fully by its real margin. Both changed little in measurement. Without {\f1 --side-knee} they do nothing.\sa180\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Works with / against: orthogonal to {\f1 --side-bias} and designed to be used with it; bias sets where the threshold is, knee sets how soft its edge is. Inert under {\f1 --msmask 0}.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Measured: dense stereo LC. Negative values saturate at -6 dB (-6, -12 and -24 give an identical stream); positive values keep changing the stream across the range.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel3 \b \fs24 {\f1 --mask-slope <dB>}\par}
@@ -924,7 +931,7 @@ fdkaac-franken-x64.exe -p 2 -b 320000 --uncap-bandwidth --core-cutoff 40000 -o o
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel3 \b \fs24 {\f1 --core-cutoff <hz>}\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 {\b Forces the upper limit of the band the AAC core codes, in Hz, and it keeps working under SBR where {\f1 -w} does not.}\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Applies to: every profile. This is the one switch in group C that is useful without SBR.\par}
-{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Values: Hz, from well above 0 up to the core Nyquist (half the core sample rate); default {\f1 0} = leave FDK's own decision\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Values: {\f1 0..48000} Hz (out of range is rejected); the encoder stops at the core Nyquist (half the core sample rate); default {\f1 0} = leave FDK's own decision\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Input: whole number\sa180\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 The standard {\f1 -w/--bandwidth} is overridden when SBR initialises: the SBR tuning table decides the core bandwidth, so that the core stops exactly where the crossover begins, and whatever you asked for with {\f1 -w} is discarded. {\f1 --core-cutoff} is applied after that and survives it.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Two situations make this worth reaching for. The first is SBR material where you want more real coded spectrum under the crossover than the table gives you, typically because the patched band sounds synthetic and you would rather spend bits on genuine mid treble. The second has nothing to do with SBR: AAC-LD and AAC-ELD pick their core bandwidth from a table that is very conservative, about 2 kHz at 48 kbps and about 5.8 kHz at 64 kbps. Those profiles sound muffled for that reason alone, and {\f1 --core-cutoff} is the fix.\par}
@@ -1260,16 +1267,17 @@ fdkaac-franken-x64.exe -p 2 -b 320000 --uncap-bandwidth --core-cutoff 40000 -o o
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel3 \b \fs24 {\f1 --sbr-freqscale <n>}\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 {\b Chooses how the replicated band is divided into SBR bands: linearly or on one of three logarithmic grids.}\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Applies to: SBR profiles only\par}
-{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Values: {\f1 0} = linear, {\f1 1}, {\f1 2}, {\f1 3} = progressively finer logarithmic grouping; default {\f1 -1} = the value from the SBR tuning table\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Values: {\f1 0} = linear, {\f1 1}, {\f1 2}, {\f1 3} = logarithmic with 12, 10 and 8 bands per octave (progressively coarser); {\f1 -1} or leaving the switch out = the value from the SBR tuning table\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Input: whole number\sa180\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 SBR describes its region band by band, and this picks the ruler. A linear grid gives every band the same width in Hz, so the top octave gets many bands and the bottom of the SBR region gets few. A logarithmic grid spaces bands by ratio, which matches hearing: more resolution where the ear resolves more, down near the crossover.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Values:\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\f1 0} linear. Even spacing in Hz. Fine resolution high up, coarse just above the crossover, which is the opposite of what the ear wants. Occasionally useful on material whose high band is genuinely uniform, such as broadband noise beds.\par}
-{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\f1 1} coarsest logarithmic grouping. Fewest bands, cheapest description, least control.\par}
-{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\f1 2} middle logarithmic grouping.\par}
-{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\f1 3} finest logarithmic grouping. Most bands, most parameters, best shaping of an uneven high band.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\f1 1} finest logarithmic grouping, 12 bands per octave. Most bands, most parameters, best shaping of an uneven high band.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\f1 2} middle logarithmic grouping, 10 bands per octave.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\f1 3} coarsest logarithmic grouping, 8 bands per octave. Fewest bands, cheapest description, least control.\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Measured at HE-AAC 64 kbps, SBR payload per frame: 220 bits at {\f1 0}, 188 at {\f1 1}, 170 at {\f1 2}, 152 at {\f1 3}.\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\f1 -1} off: the tuning table decides, which is the right choice unless you have a reason.\sa180\par}
-{\pard \ql \f0 \sa180 \li0 \fi0 Example in context: {\f1 fdkaac -p 5 -b 64000 --sbr-freqscale 3 -o out.m4a in.wav}\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Example in context: {\f1 fdkaac -p 5 -b 64000 --sbr-freqscale 1 -o out.m4a in.wav} (finest grid)\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Works with / against: the number of bands this produces interacts with {\f1 --sbr-noise-bands} (noise bands are derived per octave, not per SBR band) and with how much the invf decision can vary across the region. A finer grid means a finer invf map.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel3 \b \fs24 {\f1 --sbr-alterscale <n>}\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 {\b Switches to the alternative band grouping resolution, a secondary adjustment to the grid chosen by {\f1 --sbr-freqscale}.}\par}
@@ -2265,14 +2273,14 @@ fdkaac-franken-x64.exe -p 2 -b 320000 --uncap-bandwidth --core-cutoff 40000 -o o
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Input: decimal, up to 3 places, {\f1 .} or {\f1 ,}\sa180\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Tonality is not the only test. Each band's power is also compared against a reference before the band can be a PNS candidate, which keeps the mechanism away from bands whose level makes substitution a bad trade. This switch moves that power gate.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 The two detection tests are conjunctive: tonality and reference power must both agree before a band becomes PNS. That is why moving {\f1 --pns-tonality} alone sometimes does nothing, and why this card and that one are usually tried together.\par}
-{\pard \ql \f0 \sa180 \li0 \fi0 Higher than {\f1 1.0} moves the power gate in the direction that admits bands it otherwise rejects on level grounds; lower than {\f1 1.0} makes the gate stricter. Because the gate interacts with material level, the practical approach is to change it and read the result, not to predict it.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 The value multiplies the threshold itself. Higher than {\f1 1.0} raises it, so fewer bands pass and PNS retreats; lower than {\f1 1.0} lowers it, so more bands pass. Measured on acoustic stereo music at 64 kbps LC, PNS bands per frame: 5.5 at {\f1 0.01}, 5.1 at {\f1 0.4}, 4.8 at {\f1 0.8}, 4.6 at {\f1 1.0}, 4.3 at {\f1 1.3}, 3.6 at {\f1 2.0}, 0 at {\f1 20.0}.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Examples:\par}
-{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Mild, looser gate: {\f1 --pns-refpower 1.3}. A few additional bands pass the power test.\par}
-{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Strong, looser gate: {\f1 --pns-refpower 2.0}. Twice the threshold. Combined with {\f1 --pns-tonality 2.0} this is where wide noise substitution really takes hold.\par}
-{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Exaggerated, looser gate: {\f1 --pns-refpower 20.0}. The power test stops discriminating at all and selection is left entirely to tonality, which is a good way to find out how much work this gate was doing.\par}
-{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Mild, stricter gate: {\f1 --pns-refpower 0.8}. Slightly fewer candidates.\par}
-{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Strong, stricter gate: {\f1 --pns-refpower 0.4}. Clearly fewer bands pass. PNS retreats to the bands where it is least risky.\par}
-{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Exaggerated, stricter gate: {\f1 --pns-refpower 0.01}. Almost nothing passes, so PNS is on paper enabled and in practice idle.\sa180\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Mild, looser gate: {\f1 --pns-refpower 0.8}. Slightly more candidates (4.6 to 4.8 bands).\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Strong, looser gate: {\f1 --pns-refpower 0.4}. 5.1 bands. Combined with a raised {\f1 --pns-tonality} this is where wide noise substitution takes hold.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Exaggerated, looser gate: {\f1 --pns-refpower 0.01}. The power test stops discriminating and selection is left to tonality (5.5 bands), a good way to find out how much work this gate was doing.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Mild, stricter gate: {\f1 --pns-refpower 1.3}. Slightly fewer candidates (4.3 bands).\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Strong, stricter gate: {\f1 --pns-refpower 2.0}. Twice the threshold, 3.6 bands. PNS retreats to the bands where it is least risky.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Exaggerated, stricter gate: {\f1 --pns-refpower 20.0}. Nothing passes, so PNS is on paper enabled and in practice idle.\sa180\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Works with / against: conjunctive with {\f1 --pns-tonality}, so test them as a pair. {\f1 --pns-gapfill} can still add a band between two PNS bands that failed this test. Nothing here matters when PNS is off.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel2 \b \fs28 {\f1 --pns-gapfill <x>}\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 {\b Scales the threshold of the heuristic that closes a one band gap between two substituted bands.}\par}
@@ -2505,6 +2513,86 @@ fdkaac-franken-x64.exe -p 2 -b 320000 --uncap-bandwidth --core-cutoff 40000 -o o
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Mild: {\f1 --tns-start 2000}.\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Strong: {\f1 --tns-start 5000}.\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Exaggerated: {\f1 --tns-start 15000}. Only the very top is shaped; for most material TNS is then effectively off in long blocks.\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel2 \b \fs28 {\f1 --coverage <-5..5>}\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\b One axis at a fixed bitrate: code every band coarsely, or fewer bands cleanly.}\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Applies to: AAC core (LC, LD, ELD and the LC core of HE-AAC). Off by default.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Values: whole numbers {\f1 -5..5}; {\f1 0} = stock\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Input: whole number\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 At a fixed bitrate the encoder can spend its bits on covering the whole spectrum with a coarse description, or on describing fewer bands well and leaving holes. This macro moves that balance with one number. It sets the six switches below ({\f1 --band-knee}, {\f1 --quant-round}, {\f1 --thr-hold}, {\f1 --scf-range} and, at {\f1 +4} and {\f1 +5}, {\f1 --pns-above}); any of them given explicitly wins over the macro. {\f1 --verbose} prints the values in effect.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Measured at LC 32 kbps, 17 kHz, after decoding (zeroed bands, and noise of the bands that were kept): {\f1 -5} 51% holes with the kept bands 4.75 dB cleaner than the signal; stock 11.7% holes, 1.96 dB; {\f1 +4} 0.2% holes, with the kept bands about as noisy as the content.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Examples:\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Mild, more coverage: {\f1 --coverage 2}. Fewer holes, a little more grain.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Strong, more coverage: {\f1 --coverage 4}. Practically no holes; adds noise substitution from 11 kHz up.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Exaggerated, more coverage: {\f1 --coverage 5}. Everything filled, noise from 7 kHz up.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Mild, more precision: {\f1 --coverage -2}. The weakest bands leave first.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Strong, more precision: {\f1 --coverage -4}. Many holes, what stays is clean.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Exaggerated, more precision: {\f1 --coverage -5}. About half of the bands gone.\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel2 \b \fs28 {\f1 --band-knee <dB>}\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\b Shift every band's margin above its threshold near the coded/zeroed edge, in every channel.}\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Applies to: AAC core. Off by default.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Values: {\f1 -24.0..24.0} dB, {\f1 0} = off\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Input: decimal, up to 3 places, {\f1 .} or {\f1 ,}\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 A positive value keeps bands up to N dB below their threshold, at the coarsest step, instead of zeroing them. A negative value zeroes bands that clear their threshold by less than N dB after the first bit estimate, so the second estimate gives those bits to the rest. PNS and IS bands are left alone; on side bands of an MS pair {\f1 --side-knee} wins.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Examples:\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Mild, keep more: {\f1 --band-knee 3}.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Strong, keep more: {\f1 --band-knee 6}. The useful maximum: above about 9 dB the rescued coarse bands cost so many bits that the rate loop cuts elsewhere.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Exaggerated, keep more: {\f1 --band-knee 24}. Worse than 6, measured.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Mild, drop more: {\f1 --band-knee -2}.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Strong, drop more: {\f1 --band-knee -6}.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Exaggerated, drop more: {\f1 --band-knee -24}. Only clearly audible bands stay.\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel2 \b \fs28 {\f1 --quant-round <x>}\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\b Move the rounding point of the quantizer: fewer or more small spectral lines become zero.}\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Applies to: AAC core. Off by default (stock 0.405).\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Values: {\f1 0.0..0.5}\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Input: decimal, up to 3 places, {\f1 .} or {\f1 ,}\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 The quantizer rounds each spectral line to a whole step. Stock rounds with an offset of about 0.405, slightly towards zero, which saves bits. {\f1 0.5} rounds to nearest: fewer small lines vanish, it costs bits. Lower values send more lines to zero and are cheaper.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Examples:\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Mild, finer: {\f1 --quant-round 0.45}.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Strong, finer: {\f1 --quant-round 0.5}. Round to nearest.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Mild, cheaper: {\f1 --quant-round 0.35}.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Strong, cheaper: {\f1 --quant-round 0.25}. Quiet details disappear.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Exaggerated, cheaper: {\f1 --quant-round 0.0}. Truncation: every line is rounded down.\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel2 \b \fs28 {\f1 --pns-above <Hz>}\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\b From this frequency up, replace every long-block band by noise of the right level, whatever its tonality.}\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Applies to: AAC-LC, long blocks. Off by default.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Values: {\f1 1000..48000} Hz\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Input: whole number\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 A high band "like SBR, without SBR": the band keeps its level, its content becomes noise. It turns PNS on even below its bitrate gate; {\f1 --pns 0} still wins. Silent bands stay silent. At low bitrates use it with {\f1 --pns-budget 1} and {\f1 --pns-shared 1}, otherwise frames can run out of bits and crackle (see {\f1 --pns-budget}).\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Examples:\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Mild: {\f1 --pns-above 11000}. Only the very top becomes noise.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Strong: {\f1 --pns-above 5000}.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Exaggerated: {\f1 --pns-above 2200}. Most of the presence region is noise.\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel2 \b \fs28 {\f1 --thr-hold <n>}\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\b Re-measure the masking model only every n long frames.}\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Applies to: AAC core, long blocks. Off by default.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Values: {\f1 1..32} frames, {\f1 1} = off\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Input: whole number\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Between measurements each band keeps its last noise-to-signal offset, so the noise lags the music. A short block resets the hold. The effect is weak: the stream changes, but measured quality moves by less than 1 dB even at 32, because FDK already works on smoothed energies.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Examples:\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Mild: {\f1 --thr-hold 2}.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Strong: {\f1 --thr-hold 8}.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Exaggerated: {\f1 --thr-hold 32}.\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel2 \b \fs28 {\f1 --scf-range <n>}\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\b Limit how far apart the finest and the coarsest band of a channel may be.}\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Applies to: AAC core. Off by default (stock 60).\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Values: {\f1 0..60}, steps of 1.5 dB\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Input: whole number\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Lower values make the quantization noise flatter across frequency, with less psychoacoustic shaping. On ordinary material the effect is close to zero; it shows at small values on material with a strong spectral tilt (6 to 14 kHz noise 12.4 to 7.1 dB below the signal at {\f1 0}, 64 kbps without PNS). At 14 kbps it does not change the budget.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Examples:\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Mild: {\f1 --scf-range 40}.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Strong: {\f1 --scf-range 20}.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Exaggerated: {\f1 --scf-range 0}. One step for the whole channel.\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel2 \b \fs28 {\f1 --bit-stats}\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\b Count where the bits of the written frames go, and print the table at the end.}\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Applies to: every profile. Off by default.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Values: none, a flag\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 The table splits the frames into transport header, element headers, MS mask, section data, scalefactors, PNS noise levels, TNS, spectrum per channel (mid and side for MS), SBR/PS and fill, plus coded, zeroed, PNS and IS bands per frame. It counts the bits really written; the stream is identical with and without the switch, and the sum matches the ADTS file.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Example: {\f1 fdkaac -p 2 -b 14000 --bit-stats -f 2 -o out.aac in.wav}\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel2 \b \fs28 {\f1 --enfac-patch <0|1>}\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\b Switch the energy re-weighting of flat, noise-like long frames off, or on for every frame.}\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Applies to: AAC core, long blocks, CBR and VBR. Off by default (stock decides).\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Values: {\f1 0} = never, {\f1 1} = every long frame\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 When the audible spectrum of a frame is flat, stock FDK re-weights band energies (powers 3/4, 1/2 or 1/4) and so moves bits between bands. {\f1 0} treats every frame as tonal, {\f1 1} applies the re-weighting to every long frame. In CBR this is a fine knob: zeroed bands move by at most 1 point and noise by less than 0.1 dB at 14 to 32 kbps; {\f1 0} is often identical to stock on tonal material. In VBR ({\f1 -m 3}) {\f1 1} made a tone plus noise file 29% larger and {\f1 0} a dense noise file 3% smaller.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 F. Block switching and bitrate control\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Six switches: one that biases the long/short block decision, and five that control how freely the bitrate may move from frame to frame. The bitrate five only make sense once you know how the engine underneath works, so that comes first.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 {\b The CBR engine.} You select a target with {\f1 -b} and the encoder aims at it as an average. Frames are not individually forced to that size. At 48 kHz an AAC-LC frame covers 1024 samples, about 21.3 ms, so a 128 kbps stereo target works out to roughly 2730 bits per frame on average. That is the number the rate loop steers towards.\par}
@@ -2555,7 +2643,7 @@ fdkaac-franken-x64.exe -p 2 -b 320000 --uncap-bandwidth --core-cutoff 40000 -o o
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Input: whole number\sa180\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 The reservoir decides how long a frame may stray; this decides how high it may go. Set it above your target and the encoder is allowed to let difficult frames reach that rate momentarily, while the rate loop continues to steer the average towards {\f1 -b}.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Below the target it is ignored, which is deliberate: a peak ceiling under the average makes no sense and the encoder does not act on the contradiction. The useful range is therefore above {\f1 -b} only, and the natural way to express it is as a multiple: half again the target is cautious, double is generous.\par}
-{\pard \ql \f0 \sa180 \li0 \fi0 The ceiling of 6144 bits per channel still applies, so asking for a peak beyond what the frame can physically hold gives you the frame limit instead. At 48 kHz stereo that is about 1150 kbps worth of frame, so for ordinary targets you have plenty of room before the format limit binds.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 The ceiling of 6144 bits per channel still applies, so asking for a peak beyond what the frame can physically hold gives you the frame limit instead. At 48 kHz stereo that is about 576 kbps worth of frame (6144 x 2 bits x 48000 / 1024), so for ordinary targets you have plenty of room before the format limit binds.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Examples:\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Mild, higher peak: {\f1 -b 128000 --peak-bitrate 150000}. A small amount of headroom. Climaxes come out slightly less compressed.\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Strong, higher peak: {\f1 -b 128000 --peak-bitrate 200000}. The practical setting, usually paired with a wide reservoir. Difficult frames reach well above the target and the average is kept.\par}
@@ -2574,7 +2662,7 @@ fdkaac-franken-x64.exe -p 2 -b 320000 --uncap-bandwidth --core-cutoff 40000 -o o
 {\pard \ql \f0 \sa180 \li0 \fi0 Examples:\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Mild, higher cap: at 128 kbps stereo (about 2730 bits per frame average), {\f1 --max-bits-frame 8000}. Well above anything the engine would normally produce, so effectively a safety net.\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Strong, higher cap: {\f1 --max-bits-frame 12288}. The stereo format maximum. The cap is present but never binds, which is the right setting when you want the switch documented in a command line without changing behaviour.\par}
-{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Exaggerated, higher cap: {\f1 --max-bits-frame 100000}. Above the format limit, so it is clamped to {\f1 6144 * channels}. Harmless, and a useful reminder that no switch here lifts the frame limit.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Exaggerated, higher cap: {\f1 --max-bits-frame 100000}. Above the format limit, so it is not stored as is in the frame: the encoder takes the smaller of it and its own reservoir maximum ({\f1 6144 * channels}), so the stream is identical to {\f1 12288} in stereo (measured: 12288, 20000 and 100000 give the same ADTS stream). Harmless, and a useful reminder that no switch here lifts the frame limit.\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Mild, lower cap: {\f1 --max-bits-frame 4000} at 128 kbps stereo. Peaks trimmed, average untouched; close to the useful 1.5x guideline.\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Strong, lower cap: {\f1 --max-bits-frame 3000} at the same target. Loud frames are clearly starved, since the cap sits barely above the average.\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Exaggerated, lower cap: {\f1 --max-bits-frame 2000} at 128 kbps stereo, below the average. The cap and the target now contradict each other every frame; quality drops across the board and nothing is gained, which is why the rule is to stay at or above the average.\sa180\par}
@@ -2623,7 +2711,7 @@ fdkaac-franken-x64.exe -p 2 -b 320000 --uncap-bandwidth --core-cutoff 40000 -o o
 {\pard \ql \f0 \sa180 \li0 \fi0 DAB+ does not simply carry AAC in a different container. Three things differ. The transform is 960 samples rather than the usual 1024, so the frame length fits the radio timing grid. The audio is packed into superframes of exactly 120 ms. And because the air is hostile, with fading, tunnels and interference, the bitstream is protected twice: a firecode, which is a Fire CRC, guards the header, and Reed-Solomon RS(120,110) over GF(256) protects the payload, so a receiver can rebuild data that arrived damaged. The encoder does all of that.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 The output is a raw {\f1 .dabp} stream, one superframe after another and nothing else. It is not a file for a media player; it is what a DAB+ multiplexer ingests. The usual chain is {\f1 out.dabp} into {\f1 odr-dabmux}, which combines several stations into one ensemble and emits ETI, and from there to a transmitter or to a software receiver such as welle.io or dablin for testing.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Three constraints the standard imposes and the encoder enforces: the sample rate must be 32000 or 48000 Hz, nothing else is legal in DAB+; the bitrate must be a multiple of 8 kbps between 8 and 192; mono and stereo are both fine.\par}
-{\pard \ql \f0 \sa180 \li0 \fi0 The bitrate convention here is its own. With {\f1 --dab}, {\f1 -b} is kilobits per second and the encoder multiplies by 1000 itself, so {\f1 -b 96} means 96 kbps. If you also pass {\f1 --unlock-bitrate}, {\f1 -b} reverts to literal bits per second, which is the one combination where the two conventions collide.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 The bitrate convention here is its own. With {\f1 --dab}, {\f1 -b} is kilobits per second and the encoder multiplies by 1000 itself, so {\f1 -b 96} means 96 kbps. {\f1 --unlock-bitrate} does not change that: the DAB+ check and the x1000 run first, so {\f1 --dab --unlock-bitrate -b 96} is the same stream as without the unlock, and {\f1 -b 96000} is rejected as not a multiple of 8 kbps.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 You normally do not choose the profile. DAB+ practice, following the reference tool {\f1 odr-audioenc}, derives it from bitrate and channel count so that low bitrates automatically get the more economical tools:\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab stereo at 48 kbps or below, that is a subchannel size of 6 or less, gives HE-AAC v2 with parametric stereo;\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab mono up to 64 kbps, or stereo up to 80 kbps, gives HE-AAC with SBR;\par}
@@ -3359,6 +3447,10 @@ fdkaac --dab -b 32 -o out.dabp input.wav     # auto HE-AAC v2\par}
 https://github.com/michaldziwisz/franken-fdk-aac/releases/latest
 }}}
 }\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Wersje beta (na przyk\u322 ?ad {\f1 v1.4.0-beta.1}) s\u261 ? publikowane jako wydania wst\u281 ?pne, wi\u281 ?c powy\u380 ?szy odno\u347 ?nik nadal pokazuje ostatni\u261 ? wersj\u281 ? stabiln\u261 ?; bety s\u261 ? na pe\u322 ?nej li\u347 ?cie: {\b {\field{\*\fldinst{HYPERLINK "https://github.com/michaldziwisz/franken-fdk-aac/releases"}}{\fldrslt{\ul
+https://github.com/michaldziwisz/franken-fdk-aac/releases
+}}}
+}\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 {\f1 franken-fdk-aac-x64-vX.Y.Z.zip} to wersja 64-bitowa, {\f1 x86} to 32-bitowa. Ka\u380 ?de archiwum zawiera statyczny enkoder (bez bibliotek DLL) i pe\u322 ?n\u261 ? dokumentacj\u281 ?. Samo repozytorium ma tylko \u378 ?r\u243 ?d\u322 ?a; budowanie opisuje koniec tego dokumentu.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 Pierwsze kroki\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Wszystkie oryginalne opcje frontendu dzia\u322 ?aj\u261 ? jak dot\u261 ?d ({\f1 -p}, {\f1 -b}, {\f1 -m}, {\f1 -w}, {\f1 -a}, {\f1 -s}, {\f1 -f}, znaczniki); {\f1 fdkaac-franken-x64.exe --help} wypisuje je razem z nowymi.\par}
@@ -3425,7 +3517,7 @@ fdkaac-franken-x64.exe -p 2 -b 320000 --uncap-bandwidth --core-cutoff 40000 -o o
 {\pard \ql \f0 \sa180 \li0 \fi0 Obok siebie \u380 ?yj\u261 ? trzy konwencje, a pomylenie ich to najcz\u281 ?stszy spos\u243 ?b na zaskakuj\u261 ?cy rozmiar pliku.\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\b Praca normalna}: {\f1 -b} to bity na sekund\u281 ?, ale frontend przyjmuje te\u380 ? posta\u263 ? skr\u243 ?con\u261 ?. Ma\u322 ?e liczby s\u261 ? czytane jako kilobity, wi\u281 ?c {\f1 -b 128} i {\f1 -b 128000} oznaczaj\u261 ? to samo, czyli 128 kbps, a {\f1 -b 1152} oznacza 1152 kbps.\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\b Z {\f1 --unlock-bitrate}}: {\f1 -b} jest czytane dos\u322 ?ownie jako bity na sekund\u281 ?, bez skr\u243 ?tu kilobitowego. {\f1 -b 6000} to 6000 bps. {\f1 -b 1152} w tym trybie to 1152 bps, czyli praktycznie nic; program ostrzega, gdy warto\u347 ?\u263 ? wygl\u261 ?da na tak\u261 ? w\u322 ?a\u347 ?nie pomy\u322 ?k\u281 ?.\par}
-{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\b Z {\f1 --dab}}: {\f1 -b} to kilobity na sekund\u281 ?, w zakresie 8..192 i jako wielokrotno\u347 ?\u263 ? 8. Koder sam mno\u380 ?y przez 1000, wi\u281 ?c {\f1 -b 96} to 96 kbps. Przy po\u322 ?\u261 ?czeniu {\f1 --dab} z {\f1 --unlock-bitrate} {\f1 -b} wraca do dos\u322 ?ownych bps.\sa180\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\b Z {\f1 --dab}}: {\f1 -b} to kilobity na sekund\u281 ?, w zakresie 8..192 i jako wielokrotno\u347 ?\u263 ? 8. Koder sam mno\u380 ?y przez 1000, wi\u281 ?c {\f1 -b 96} to 96 kbps, tak\u380 ?e razem z {\f1 --unlock-bitrate}.\sa180\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 G\u243 ?rnego pu\u322 ?apu nie ustawia \u380 ?aden prze\u322 ?\u261 ?cznik i nie da si\u281 ? go podnie\u347 ?\u263 ?: ramka AAC mie\u347 ?ci najwy\u380 ?ej 6144 bity na kana\u322 ?. Przy 48 kHz to z grubsza 576 kbps na kana\u322 ?.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 Uwaga o transporcie dla LD i ELD\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 AAC-LD ({\f1 -p 23}) i AAC-ELD ({\f1 -p 39}) dzia\u322 ?aj\u261 ? w tym koderze, ale nie da si\u281 ? ich zapisa\u263 ? do ADTS. \u379 ?\u261 ?danie {\f1 -f 2} z tymi profilami ko\u324 ?czy si\u281 ? komunikatem \u8222 ?encoder initialization failed\u8221", a winowajc\u261 ? jest format transportu, nie profil. Trzeba u\u380 ?y\u263 ? M4A ({\f1 -f 0}, warto\u347 ?\u263 ? domy\u347 ?lna), LATM ({\f1 -f 6} albo {\f1 -f 7}) albo LOAS ({\f1 -f 10}). LOAS jest wyborem praktycznym, gdy potrzebny jest go\u322 ?y strumie\u324 ? do pomiaru albo do podania dalej, bo jest to samowystarczalny strumie\u324 ? bajt\u243 ?w, tak jak ADTS dla LC i HE-AAC.\par}
@@ -3796,6 +3888,9 @@ fdkaac-franken-x64.exe -p 2 -b 320000 --uncap-bandwidth --core-cutoff 40000 -o o
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab \u321 ?agodnie, grubiej: {\f1 --side-knee -1}. Odchodz\u261 ? najs\u322 ?absze pasma side, oko\u322 ?o 5 z 37 na ramk\u281 ?.\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Mocno, grubiej: {\f1 --side-knee -6}. Dziury w side 29%, b\u322 ?\u261 ?d mid o 2,4 dB mniejszy.\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Przesadnie, grubiej: {\f1 --side-knee -24}. Side praktycznie znika; obraz mono z ksi\u281 ?gowo\u347 ?ci\u261 ? stereo.\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Diagnostyczne prze\u322 ?\u261 ?czniki towarzysz\u261 ?ce (mog\u261 ? znikn\u261 ?\u263 ? w kolejnej wersji):\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\f1 --side-knee-zone <x>}, {\f1 1.0..20.0}, stock {\f1 3}: przesuni\u281 ?cie dzia\u322 ?a w pe\u322 ?ni do |knee| dB nad progiem i wygasa liniowo do zera przy x razy |knee| dB.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\f1 --side-knee-spread <dB>}, {\f1 0.1..24.0}, stock {\f1 1}: po stronie ujemnej, ile dB knee potrzeba, by w pe\u322 ?ni roz\u322 ?o\u380 ?y\u263 ? uratowan\u261 ? kupk\u281 ? pasm wed\u322 ?ug ich prawdziwego zapasu. Oba w pomiarze zmienia\u322 ?y niewiele. Bez {\f1 --side-knee} nic nie robi\u261 ?.\sa180\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Wsp\u243 ?\u322 ?praca i konflikty: ortogonalne wobec {\f1 --side-bias} i zaprojektowane do u\u380 ?ywania razem z nim; bias ustala, gdzie jest pr\u243 ?g, kolano ustala, jak mi\u281 ?kka jest jego kraw\u281 ?d\u378 ?. Bezczynne przy {\f1 --msmask 0}.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Zmierzone: g\u281 ?ste stereo LC. Warto\u347 ?ci ujemne nasycaj\u261 ? si\u281 ? przy -6 dB (-6, -12 i -24 daj\u261 ? identyczny strumie\u324 ?); warto\u347 ?ci dodatnie zmieniaj\u261 ? strumie\u324 ? w ca\u322 ?ym zakresie.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel3 \b \fs24 {\f1 --mask-slope <dB>}\par}
@@ -4271,7 +4366,7 @@ fdkaac-franken-x64.exe -p 2 -b 320000 --uncap-bandwidth --core-cutoff 40000 -o o
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel3 \b \fs24 {\f1 --core-cutoff <hz>}\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 {\b Wymusza g\u243 ?rn\u261 ? granic\u281 ? pasma kodowanego przez rdze\u324 ? AAC, w Hz, i dzia\u322 ?a tak\u380 ?e pod SBR, gdzie {\f1 -w} nie dzia\u322 ?a.}\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Dotyczy: ka\u380 ?dego profilu. To jedyny prze\u322 ?\u261 ?cznik z grupy C, kt\u243 ?ry przydaje si\u281 ? bez SBR.\par}
-{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Warto\u347 ?ci: Hz, od sporo powy\u380 ?ej 0 do cz\u281 ?stotliwo\u347 ?ci Nyquista rdzenia (po\u322 ?owa cz\u281 ?stotliwo\u347 ?ci pr\u243 ?bkowania rdzenia); domy\u347 ?lnie {\f1 0} = zostaw decyzj\u281 ? FDK\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Warto\u347 ?ci: {\f1 0..48000} Hz (spoza zakresu jest odrzucane); koder zatrzymuje si\u281 ? na cz\u281 ?stotliwo\u347 ?ci Nyquista rdzenia (po\u322 ?owa cz\u281 ?stotliwo\u347 ?ci pr\u243 ?bkowania rdzenia); domy\u347 ?lnie {\f1 0} = zostaw decyzj\u281 ? FDK\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Wpisywanie: liczba ca\u322 ?kowita\sa180\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Standardowe {\f1 -w/--bandwidth} zostaje nadpisane przy inicjalizacji SBR: o pa\u347 ?mie rdzenia decyduje tabela strojenia SBR, tak \u380 ?eby rdze\u324 ? ko\u324 ?czy\u322 ? si\u281 ? dok\u322 ?adnie tam, gdzie zaczyna si\u281 ? cz\u281 ?stotliwo\u347 ?\u263 ? podzia\u322 ?u, a warto\u347 ?\u263 ? podana przez {\f1 -w} jest odrzucana. {\f1 --core-cutoff} jest stosowany p\u243 ?\u378 ?niej i to prze\u380 ?ywa.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Dwie sytuacje sprawiaj\u261 ?, \u380 ?e warto po niego si\u281 ?gn\u261 ?\u263 ?. Pierwsza to materia\u322 ? z SBR, w kt\u243 ?rym chcesz mie\u263 ? pod cz\u281 ?stotliwo\u347 ?ci\u261 ? podzia\u322 ?u wi\u281 ?cej prawdziwego, zakodowanego widma, ni\u380 ? daje tabela, zwykle dlatego, \u380 ?e za\u322 ?atane pasmo brzmi syntetycznie i wolisz wyda\u263 ? bity na autentyczn\u261 ? \u347 ?redni\u261 ? g\u243 ?r\u281 ?. Druga nie ma z SBR nic wsp\u243 ?lnego: AAC-LD i AAC-ELD dobieraj\u261 ? pasmo rdzenia z tabeli, kt\u243 ?ra jest bardzo zachowawcza, oko\u322 ?o 2 kHz przy 48 kbps i oko\u322 ?o 5,8 kHz przy 64 kbps. Ju\u380 ? z samego tego powodu te profile brzmi\u261 ? g\u322 ?ucho, a {\f1 --core-cutoff} jest na to lekarstwem.\par}
@@ -4607,16 +4702,17 @@ fdkaac-franken-x64.exe -p 2 -b 320000 --uncap-bandwidth --core-cutoff 40000 -o o
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel3 \b \fs24 {\f1 --sbr-freqscale <n>}\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 {\b Wybiera, jak replikowane pasmo jest dzielone na pasma SBR: liniowo albo na jednej z trzech siatek logarytmicznych.}\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Dotyczy: tylko profili z SBR\par}
-{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Warto\u347 ?ci: {\f1 0} = liniowo, {\f1 1}, {\f1 2}, {\f1 3} = coraz drobniejsze grupowanie logarytmiczne; domy\u347 ?lnie {\f1 -1} = warto\u347 ?\u263 ? z tabeli strojenia SBR\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Warto\u347 ?ci: {\f1 0} = liniowo, {\f1 1}, {\f1 2}, {\f1 3} = logarytmicznie, 12, 10 i 8 pasm na oktaw\u281 ? (coraz grubiej); {\f1 -1} albo pomini\u281 ?cie prze\u322 ?\u261 ?cznika = warto\u347 ?\u263 ? z tabeli strojenia SBR\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Wpisywanie: liczba ca\u322 ?kowita\sa180\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 SBR opisuje sw\u243 ?j obszar pasmo po pa\u347 ?mie, a to jest wyb\u243 ?r linijki. Siatka liniowa daje ka\u380 ?demu pasmu t\u281 ? sam\u261 ? szeroko\u347 ?\u263 ? w Hz, wi\u281 ?c g\u243 ?rna oktawa dostaje wiele pasm, a d\u243 ?\u322 ? obszaru SBR niewiele. Siatka logarytmiczna rozstawia pasma wed\u322 ?ug stosunku cz\u281 ?stotliwo\u347 ?ci, co pasuje do s\u322 ?uchu: wi\u281 ?cej rozdzielczo\u347 ?ci tam, gdzie ucho rozr\u243 ?\u380 ?nia wi\u281 ?cej, czyli nisko, przy cz\u281 ?stotliwo\u347 ?ci podzia\u322 ?u.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Warto\u347 ?ci:\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\f1 0} liniowo. R\u243 ?wne odst\u281 ?py w Hz. Drobna rozdzielczo\u347 ?\u263 ? wysoko, zgrubna tu\u380 ? powy\u380 ?ej cz\u281 ?stotliwo\u347 ?ci podzia\u322 ?u, czyli odwrotnie ni\u380 ? chce ucho. Bywa u\u380 ?yteczne na materiale, kt\u243 ?rego g\u243 ?rne pasmo jest naprawd\u281 ? jednorodne, na przyk\u322 ?ad na szerokopasmowych podk\u322 ?adach szumowych.\par}
-{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\f1 1} najgrubiejsze grupowanie logarytmiczne. Najmniej pasm, najta\u324 ?szy opis, najmniejsza kontrola.\par}
-{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\f1 2} \u347 ?rodkowe grupowanie logarytmiczne.\par}
-{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\f1 3} najdrobniejsze grupowanie logarytmiczne. Najwi\u281 ?cej pasm, najwi\u281 ?cej parametr\u243 ?w, najlepsze kszta\u322 ?towanie nier\u243 ?wnego g\u243 ?rnego pasma.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\f1 1} najdrobniejsze grupowanie logarytmiczne, 12 pasm na oktaw\u281 ?. Najwi\u281 ?cej pasm, najwi\u281 ?cej parametr\u243 ?w, najlepsze kszta\u322 ?towanie nier\u243 ?wnego g\u243 ?rnego pasma.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\f1 2} \u347 ?rodkowe grupowanie logarytmiczne, 10 pasm na oktaw\u281 ?.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\f1 3} najgrubsze grupowanie logarytmiczne, 8 pasm na oktaw\u281 ?. Najmniej pasm, najta\u324 ?szy opis, najmniejsza kontrola.\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Zmierzone przy HE-AAC 64 kbps, dane SBR na ramk\u281 ?: 220 bit\u243 ?w przy {\f1 0}, 188 przy {\f1 1}, 170 przy {\f1 2}, 152 przy {\f1 3}.\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\f1 -1} wy\u322 ?\u261 ?czone: decyduje tabela strojenia, co jest w\u322 ?a\u347 ?ciwym wyborem, dop\u243 ?ki nie masz powodu, \u380 ?eby zrobi\u263 ? inaczej.\sa180\par}
-{\pard \ql \f0 \sa180 \li0 \fi0 Przyk\u322 ?ad w kontek\u347 ?cie: {\f1 fdkaac -p 5 -b 64000 --sbr-freqscale 3 -o out.m4a in.wav}\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Przyk\u322 ?ad w kontek\u347 ?cie: {\f1 fdkaac -p 5 -b 64000 --sbr-freqscale 1 -o out.m4a in.wav} (najdrobniejsza siatka)\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Wsp\u243 ?\u322 ?praca i konflikty: liczba pasm, kt\u243 ?r\u261 ? to daje, wchodzi w interakcj\u281 ? z {\f1 --sbr-noise-bands} (pasma szumu wyprowadza si\u281 ? na oktaw\u281 ?, a nie na pasmo SBR) oraz z tym, jak bardzo decyzja invf mo\u380 ?e si\u281 ? zmienia\u263 ? w obr\u281 ?bie obszaru. Drobniejsza siatka oznacza drobniejsz\u261 ? map\u281 ? invf.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel3 \b \fs24 {\f1 --sbr-alterscale <n>}\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 {\b Prze\u322 ?\u261 ?cza na alternatywn\u261 ? rozdzielczo\u347 ?\u263 ? grupowania pasm, czyli wt\u243 ?rn\u261 ? korekt\u281 ? siatki wybranej przez {\f1 --sbr-freqscale}.}\par}
@@ -5612,14 +5708,14 @@ fdkaac-franken-x64.exe -p 2 -b 320000 --uncap-bandwidth --core-cutoff 40000 -o o
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Wpisywanie: liczba dziesi\u281 ?tna, do 3 miejsc, {\f1 .} albo {\f1 ,}\sa180\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Tonalno\u347 ?\u263 ? nie jest jedynym testem. Moc ka\u380 ?dego pasma jest te\u380 ? por\u243 ?wnywana z odniesieniem, zanim pasmo mo\u380 ?e zosta\u263 ? kandydatem PNS, co trzyma mechanizm z dala od pasm, kt\u243 ?rych poziom czyni podstawianie z\u322 ?\u261 ? wymian\u261 ?. Ten prze\u322 ?\u261 ?cznik przesuwa t\u281 ? bramk\u281 ? mocy.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Oba testy detekcji s\u261 ? koniunkcyjne: tonalno\u347 ?\u263 ? i moc odniesienia musz\u261 ? si\u281 ? obie zgodzi\u263 ?, zanim pasmo zostanie PNS. To dlatego ruszanie samym {\f1 --pns-tonality} czasem nie robi nic i dlatego t\u281 ? kart\u281 ? i tamt\u261 ? pr\u243 ?buje si\u281 ? zwykle razem.\par}
-{\pard \ql \f0 \sa180 \li0 \fi0 Wy\u380 ?ej ni\u380 ? {\f1 1.0} przesuwa bramk\u281 ? mocy w kierunku, kt\u243 ?ry dopuszcza pasma odrzucane inaczej z powodu poziomu; ni\u380 ?ej ni\u380 ? {\f1 1.0} czyni bramk\u281 ? surowsz\u261 ?. Skoro bramka zale\u380 ?y od poziomu materia\u322 ?u, praktyczne podej\u347 ?cie jest takie, \u380 ?eby j\u261 ? zmieni\u263 ? i odczyta\u263 ? wynik, a nie go przewidywa\u263 ?.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Warto\u347 ?\u263 ? mno\u380 ?y sam pr\u243 ?g. Powy\u380 ?ej {\f1 1.0} go podnosi, wi\u281 ?c przechodzi mniej pasm i PNS si\u281 ? wycofuje; poni\u380 ?ej {\f1 1.0} go obni\u380 ?a, wi\u281 ?c przechodzi wi\u281 ?cej pasm. Zmierzone na akustycznej muzyce stereo przy 64 kbps LC, pasm PNS na ramk\u281 ?: 5,5 przy {\f1 0.01}, 5,1 przy {\f1 0.4}, 4,8 przy {\f1 0.8}, 4,6 przy {\f1 1.0}, 4,3 przy {\f1 1.3}, 3,6 przy {\f1 2.0}, 0 przy {\f1 20.0}.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Przyk\u322 ?ady:\par}
-{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab \u321 ?agodnie, lu\u378 ?niejsza bramka: {\f1 --pns-refpower 1,3}. Kilka dodatkowych pasm przechodzi test mocy.\par}
-{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Mocno, lu\u378 ?niejsza bramka: {\f1 --pns-refpower 2.0}. Dwa razy wy\u380 ?szy pr\u243 ?g. W po\u322 ?\u261 ?czeniu z {\f1 --pns-tonality 2.0} to miejsce, w kt\u243 ?rym szerokie podstawianie szumu naprawd\u281 ? si\u281 ? zaczyna.\par}
-{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Przesadnie, lu\u378 ?niejsza bramka: {\f1 --pns-refpower 20.0}. Test mocy przestaje w og\u243 ?le rozr\u243 ?\u380 ?nia\u263 ? i wyb\u243 ?r zostaje ca\u322 ?kowicie po stronie tonalno\u347 ?ci, co jest dobrym sposobem dowiedzenia si\u281 ?, ile pracy ta bramka wykonywa\u322 ?a.\par}
-{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab \u321 ?agodnie, surowsza bramka: {\f1 --pns-refpower 0,8}. Nieco mniej kandydat\u243 ?w.\par}
-{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Mocno, surowsza bramka: {\f1 --pns-refpower 0.4}. Wyra\u378 ?nie mniej pasm przechodzi. PNS wycofuje si\u281 ? do pasm, gdzie jest najmniej ryzykowny.\par}
-{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Przesadnie, surowsza bramka: {\f1 --pns-refpower 0.01}. Prawie nic nie przechodzi, wi\u281 ?c PNS jest na papierze w\u322 ?\u261 ?czony, a w praktyce bezczynny.\sa180\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab \u321 ?agodnie, lu\u378 ?niejsza bramka: {\f1 --pns-refpower 0,8}. Nieco wi\u281 ?cej kandydat\u243 ?w (z 4,6 do 4,8 pasma).\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Mocno, lu\u378 ?niejsza bramka: {\f1 --pns-refpower 0.4}. 5,1 pasma. W po\u322 ?\u261 ?czeniu z podniesionym {\f1 --pns-tonality} to miejsce, w kt\u243 ?rym szerokie podstawianie szumu naprawd\u281 ? si\u281 ? zaczyna.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Przesadnie, lu\u378 ?niejsza bramka: {\f1 --pns-refpower 0.01}. Test mocy przestaje rozr\u243 ?\u380 ?nia\u263 ? i wyb\u243 ?r zostaje po stronie tonalno\u347 ?ci (5,5 pasma), co dobrze pokazuje, ile pracy ta bramka wykonywa\u322 ?a.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab \u321 ?agodnie, surowsza bramka: {\f1 --pns-refpower 1,3}. Nieco mniej kandydat\u243 ?w (4,3 pasma).\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Mocno, surowsza bramka: {\f1 --pns-refpower 2.0}. Dwa razy wy\u380 ?szy pr\u243 ?g, 3,6 pasma. PNS wycofuje si\u281 ? do pasm, gdzie jest najmniej ryzykowny.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Przesadnie, surowsza bramka: {\f1 --pns-refpower 20.0}. Nic nie przechodzi, wi\u281 ?c PNS jest na papierze w\u322 ?\u261 ?czony, a w praktyce bezczynny.\sa180\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Wsp\u243 ?\u322 ?praca i konflikty: koniunkcyjny z {\f1 --pns-tonality}, wi\u281 ?c testuj je par\u261 ?. {\f1 --pns-gapfill} mo\u380 ?e i tak doda\u263 ? pasmo mi\u281 ?dzy dwoma pasmami PNS, kt\u243 ?re tego testu nie przesz\u322 ?o. Nic tutaj nie ma znaczenia, gdy PNS jest wy\u322 ?\u261 ?czony.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel2 \b \fs28 {\f1 --pns-gapfill <x>}\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 {\b Skaluje pr\u243 ?g heurystyki, kt\u243 ?ra zamyka jednopasmow\u261 ? luk\u281 ? mi\u281 ?dzy dwoma podstawionymi pasmami.}\par}
@@ -5852,6 +5948,86 @@ fdkaac-franken-x64.exe -p 2 -b 320000 --uncap-bandwidth --core-cutoff 40000 -o o
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab \u321 ?agodnie: {\f1 --tns-start 2000}.\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Mocno: {\f1 --tns-start 5000}.\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Przesadnie: {\f1 --tns-start 15000}. Kszta\u322 ?towana jest tylko sama g\u243 ?ra; dla wi\u281 ?kszo\u347 ?ci materia\u322 ?u TNS jest wtedy w blokach d\u322 ?ugich praktycznie wy\u322 ?\u261 ?czony.\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel2 \b \fs28 {\f1 --coverage <-5..5>}\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\b Jedna o\u347 ? przy sta\u322 ?ym bitrate: koduj ka\u380 ?de pasmo grubo albo mniej pasm czysto.}\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Dotyczy: rdze\u324 ? AAC (LC, LD, ELD i rdze\u324 ? LC w HE-AAC). Domy\u347 ?lnie wy\u322 ?\u261 ?czone.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Warto\u347 ?ci: liczby ca\u322 ?kowite {\f1 -5..5}; {\f1 0} = stock\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Wpisywanie: liczba ca\u322 ?kowita\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Przy sta\u322 ?ym bitrate koder mo\u380 ?e wyda\u263 ? bity na pokrycie ca\u322 ?ego widma grubym opisem albo na dobry opis mniejszej liczby pasm, zostawiaj\u261 ?c dziury. To makro przesuwa t\u281 ? r\u243 ?wnowag\u281 ? jedn\u261 ? liczb\u261 ?. Ustawia sze\u347 ?\u263 ? prze\u322 ?\u261 ?cznik\u243 ?w poni\u380 ?ej ({\f1 --band-knee}, {\f1 --quant-round}, {\f1 --thr-hold}, {\f1 --scf-range}, a przy {\f1 +4} i {\f1 +5} tak\u380 ?e {\f1 --pns-above}); ka\u380 ?dy z nich podany jawnie wygrywa z makrem. {\f1 --verbose} pokazuje warto\u347 ?ci, kt\u243 ?re faktycznie dzia\u322 ?aj\u261 ?.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Zmierzone przy LC 32 kbps, 17 kHz, po dekodowaniu (wyzerowane pasma i szum pasm, kt\u243 ?re zosta\u322 ?y): {\f1 -5} 51% dziur, a zachowane pasma 4,75 dB czystsze od sygna\u322 ?u; stock 11,7% dziur, 1,96 dB; {\f1 +4} 0,2% dziur, a zachowane pasma mniej wi\u281 ?cej tak szumne jak tre\u347 ?\u263 ?.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Przyk\u322 ?ady:\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab \u321 ?agodnie, wi\u281 ?cej pokrycia: {\f1 --coverage 2}. Mniej dziur, troch\u281 ? wi\u281 ?cej ziarna.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Mocno, wi\u281 ?cej pokrycia: {\f1 --coverage 4}. Praktycznie bez dziur; dok\u322 ?ada podstawianie szumu od 11 kHz.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Przesadnie, wi\u281 ?cej pokrycia: {\f1 --coverage 5}. Wszystko wype\u322 ?nione, szum od 7 kHz.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab \u321 ?agodnie, wi\u281 ?cej precyzji: {\f1 --coverage -2}. Najpierw odchodz\u261 ? najs\u322 ?absze pasma.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Mocno, wi\u281 ?cej precyzji: {\f1 --coverage -4}. Du\u380 ?o dziur, to, co zostaje, jest czyste.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Przesadnie, wi\u281 ?cej precyzji: {\f1 --coverage -5}. Znika mniej wi\u281 ?cej po\u322 ?owa pasm.\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel2 \b \fs28 {\f1 --band-knee <dB>}\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\b Przesu\u324 ? zapas ka\u380 ?dego pasma nad progiem przy kraw\u281 ?dzi kodowane/wyzerowane, we wszystkich kana\u322 ?ach.}\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Dotyczy: rdze\u324 ? AAC. Domy\u347 ?lnie wy\u322 ?\u261 ?czone.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Warto\u347 ?ci: {\f1 -24.0..24.0} dB, {\f1 0} = wy\u322 ?\u261 ?czone\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Wpisywanie: liczba dziesi\u281 ?tna, do 3 miejsc, {\f1 .} albo {\f1 ,}\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Warto\u347 ?\u263 ? dodatnia zatrzymuje pasma do N dB pod progiem, na najgrubszym kroku, zamiast je zerowa\u263 ?. Warto\u347 ?\u263 ? ujemna zeruje pasma, kt\u243 ?re przechodz\u261 ? pr\u243 ?g o mniej ni\u380 ? N dB po pierwszym oszacowaniu bit\u243 ?w, wi\u281 ?c drugie oszacowanie oddaje te bity reszcie. Pasm PNS i IS nie rusza; w pasmach side pary MS wygrywa {\f1 --side-knee}.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Przyk\u322 ?ady:\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab \u321 ?agodnie, zatrzymaj wi\u281 ?cej: {\f1 --band-knee 3}.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Mocno, zatrzymaj wi\u281 ?cej: {\f1 --band-knee 6}. U\u380 ?yteczne maksimum: powy\u380 ?ej oko\u322 ?o 9 dB uratowane grube pasma kosztuj\u261 ? tyle bit\u243 ?w, \u380 ?e p\u281 ?tla tnie gdzie indziej.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Przesadnie, zatrzymaj wi\u281 ?cej: {\f1 --band-knee 24}. Zmierzone: gorzej ni\u380 ? 6.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab \u321 ?agodnie, wyrzu\u263 ? wi\u281 ?cej: {\f1 --band-knee -2}.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Mocno, wyrzu\u263 ? wi\u281 ?cej: {\f1 --band-knee -6}.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Przesadnie, wyrzu\u263 ? wi\u281 ?cej: {\f1 --band-knee -24}. Zostaj\u261 ? tylko wyra\u378 ?nie s\u322 ?yszalne pasma.\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel2 \b \fs28 {\f1 --quant-round <x>}\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\b Przesu\u324 ? punkt zaokr\u261 ?glania kwantyzatora: mniej albo wi\u281 ?cej ma\u322 ?ych linii widma staje si\u281 ? zerem.}\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Dotyczy: rdze\u324 ? AAC. Domy\u347 ?lnie wy\u322 ?\u261 ?czone (stock 0,405).\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Warto\u347 ?ci: {\f1 0.0..0.5}\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Wpisywanie: liczba dziesi\u281 ?tna, do 3 miejsc, {\f1 .} albo {\f1 ,}\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Kwantyzator zaokr\u261 ?gla ka\u380 ?d\u261 ? lini\u281 ? widma do ca\u322 ?ego kroku. Stock zaokr\u261 ?gla z przesuni\u281 ?ciem oko\u322 ?o 0,405, czyli lekko w stron\u281 ? zera, co oszcz\u281 ?dza bity. {\f1 0.5} zaokr\u261 ?gla do najbli\u380 ?szej: mniej ma\u322 ?ych linii znika, kosztuje to bity. Ni\u380 ?sze warto\u347 ?ci wysy\u322 ?aj\u261 ? wi\u281 ?cej linii do zera i s\u261 ? ta\u324 ?sze.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Przyk\u322 ?ady:\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab \u321 ?agodnie, dok\u322 ?adniej: {\f1 --quant-round 0.45}.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Mocno, dok\u322 ?adniej: {\f1 --quant-round 0.5}. Zaokr\u261 ?glanie do najbli\u380 ?szej.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab \u321 ?agodnie, taniej: {\f1 --quant-round 0.35}.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Mocno, taniej: {\f1 --quant-round 0.25}. Ciche szczeg\u243 ?\u322 ?y znikaj\u261 ?.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Przesadnie, taniej: {\f1 --quant-round 0.0}. Obcinanie: ka\u380 ?da linia zaokr\u261 ?glona w d\u243 ?\u322 ?.\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel2 \b \fs28 {\f1 --pns-above <Hz>}\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\b Od tej cz\u281 ?stotliwo\u347 ?ci w g\u243 ?r\u281 ? zast\u261 ?p ka\u380 ?de pasmo bloku d\u322 ?ugiego szumem o w\u322 ?a\u347 ?ciwym poziomie, bez wzgl\u281 ?du na tonalno\u347 ?\u263 ?.}\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Dotyczy: AAC-LC, bloki d\u322 ?ugie. Domy\u347 ?lnie wy\u322 ?\u261 ?czone.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Warto\u347 ?ci: {\f1 1000..48000} Hz\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Wpisywanie: liczba ca\u322 ?kowita\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 G\u243 ?rne pasmo \u8222 ?jak SBR, bez SBR\u8221": pasmo zachowuje poziom, a jego tre\u347 ?\u263 ? staje si\u281 ? szumem. W\u322 ?\u261 ?cza PNS nawet poni\u380 ?ej jego bramki bitrate; {\f1 --pns 0} nadal wygrywa. Ciche pasma zostaj\u261 ? ciche. Przy niskim bitrate u\u380 ?ywaj razem z {\f1 --pns-budget 1} i {\f1 --pns-shared 1}, inaczej ramkom mo\u380 ?e zabrakn\u261 ?\u263 ? bit\u243 ?w i pojawi si\u281 ? trzask (patrz {\f1 --pns-budget}).\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Przyk\u322 ?ady:\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab \u321 ?agodnie: {\f1 --pns-above 11000}. Szumem staje si\u281 ? tylko sama g\u243 ?ra.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Mocno: {\f1 --pns-above 5000}.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Przesadnie: {\f1 --pns-above 2200}. Wi\u281 ?kszo\u347 ?\u263 ? obszaru prezencji to szum.\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel2 \b \fs28 {\f1 --thr-hold <n>}\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\b Mierz model maskowania tylko co n ramek d\u322 ?ugich.}\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Dotyczy: rdze\u324 ? AAC, bloki d\u322 ?ugie. Domy\u347 ?lnie wy\u322 ?\u261 ?czone.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Warto\u347 ?ci: {\f1 1..32} ramki, {\f1 1} = wy\u322 ?\u261 ?czone\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Wpisywanie: liczba ca\u322 ?kowita\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Pomi\u281 ?dzy pomiarami ka\u380 ?de pasmo zachowuje ostatni stosunek szumu do sygna\u322 ?u, wi\u281 ?c szum sp\u243 ?\u378 ?nia si\u281 ? za muzyk\u261 ?. Blok kr\u243 ?tki zeruje to trzymanie. Efekt jest s\u322 ?aby: strumie\u324 ? si\u281 ? zmienia, ale zmierzona jako\u347 ?\u263 ? rusza si\u281 ? o mniej ni\u380 ? 1 dB nawet przy 32, bo FDK i tak pracuje na wyg\u322 ?adzonych energiach.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Przyk\u322 ?ady:\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab \u321 ?agodnie: {\f1 --thr-hold 2}.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Mocno: {\f1 --thr-hold 8}.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Przesadnie: {\f1 --thr-hold 32}.\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel2 \b \fs28 {\f1 --scf-range <n>}\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\b Ogranicz, jak daleko od siebie mog\u261 ? by\u263 ? najdrobniej i najgrubiej kodowane pasmo kana\u322 ?u.}\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Dotyczy: rdze\u324 ? AAC. Domy\u347 ?lnie wy\u322 ?\u261 ?czone (stock 60).\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Warto\u347 ?ci: {\f1 0..60}, kroki po 1,5 dB\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Wpisywanie: liczba ca\u322 ?kowita\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Ni\u380 ?sze warto\u347 ?ci robi\u261 ? szum kwantyzacji bardziej p\u322 ?askim w cz\u281 ?stotliwo\u347 ?ci, z mniejszym kszta\u322 ?towaniem psychoakustycznym. Na zwyk\u322 ?ym materiale efekt jest bliski zera; wida\u263 ? go przy ma\u322 ?ych warto\u347 ?ciach na materiale z silnym nachyleniem widma (szum 6 do 14 kHz z 12,4 do 7,1 dB pod sygna\u322 ?em przy {\f1 0}, 64 kbps bez PNS). Przy 14 kbps nie zmienia bud\u380 ?etu.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Przyk\u322 ?ady:\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab \u321 ?agodnie: {\f1 --scf-range 40}.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Mocno: {\f1 --scf-range 20}.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Przesadnie: {\f1 --scf-range 0}. Jeden krok na ca\u322 ?y kana\u322 ?.\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel2 \b \fs28 {\f1 --bit-stats}\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\b Policz, na co id\u261 ? bity zapisanych ramek, i wypisz tabel\u281 ? na ko\u324 ?cu.}\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Dotyczy: ka\u380 ?dy profil. Domy\u347 ?lnie wy\u322 ?\u261 ?czone.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Warto\u347 ?ci: brak, to flaga\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Tabela dzieli ramki na nag\u322 ?\u243 ?wek transportu, nag\u322 ?\u243 ?wki element\u243 ?w, mask\u281 ? MS, dane sekcji, wsp\u243 ?\u322 ?czynniki skali, poziomy szumu PNS, TNS, widmo ka\u380 ?dego kana\u322 ?u (mid i side dla MS), SBR/PS i wype\u322 ?nienie, a do tego kodowane, wyzerowane, PNS i IS pasma na ramk\u281 ?. Liczy bity naprawd\u281 ? zapisane; strumie\u324 ? jest identyczny z prze\u322 ?\u261 ?cznikiem i bez niego, a suma zgadza si\u281 ? z plikiem ADTS.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Przyk\u322 ?ad: {\f1 fdkaac -p 2 -b 14000 --bit-stats -f 2 -o out.aac in.wav}\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel2 \b \fs28 {\f1 --enfac-patch <0|1>}\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 {\b Wy\u322 ?\u261 ?cz przewa\u380 ?anie energii p\u322 ?askich, szumowych ramek d\u322 ?ugich albo w\u322 ?\u261 ?cz je dla ka\u380 ?dej ramki.}\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Dotyczy: rdze\u324 ? AAC, bloki d\u322 ?ugie, CBR i VBR. Domy\u347 ?lnie wy\u322 ?\u261 ?czone (decyduje stock).\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Warto\u347 ?ci: {\f1 0} = nigdy, {\f1 1} = ka\u380 ?da ramka d\u322 ?uga\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Gdy s\u322 ?yszalne widmo ramki jest p\u322 ?askie, stockowy FDK przewa\u380 ?a energie pasm (pot\u281 ?gi 3/4, 1/2 albo 1/4) i w ten spos\u243 ?b przesuwa bity mi\u281 ?dzy pasmami. {\f1 0} traktuje ka\u380 ?d\u261 ? ramk\u281 ? jak tonaln\u261 ?, {\f1 1} stosuje przewa\u380 ?anie do ka\u380 ?dej ramki d\u322 ?ugiej. W CBR to drobne pokr\u281 ?t\u322 ?o: wyzerowane pasma zmieniaj\u261 ? si\u281 ? najwy\u380 ?ej o 1 punkt, a szum o mniej ni\u380 ? 0,1 dB przy 14 do 32 kbps; {\f1 0} na materiale tonalnym cz\u281 ?sto daje to samo co stock. W VBR ({\f1 -m 3}) {\f1 1} powi\u281 ?kszy\u322 ?o plik z tonem i szumem o 29%, a {\f1 0} zmniejszy\u322 ?o plik z g\u281 ?stym szumem o 3%.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 F. Prze\u322 ?\u261 ?czanie blok\u243 ?w i kontrola bitrate'u\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Sze\u347 ?\u263 ? prze\u322 ?\u261 ?cznik\u243 ?w: jeden, kt\u243 ?ry przechyla decyzj\u281 ? o bloku d\u322 ?ugim albo kr\u243 ?tkim, i pi\u281 ?\u263 ?, kt\u243 ?re kontroluj\u261 ?, jak swobodnie bitrate mo\u380 ?e si\u281 ? rusza\u263 ? z ramki na ramk\u281 ?. Te pi\u281 ?\u263 ? od bitrate'u ma sens tylko wtedy, gdy wiesz, jak dzia\u322 ?a silnik pod spodem, wi\u281 ?c od tego zaczynamy.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 {\b Silnik CBR.} Cel wybierasz przez {\f1 -b}, a koder mierzy w niego jako w \u347 ?redni\u261 ?. Poszczeg\u243 ?lne ramki nie s\u261 ? wymuszane do tego rozmiaru. Przy 48 kHz ramka AAC-LC obejmuje 1024 pr\u243 ?bki, czyli oko\u322 ?o 21,3 ms, wi\u281 ?c cel 128 kbps stereo wychodzi na z grubsza 2730 bit\u243 ?w na ramk\u281 ? \u347 ?rednio. To ta liczba, do kt\u243 ?rej steruje p\u281 ?tla dopasowania bitrate'u.\par}
@@ -5902,7 +6078,7 @@ fdkaac-franken-x64.exe -p 2 -b 320000 --uncap-bandwidth --core-cutoff 40000 -o o
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Wpisywanie: liczba ca\u322 ?kowita\sa180\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Rezerwuar decyduje, jak d\u322 ?ugo ramka mo\u380 ?e zbacza\u263 ?; ten prze\u322 ?\u261 ?cznik decyduje, jak wysoko mo\u380 ?e p\u243 ?j\u347 ?\u263 ?. Ustaw go powy\u380 ?ej swojego celu, a koder b\u281 ?dzie m\u243 ?g\u322 ? pozwoli\u263 ? trudnym ramkom chwilowo osi\u261 ?gn\u261 ?\u263 ? ten bitrate, podczas gdy p\u281 ?tla dopasowania bitrate'u dalej steruje \u347 ?redni\u261 ? do {\f1 -b}.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Poni\u380 ?ej celu jest ignorowany, i to celowo: sufit szczytowy pod \u347 ?redni\u261 ? nie ma sensu i koder nie dzia\u322 ?a na tej sprzeczno\u347 ?ci. U\u380 ?yteczny zakres jest wi\u281 ?c tylko powy\u380 ?ej {\f1 -b}, a naturalnym sposobem wyra\u380 ?enia tego jest krotno\u347 ?\u263 ?: p\u243 ?\u322 ?tora raza cel jest ostro\u380 ?ne, dwa razy jest hojne.\par}
-{\pard \ql \f0 \sa180 \li0 \fi0 Sufit 6144 bit\u243 ?w na kana\u322 ? nadal obowi\u261 ?zuje, wi\u281 ?c proszenie o szczyt poza to, co ramka fizycznie pomie\u347 ?ci, daje limit ramki. Przy 48 kHz stereo to ramka warta oko\u322 ?o 1150 kbps, wi\u281 ?c dla zwyk\u322 ?ych cel\u243 ?w masz du\u380 ?o miejsca, zanim limit formatu zacznie wi\u261 ?za\u263 ?.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Sufit 6144 bit\u243 ?w na kana\u322 ? nadal obowi\u261 ?zuje, wi\u281 ?c proszenie o szczyt poza to, co ramka fizycznie pomie\u347 ?ci, daje limit ramki. Przy 48 kHz stereo to ramka warta oko\u322 ?o 576 kbps (6144 x 2 bity x 48000 / 1024), wi\u281 ?c dla zwyk\u322 ?ych cel\u243 ?w masz du\u380 ?o miejsca, zanim limit formatu zacznie wi\u261 ?za\u263 ?.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Przyk\u322 ?ady:\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab \u321 ?agodnie, wy\u380 ?szy szczyt: {\f1 -b 128000 --peak-bitrate 150000}. Niewielki zapas. Kulminacje wychodz\u261 ? nieco mniej sprasowane.\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Mocno, wy\u380 ?szy szczyt: {\f1 -b 128000 --peak-bitrate 200000}. Praktyczne ustawienie, zwykle w parze z szerokim rezerwuarem. Trudne ramki si\u281 ?gaj\u261 ? dobrze powy\u380 ?ej celu, a \u347 ?rednia jest utrzymana.\par}
@@ -5921,7 +6097,7 @@ fdkaac-franken-x64.exe -p 2 -b 320000 --uncap-bandwidth --core-cutoff 40000 -o o
 {\pard \ql \f0 \sa180 \li0 \fi0 Przyk\u322 ?ady:\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab \u321 ?agodnie, wy\u380 ?sze ograniczenie: przy 128 kbps stereo (\u347 ?rednio oko\u322 ?o 2730 bit\u243 ?w na ramk\u281 ?), {\f1 --max-bits-frame 8000}. Dobrze powy\u380 ?ej czegokolwiek, co silnik normalnie wyprodukuje, wi\u281 ?c w praktyce siatka bezpiecze\u324 ?stwa.\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Mocno, wy\u380 ?sze ograniczenie: {\f1 --max-bits-frame 12288}. Maksimum formatu dla stereo. Ograniczenie jest obecne, ale nigdy nie wi\u261 ?\u380 ?e, co jest w\u322 ?a\u347 ?ciwym ustawieniem, gdy chcesz mie\u263 ? prze\u322 ?\u261 ?cznik udokumentowany w wierszu polece\u324 ? bez zmiany zachowania.\par}
-{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Przesadnie, wy\u380 ?sze ograniczenie: {\f1 --max-bits-frame 100000}. Powy\u380 ?ej limitu formatu, wi\u281 ?c zostaje przyci\u281 ?te do {\f1 6144 * liczba kana\u322 ?\u243 ?w}. Nieszkodliwe i przydatne jako przypomnienie, \u380 ?e \u380 ?aden prze\u322 ?\u261 ?cznik tutaj nie podnosi limitu ramki.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Przesadnie, wy\u380 ?sze ograniczenie: {\f1 --max-bits-frame 100000}. Powy\u380 ?ej limitu formatu, wi\u281 ?c koder bierze mniejsz\u261 ? z tej warto\u347 ?ci i w\u322 ?asnego maksimum rezerwuaru ({\f1 6144 * liczba kana\u322 ?\u243 ?w}), wi\u281 ?c w stereo strumie\u324 ? jest identyczny jak przy {\f1 12288} (zmierzone: 12288, 20000 i 100000 daj\u261 ? ten sam strumie\u324 ? ADTS). Nieszkodliwe i przydatne jako przypomnienie, \u380 ?e \u380 ?aden prze\u322 ?\u261 ?cznik tutaj nie podnosi limitu ramki.\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab \u321 ?agodnie, ni\u380 ?sze ograniczenie: {\f1 --max-bits-frame 4000} przy 128 kbps stereo. Szczyty przyci\u281 ?te, \u347 ?rednia nietkni\u281 ?ta; blisko u\u380 ?ytecznej wskaz\u243 ?wki 1,5x.\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Mocno, ni\u380 ?sze ograniczenie: {\f1 --max-bits-frame 3000} przy tym samym celu. G\u322 ?o\u347 ?ne ramki s\u261 ? wyra\u378 ?nie zag\u322 ?odzone, bo ograniczenie siedzi tylko troch\u281 ? powy\u380 ?ej \u347 ?redniej.\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Przesadnie, ni\u380 ?sze ograniczenie: {\f1 --max-bits-frame 2000} przy 128 kbps stereo, czyli poni\u380 ?ej \u347 ?redniej. Ograniczenie i cel przecz\u261 ? sobie teraz w ka\u380 ?dej ramce; jako\u347 ?\u263 ? spada na ca\u322 ?ej linii i nic si\u281 ? nie zyskuje, i dlatego regu\u322 ?a m\u243 ?wi, \u380 ?eby zosta\u263 ? na \u347 ?redniej albo powy\u380 ?ej.\sa180\par}
@@ -5970,7 +6146,7 @@ fdkaac-franken-x64.exe -p 2 -b 320000 --uncap-bandwidth --core-cutoff 40000 -o o
 {\pard \ql \f0 \sa180 \li0 \fi0 DAB+ nie niesie po prostu AAC w innym kontenerze. R\u243 ?\u380 ?ni\u261 ? si\u281 ? trzy rzeczy. Transformata ma 960 pr\u243 ?bek, a nie zwyk\u322 ?e 1024, \u380 ?eby d\u322 ?ugo\u347 ?\u263 ? ramki pasowa\u322 ?a do siatki czasowej radia. D\u378 ?wi\u281 ?k jest pakowany w superramki o dok\u322 ?adnie 120 ms. A skoro eter jest nieprzyjazny, z zanikami, tunelami i zak\u322 ?\u243 ?ceniami, strumie\u324 ? jest chroniony podw\u243 ?jnie: firecode, czyli Fire CRC, pilnuje nag\u322 ?\u243 ?wka, a Reed-Solomon RS(120,110) nad GF(256) chroni \u322 ?adunek, wi\u281 ?c odbiornik mo\u380 ?e odbudowa\u263 ? dane, kt\u243 ?re przysz\u322 ?y uszkodzone. Koder robi to wszystko.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Wyj\u347 ?ciem jest surowy strumie\u324 ? {\f1 .dabp}, jedna superramka po drugiej i nic wi\u281 ?cej. To nie jest plik do odtwarzacza multimedialnego; to co\u347 ?, co pobiera multiplekser DAB+. Zwyk\u322 ?y \u322 ?a\u324 ?cuch to {\f1 out.dabp} do {\f1 odr-dabmux}, kt\u243 ?ry \u322 ?\u261 ?czy kilka stacji w jeden zesp\u243 ?\u322 ? i wypuszcza ETI, a stamt\u261 ?d do nadajnika albo do odbiornika programowego, takiego jak welle.io albo dablin, do test\u243 ?w.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Trzy ograniczenia, kt\u243 ?re narzuca standard, a koder ich pilnuje: cz\u281 ?stotliwo\u347 ?\u263 ? pr\u243 ?bkowania musi by\u263 ? 32000 albo 48000 Hz, nic innego nie jest w DAB+ legalne; bitrate musi by\u263 ? wielokrotno\u347 ?ci\u261 ? 8 kbps mi\u281 ?dzy 8 a 192; mono i stereo oba s\u261 ? w porz\u261 ?dku.\par}
-{\pard \ql \f0 \sa180 \li0 \fi0 Konwencja bitrate'u jest tu w\u322 ?asna. Przy {\f1 --dab} {\f1 -b} to kilobity na sekund\u281 ?, a koder sam mno\u380 ?y przez 1000, wi\u281 ?c {\f1 -b 96} oznacza 96 kbps. Je\u347 ?li podasz te\u380 ? {\f1 --unlock-bitrate}, {\f1 -b} wraca do dos\u322 ?ownych bit\u243 ?w na sekund\u281 ?, i to jest jedyna kombinacja, w kt\u243 ?rej te dwie konwencje si\u281 ? zderzaj\u261 ?.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Konwencja bitrate'u jest tu w\u322 ?asna. Przy {\f1 --dab} {\f1 -b} to kilobity na sekund\u281 ?, a koder sam mno\u380 ?y przez 1000, wi\u281 ?c {\f1 -b 96} oznacza 96 kbps. {\f1 --unlock-bitrate} tego nie zmienia: kontrola DAB+ i mno\u380 ?enie przez 1000 dziej\u261 ? si\u281 ? wcze\u347 ?niej, wi\u281 ?c {\f1 --dab --unlock-bitrate -b 96} daje ten sam strumie\u324 ? co bez odblokowania, a {\f1 -b 96000} zostaje odrzucone jako niewielokrotno\u347 ?\u263 ? 8 kbps.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 Normalnie profilu nie wybierasz. Praktyka DAB+, id\u261 ?c za narz\u281 ?dziem referencyjnym {\f1 odr-audioenc}, wyprowadza go z bitrate'u i liczby kana\u322 ?\u243 ?w, tak by niskie bitrate'y automatycznie dostawa\u322 ?y oszcz\u281 ?dniejsze narz\u281 ?dzia:\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab stereo przy 48 kbps albo ni\u380 ?ej, czyli rozmiar podkana\u322 ?u 6 lub mniej, daje HE-AAC v2 z parametric stereo;\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab mono do 64 kbps albo stereo do 80 kbps daje HE-AAC z SBR;\par}

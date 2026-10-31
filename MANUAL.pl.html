@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <title>Franken FDK AAC ��� Manual (PL)</title>
+  <title>Franken FDK AAC: podr��cznik</title>
   <style>
     html {
       color: #1a1a1a;
@@ -166,7 +166,7 @@
 </head>
 <body>
 <header id="title-block-header">
-<h1 class="title">Franken FDK AAC ��� Manual (PL)</h1>
+<h1 class="title">Franken FDK AAC: podr��cznik</h1>
 </header>
 <nav id="TOC" role="doc-toc">
 <ul>
@@ -289,15 +289,28 @@ Tabela 3 — AAC-LC: automatyczne odcięcie pasma wg bitrate</a></li>
 id="toc-26-jak-czytać---verbose">26. Jak czytać
 <code>--verbose</code></a></li>
 </ul></li>
-<li><a href="#część-viii-radio-cyfrowe-dab"
-id="toc-część-viii-radio-cyfrowe-dab">Część VIII. Radio cyfrowe DAB+</a>
+<li><a href="#część-viii-jak-wycisnąć-najwięcej-ze-skrajnego-bitrate"
+id="toc-część-viii-jak-wycisnąć-najwięcej-ze-skrajnego-bitrate">Część
+VIII. Jak wycisnąć najwięcej ze skrajnego bitrate</a>
 <ul>
-<li><a href="#27-wyjście-dab---dab---dab-label"
-id="toc-27-wyjście-dab---dab---dab-label">27. Wyjście DAB+
+<li><a href="#27-na-co-idą-bity-i-co-da-się-odzyskać"
+id="toc-27-na-co-idą-bity-i-co-da-się-odzyskać">27. Na co idą bity i co
+da się odzyskać</a></li>
+<li><a href="#28-szum-zamiast-dziur-pns-który-naprawdę-oszczędza"
+id="toc-28-szum-zamiast-dziur-pns-który-naprawdę-oszczędza">28. Szum
+zamiast dziur: PNS, który naprawdę oszczędza</a></li>
+<li><a href="#29-pokrycie-albo-precyzja"
+id="toc-29-pokrycie-albo-precyzja">29. Pokrycie albo precyzja</a></li>
+</ul></li>
+<li><a href="#część-ix-radio-cyfrowe-dab"
+id="toc-część-ix-radio-cyfrowe-dab">Część IX. Radio cyfrowe DAB+</a>
+<ul>
+<li><a href="#30-wyjście-dab---dab---dab-label"
+id="toc-30-wyjście-dab---dab---dab-label">30. Wyjście DAB+
 (<code>--dab</code>, <code>--dab-label</code>)</a></li>
 </ul></li>
-<li><a href="#część-ix-słownik-pojęć"
-id="toc-część-ix-słownik-pojęć">Część IX. Słownik pojęć</a></li>
+<li><a href="#część-x-słownik-pojęć"
+id="toc-część-x-słownik-pojęć">Część X. Słownik pojęć</a></li>
 </ul>
 </nav>
 <h1 id="franken-fdk-aac--manual-dla-dźwiękowca">Franken FDK AAC — Manual
@@ -677,19 +690,35 @@ wypada naraz. Dlatego -0,95 i -0,98 brzmią wyraźnie inaczej, a -1, -4 i
 -12 już tak samo: side jest wtedy po prostu wycięty. Do delikatnego
 zwężania używaj wartości od 0 do -0,95.</p>
 <p>KSZTAŁTOWANIE ODCIĘCIA SIDE. <code>--side-knee &lt;dB&gt;</code>
-steruje tym, JAK OSTRO pasmo side przełącza się między „kodowane" a
-„wyzerowane" na tym progu. Stock FDK to twardy klif: w chwili gdy
-energia pasma spadnie do progu lub poniżej, całe pasmo jest wyrzucane.
-Wartość DODATNIA daje MIĘKKIE kolano — pasma leżące do N dB
-<em>poniżej</em> progu są nadal zachowane (kodowane na najzgrubszym
-współczynniku skali) zamiast wyrzucane, więc side gaśnie stopniowo
-zamiast wyłączać się nagle; pogłos i „powietrze" wybrzmiewają łagodniej.
-Wartość UJEMNA daje TWARDE kolano — pasma, które ledwo przekraczają próg
-(do N dB <em>nad</em> nim), są mimo to zerowane, odcinając side
-wcześniej, dla chudszego, agresywniejszego efektu. Jest ortogonalny do
-<code>--side-bias</code> i łączy się z nim: bias ustawia, <em>gdzie</em>
-leży próg, a knee — <em>jak miękka jest jego krawędź</em>. Rozsądny
-zakres <strong>+3 do +6</strong>. <code>0</code> = off.</p>
+działa na zapasie każdego pasma side: o ile jego energia leży nad
+progiem maskowania, co decyduje, jak dokładnie pasmo jest kodowane i czy
+w ogóle przetrwa. Wartość to przesunięcie dodawane do tego zapasu, więc
+każde pasmo zachowuje precyzję należną jego prawdziwemu poziomowi, tylko
+przesuniętą. Gdy FDK brakuje bitów, przypina słabe pasma około 0,97 dB
+nad progiem; w prawdziwej muzyce około 10% pasm side ląduje na tej
+jednej wartości. Przełącznik czyta zapas, którego koder chciał przed tym
+ratunkiem, więc te pasma znów rozkładają się według prawdziwego poziomu,
+zamiast ruszać się jednym blokiem.</p>
+<p>Wartość DODATNIA dodaje precyzji: pasma do N dB pod progiem zostają,
+stopniowane według tego, jak daleko pod nim były, a pasma przy krawędzi
+kodowane są dokładniej. Wartość UJEMNA odbiera precyzję: najsłabsze
+pasma side odchodzą pierwsze, a ich bity idą do mid. Zmierzone na muzyce
+akustycznej przy 96 kbps: kodowanych pasm side na ramkę ubywa równo z
+30,2 (stock) przez 25,4 (-1) i 18,1 (-6) do 1,1 (-24), bez skoku; po
+stronie dodatniej dziury w side spadają z 6,9% do 2,2% (+2) i 0,6% (+6).
+Jest ortogonalny do <code>--side-bias</code>: bias ustawia,
+<em>gdzie</em> leży krawędź, a knee, jak traktowane są pasma przy niej.
+Rozsądny zakres <strong>-6 do +6</strong>. <code>0</code> = off.
+Strumienie z <code>--side-knee</code> w v1.4 różnią się od v1.3.x, gdzie
+knee dawał każdemu uratowanemu pasmu ten sam gruby krok.</p>
+<p>ODCIĘCIE SIDE POWYŻEJ CZĘSTOTLIWOŚCI.
+<code>--side-cutoff &lt;Hz&gt;</code> koduje każde pasmo stereo powyżej
+podanej częstotliwości jako czysty mid: side jest tam porzucany,
+intensity stereo, którego FDK by tam użył, jest kasowane, a maska MS
+zostaje tania. Stereo poniżej granicy jest nietknięte. Przy 48 kbps
+granica 5 kHz oszczędziła 16 bitów informacji bocznych na ramkę, a mid
+był o 0,7 dB czystszy. Przy 14 kbps zysk jest mały, bo FDK i tak zeruje
+tam większość side.</p>
 <p>STROJENIE CICHYCH PASM GLOBALNIE.
 <code>--mask-slope &lt;dB&gt;</code> to globalna (mid ORAZ side)
 regulacja Masking-Slope-Adaptation FDK — heurystyki NIE-maskującej
@@ -1778,9 +1807,81 @@ zmieniałeś).</li>
 <code>--ms-bias</code>, <code>--ath-scale</code>,
 <code>--spread-mask</code>) to liczby, gdzie 256 znaczy 1,0 — na
 przykład 243 to około 0,95.</p>
-<h1 id="część-viii-radio-cyfrowe-dab">Część VIII. Radio cyfrowe
-DAB+</h1>
-<h2 id="27-wyjście-dab---dab---dab-label">27. Wyjście DAB+
+<h1 id="część-viii-jak-wycisnąć-najwięcej-ze-skrajnego-bitrate">Część
+VIII. Jak wycisnąć najwięcej ze skrajnego bitrate</h1>
+<h2 id="27-na-co-idą-bity-i-co-da-się-odzyskać">27. Na co idą bity i co
+da się odzyskać</h2>
+<p>Przy 14 do 24 kbps ramka jest tak mała, że to, co otacza muzykę, waży
+tyle co sama muzyka. <code>--bit-stats</code> wypisuje na końcu
+kodowania, jak dzielą się zapisane ramki. Dla stereo LC przy 14 kbps i
+48 kHz ramka ma około 307 bitów: nagłówek ADTS zajmuje 56 (LOAS 41 do
+44), nagłówek pary kanałów i wyrównanie około 47, sekcje 12 do 16%,
+współczynniki skali 8 do 12%, maska MS 2 bity albo 22 do 27, gdy jest
+zapisywana pasmo po paśmie. Informacje boczne razem to 35 do 47% ramki;
+na widmo zostaje tylko 35 do 46%. Tabela nie zmienia strumienia, więc
+można ją dopisać do każdego polecenia.</p>
+<p>Z tego pomiaru wynikają trzy dźwignie:</p>
+<ul>
+<li>Intensity stereo jest przy tych prędkościach drogie. Wymusza maskę
+MS pasmo po paśmie i dokłada pozycje IS. <code>--is-admit 0</code> nie
+pozwala FDK go użyć (stock dopuszcza je, gdy bitrate podzielony przez
+pasmo jest mniejszy niż 5); na gęstym materiale przy 14 kbps udział
+wyzerowanych pasm spadł z 85% do 70%.</li>
+<li><code>--side-cutoff &lt;Hz&gt;</code> zamienia górne pasma w czysty
+mid. Opłaca się bardziej przy średnich prędkościach (48 kbps) niż przy
+14 kbps, gdzie side i tak w większości znika.</li>
+<li>Wygładzanie współczynników skali się nie opłaca: kosztują już 1,3 do
+1,5 bitu na pasmo, a nawet przy wszystkich różnicach równych zeru zysk
+wyniósłby 7 do 13 bitów na ramkę.</li>
+</ul>
+<h2 id="28-szum-zamiast-dziur-pns-który-naprawdę-oszczędza">28. Szum
+zamiast dziur: PNS, który naprawdę oszczędza</h2>
+<p>Podstawianie szumu (PNS) zastępuje pasmo szumem o właściwym poziomie.
+W parze stereo poziom szumu jest zapisywany dla każdego kanału osobno;
+format nie ma wspólnego poziomu. Para może współdzielić sam szum: flaga
+na masce MS mówi dekoderowi, żeby w obu kanałach użył tego samego
+szumu.</p>
+<p>Wymuszony PNS przy niskim bitrate (na przykład
+<code>--pns-above 2200</code> przy 24 kbps) trzeszczał w rytmie ramek.
+Przyczyną było księgowanie bitów FDK: planuje ono pasmo PNS jako
+darmowe, choć każdy poziom szumu kosztuje bity w strumieniu. Część ramek
+przekraczała wtedy budżet, a awaryjne cięcie zdejmowało pasma od góry,
+przez obszar szumu i dalej w kodowane widmo, aż do około 1,5 kHz. Trzy
+przełączniki to naprawiają:</p>
+<ul>
+<li><code>--pns-budget 1</code> księguje poziomy szumu w celu bitowym i
+pozwala awaryjnemu cięciu odzyskać ich bity. W opisanym przypadku liczba
+obciętych ramek spadła z 42 na 766 do 1.</li>
+<li><code>--pns-shared 1</code> używa jednego wspólnego szumu we
+wszystkich pasmach, które oba kanały kodują jako PNS, więc maska MS może
+wrócić do postaci 2-bitowej (z 28 do 2 bitów na ramkę na materiale
+skorelowanym). <code>0</code> daje zamiast tego niezależny szum w każdym
+kanale.</li>
+<li><code>--pns-hold &lt;dB&gt;</code> pozwala sąsiednim pasmom szumu
+dzielić jeden poziom, więc obwiednia szumu kosztuje mniej (z 94 do 70
+bitów na ramkę przy 6 dB).</li>
+</ul>
+<p>Z <code>--pns-budget 1 --pns-shared 1</code> modulacja pasma szumu w
+rytmie ramek spadła z 19,7 dB do 8,3 dB, poniżej 11,6 dB tego samego
+pliku bez PNS. Dobry punkt wyjścia dla każdego wymuszonego PNS przy
+niskim bitrate to
+<code>--pns-budget 1 --pns-shared 1 --pns-hold 3</code>. ffmpeg 6.1.1
+gra wspólny szum jako niezależny; dekoder Fraunhofera gra go jako
+wspólny.</p>
+<h2 id="29-pokrycie-albo-precyzja">29. Pokrycie albo precyzja</h2>
+<p><code>--coverage -5..5</code> przesuwa jedną równowagę jedną liczbą:
+plus koduje każde pasmo grubo i wypełnia wszystko, minus koduje mniej
+pasm czysto i dopuszcza dziury. Steruje <code>--band-knee</code>,
+<code>--quant-round</code>, <code>--thr-hold</code>,
+<code>--scf-range</code>, a przy +4 i +5 także <code>--pns-above</code>;
+każdy z nich można też ustawić osobno i wtedy wygrywa z makrem. Przy LC
+32 kbps i 17 kHz <code>-5</code> zostawiło puste 51% pasm, a reszta była
+o 4,75 dB czystsza, stock 11,7% i 1,96 dB, <code>+4</code> 0,2% dziur.
+<code>--enfac-patch 0|1</code> wyłącza przeważanie płaskich, szumowych
+ramek w FDK albo włącza je dla każdej ramki; w CBR to drobne pokrętło
+(najwyżej 1 punkt dziur), w VBR zmienia rozmiar pliku nawet o 29%.</p>
+<h1 id="część-ix-radio-cyfrowe-dab">Część IX. Radio cyfrowe DAB+</h1>
+<h2 id="30-wyjście-dab---dab---dab-label">30. Wyjście DAB+
 (<code>--dab</code>, <code>--dab-label</code>)</h2>
 <p>Do tej pory robiliśmy pliki — MP4/M4A dla odtwarzaczy, ADTS do
 streamingu. DAB+ to coś innego: to format naziemnego radia cyfrowego
@@ -1866,7 +1967,7 @@ wszędzie w tym enkoderze: jeśli nie podasz <code>--dab</code>, nic się
 nie zmienia, a zwykłe wyjście do pliku pozostaje bit-identyczne ze
 stockowym FDK.</p>
 <hr />
-<h1 id="część-ix-słownik-pojęć">Część IX. Słownik pojęć</h1>
+<h1 id="część-x-słownik-pojęć">Część X. Słownik pojęć</h1>
 <p>Dla szybkiego przypomnienia — wszystkie terminy z tego manuala,
 wyjaśnione jednym–dwoma zdaniami, językiem dźwiękowca.</p>
 <p>AAC (Advanced Audio Coding). Rodzina stratnych kodeków dźwięku z

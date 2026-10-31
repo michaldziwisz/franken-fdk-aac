@@ -312,6 +312,10 @@ tuning deliberately does not.</p>
 download without an account:</p>
 <p><strong><a
 href="https://github.com/michaldziwisz/franken-fdk-aac/releases/latest">https://github.com/michaldziwisz/franken-fdk-aac/releases/latest</a></strong></p>
+<p>Beta versions (for example <code>v1.4.0-beta.1</code>) are published
+as pre-releases, so the link above still shows the last stable version;
+betas are on the full list: <strong><a
+href="https://github.com/michaldziwisz/franken-fdk-aac/releases">https://github.com/michaldziwisz/franken-fdk-aac/releases</a></strong></p>
 <p><code>franken-fdk-aac-x64-vX.Y.Z.zip</code> is 64-bit, the
 <code>x86</code> one is 32-bit. Each zip contains the static encoder (no
 DLLs) and the full documentation. The repository itself holds sources
@@ -452,9 +456,8 @@ is read literally as bits per second, with no kilobit shortcut.
 looks like that mistake.</li>
 <li><strong>With <code>--dab</code></strong>: <code>-b</code> is
 kilobits per second, in the range 8..192 and a multiple of 8. The
-encoder multiplies by 1000 itself, so <code>-b 96</code> is 96 kbps. If
-you combine <code>--dab</code> with <code>--unlock-bitrate</code>,
-<code>-b</code> goes back to being literal bps.</li>
+encoder multiplies by 1000 itself, so <code>-b 96</code> is 96 kbps,
+also together with <code>--unlock-bitrate</code>.</li>
 </ul>
 <p>The upper ceiling is not a switch and cannot be lifted: an AAC frame
 holds at most 6144 bits per channel. At 48 kHz that is roughly 576 kbps
@@ -1376,6 +1379,17 @@ go, about 5 of 37 per frame.</li>
 error 2.4 dB lower.</li>
 <li>Exaggerated, coarser: <code>--side-knee -24</code>. Practically no
 side left; a mono image with stereo bookkeeping.</li>
+</ul>
+<p>Diagnostic companions (may be removed in a later version):</p>
+<ul>
+<li><code>--side-knee-zone &lt;x&gt;</code>, <code>1.0..20.0</code>,
+stock <code>3</code>: the offset is full up to |knee| dB above the
+threshold and fades out linearly to zero at x times |knee| dB.</li>
+<li><code>--side-knee-spread &lt;dB&gt;</code>, <code>0.1..24.0</code>,
+stock <code>1</code>: on the negative side, how many dB of knee are
+needed to spread the rescued crowd fully by its real margin. Both
+changed little in measurement. Without <code>--side-knee</code> they do
+nothing.</li>
 </ul>
 <p>Works with / against: orthogonal to <code>--side-bias</code> and
 designed to be used with it; bias sets where the threshold is, knee sets
@@ -2414,8 +2428,9 @@ not.</strong></p>
 <ul>
 <li>Applies to: every profile. This is the one switch in group C that is
 useful without SBR.</li>
-<li>Values: Hz, from well above 0 up to the core Nyquist (half the core
-sample rate); default <code>0</code> = leave FDK's own decision</li>
+<li>Values: <code>0..48000</code> Hz (out of range is rejected); the
+encoder stops at the core Nyquist (half the core sample rate); default
+<code>0</code> = leave FDK's own decision</li>
 <li>Input: whole number</li>
 </ul>
 <p>The standard <code>-w/--bandwidth</code> is overridden when SBR
@@ -2750,8 +2765,9 @@ linearly or on one of three logarithmic grids.</strong></p>
 <ul>
 <li>Applies to: SBR profiles only</li>
 <li>Values: <code>0</code> = linear, <code>1</code>, <code>2</code>,
-<code>3</code> = progressively finer logarithmic grouping; default
-<code>-1</code> = the value from the SBR tuning table</li>
+<code>3</code> = logarithmic with 12, 10 and 8 bands per octave
+(progressively coarser); <code>-1</code> or leaving the switch out = the
+value from the SBR tuning table</li>
 <li>Input: whole number</li>
 </ul>
 <p>SBR describes its region band by band, and this picks the ruler. A
@@ -2765,16 +2781,23 @@ the ear resolves more, down near the crossover.</p>
 coarse just above the crossover, which is the opposite of what the ear
 wants. Occasionally useful on material whose high band is genuinely
 uniform, such as broadband noise beds.</li>
-<li><code>1</code> coarsest logarithmic grouping. Fewest bands, cheapest
-description, least control.</li>
-<li><code>2</code> middle logarithmic grouping.</li>
-<li><code>3</code> finest logarithmic grouping. Most bands, most
-parameters, best shaping of an uneven high band.</li>
+<li><code>1</code> finest logarithmic grouping, 12 bands per octave.
+Most bands, most parameters, best shaping of an uneven high band.</li>
+<li><code>2</code> middle logarithmic grouping, 10 bands per
+octave.</li>
+<li><code>3</code> coarsest logarithmic grouping, 8 bands per octave.
+Fewest bands, cheapest description, least control.</li>
+</ul>
+<p>Measured at HE-AAC 64 kbps, SBR payload per frame: 220 bits at
+<code>0</code>, 188 at <code>1</code>, 170 at <code>2</code>, 152 at
+<code>3</code>.</p>
+<ul>
 <li><code>-1</code> off: the tuning table decides, which is the right
 choice unless you have a reason.</li>
 </ul>
 <p>Example in context:
-<code>fdkaac -p 5 -b 64000 --sbr-freqscale 3 -o out.m4a in.wav</code></p>
+<code>fdkaac -p 5 -b 64000 --sbr-freqscale 1 -o out.m4a in.wav</code>
+(finest grid)</p>
 <p>Works with / against: the number of bands this produces interacts
 with <code>--sbr-noise-bands</code> (noise bands are derived per octave,
 not per SBR band) and with how much the invf decision can vary across
@@ -5445,29 +5468,30 @@ trade. This switch moves that power gate.</p>
 must both agree before a band becomes PNS. That is why moving
 <code>--pns-tonality</code> alone sometimes does nothing, and why this
 card and that one are usually tried together.</p>
-<p>Higher than <code>1.0</code> moves the power gate in the direction
-that admits bands it otherwise rejects on level grounds; lower than
-<code>1.0</code> makes the gate stricter. Because the gate interacts
-with material level, the practical approach is to change it and read the
-result, not to predict it.</p>
+<p>The value multiplies the threshold itself. Higher than
+<code>1.0</code> raises it, so fewer bands pass and PNS retreats; lower
+than <code>1.0</code> lowers it, so more bands pass. Measured on
+acoustic stereo music at 64 kbps LC, PNS bands per frame: 5.5 at
+<code>0.01</code>, 5.1 at <code>0.4</code>, 4.8 at <code>0.8</code>, 4.6
+at <code>1.0</code>, 4.3 at <code>1.3</code>, 3.6 at <code>2.0</code>, 0
+at <code>20.0</code>.</p>
 <p>Examples:</p>
 <ul>
-<li>Mild, looser gate: <code>--pns-refpower 1.3</code>. A few additional
-bands pass the power test.</li>
-<li>Strong, looser gate: <code>--pns-refpower 2.0</code>. Twice the
-threshold. Combined with <code>--pns-tonality 2.0</code> this is where
-wide noise substitution really takes hold.</li>
-<li>Exaggerated, looser gate: <code>--pns-refpower 20.0</code>. The
-power test stops discriminating at all and selection is left entirely to
-tonality, which is a good way to find out how much work this gate was
-doing.</li>
-<li>Mild, stricter gate: <code>--pns-refpower 0.8</code>. Slightly fewer
-candidates.</li>
-<li>Strong, stricter gate: <code>--pns-refpower 0.4</code>. Clearly
-fewer bands pass. PNS retreats to the bands where it is least
+<li>Mild, looser gate: <code>--pns-refpower 0.8</code>. Slightly more
+candidates (4.6 to 4.8 bands).</li>
+<li>Strong, looser gate: <code>--pns-refpower 0.4</code>. 5.1 bands.
+Combined with a raised <code>--pns-tonality</code> this is where wide
+noise substitution takes hold.</li>
+<li>Exaggerated, looser gate: <code>--pns-refpower 0.01</code>. The
+power test stops discriminating and selection is left to tonality (5.5
+bands), a good way to find out how much work this gate was doing.</li>
+<li>Mild, stricter gate: <code>--pns-refpower 1.3</code>. Slightly fewer
+candidates (4.3 bands).</li>
+<li>Strong, stricter gate: <code>--pns-refpower 2.0</code>. Twice the
+threshold, 3.6 bands. PNS retreats to the bands where it is least
 risky.</li>
-<li>Exaggerated, stricter gate: <code>--pns-refpower 0.01</code>. Almost
-nothing passes, so PNS is on paper enabled and in practice idle.</li>
+<li>Exaggerated, stricter gate: <code>--pns-refpower 20.0</code>.
+Nothing passes, so PNS is on paper enabled and in practice idle.</li>
 </ul>
 <p>Works with / against: conjunctive with <code>--pns-tonality</code>,
 so test them as a pair. <code>--pns-gapfill</code> can still add a band
@@ -6105,6 +6129,189 @@ small and its errors can show as low frequency "breathing".</li>
 shaped; for most material TNS is then effectively off in long
 blocks.</li>
 </ul>
+<h3 id="--coverage--55"><code>--coverage &lt;-5..5&gt;</code></h3>
+<p><strong>One axis at a fixed bitrate: code every band coarsely, or
+fewer bands cleanly.</strong></p>
+<ul>
+<li>Applies to: AAC core (LC, LD, ELD and the LC core of HE-AAC). Off by
+default.</li>
+<li>Values: whole numbers <code>-5..5</code>; <code>0</code> =
+stock</li>
+<li>Input: whole number</li>
+</ul>
+<p>At a fixed bitrate the encoder can spend its bits on covering the
+whole spectrum with a coarse description, or on describing fewer bands
+well and leaving holes. This macro moves that balance with one number.
+It sets the six switches below (<code>--band-knee</code>,
+<code>--quant-round</code>, <code>--thr-hold</code>,
+<code>--scf-range</code> and, at <code>+4</code> and <code>+5</code>,
+<code>--pns-above</code>); any of them given explicitly wins over the
+macro. <code>--verbose</code> prints the values in effect.</p>
+<p>Measured at LC 32 kbps, 17 kHz, after decoding (zeroed bands, and
+noise of the bands that were kept): <code>-5</code> 51% holes with the
+kept bands 4.75 dB cleaner than the signal; stock 11.7% holes, 1.96 dB;
+<code>+4</code> 0.2% holes, with the kept bands about as noisy as the
+content.</p>
+<p>Examples:</p>
+<ul>
+<li>Mild, more coverage: <code>--coverage 2</code>. Fewer holes, a
+little more grain.</li>
+<li>Strong, more coverage: <code>--coverage 4</code>. Practically no
+holes; adds noise substitution from 11 kHz up.</li>
+<li>Exaggerated, more coverage: <code>--coverage 5</code>. Everything
+filled, noise from 7 kHz up.</li>
+<li>Mild, more precision: <code>--coverage -2</code>. The weakest bands
+leave first.</li>
+<li>Strong, more precision: <code>--coverage -4</code>. Many holes, what
+stays is clean.</li>
+<li>Exaggerated, more precision: <code>--coverage -5</code>. About half
+of the bands gone.</li>
+</ul>
+<h3 id="--band-knee-db"><code>--band-knee &lt;dB&gt;</code></h3>
+<p><strong>Shift every band's margin above its threshold near the
+coded/zeroed edge, in every channel.</strong></p>
+<ul>
+<li>Applies to: AAC core. Off by default.</li>
+<li>Values: <code>-24.0..24.0</code> dB, <code>0</code> = off</li>
+<li>Input: decimal, up to 3 places, <code>.</code> or
+<code>,</code></li>
+</ul>
+<p>A positive value keeps bands up to N dB below their threshold, at the
+coarsest step, instead of zeroing them. A negative value zeroes bands
+that clear their threshold by less than N dB after the first bit
+estimate, so the second estimate gives those bits to the rest. PNS and
+IS bands are left alone; on side bands of an MS pair
+<code>--side-knee</code> wins.</p>
+<p>Examples:</p>
+<ul>
+<li>Mild, keep more: <code>--band-knee 3</code>.</li>
+<li>Strong, keep more: <code>--band-knee 6</code>. The useful maximum:
+above about 9 dB the rescued coarse bands cost so many bits that the
+rate loop cuts elsewhere.</li>
+<li>Exaggerated, keep more: <code>--band-knee 24</code>. Worse than 6,
+measured.</li>
+<li>Mild, drop more: <code>--band-knee -2</code>.</li>
+<li>Strong, drop more: <code>--band-knee -6</code>.</li>
+<li>Exaggerated, drop more: <code>--band-knee -24</code>. Only clearly
+audible bands stay.</li>
+</ul>
+<h3 id="--quant-round-x"><code>--quant-round &lt;x&gt;</code></h3>
+<p><strong>Move the rounding point of the quantizer: fewer or more small
+spectral lines become zero.</strong></p>
+<ul>
+<li>Applies to: AAC core. Off by default (stock 0.405).</li>
+<li>Values: <code>0.0..0.5</code></li>
+<li>Input: decimal, up to 3 places, <code>.</code> or
+<code>,</code></li>
+</ul>
+<p>The quantizer rounds each spectral line to a whole step. Stock rounds
+with an offset of about 0.405, slightly towards zero, which saves bits.
+<code>0.5</code> rounds to nearest: fewer small lines vanish, it costs
+bits. Lower values send more lines to zero and are cheaper.</p>
+<p>Examples:</p>
+<ul>
+<li>Mild, finer: <code>--quant-round 0.45</code>.</li>
+<li>Strong, finer: <code>--quant-round 0.5</code>. Round to
+nearest.</li>
+<li>Mild, cheaper: <code>--quant-round 0.35</code>.</li>
+<li>Strong, cheaper: <code>--quant-round 0.25</code>. Quiet details
+disappear.</li>
+<li>Exaggerated, cheaper: <code>--quant-round 0.0</code>. Truncation:
+every line is rounded down.</li>
+</ul>
+<h3 id="--pns-above-hz"><code>--pns-above &lt;Hz&gt;</code></h3>
+<p><strong>From this frequency up, replace every long-block band by
+noise of the right level, whatever its tonality.</strong></p>
+<ul>
+<li>Applies to: AAC-LC, long blocks. Off by default.</li>
+<li>Values: <code>1000..48000</code> Hz</li>
+<li>Input: whole number</li>
+</ul>
+<p>A high band "like SBR, without SBR": the band keeps its level, its
+content becomes noise. It turns PNS on even below its bitrate gate;
+<code>--pns 0</code> still wins. Silent bands stay silent. At low
+bitrates use it with <code>--pns-budget 1</code> and
+<code>--pns-shared 1</code>, otherwise frames can run out of bits and
+crackle (see <code>--pns-budget</code>).</p>
+<p>Examples:</p>
+<ul>
+<li>Mild: <code>--pns-above 11000</code>. Only the very top becomes
+noise.</li>
+<li>Strong: <code>--pns-above 5000</code>.</li>
+<li>Exaggerated: <code>--pns-above 2200</code>. Most of the presence
+region is noise.</li>
+</ul>
+<h3 id="--thr-hold-n"><code>--thr-hold &lt;n&gt;</code></h3>
+<p><strong>Re-measure the masking model only every n long
+frames.</strong></p>
+<ul>
+<li>Applies to: AAC core, long blocks. Off by default.</li>
+<li>Values: <code>1..32</code> frames, <code>1</code> = off</li>
+<li>Input: whole number</li>
+</ul>
+<p>Between measurements each band keeps its last noise-to-signal offset,
+so the noise lags the music. A short block resets the hold. The effect
+is weak: the stream changes, but measured quality moves by less than 1
+dB even at 32, because FDK already works on smoothed energies.</p>
+<p>Examples:</p>
+<ul>
+<li>Mild: <code>--thr-hold 2</code>.</li>
+<li>Strong: <code>--thr-hold 8</code>.</li>
+<li>Exaggerated: <code>--thr-hold 32</code>.</li>
+</ul>
+<h3 id="--scf-range-n"><code>--scf-range &lt;n&gt;</code></h3>
+<p><strong>Limit how far apart the finest and the coarsest band of a
+channel may be.</strong></p>
+<ul>
+<li>Applies to: AAC core. Off by default (stock 60).</li>
+<li>Values: <code>0..60</code>, steps of 1.5 dB</li>
+<li>Input: whole number</li>
+</ul>
+<p>Lower values make the quantization noise flatter across frequency,
+with less psychoacoustic shaping. On ordinary material the effect is
+close to zero; it shows at small values on material with a strong
+spectral tilt (6 to 14 kHz noise 12.4 to 7.1 dB below the signal at
+<code>0</code>, 64 kbps without PNS). At 14 kbps it does not change the
+budget.</p>
+<p>Examples:</p>
+<ul>
+<li>Mild: <code>--scf-range 40</code>.</li>
+<li>Strong: <code>--scf-range 20</code>.</li>
+<li>Exaggerated: <code>--scf-range 0</code>. One step for the whole
+channel.</li>
+</ul>
+<h3 id="--bit-stats"><code>--bit-stats</code></h3>
+<p><strong>Count where the bits of the written frames go, and print the
+table at the end.</strong></p>
+<ul>
+<li>Applies to: every profile. Off by default.</li>
+<li>Values: none, a flag</li>
+</ul>
+<p>The table splits the frames into transport header, element headers,
+MS mask, section data, scalefactors, PNS noise levels, TNS, spectrum per
+channel (mid and side for MS), SBR/PS and fill, plus coded, zeroed, PNS
+and IS bands per frame. It counts the bits really written; the stream is
+identical with and without the switch, and the sum matches the ADTS
+file.</p>
+<p>Example:
+<code>fdkaac -p 2 -b 14000 --bit-stats -f 2 -o out.aac in.wav</code></p>
+<h3 id="--enfac-patch-01"><code>--enfac-patch &lt;0|1&gt;</code></h3>
+<p><strong>Switch the energy re-weighting of flat, noise-like long
+frames off, or on for every frame.</strong></p>
+<ul>
+<li>Applies to: AAC core, long blocks, CBR and VBR. Off by default
+(stock decides).</li>
+<li>Values: <code>0</code> = never, <code>1</code> = every long
+frame</li>
+</ul>
+<p>When the audible spectrum of a frame is flat, stock FDK re-weights
+band energies (powers 3/4, 1/2 or 1/4) and so moves bits between bands.
+<code>0</code> treats every frame as tonal, <code>1</code> applies the
+re-weighting to every long frame. In CBR this is a fine knob: zeroed
+bands move by at most 1 point and noise by less than 0.1 dB at 14 to 32
+kbps; <code>0</code> is often identical to stock on tonal material. In
+VBR (<code>-m 3</code>) <code>1</code> made a tone plus noise file 29%
+larger and <code>0</code> a dense noise file 3% smaller.</p>
 <h2 id="f-block-switching-and-bitrate-control">F. Block switching and
 bitrate control</h2>
 <p>Six switches: one that biases the long/short block decision, and five
@@ -6304,9 +6511,9 @@ and the natural way to express it is as a multiple: half again the
 target is cautious, double is generous.</p>
 <p>The ceiling of 6144 bits per channel still applies, so asking for a
 peak beyond what the frame can physically hold gives you the frame limit
-instead. At 48 kHz stereo that is about 1150 kbps worth of frame, so for
-ordinary targets you have plenty of room before the format limit
-binds.</p>
+instead. At 48 kHz stereo that is about 576 kbps worth of frame (6144 x
+2 bits x 48000 / 1024), so for ordinary targets you have plenty of room
+before the format limit binds.</p>
 <p>Examples:</p>
 <ul>
 <li>Mild, higher peak: <code>-b 128000 --peak-bitrate 150000</code>. A
@@ -6368,9 +6575,12 @@ format maximum. The cap is present but never binds, which is the right
 setting when you want the switch documented in a command line without
 changing behaviour.</li>
 <li>Exaggerated, higher cap: <code>--max-bits-frame 100000</code>. Above
-the format limit, so it is clamped to <code>6144 * channels</code>.
-Harmless, and a useful reminder that no switch here lifts the frame
-limit.</li>
+the format limit, so it is not stored as is in the frame: the encoder
+takes the smaller of it and its own reservoir maximum
+(<code>6144 * channels</code>), so the stream is identical to
+<code>12288</code> in stereo (measured: 12288, 20000 and 100000 give the
+same ADTS stream). Harmless, and a useful reminder that no switch here
+lifts the frame limit.</li>
 <li>Mild, lower cap: <code>--max-bits-frame 4000</code> at 128 kbps
 stereo. Peaks trimmed, average untouched; close to the useful 1.5x
 guideline.</li>
@@ -6517,10 +6727,11 @@ the bitrate must be a multiple of 8 kbps between 8 and 192; mono and
 stereo are both fine.</p>
 <p>The bitrate convention here is its own. With <code>--dab</code>,
 <code>-b</code> is kilobits per second and the encoder multiplies by
-1000 itself, so <code>-b 96</code> means 96 kbps. If you also pass
-<code>--unlock-bitrate</code>, <code>-b</code> reverts to literal bits
-per second, which is the one combination where the two conventions
-collide.</p>
+1000 itself, so <code>-b 96</code> means 96 kbps.
+<code>--unlock-bitrate</code> does not change that: the DAB+ check and
+the x1000 run first, so <code>--dab --unlock-bitrate -b 96</code> is the
+same stream as without the unlock, and <code>-b 96000</code> is rejected
+as not a multiple of 8 kbps.</p>
 <p>You normally do not choose the profile. DAB+ practice, following the
 reference tool <code>odr-audioenc</code>, derives it from bitrate and
 channel count so that low bitrates automatically get the more economical
@@ -7021,6 +7232,10 @@ celowo nie wchodzi.</p>
 pobierają się bez konta:</p>
 <p><strong><a
 href="https://github.com/michaldziwisz/franken-fdk-aac/releases/latest">https://github.com/michaldziwisz/franken-fdk-aac/releases/latest</a></strong></p>
+<p>Wersje beta (na przykład <code>v1.4.0-beta.1</code>) są publikowane
+jako wydania wstępne, więc powyższy odnośnik nadal pokazuje ostatnią
+wersję stabilną; bety są na pełnej liście: <strong><a
+href="https://github.com/michaldziwisz/franken-fdk-aac/releases">https://github.com/michaldziwisz/franken-fdk-aac/releases</a></strong></p>
 <p><code>franken-fdk-aac-x64-vX.Y.Z.zip</code> to wersja 64-bitowa,
 <code>x86</code> to 32-bitowa. Każde archiwum zawiera statyczny enkoder
 (bez bibliotek DLL) i pełną dokumentację. Samo repozytorium ma tylko
@@ -7172,9 +7387,8 @@ jest czytane dosłownie jako bity na sekundę, bez skrótu kilobitowego.
 na taką właśnie pomyłkę.</li>
 <li><strong>Z <code>--dab</code></strong>: <code>-b</code> to kilobity
 na sekundę, w zakresie 8..192 i jako wielokrotność 8. Koder sam mnoży
-przez 1000, więc <code>-b 96</code> to 96 kbps. Przy połączeniu
-<code>--dab</code> z <code>--unlock-bitrate</code> <code>-b</code> wraca
-do dosłownych bps.</li>
+przez 1000, więc <code>-b 96</code> to 96 kbps, także razem z
+<code>--unlock-bitrate</code>.</li>
 </ul>
 <p>Górnego pułapu nie ustawia żaden przełącznik i nie da się go
 podnieść: ramka AAC mieści najwyżej 6144 bity na kanał. Przy 48 kHz to z
@@ -8129,6 +8343,18 @@ pasma side, około 5 z 37 na ramkę.</li>
 mid o 2,4 dB mniejszy.</li>
 <li>Przesadnie, grubiej: <code>--side-knee -24</code>. Side praktycznie
 znika; obraz mono z księgowością stereo.</li>
+</ul>
+<p>Diagnostyczne przełączniki towarzyszące (mogą zniknąć w kolejnej
+wersji):</p>
+<ul>
+<li><code>--side-knee-zone &lt;x&gt;</code>, <code>1.0..20.0</code>,
+stock <code>3</code>: przesunięcie działa w pełni do |knee| dB nad
+progiem i wygasa liniowo do zera przy x razy |knee| dB.</li>
+<li><code>--side-knee-spread &lt;dB&gt;</code>, <code>0.1..24.0</code>,
+stock <code>1</code>: po stronie ujemnej, ile dB knee potrzeba, by w
+pełni rozłożyć uratowaną kupkę pasm według ich prawdziwego zapasu. Oba w
+pomiarze zmieniały niewiele. Bez <code>--side-knee</code> nic nie
+robią.</li>
 </ul>
 <p>Współpraca i konflikty: ortogonalne wobec <code>--side-bias</code> i
 zaprojektowane do używania razem z nim; bias ustala, gdzie jest próg,
@@ -9193,9 +9419,10 @@ i działa także pod SBR, gdzie <code>-w</code> nie działa.</strong></p>
 <ul>
 <li>Dotyczy: każdego profilu. To jedyny przełącznik z grupy C, który
 przydaje się bez SBR.</li>
-<li>Wartości: Hz, od sporo powyżej 0 do częstotliwości Nyquista rdzenia
-(połowa częstotliwości próbkowania rdzenia); domyślnie <code>0</code> =
-zostaw decyzję FDK</li>
+<li>Wartości: <code>0..48000</code> Hz (spoza zakresu jest odrzucane);
+koder zatrzymuje się na częstotliwości Nyquista rdzenia (połowa
+częstotliwości próbkowania rdzenia); domyślnie <code>0</code> = zostaw
+decyzję FDK</li>
 <li>Wpisywanie: liczba całkowita</li>
 </ul>
 <p>Standardowe <code>-w/--bandwidth</code> zostaje nadpisane przy
@@ -9537,8 +9764,9 @@ liniowo albo na jednej z trzech siatek logarytmicznych.</strong></p>
 <ul>
 <li>Dotyczy: tylko profili z SBR</li>
 <li>Wartości: <code>0</code> = liniowo, <code>1</code>, <code>2</code>,
-<code>3</code> = coraz drobniejsze grupowanie logarytmiczne; domyślnie
-<code>-1</code> = wartość z tabeli strojenia SBR</li>
+<code>3</code> = logarytmicznie, 12, 10 i 8 pasm na oktawę (coraz
+grubiej); <code>-1</code> albo pominięcie przełącznika = wartość z
+tabeli strojenia SBR</li>
 <li>Wpisywanie: liczba całkowita</li>
 </ul>
 <p>SBR opisuje swój obszar pasmo po paśmie, a to jest wybór linijki.
@@ -9554,17 +9782,24 @@ wysoko, zgrubna tuż powyżej częstotliwości podziału, czyli odwrotnie niż
 chce ucho. Bywa użyteczne na materiale, którego górne pasmo jest
 naprawdę jednorodne, na przykład na szerokopasmowych podkładach
 szumowych.</li>
-<li><code>1</code> najgrubiejsze grupowanie logarytmiczne. Najmniej
-pasm, najtańszy opis, najmniejsza kontrola.</li>
-<li><code>2</code> środkowe grupowanie logarytmiczne.</li>
-<li><code>3</code> najdrobniejsze grupowanie logarytmiczne. Najwięcej
-pasm, najwięcej parametrów, najlepsze kształtowanie nierównego górnego
-pasma.</li>
+<li><code>1</code> najdrobniejsze grupowanie logarytmiczne, 12 pasm na
+oktawę. Najwięcej pasm, najwięcej parametrów, najlepsze kształtowanie
+nierównego górnego pasma.</li>
+<li><code>2</code> środkowe grupowanie logarytmiczne, 10 pasm na
+oktawę.</li>
+<li><code>3</code> najgrubsze grupowanie logarytmiczne, 8 pasm na
+oktawę. Najmniej pasm, najtańszy opis, najmniejsza kontrola.</li>
+</ul>
+<p>Zmierzone przy HE-AAC 64 kbps, dane SBR na ramkę: 220 bitów przy
+<code>0</code>, 188 przy <code>1</code>, 170 przy <code>2</code>, 152
+przy <code>3</code>.</p>
+<ul>
 <li><code>-1</code> wyłączone: decyduje tabela strojenia, co jest
 właściwym wyborem, dopóki nie masz powodu, żeby zrobić inaczej.</li>
 </ul>
 <p>Przykład w kontekście:
-<code>fdkaac -p 5 -b 64000 --sbr-freqscale 3 -o out.m4a in.wav</code></p>
+<code>fdkaac -p 5 -b 64000 --sbr-freqscale 1 -o out.m4a in.wav</code>
+(najdrobniejsza siatka)</p>
 <p>Współpraca i konflikty: liczba pasm, którą to daje, wchodzi w
 interakcję z <code>--sbr-noise-bands</code> (pasma szumu wyprowadza się
 na oktawę, a nie na pasmo SBR) oraz z tym, jak bardzo decyzja invf może
@@ -12358,30 +12593,31 @@ wymianą. Ten przełącznik przesuwa tę bramkę mocy.</p>
 się obie zgodzić, zanim pasmo zostanie PNS. To dlatego ruszanie samym
 <code>--pns-tonality</code> czasem nie robi nic i dlatego tę kartę i
 tamtą próbuje się zwykle razem.</p>
-<p>Wyżej niż <code>1.0</code> przesuwa bramkę mocy w kierunku, który
-dopuszcza pasma odrzucane inaczej z powodu poziomu; niżej niż
-<code>1.0</code> czyni bramkę surowszą. Skoro bramka zależy od poziomu
-materiału, praktyczne podejście jest takie, żeby ją zmienić i odczytać
-wynik, a nie go przewidywać.</p>
+<p>Wartość mnoży sam próg. Powyżej <code>1.0</code> go podnosi, więc
+przechodzi mniej pasm i PNS się wycofuje; poniżej <code>1.0</code> go
+obniża, więc przechodzi więcej pasm. Zmierzone na akustycznej muzyce
+stereo przy 64 kbps LC, pasm PNS na ramkę: 5,5 przy <code>0.01</code>,
+5,1 przy <code>0.4</code>, 4,8 przy <code>0.8</code>, 4,6 przy
+<code>1.0</code>, 4,3 przy <code>1.3</code>, 3,6 przy <code>2.0</code>,
+0 przy <code>20.0</code>.</p>
 <p>Przykłady:</p>
 <ul>
-<li>Łagodnie, luźniejsza bramka: <code>--pns-refpower 1,3</code>. Kilka
-dodatkowych pasm przechodzi test mocy.</li>
-<li>Mocno, luźniejsza bramka: <code>--pns-refpower 2.0</code>. Dwa razy
-wyższy próg. W połączeniu z <code>--pns-tonality 2.0</code> to miejsce,
-w którym szerokie podstawianie szumu naprawdę się zaczyna.</li>
-<li>Przesadnie, luźniejsza bramka: <code>--pns-refpower 20.0</code>.
-Test mocy przestaje w ogóle rozróżniać i wybór zostaje całkowicie po
-stronie tonalności, co jest dobrym sposobem dowiedzenia się, ile pracy
-ta bramka wykonywała.</li>
-<li>Łagodnie, surowsza bramka: <code>--pns-refpower 0,8</code>. Nieco
-mniej kandydatów.</li>
-<li>Mocno, surowsza bramka: <code>--pns-refpower 0.4</code>. Wyraźnie
-mniej pasm przechodzi. PNS wycofuje się do pasm, gdzie jest najmniej
+<li>Łagodnie, luźniejsza bramka: <code>--pns-refpower 0,8</code>. Nieco
+więcej kandydatów (z 4,6 do 4,8 pasma).</li>
+<li>Mocno, luźniejsza bramka: <code>--pns-refpower 0.4</code>. 5,1
+pasma. W połączeniu z podniesionym <code>--pns-tonality</code> to
+miejsce, w którym szerokie podstawianie szumu naprawdę się zaczyna.</li>
+<li>Przesadnie, luźniejsza bramka: <code>--pns-refpower 0.01</code>.
+Test mocy przestaje rozróżniać i wybór zostaje po stronie tonalności
+(5,5 pasma), co dobrze pokazuje, ile pracy ta bramka wykonywała.</li>
+<li>Łagodnie, surowsza bramka: <code>--pns-refpower 1,3</code>. Nieco
+mniej kandydatów (4,3 pasma).</li>
+<li>Mocno, surowsza bramka: <code>--pns-refpower 2.0</code>. Dwa razy
+wyższy próg, 3,6 pasma. PNS wycofuje się do pasm, gdzie jest najmniej
 ryzykowny.</li>
-<li>Przesadnie, surowsza bramka: <code>--pns-refpower 0.01</code>.
-Prawie nic nie przechodzi, więc PNS jest na papierze włączony, a w
-praktyce bezczynny.</li>
+<li>Przesadnie, surowsza bramka: <code>--pns-refpower 20.0</code>. Nic
+nie przechodzi, więc PNS jest na papierze włączony, a w praktyce
+bezczynny.</li>
 </ul>
 <p>Współpraca i konflikty: koniunkcyjny z <code>--pns-tonality</code>,
 więc testuj je parą. <code>--pns-gapfill</code> może i tak dodać pasmo
@@ -13049,6 +13285,191 @@ jego błędy mogą objawiać się jako niskoczęstotliwościowe
 sama góra; dla większości materiału TNS jest wtedy w blokach długich
 praktycznie wyłączony.</li>
 </ul>
+<h3 id="--coverage--55-1"><code>--coverage &lt;-5..5&gt;</code></h3>
+<p><strong>Jedna oś przy stałym bitrate: koduj każde pasmo grubo albo
+mniej pasm czysto.</strong></p>
+<ul>
+<li>Dotyczy: rdzeń AAC (LC, LD, ELD i rdzeń LC w HE-AAC). Domyślnie
+wyłączone.</li>
+<li>Wartości: liczby całkowite <code>-5..5</code>; <code>0</code> =
+stock</li>
+<li>Wpisywanie: liczba całkowita</li>
+</ul>
+<p>Przy stałym bitrate koder może wydać bity na pokrycie całego widma
+grubym opisem albo na dobry opis mniejszej liczby pasm, zostawiając
+dziury. To makro przesuwa tę równowagę jedną liczbą. Ustawia sześć
+przełączników poniżej (<code>--band-knee</code>,
+<code>--quant-round</code>, <code>--thr-hold</code>,
+<code>--scf-range</code>, a przy <code>+4</code> i <code>+5</code> także
+<code>--pns-above</code>); każdy z nich podany jawnie wygrywa z makrem.
+<code>--verbose</code> pokazuje wartości, które faktycznie działają.</p>
+<p>Zmierzone przy LC 32 kbps, 17 kHz, po dekodowaniu (wyzerowane pasma i
+szum pasm, które zostały): <code>-5</code> 51% dziur, a zachowane pasma
+4,75 dB czystsze od sygnału; stock 11,7% dziur, 1,96 dB; <code>+4</code>
+0,2% dziur, a zachowane pasma mniej więcej tak szumne jak treść.</p>
+<p>Przykłady:</p>
+<ul>
+<li>Łagodnie, więcej pokrycia: <code>--coverage 2</code>. Mniej dziur,
+trochę więcej ziarna.</li>
+<li>Mocno, więcej pokrycia: <code>--coverage 4</code>. Praktycznie bez
+dziur; dokłada podstawianie szumu od 11 kHz.</li>
+<li>Przesadnie, więcej pokrycia: <code>--coverage 5</code>. Wszystko
+wypełnione, szum od 7 kHz.</li>
+<li>Łagodnie, więcej precyzji: <code>--coverage -2</code>. Najpierw
+odchodzą najsłabsze pasma.</li>
+<li>Mocno, więcej precyzji: <code>--coverage -4</code>. Dużo dziur, to,
+co zostaje, jest czyste.</li>
+<li>Przesadnie, więcej precyzji: <code>--coverage -5</code>. Znika mniej
+więcej połowa pasm.</li>
+</ul>
+<h3 id="--band-knee-db-1"><code>--band-knee &lt;dB&gt;</code></h3>
+<p><strong>Przesuń zapas każdego pasma nad progiem przy krawędzi
+kodowane/wyzerowane, we wszystkich kanałach.</strong></p>
+<ul>
+<li>Dotyczy: rdzeń AAC. Domyślnie wyłączone.</li>
+<li>Wartości: <code>-24.0..24.0</code> dB, <code>0</code> =
+wyłączone</li>
+<li>Wpisywanie: liczba dziesiętna, do 3 miejsc, <code>.</code> albo
+<code>,</code></li>
+</ul>
+<p>Wartość dodatnia zatrzymuje pasma do N dB pod progiem, na najgrubszym
+kroku, zamiast je zerować. Wartość ujemna zeruje pasma, które przechodzą
+próg o mniej niż N dB po pierwszym oszacowaniu bitów, więc drugie
+oszacowanie oddaje te bity reszcie. Pasm PNS i IS nie rusza; w pasmach
+side pary MS wygrywa <code>--side-knee</code>.</p>
+<p>Przykłady:</p>
+<ul>
+<li>Łagodnie, zatrzymaj więcej: <code>--band-knee 3</code>.</li>
+<li>Mocno, zatrzymaj więcej: <code>--band-knee 6</code>. Użyteczne
+maksimum: powyżej około 9 dB uratowane grube pasma kosztują tyle bitów,
+że pętla tnie gdzie indziej.</li>
+<li>Przesadnie, zatrzymaj więcej: <code>--band-knee 24</code>.
+Zmierzone: gorzej niż 6.</li>
+<li>Łagodnie, wyrzuć więcej: <code>--band-knee -2</code>.</li>
+<li>Mocno, wyrzuć więcej: <code>--band-knee -6</code>.</li>
+<li>Przesadnie, wyrzuć więcej: <code>--band-knee -24</code>. Zostają
+tylko wyraźnie słyszalne pasma.</li>
+</ul>
+<h3 id="--quant-round-x-1"><code>--quant-round &lt;x&gt;</code></h3>
+<p><strong>Przesuń punkt zaokrąglania kwantyzatora: mniej albo więcej
+małych linii widma staje się zerem.</strong></p>
+<ul>
+<li>Dotyczy: rdzeń AAC. Domyślnie wyłączone (stock 0,405).</li>
+<li>Wartości: <code>0.0..0.5</code></li>
+<li>Wpisywanie: liczba dziesiętna, do 3 miejsc, <code>.</code> albo
+<code>,</code></li>
+</ul>
+<p>Kwantyzator zaokrągla każdą linię widma do całego kroku. Stock
+zaokrągla z przesunięciem około 0,405, czyli lekko w stronę zera, co
+oszczędza bity. <code>0.5</code> zaokrągla do najbliższej: mniej małych
+linii znika, kosztuje to bity. Niższe wartości wysyłają więcej linii do
+zera i są tańsze.</p>
+<p>Przykłady:</p>
+<ul>
+<li>Łagodnie, dokładniej: <code>--quant-round 0.45</code>.</li>
+<li>Mocno, dokładniej: <code>--quant-round 0.5</code>. Zaokrąglanie do
+najbliższej.</li>
+<li>Łagodnie, taniej: <code>--quant-round 0.35</code>.</li>
+<li>Mocno, taniej: <code>--quant-round 0.25</code>. Ciche szczegóły
+znikają.</li>
+<li>Przesadnie, taniej: <code>--quant-round 0.0</code>. Obcinanie: każda
+linia zaokrąglona w dół.</li>
+</ul>
+<h3 id="--pns-above-hz-1"><code>--pns-above &lt;Hz&gt;</code></h3>
+<p><strong>Od tej częstotliwości w górę zastąp każde pasmo bloku
+długiego szumem o właściwym poziomie, bez względu na
+tonalność.</strong></p>
+<ul>
+<li>Dotyczy: AAC-LC, bloki długie. Domyślnie wyłączone.</li>
+<li>Wartości: <code>1000..48000</code> Hz</li>
+<li>Wpisywanie: liczba całkowita</li>
+</ul>
+<p>Górne pasmo „jak SBR, bez SBR”: pasmo zachowuje poziom, a jego treść
+staje się szumem. Włącza PNS nawet poniżej jego bramki bitrate;
+<code>--pns 0</code> nadal wygrywa. Ciche pasma zostają ciche. Przy
+niskim bitrate używaj razem z <code>--pns-budget 1</code> i
+<code>--pns-shared 1</code>, inaczej ramkom może zabraknąć bitów i
+pojawi się trzask (patrz <code>--pns-budget</code>).</p>
+<p>Przykłady:</p>
+<ul>
+<li>Łagodnie: <code>--pns-above 11000</code>. Szumem staje się tylko
+sama góra.</li>
+<li>Mocno: <code>--pns-above 5000</code>.</li>
+<li>Przesadnie: <code>--pns-above 2200</code>. Większość obszaru
+prezencji to szum.</li>
+</ul>
+<h3 id="--thr-hold-n-1"><code>--thr-hold &lt;n&gt;</code></h3>
+<p><strong>Mierz model maskowania tylko co n ramek długich.</strong></p>
+<ul>
+<li>Dotyczy: rdzeń AAC, bloki długie. Domyślnie wyłączone.</li>
+<li>Wartości: <code>1..32</code> ramki, <code>1</code> = wyłączone</li>
+<li>Wpisywanie: liczba całkowita</li>
+</ul>
+<p>Pomiędzy pomiarami każde pasmo zachowuje ostatni stosunek szumu do
+sygnału, więc szum spóźnia się za muzyką. Blok krótki zeruje to
+trzymanie. Efekt jest słaby: strumień się zmienia, ale zmierzona jakość
+rusza się o mniej niż 1 dB nawet przy 32, bo FDK i tak pracuje na
+wygładzonych energiach.</p>
+<p>Przykłady:</p>
+<ul>
+<li>Łagodnie: <code>--thr-hold 2</code>.</li>
+<li>Mocno: <code>--thr-hold 8</code>.</li>
+<li>Przesadnie: <code>--thr-hold 32</code>.</li>
+</ul>
+<h3 id="--scf-range-n-1"><code>--scf-range &lt;n&gt;</code></h3>
+<p><strong>Ogranicz, jak daleko od siebie mogą być najdrobniej i
+najgrubiej kodowane pasmo kanału.</strong></p>
+<ul>
+<li>Dotyczy: rdzeń AAC. Domyślnie wyłączone (stock 60).</li>
+<li>Wartości: <code>0..60</code>, kroki po 1,5 dB</li>
+<li>Wpisywanie: liczba całkowita</li>
+</ul>
+<p>Niższe wartości robią szum kwantyzacji bardziej płaskim w
+częstotliwości, z mniejszym kształtowaniem psychoakustycznym. Na zwykłym
+materiale efekt jest bliski zera; widać go przy małych wartościach na
+materiale z silnym nachyleniem widma (szum 6 do 14 kHz z 12,4 do 7,1 dB
+pod sygnałem przy <code>0</code>, 64 kbps bez PNS). Przy 14 kbps nie
+zmienia budżetu.</p>
+<p>Przykłady:</p>
+<ul>
+<li>Łagodnie: <code>--scf-range 40</code>.</li>
+<li>Mocno: <code>--scf-range 20</code>.</li>
+<li>Przesadnie: <code>--scf-range 0</code>. Jeden krok na cały
+kanał.</li>
+</ul>
+<h3 id="--bit-stats-1"><code>--bit-stats</code></h3>
+<p><strong>Policz, na co idą bity zapisanych ramek, i wypisz tabelę na
+końcu.</strong></p>
+<ul>
+<li>Dotyczy: każdy profil. Domyślnie wyłączone.</li>
+<li>Wartości: brak, to flaga</li>
+</ul>
+<p>Tabela dzieli ramki na nagłówek transportu, nagłówki elementów, maskę
+MS, dane sekcji, współczynniki skali, poziomy szumu PNS, TNS, widmo
+każdego kanału (mid i side dla MS), SBR/PS i wypełnienie, a do tego
+kodowane, wyzerowane, PNS i IS pasma na ramkę. Liczy bity naprawdę
+zapisane; strumień jest identyczny z przełącznikiem i bez niego, a suma
+zgadza się z plikiem ADTS.</p>
+<p>Przykład:
+<code>fdkaac -p 2 -b 14000 --bit-stats -f 2 -o out.aac in.wav</code></p>
+<h3 id="--enfac-patch-01-1"><code>--enfac-patch &lt;0|1&gt;</code></h3>
+<p><strong>Wyłącz przeważanie energii płaskich, szumowych ramek długich
+albo włącz je dla każdej ramki.</strong></p>
+<ul>
+<li>Dotyczy: rdzeń AAC, bloki długie, CBR i VBR. Domyślnie wyłączone
+(decyduje stock).</li>
+<li>Wartości: <code>0</code> = nigdy, <code>1</code> = każda ramka
+długa</li>
+</ul>
+<p>Gdy słyszalne widmo ramki jest płaskie, stockowy FDK przeważa energie
+pasm (potęgi 3/4, 1/2 albo 1/4) i w ten sposób przesuwa bity między
+pasmami. <code>0</code> traktuje każdą ramkę jak tonalną, <code>1</code>
+stosuje przeważanie do każdej ramki długiej. W CBR to drobne pokrętło:
+wyzerowane pasma zmieniają się najwyżej o 1 punkt, a szum o mniej niż
+0,1 dB przy 14 do 32 kbps; <code>0</code> na materiale tonalnym często
+daje to samo co stock. W VBR (<code>-m 3</code>) <code>1</code>
+powiększyło plik z tonem i szumem o 29%, a <code>0</code> zmniejszyło
+plik z gęstym szumem o 3%.</p>
 <h2 id="f-przełączanie-bloków-i-kontrola-bitrateu">F. Przełączanie
 bloków i kontrola bitrate'u</h2>
 <p>Sześć przełączników: jeden, który przechyla decyzję o bloku długim
@@ -13259,8 +13680,9 @@ wyrażenia tego jest krotność: półtora raza cel jest ostrożne, dwa razy
 jest hojne.</p>
 <p>Sufit 6144 bitów na kanał nadal obowiązuje, więc proszenie o szczyt
 poza to, co ramka fizycznie pomieści, daje limit ramki. Przy 48 kHz
-stereo to ramka warta około 1150 kbps, więc dla zwykłych celów masz dużo
-miejsca, zanim limit formatu zacznie wiązać.</p>
+stereo to ramka warta około 576 kbps (6144 x 2 bity x 48000 / 1024),
+więc dla zwykłych celów masz dużo miejsca, zanim limit formatu zacznie
+wiązać.</p>
 <p>Przykłady:</p>
 <ul>
 <li>Łagodnie, wyższy szczyt:
@@ -13327,10 +13749,12 @@ Maksimum formatu dla stereo. Ograniczenie jest obecne, ale nigdy nie
 wiąże, co jest właściwym ustawieniem, gdy chcesz mieć przełącznik
 udokumentowany w wierszu poleceń bez zmiany zachowania.</li>
 <li>Przesadnie, wyższe ograniczenie:
-<code>--max-bits-frame 100000</code>. Powyżej limitu formatu, więc
-zostaje przycięte do <code>6144 * liczba kanałów</code>. Nieszkodliwe i
-przydatne jako przypomnienie, że żaden przełącznik tutaj nie podnosi
-limitu ramki.</li>
+<code>--max-bits-frame 100000</code>. Powyżej limitu formatu, więc koder
+bierze mniejszą z tej wartości i własnego maksimum rezerwuaru
+(<code>6144 * liczba kanałów</code>), więc w stereo strumień jest
+identyczny jak przy <code>12288</code> (zmierzone: 12288, 20000 i 100000
+dają ten sam strumień ADTS). Nieszkodliwe i przydatne jako
+przypomnienie, że żaden przełącznik tutaj nie podnosi limitu ramki.</li>
 <li>Łagodnie, niższe ograniczenie: <code>--max-bits-frame 4000</code>
 przy 128 kbps stereo. Szczyty przycięte, średnia nietknięta; blisko
 użytecznej wskazówki 1,5x.</li>
@@ -13484,10 +13908,11 @@ jest w DAB+ legalne; bitrate musi być wielokrotnością 8 kbps między 8 a
 192; mono i stereo oba są w porządku.</p>
 <p>Konwencja bitrate'u jest tu własna. Przy <code>--dab</code>
 <code>-b</code> to kilobity na sekundę, a koder sam mnoży przez 1000,
-więc <code>-b 96</code> oznacza 96 kbps. Jeśli podasz też
-<code>--unlock-bitrate</code>, <code>-b</code> wraca do dosłownych bitów
-na sekundę, i to jest jedyna kombinacja, w której te dwie konwencje się
-zderzają.</p>
+więc <code>-b 96</code> oznacza 96 kbps. <code>--unlock-bitrate</code>
+tego nie zmienia: kontrola DAB+ i mnożenie przez 1000 dzieją się
+wcześniej, więc <code>--dab --unlock-bitrate -b 96</code> daje ten sam
+strumień co bez odblokowania, a <code>-b 96000</code> zostaje odrzucone
+jako niewielokrotność 8 kbps.</p>
 <p>Normalnie profilu nie wybierasz. Praktyka DAB+, idąc za narzędziem
 referencyjnym <code>odr-audioenc</code>, wyprowadza go z bitrate'u i
 liczby kanałów, tak by niskie bitrate'y automatycznie dostawały
