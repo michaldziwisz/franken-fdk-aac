@@ -671,7 +671,7 @@ int aacenc_init(HANDLE_AACENCODER *encoder, const aacenc_param_t *params,
             if (params->fr_sbr_header_period >= 1) { FRV_HDR(); fprintf(stderr, " sbr-header-period     : %d frame(s) (SBR stream-sync rate)\n", params->fr_sbr_header_period); }
             if (params->fr_sbr_header_time > 0)   { FRV_HDR(); fprintf(stderr, " sbr-header-time       : %.3f s (SBR stream-sync rate)\n", params->fr_sbr_header_time / 1000.0); }
             if (params->fr_is_aggression >= 0)  { FRV_HDR(); fprintf(stderr, " is-aggression         : %d/100\n", params->fr_is_aggression); }
-            if (params->fr_block_bias >= 0)     { FRV_HDR(); fprintf(stderr, " block-bias            : %d (128=default, >128 more short blocks)\n", params->fr_block_bias); }
+            if (params->fr_block_bias >= 0)     { FRV_HDR(); fprintf(stderr, " block-bias            : %d (0 long only, 128 stock, 255 short only)\n", params->fr_block_bias); }
             if (params->fr_uncap_bw == 1)       { FRV_HDR(); fprintf(stderr, " uncap-bandwidth       : on (20 kHz core cap lifted)\n"); }
             if (params->fr_unlock_bitrate == 1) { FRV_HDR(); fprintf(stderr, " unlock-bitrate        : on (lower bitrate floor removed)\n"); }
             if (params->fr_force_pns == 1)      { FRV_HDR(); fprintf(stderr, " force-pns             : on (low-bitrate PNS gate bypassed)\n"); }

@@ -105,19 +105,57 @@ amm-info@iis.fraunhofer.de
 #include "block_switch.h"
 #include "franken.h"
 
-/* Frankenstein block-switch bias: scale the (inverted) attack ratio by
- * blockBias/128. 128 = FDK default (unchanged), >128 lowers the attack
- * threshold -> more short blocks, <128 -> more long blocks, 0 -> effectively
- * long-only. Sentinel <0 leaves FDK behaviour untouched. 64-bit intermediate
- * avoids overflow of the Q31 fixed-point constant; __typeof__ preserves the
- * FIXP_DBL/FIXP_SGL type used by the active build config. */
-#define FR_BLOCKBIAS(r)                                                     \
-  ((g_franken.blockBias < 0)                                               \
-       ? (r)                                                               \
-       : (__typeof__(r))(((long long)(r) * (long long)g_franken.blockBias) >> 7))
 #include "genericStds.h"
 #include <math.h>
 
+/* Frankenstein --block-bias 0..255: share of short blocks.
+ * The detector compares the high-passed energy of each sub-window with the
+ * running energy before it and calls it an attack above a ratio (stock 10,
+ * invAttackRatio 0.1). On music that ratio is 1.2..1.5 in an ordinary frame
+ * and above 10 in only ~2.5% of frames. Beta.1 scaled the inverse ratio
+ * linearly (bias/128): above 128 the threshold only went from 10 to 5 (a few %
+ * more short frames, 255 far from all short), below 128 it jumped past every
+ * real attack at once.
+ *
+ * The threshold now comes from a table calibrated on the real encoder (six
+ * 25..30 s excerpts: acoustic stereo, eurodance, vocals, drums; 64 kbps; share
+ * of short frames read from the bitstream): the share grows linearly with the
+ * bias, 0% at 0, stock at 128 (2.6% on that pool), ~80% at 240. Between the
+ * knots (every 16) the threshold is interpolated on a log scale. Above 224 the
+ * quiet-frame gate (minAttackNrg) is lowered too, 2 dB per step, so quiet
+ * passages follow. 0 and 255 are absolute: no attack at all / an attack in
+ * every frame, silence included. 128 runs the stock code path, bit for bit.
+ *
+ * Only the attack flag changes. The window sequence is still built by FDK's
+ * transition tables (LONG -> START -> SHORT -> STOP -> LONG, LOWOV in LD) and
+ * the channels are synchronised as stock, so every stream stays legal. */
+static const double frBiasKnot[17] = {
+    /* bias 0, 16 .. 112 */ 5000.0, 1212.0, 287.7, 100.3, 39.94, 22.38, 16.29, 12.13,
+    /* 128 .. 240 */ 10.0, 2.439, 1.888, 1.669, 1.51, 1.373, 1.237, 1.06,
+    /* 256 */ 0.3};
+static double frBiasThreshold(int b) {
+  const int k = b >> 4;
+  const double f = (double)(b & 15) / 16.0;
+  return exp((1.0 - f) * log(frBiasKnot[k]) + f * log(frBiasKnot[k + 1]));
+}
+/* quiet-frame gate above 224: -2 dB per step (254: -60 dB) */
+static FIXP_DBL frBiasGate(FIXP_DBL e) {
+  if (g_franken.blockBias <= 224 || g_franken.blockBias >= 255) return e;
+  double v = (double)e * pow(10.0, -0.2 * (double)(g_franken.blockBias - 224));
+  if (v < 1.0) v = 1.0;
+  return (FIXP_DBL)(LONG)v;
+}
+/* attack test for one sub-window: e = filtered energy, acc = running energy */
+#define FR_ATTACK_HIT(e, acc, inv)                                            \
+  ((g_franken.blockBias < 0 || g_franken.blockBias == 128)                   \
+       ? (fMult((e), (inv)) > (acc))                                         \
+       : ((double)(e) > frBiasThreshold(g_franken.blockBias) * (double)(acc)))
+/* 1 = an attack in every frame (255), -1 = never (0), 0 = detector decides */
+static int frankenBlockForce(void) {
+  if (g_franken.blockBias == 255) return 1;
+  if (g_franken.blockBias == 0) return -1;
+  return 0;
+}
 /* Frankenstein --attack-decay: share of the running energy kept per
  * sub-window (stock 0.7). Returns the constant in the type of r (FIXP_DBL Q31
  * or FIXP_SGL Q15 depending on the build). The accumulate factor is 1-decay so
@@ -378,9 +416,8 @@ int FDKaacEnc_BlockSwitching(BLOCK_SWITCHING_CONTROL *blockSwitchingControl,
     blockSwitchingControl->accWindowNrg =
         fMultAdd(tmp, FR_ACCFAC(accWindowNrgFac), enM1);
 
-    if (fMult(blockSwitchingControl->windowNrgF[1][i],
-              FR_BLOCKBIAS(invAttackRatio)) >
-        blockSwitchingControl->accWindowNrg) {
+    if (FR_ATTACK_HIT(blockSwitchingControl->windowNrgF[1][i],
+                      blockSwitchingControl->accWindowNrg, invAttackRatio)) {
       blockSwitchingControl->attack = TRUE;
       blockSwitchingControl->attackIndex = i;
     }
@@ -388,7 +425,21 @@ int FDKaacEnc_BlockSwitching(BLOCK_SWITCHING_CONTROL *blockSwitchingControl,
     enMax = fixMax(enMax, enM1);
   }
 
-  if (enMax < frAttackFloor(minAttackNrg)) blockSwitchingControl->attack = FALSE;
+  if (enMax < frBiasGate(frAttackFloor(minAttackNrg))) blockSwitchingControl->attack = FALSE;
+
+  /* --block-bias 255: an attack in every frame, placed in the sub-window with
+   * the highest energy (it picks the short grouping). */
+  if (frankenBlockForce() > 0 && blockSwitchingControl->attack == FALSE) {
+    FIXP_DBL best = FL2FXCONST_DBL(0.0f);
+    blockSwitchingControl->attack = TRUE;
+    blockSwitchingControl->attackIndex = 0;
+    for (i = 0; i < nBlockSwitchWindows; i++) {
+      if (blockSwitchingControl->windowNrgF[1][i] > best) {
+        best = blockSwitchingControl->windowNrgF[1][i];
+        blockSwitchingControl->attackIndex = i;
+      }
+    }
+  }
 
   /* Check if attack spreads over frame border */
   if ((blockSwitchingControl->attack == FALSE) &&
@@ -403,6 +454,10 @@ int FDKaacEnc_BlockSwitching(BLOCK_SWITCHING_CONTROL *blockSwitchingControl,
       blockSwitchingControl->attackIndex = 0;
     }
   }
+
+  /* --block-bias 0: never an attack, also not the one carried over the frame
+   * border above */
+  if (frankenBlockForce() < 0) blockSwitchingControl->attack = FALSE;
 
   if (blockSwitchingControl->allowLookAhead) {
     blockSwitchingControl->lastWindowSequence =

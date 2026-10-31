@@ -65,6 +65,27 @@ quieter, so they keep the spectrum. With one group: 24 kbps file -6%, the noise
 band at the source level (+1.1 dB instead of -1.4 dB), at the cost of the band
 smeared over the frame (pre-echo +1 dB, attack about 2 dB quieter).
 
+#### `--block-bias`: the share of short blocks follows the slider
+
+Up to beta.1 the switch scaled the attack threshold linearly (10 * 128/bias). Above
+128 the threshold only went from 10 to 5: on eurodance 1.6% short frames at 128,
+6.5% at 255. Just below 128 it jumped past most real attacks (at 64 already 0.3%), so
+the middle seemed to do nothing. Measured on the encoder: the detector ratio is
+1.2..1.5 in an ordinary frame of music and above 10 in only 2..3% of frames.
+
+- The threshold now comes from a table calibrated on the encoder (six excerpts:
+  acoustic stereo, eurodance, vocals, drums; 64 kbps; share of short frames from the
+  bitstream), interpolated on a log scale: the share of short frames grows about
+  evenly, roughly 12% of the frames per 16 steps above 128 (eurodance: 23% at 160, 57%
+  at 192, 87% at 224, 100% at 240..255).
+- `0` = no attack ever (long blocks only), `255` = an attack in every frame (short
+  blocks only, silence included). Above 224 the quiet-frame gate of the detector is
+  lowered too, so quiet passages follow.
+- `128` and no switch: stock code path, bit for bit as beta.1 (18 encodes checked).
+- Only the attack flag changes; the window sequence comes from the encoder's own
+  transitions and channel sync. 300 encodes (0..255, LC/HE/HEv2, short groups 1/3,
+  silence, sine, music): 0 illegal window transitions, 0 decoder errors.
+
 ### v1.4.0-beta.1 — side knee as an offset, side cutoff, IS gate, PNS that saves bits, bit statistics, documentation audit (plus the SBR estimator knobs, `--sbr-softness`, real low-bitrate unlock)
 
 #### Core transients, pre-echo and spectral holes (LC / LD / ELD)

@@ -5148,63 +5148,61 @@ ceilings, which is where you get the numbers to set these switches from.
 
 ### `--block-bias <n>`
 
-**Biases the decision between long and short blocks without ever forcing a block type,
-so the stream stays standards compliant.**
+**Sets the share of short blocks, from long blocks only (0) to short blocks only (255).
+The stream stays standards compliant at every value.**
 
-- Applies to: every profile that has block switching, so AAC-LC. LD and ELD have no
-  short blocks, so there is nothing to bias there.
-- Values: `0..255`, where `128` is the encoder's own threshold; default: `-1`, off
+- Applies to: AAC-LC and the LC core of HE-AAC, which have short blocks. LD and ELD have
+  none (LD switches to a low-overlap window instead, also moved by this switch; ELD has
+  no switching at all).
+- Values: `0..255`, `128` is stock; default: `-1`, off (stock)
 - Input: whole number
 
 A long block gives good frequency resolution and bad time resolution; a short block the
-reverse. The encoder uses an attack detector to decide, frame by frame, which it needs.
-Get it wrong in one direction and a transient smears its quantisation noise backwards in
-time as pre-echo; wrong in the other direction and a steady tonal passage is coded with
-eight short windows that cannot resolve its partials, which costs bits and sounds rough.
+reverse. The encoder's attack detector decides frame by frame: it compares the energy of
+each eighth of the frame with the running energy before it and calls an attack above a
+ratio of 10. On music that ratio is 1.2 to 1.5 in an ordinary frame and above 10 in only
+about 2..3% of frames.
 
-This switch shifts the threshold the detector compares against. Above 128 makes short
-blocks more likely, so the encoder treats the material as more transient than it is.
-Below 128 favours long blocks, and `0` means practically long blocks only.
+This switch moves that threshold along a table calibrated on the encoder itself (six
+excerpts of acoustic stereo, eurodance, vocals and drums at 64 kbps, share of short frames
+read from the bitstream), so that the share of short frames follows the slider evenly:
+- `0`: long blocks only, no attack is ever detected.
+- `1..127`: fewer short frames, down from stock; at `64` about half of the stock share.
+- `128`: stock, bit for bit.
+- `129..240`: more short frames, about 12% of the frames per 16 steps on music; around
+  `192` about half the frames, at `240` about 80..99%.
+- `241..254`: also quiet passages go short (the detector's minimum energy is lowered).
+- `255`: short blocks only, every frame, silence included.
 
-Importantly, it shifts a decision, it does not override it. Forcing a window type
-without recomputing the band layout and grouping produces an illegal stream that
-decoders reject, and this switch never does that; whatever you set, the output is a
-valid AAC stream.
+Material without transients reacts later than music: steady pink noise and a sine stay
+long up to about 208 and go short between 216 and 236, because their ratio stays near 1.
+Material with hard hits only (a drum stem) keeps its hits at every value, so its share
+moves less. Up to 1.4.0-beta.1 the switch scaled the threshold linearly: above 128 it
+only went from 10 to 5 (6.5% short at 255 on eurodance) and just below 128 it jumped past
+most real attacks, which is why the middle seemed to do nothing.
 
-The practical finding is that the middle of the range does little on most material. The
-decision on a given frame is usually not close, so only values near the ends flip it.
-Treat this as a three position switch in practice, with `0` and `255` as the interesting
-settings, and the middle useful only on material that genuinely sits near the decision
-boundary.
+Only the attack decision changes. The window sequence is still built by the encoder's
+own transitions (long, start, short, stop, long) and both channels are synchronised as
+stock, so a decoder always gets a legal sequence. Checked: 300 encodes (0 to 255, LC,
+HE-AAC, HE-AAC v2, short grouping 1 and 3, silence, sine, music), 0 illegal window
+transitions and 0 decoder errors. `--verbose` shows the value.
 
-Examples:
-- Mild, more short blocks: `--block-bias 160`. Marginal frames go short. Visible only
-  on material near the boundary.
-- Strong, more short blocks: `--block-bias 220`. Clearly more short frames. Better
-  time resolution on percussive content, worse frequency resolution and more bits spent
-  on tonal passages.
-- Exaggerated, more short blocks: `--block-bias 255`. Nearly everything short. Tonal
-  material is coded with eight windows that cannot resolve its partials and sounds
-  rough and expensive, which is a good demonstration of what long blocks are for.
-- Mild, more long blocks: `--block-bias 100`. Marginal frames stay long.
-- Strong, more long blocks: `--block-bias 40`. Clearly fewer short frames. Cheaper on
-  tonal material, with pre-echo appearing on real attacks.
-- Exaggerated, more long blocks: `--block-bias 0`. Practically long blocks only. Every
-  transient must be carried by a long block, so pre-echo becomes the dominant artifact
-  on percussive material. This is also the condition in which the group E pre-echo
-  switches finally matter in AAC-LC, since the usual escape route to short blocks is
-  closed.
+Examples (eurodance, 64 kbps; share of short frames):
+- `--block-bias 64`: 0.1% instead of 1.6%. Steady material stays long, hard hits still go
+  short.
+- `--block-bias 160`: 23%. Every larger rise in level gets short blocks.
+- `--block-bias 192`: 57%.
+- `--block-bias 224`: 87%.
+- `--block-bias 255`: 100%. Tonal material sounds rough, a demonstration of what long
+  blocks are for.
+- `--block-bias 0`: 0%. Every transient is carried by a long block, pre-echo becomes the
+  main artefact on percussive material.
 
 Works with / against: with `--block-bias 0`, `--preecho-rise`, `--preecho-depth` and
-`--tns-thresh` from group E become the tools that are left against pre-echo, which is
-the same situation LD and ELD are permanently in. `--short-groups` and `--window-shape`
-only matter where short blocks still occur, so a very low bias makes them irrelevant.
-`--attack-decay` and `--attack-floor` change the detector itself rather than the
-threshold it compares against.
-
-Measured: at AAC-LC 128 kbps on attacks48, only `0` and `255` changed the stream.
-`64`, `128` and `192` were identical to stock, which is the basis for treating the
-middle of the range as inert on ordinary material.
+`--tns-thresh` from group E are the tools left against pre-echo, the situation LD and ELD
+are always in. `--short-groups`, `--window-shape` and `--pns-short` only matter where
+short blocks occur. `--attack-decay` and `--attack-floor` change the detector itself; they
+combine with this switch.
 
 ### `--vbr-reservoir <bits>`
 

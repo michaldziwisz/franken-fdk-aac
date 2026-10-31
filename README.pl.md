@@ -5253,62 +5253,61 @@ bierzesz liczby do ustawienia tych przełączników.
 
 ### `--block-bias <n>`
 
-**Przechyla decyzję między blokami długimi a krótkimi, nigdy nie wymuszając typu bloku, więc
-strumień pozostaje zgodny ze standardem.**
+**Ustawia udział bloków krótkich, od samych długich (0) do samych krótkich (255). Strumień
+jest zgodny ze standardem przy każdej wartości.**
 
-- Dotyczy: każdego profilu, który ma przełączanie bloków, czyli AAC-LC. LD i ELD nie mają
-  bloków krótkich, więc nie ma tam czego przechylać.
-- Wartości: `0..255`, gdzie `128` to własny próg kodera; domyślnie: `-1`, wyłączone
+- Dotyczy: AAC-LC i rdzenia LC w HE-AAC, które mają bloki krótkie. LD i ELD ich nie mają
+  (LD przełącza się zamiast tego na okno o małym nakładaniu, także przesuwane tym
+  przełącznikiem; ELD w ogóle nie przełącza okien).
+- Wartości: `0..255`, `128` to stock; domyślnie: `-1`, wyłączone (stock)
 - Wpisywanie: liczba całkowita
 
 Blok długi daje dobrą rozdzielczość częstotliwościową i złą czasową; blok krótki odwrotnie.
-Koder używa detektora ataku, żeby decydować ramka po ramce, którego potrzebuje. Pomyl się w
-jednym kierunku, a transjent rozmaże swój szum kwantyzacji wstecz w czasie jako pre-echo;
-pomyl się w drugim, a stały fragment tonalny zostanie zakodowany ośmioma krótkimi oknami,
-które nie rozdzielą jego składowych, co kosztuje bity i brzmi szorstko.
+Detektor ataku decyduje ramka po ramce: porównuje energię każdej ósmej części ramki
+z bieżącą energią przed nią i uznaje atak powyżej stosunku 10. Na muzyce ten stosunek wynosi
+1,2 do 1,5 w zwykłej ramce i przekracza 10 tylko w około 2..3% ramek.
 
-Ten przełącznik przesuwa próg, z którym detektor się porównuje. Powyżej 128 bloki krótkie
-stają się bardziej prawdopodobne, więc koder traktuje materiał jako bardziej transjentowy,
-niż jest. Poniżej 128 preferowane są bloki długie, a `0` oznacza praktycznie tylko bloki
-długie.
+Ten przełącznik przesuwa ten próg według tablicy skalibrowanej na samym koderze (sześć
+fragmentów: akustyczne stereo, eurodance, wokal, perkusja, 64 kbps, udział ramek krótkich
+odczytany ze strumienia), tak żeby udział ramek krótkich szedł za suwakiem równo:
+- `0`: tylko bloki długie, atak nie jest wykrywany nigdy.
+- `1..127`: mniej ramek krótkich niż stock; przy `64` około połowy udziału stock.
+- `128`: stock, bit w bit.
+- `129..240`: więcej ramek krótkich, na muzyce około 12% ramek na 16 kroków; w okolicy `192`
+  mniej więcej połowa ramek, przy `240` około 80..99%.
+- `241..254`: na krótkie idą też ciche fragmenty (obniżona minimalna energia detektora).
+- `255`: tylko bloki krótkie, każda ramka, łącznie z ciszą.
 
-Co ważne, przesuwa decyzję, a nie ją nadpisuje. Wymuszenie typu okna bez przeliczenia układu
-pasm i grupowania daje nielegalny strumień, który dekodery odrzucają, i ten przełącznik nigdy
-tego nie robi; cokolwiek ustawisz, wyjściem jest poprawny strumień AAC.
+Materiał bez transjentów reaguje później niż muzyka: stały szum różowy i sinus zostają długie
+mniej więcej do 208 i przechodzą na krótkie między 216 a 236, bo ich stosunek zostaje blisko 1.
+Materiał z samymi mocnymi uderzeniami (ścieżka perkusji) ma swoje uderzenia przy każdej
+wartości, więc jego udział rusza się mniej. Do 1.4.0-beta.1 przełącznik skalował próg
+liniowo: powyżej 128 próg szedł tylko z 10 do 5 (6,5% ramek krótkich przy 255 na eurodance),
+a tuż poniżej 128 przeskakiwał większość prawdziwych ataków, dlatego środek wydawał się nic
+nie robić.
 
-Praktyczne odkrycie jest takie, że środek zakresu robi na większości materiału niewiele.
-Decyzja na danej ramce zwykle nie jest bliska, więc odwracają ją tylko wartości blisko końców.
-W praktyce traktuj to jak przełącznik trójpozycyjny, w którym `0` i `255` są interesującymi
-ustawieniami, a środek jest użyteczny tylko na materiale, który naprawdę siedzi blisko granicy
-decyzji.
+Zmienia się tylko decyzja o ataku. Sekwencję okien dalej budują własne przejścia kodera
+(długie, start, krótkie, stop, długie), a oba kanały są synchronizowane jak w stocku, więc
+dekoder zawsze dostaje legalną sekwencję. Sprawdzone: 300 kodowań (od 0 do 255, LC, HE-AAC,
+HE-AAC v2, grupowanie krótkich 1 i 3, cisza, sinus, muzyka), 0 nielegalnych przejść okien
+i 0 błędów dekodera. `--verbose` pokazuje wartość.
 
-Przykłady:
-- Łagodnie, więcej bloków krótkich: `--block-bias 160`. Ramki graniczne idą na krótkie.
-  Widoczne tylko na materiale blisko granicy.
-- Mocno, więcej bloków krótkich: `--block-bias 220`. Wyraźnie więcej ramek krótkich. Lepsza
-  rozdzielczość czasowa na treści perkusyjnej, gorsza rozdzielczość częstotliwościowa i więcej
-  bitów wydanych na fragmenty tonalne.
-- Przesadnie, więcej bloków krótkich: `--block-bias 255`. Prawie wszystko krótkie. Materiał
-  tonalny jest kodowany ośmioma oknami, które nie rozdzielą jego składowych, i brzmi szorstko
-  i drogo, co jest dobrym pokazem tego, po co są bloki długie.
-- Łagodnie, więcej bloków długich: `--block-bias 100`. Ramki graniczne zostają długie.
-- Mocno, więcej bloków długich: `--block-bias 40`. Wyraźnie mniej ramek krótkich. Taniej na
-  materiale tonalnym, z pre-echem pojawiającym się na prawdziwych atakach.
-- Przesadnie, więcej bloków długich: `--block-bias 0`. Praktycznie tylko bloki długie. Każdy
-  transjent musi być niesiony przez blok długi, więc pre-echo staje się dominującym artefaktem
-  na materiale perkusyjnym. To też warunek, w którym przełączniki pre-echa z grupy E w końcu
-  mają znaczenie w AAC-LC, bo zwykła droga ucieczki do bloków krótkich jest zamknięta.
+Przykłady (eurodance, 64 kbps; udział ramek krótkich):
+- `--block-bias 64`: 0,1% zamiast 1,6%. Materiał stały zostaje długi, mocne uderzenia nadal
+  idą na krótkie.
+- `--block-bias 160`: 23%. Każdy większy wzrost poziomu dostaje bloki krótkie.
+- `--block-bias 192`: 57%.
+- `--block-bias 224`: 87%.
+- `--block-bias 255`: 100%. Materiał tonalny brzmi szorstko, pokaz tego, po co są bloki
+  długie.
+- `--block-bias 0`: 0%. Każdy transjent niesie blok długi, pre-echo staje się głównym
+  artefaktem na materiale perkusyjnym.
 
-Współpraca i konflikty: przy `--block-bias 0` `--preecho-rise`, `--preecho-depth` i
-`--tns-thresh` z grupy E zostają jedynymi narzędziami przeciw pre-echu, czyli w tej samej
-sytuacji, w jakiej LD i ELD są na stałe. `--short-groups` i `--window-shape` mają znaczenie
-tylko tam, gdzie bloki krótkie nadal występują, więc bardzo niskie przechylenie czyni je bez
-znaczenia. `--attack-decay` i `--attack-floor` zmieniają sam detektor, a nie próg, z którym
-się porównuje.
-
-Zmierzone: przy AAC-LC 128 kbps na attacks48 strumień zmieniły tylko `0` i `255`. `64`, `128`
-i `192` były identyczne ze stockiem, i to jest podstawa do traktowania środka zakresu jako
-bezczynnego na zwykłym materiale.
+Współpraca i konflikty: przy `--block-bias 0` `--preecho-rise`, `--preecho-depth`
+i `--tns-thresh` z grupy E zostają jedynymi narzędziami przeciw pre-echu, czyli sytuacja,
+w jakiej LD i ELD są zawsze. `--short-groups`, `--window-shape` i `--pns-short` mają znaczenie
+tylko tam, gdzie występują bloki krótkie. `--attack-decay` i `--attack-floor` zmieniają sam
+detektor; łączą się z tym przełącznikiem.
 
 ### `--vbr-reservoir <bits>`
 

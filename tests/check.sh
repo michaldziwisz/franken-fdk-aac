@@ -30,7 +30,7 @@ command -v ffmpeg  >/dev/null || { echo "SKIP: brak ffmpeg";  exit 77; }
 command -v python3 >/dev/null || { echo "SKIP: brak python3"; exit 77; }
 [ -x "$X64" ] || [ -f "$X64" ] || { echo "FAIL: brak $X64"; exit 1; }
 
-cleanup(){ rm -f "$WAV" _check_core_*.wav _check_core_*.txt _check_invf.wav _check_nfw.wav _check_unlock.wav _check_hdr.wav _check_msshort.wav _check_isalt.wav _check_allshort.wav _check_longonly.wav _check_scu.wav _check_scp.wav _check_pss.wav short_ms.wav is_alt.wav _check_dab_in.wav _check_psmulti.wav _check_psnoiid.wav "${OUT}"*.m4a "${OUT}"*.aac "${OUT}"*.txt "${OUT}"*.dabp "${OUT}"*.bin "${OUT}"*.loas; rm -rf _check_dabtmp; }
+cleanup(){ rm -f "$WAV" _check_core_*.wav _check_core_*.txt _check_invf.wav _check_nfw.wav _check_unlock.wav _check_hdr.wav _check_msshort.wav _check_isalt.wav _check_allshort.wav _check_longonly.wav _check_scu.wav _check_scp.wav _check_pss.wav _check_bb.wav _check_bbs.wav short_ms.wav is_alt.wav _check_dab_in.wav _check_psmulti.wav _check_psnoiid.wav "${OUT}"*.m4a "${OUT}"*.aac "${OUT}"*.txt "${OUT}"*.dabp "${OUT}"*.bin "${OUT}"*.loas; rm -rf _check_dabtmp; }
 trap cleanup EXIT
 
 # --- probka: 2s stereo, ton + lekki szum (rusza MS/IS/TNS) ---
@@ -1340,6 +1340,64 @@ s2=$(stat -c%s "${OUT}_ps2.aac" 2>/dev/null || echo 0); s3=$(stat -c%s "${OUT}_p
 [ "${np:-0}" -gt 0 ] && [ "$s3" -gt 0 ] && [ "$s3" -lt "$s2" ] && [ "$(derr ${OUT}_ps3.aac)" = "0" ] \
   && ok "--pns-short 1 + --short-groups 1: PNS w $np grupach short, plik $s2 -> $s3 B, dekodowalny" || bad "--pns-short 1: grupy z PNS $np, plik $s2 -> $s3"
 rm -f _check_pss.wav
+
+# --- --block-bias: udzial ramek short idzie za suwakiem (1.4.0-beta.2) ---
+# Do beta.1 prog skalowany liniowo: powyzej 128 tylko 10 -> 5 (255 daleko od
+# samych short), ponizej 128 skok. Teraz tablica skalibrowana: 0 = same long,
+# 128 = stock bit w bit, 255 = same short (tez cisza), po drodze monotonicznie.
+python3 - _check_bb.wav _check_bbs.wav <<'PY'
+import numpy as np, wave, sys
+sr=48000; n=sr*6; rng=np.random.default_rng(4)
+env=np.ones(n); i=0; lvl=0.3
+while i<n:
+    L=int(rng.uniform(0.04,0.2)*sr); lvl=float(np.clip(lvl*10**(rng.uniform(-6,6)/20),0.05,1.0)); env[i:i+L]=lvl; i+=L
+env=np.convolve(env,np.ones(240)/240,'same'); t=np.arange(n)/sr
+x=(rng.standard_normal(n)*0.3+np.sin(2*np.pi*220*t)*0.4+np.sin(2*np.pi*1760*t)*0.2)*env*9000
+y=np.stack([x,0.8*x+rng.standard_normal(n)*300*env],1)
+def wr(f,a):
+    w=wave.open(f,'wb'); w.setnchannels(2); w.setsampwidth(2); w.setframerate(sr); w.writeframes(np.clip(a,-32767,32767).astype('<i2').tobytes()); w.close()
+wr(sys.argv[1],y); wr(sys.argv[2],np.zeros((sr*2,2)))
+PY
+bbs(){ jget "$(ms_json "$1")" short; }
+bbf(){ jget "$(ms_json "$1")" frames; }
+prev=-1; mono=1; line=""
+for b in 0 64 128 160 192 224 254 255; do
+  enc "$X64" -f2 -p2 -b64000 --block-bias $b -o "${OUT}_bb$b.aac" _check_bb.wav
+  sh=$(bbs "${OUT}_bb$b.aac"); [ "${sh:-0}" -ge "$prev" ] || mono=0; prev=${sh:-0}; line="$line $b:$sh"
+  [ "$(derr ${OUT}_bb$b.aac)" = "0" ] || mono=0
+done
+fr=$(bbf "${OUT}_bb255.aac")
+s0=$(bbs "${OUT}_bb0.aac"); s192=$(bbs "${OUT}_bb192.aac"); s224=$(bbs "${OUT}_bb224.aac"); s255=$(bbs "${OUT}_bb255.aac")
+[ $mono = 1 ] && [ "$s0" = "0" ] && [ "$s255" -ge $((fr - 2)) ] && [ "$s224" -gt $((fr / 3)) ] && [ "$s192" -gt "$(bbs ${OUT}_bb128.aac)" ] \
+  && ok "--block-bias: udzial short rosnie monotonicznie, 0 = same long, 255 = same short (ramek $fr,$line)" || bad "--block-bias: rozklad short$line (ramek $fr)"
+enc "$X64" -f2 -p2 -b64000 -o "${OUT}_bbn.aac" _check_bb.wav
+cmp -s "${OUT}_bbn.aac" "${OUT}_bb128.aac" && ok "--block-bias 128 = bez przelacznika, bit w bit" || bad "--block-bias 128 rozni sie od stock"
+enc "$X64" -f2 -p2 -b64000 --block-bias 255 -o "${OUT}_bbs.aac" _check_bbs.wav
+enc "$X64" -f2 -p2 -b64000 --block-bias 254 -o "${OUT}_bbs2.aac" _check_bbs.wav
+a=$(bbs "${OUT}_bbs.aac"); f=$(bbf "${OUT}_bbs.aac"); c=$(bbs "${OUT}_bbs2.aac")
+[ "$a" -ge $((f - 2)) ] && [ "$c" = "0" ] && [ "$(derr ${OUT}_bbs.aac)" = "0" ] \
+  && ok "--block-bias 255 w ciszy: $a/$f ramek short (254: $c), dekodowalne" || bad "--block-bias cisza: 255 -> $a/$f, 254 -> $c"
+# legalnosc sekwencji okien: LONG->{LONG,START}, START->SHORT, SHORT->{SHORT,STOP}, STOP->{LONG,START}
+seqok=1
+for b in 1 200 245 255; do for o in "-p2 -b64000" "-p5 -b48000" "-p29 -b32000" "-p2 -b96000 --short-groups 1"; do
+  enc "$X64" -f2 $o --block-bias $b -o "${OUT}_bbl.aac" _check_bb.wav
+  python3 - "${OUT}_bbl.aac" <<'PY' || seqok=0
+import sys; sys.path.insert(0,'tools/msis'); import parse_ms as p
+ok={0:{0,1},1:{2},2:{2,3},3:{0,1}}; seq=[]
+for fr,hdr,_ in p.frames(open(sys.argv[1],'rb').read()):
+    b=p.Bits(fr,hdr); ele=b.get(3)
+    if ele not in (0,1): continue
+    b.get(4)
+    if ele==1 and not b.get(1): continue
+    if ele==0: b.get(8)   # SCE: global_gain przed ics_info (HE-AAC v2 = mono + PS)
+    b.get(1); seq.append(b.get(2))
+bad=sum(1 for a,c in zip(seq[1:],seq[2:]) if c not in ok[a])   # ramka 0 = priming
+sys.exit(1 if bad else 0)
+PY
+  [ "$(derr ${OUT}_bbl.aac)" = "0" ] || seqok=0
+done; done
+[ $seqok = 1 ] && ok "--block-bias 1/200/245/255 x LC/HE/HEv2/short-groups 1: legalne przejscia okien, 0 bledow dekodera" || bad "--block-bias: nielegalna sekwencja okien albo blad dekodera"
+rm -f _check_bb.wav _check_bbs.wav
 
 echo "==================================="
 echo "WYNIK: PASS=$PASS FAIL=$FAIL"
