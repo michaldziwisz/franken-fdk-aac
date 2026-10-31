@@ -30,7 +30,7 @@ command -v ffmpeg  >/dev/null || { echo "SKIP: brak ffmpeg";  exit 77; }
 command -v python3 >/dev/null || { echo "SKIP: brak python3"; exit 77; }
 [ -x "$X64" ] || [ -f "$X64" ] || { echo "FAIL: brak $X64"; exit 1; }
 
-cleanup(){ rm -f "$WAV" _check_core_*.wav _check_core_*.txt _check_invf.wav _check_nfw.wav _check_unlock.wav _check_hdr.wav _check_msshort.wav _check_isalt.wav short_ms.wav is_alt.wav _check_dab_in.wav _check_psmulti.wav _check_psnoiid.wav "${OUT}"*.m4a "${OUT}"*.aac "${OUT}"*.txt "${OUT}"*.dabp "${OUT}"*.bin "${OUT}"*.loas; rm -rf _check_dabtmp; }
+cleanup(){ rm -f "$WAV" _check_core_*.wav _check_core_*.txt _check_invf.wav _check_nfw.wav _check_unlock.wav _check_hdr.wav _check_msshort.wav _check_isalt.wav _check_allshort.wav _check_longonly.wav short_ms.wav is_alt.wav _check_dab_in.wav _check_psmulti.wav _check_psnoiid.wav "${OUT}"*.m4a "${OUT}"*.aac "${OUT}"*.txt "${OUT}"*.dabp "${OUT}"*.bin "${OUT}"*.loas; rm -rf _check_dabtmp; }
 trap cleanup EXIT
 
 # --- probka: 2s stereo, ton + lekki szum (rusza MS/IS/TNS) ---
@@ -564,9 +564,12 @@ python3 tools/msis/gen_samples.py . >/dev/null && mv -f short_ms.wav "$MSS" && m
 ms_json(){ python3 tools/msis/parse_ms.py "$@" --json 2>/dev/null; }
 jget(){ python3 -c "import json,sys; d=json.loads(sys.argv[1]); print(d['$2'] if '$2'!='mmp2' else d['mmp'][2])" "$1"; }
 
-for spec in "lo0hi8:--msbands-lo 0 --msbands-hi 8:--lo 0 --hi 8" \
-            "max9:--msbands 9:--max 9" \
-            "lo3hi10:--msbands-lo 3 --msbands-hi 10:--lo 3 --hi 10"; do
+# Od 1.4.0-beta.2 zakres long przechodzi do ramek short przez Hz (44.1 kHz:
+# long 0..8 = 0..775 Hz -> short 0..0, long 3..10 = 258..1034 Hz -> short 0..1),
+# wiec ramki short sprawdzamy przelozonym zakresem (--slo/--shi/--smax).
+for spec in "lo0hi8:--msbands-lo 0 --msbands-hi 8:--lo 0 --hi 8 --slo 0 --shi 0" \
+            "max9:--msbands 9:--max 9 --smax 1" \
+            "lo3hi10:--msbands-lo 3 --msbands-hi 10:--lo 3 --hi 10 --slo 0 --shi 1"; do
   lbl="${spec%%:*}"; rest="${spec#*:}"; A="${rest%%:*}"; P="${rest#*:}"
   enc "$X64" -f2 -b96000 $A -o "${OUT}_mss_${lbl}.aac" "$MSS"
   if [ ! -s "${OUT}_mss_${lbl}.aac" ]; then
@@ -1143,6 +1146,126 @@ fsz=$(stat -c%s "${OUT}_bs1.aac"); nfr=$(tr -d '\r' < "${OUT}_bs.txt" | sed -n '
 python3 -c "import sys; sys.exit(0 if abs(float('${bpf:-0}')*${nfr:-1}-${fsz}*8) < ${fsz}*8*0.01 else 1)" \
   && ok "--bit-stats: suma bitow zgadza sie z plikiem ADTS (<1%)" || bad "--bit-stats: suma ${bpf}x${nfr} != ${fsz} B"
 rm -f _check_cov_*.wav
+
+# --- Przelaczniki pasmowe w ramkach short (bugi naprawione w 1.4.0-beta.2) ---
+# Przelaczniki biora numery pasm LONG. Ramka short ma wlasna tablice (48 kHz:
+# 14 pasm zamiast 49), wiec do 1.4.0-beta.1 numer trafial w inna czestotliwosc:
+# --msbands-lo 18 zostawialo short bez MS, --msbands 18 dawalo MS do 24 kHz,
+# --is-lo 33 kasowalo IS, --isbands zuzywaly pierwsze grupy okien. Teraz zakres
+# przechodzi do short przez Hz (najblizsza granica, remis w gore). Maske MS
+# czytamy z bitstreamu (parse_ms.py), pasma IS z logu sekcji zapisanych do
+# strumienia (FRANKEN_BANDLOG, przez WSLENV do .exe, bandlog.py).
+python3 tools/msis/gen_samples.py . >/dev/null && mv -f all_short.wav _check_allshort.wav && rm -f short_ms.wav is_alt.wav
+ASH=_check_allshort.wav
+blog(){ local f="$1"; shift; rm -f "$f"; FRANKEN_BANDLOG="$f" WSLENV="${WSLENV:+$WSLENV:}FRANKEN_BANDLOG" "$@" >/dev/null 2>&1; }
+enc "$X64" -f2 -p2 -b96000 --pns 0 -o "${OUT}_as0.aac" "$ASH"
+sh0=$(jget "$(ms_json ${OUT}_as0.aac)" short); fr0=$(jget "$(ms_json ${OUT}_as0.aac)" frames)
+[ "${sh0:-0}" -ge $(( ${fr0:-1} * 8 / 10 )) ] && ok "probka all_short: $sh0/$fr0 ramek short" || bad "probka all_short: tylko $sh0/$fr0 ramek short"
+# MS: zakres long 18..30 (2.5..9 kHz) = short 3..7; --msbands 18 (do 2.5 kHz) = short 0..2.
+for spec in "lo18hi30:--msbands-lo 18 --msbands-hi 30:--lo 18 --hi 30 --slo 3 --shi 7" \
+            "max18:--msbands 18:--max 18 --smax 3" \
+            "lo33:--msbands-lo 33:--lo 33 --slo 9"; do
+  lbl="${spec%%:*}"; rest="${spec#*:}"; A="${rest%%:*}"; P="${rest#*:}"
+  for g in 0 1 2 3; do
+    enc "$X64" -f2 -p2 -b96000 --pns 0 --short-groups $g $A -o "${OUT}_asm.aac" "$ASH"
+    j=$(ms_json "${OUT}_asm.aac" $P)
+    ir=$(jget "$j" short_ms_in_range); vb=$(jget "$j" viol_band); va=$(jget "$j" viol_all)
+    if [ -s "${OUT}_asm.aac" ] && [ "${ir:-0}" -gt 0 ] && [ "$vb" = "0" ] && [ "$va" = "0" ] && [ "$(derr ${OUT}_asm.aac)" = "0" ]; then
+      ok "MS short [$A, short-groups $g]: $ir pasm MS w przelozonym zakresie, 0 poza nim"
+    else
+      bad "MS short [$A, short-groups $g]: w_zakresie=$ir poza=$vb mask_all=$va"
+    fi
+  done
+done
+# Verbose pokazuje przeklad (tu: 48 kHz, long 18..30 -> short 3..7).
+"$X64" -f2 -p2 -b96000 --verbose --msbands-lo 18 --msbands-hi 30 -o "${OUT}_asv.aac" "$ASH" 2>&1 | tr -d '\r' | grep -q "long 18..30 (2531..9000 Hz) -> short 3..7" \
+  && ok "--verbose: przeklad pasm long -> short w pasmach i Hz" || bad "--verbose: brak linii przekladu msbands-lo/-hi"
+# IS: --is-lo 33 (10.5 kHz) = short 9; --is-hi 30 (9 kHz) = short do 7.
+ISA="--is 1 --is-aggression 100"
+blog "${OUT}_isl.txt" "$X64" -f2 -p2 -b48000 $ISA -o "${OUT}_isl.aac" "$ASH"
+j=$(python3 tools/msis/bandlog.py "${OUT}_isl.txt" 14,15 2>/dev/null)
+n0=$(jget "$j" short_groups_with)
+[ "${n0:-0}" -gt 0 ] && ok "IS w ramkach short bez flag: $n0 grup z IS (log sekcji dziala)" || bad "IS short bez flag: brak IS albo brak logu (FRANKEN_BANDLOG/WSLENV)"
+blog "${OUT}_isl.txt" "$X64" -f2 -p2 -b48000 $ISA --is-lo 33 -o "${OUT}_isl.aac" "$ASH"
+j=$(python3 tools/msis/bandlog.py "${OUT}_isl.txt" 14,15 2>/dev/null)
+mn=$(jget "$j" short_min_band); n1=$(jget "$j" short_groups_with)
+[ "${n0:-0}" -gt 0 ] && { [ "${n1:-0}" = "0" ] || [ "${mn:--1}" -ge 9 ]; } && [ "$(derr ${OUT}_isl.aac)" = "0" ] \
+  && ok "--is-lo 33 @ short: IS tylko od short 9 (10.5 kHz) albo wcale (grupy z IS: $n1)" || bad "--is-lo 33 @ short: najnizsze pasmo IS $mn"
+blog "${OUT}_isl.txt" "$X64" -f2 -p2 -b48000 $ISA --is-hi 30 -o "${OUT}_isl.aac" "$ASH"
+j=$(python3 tools/msis/bandlog.py "${OUT}_isl.txt" 14,15 2>/dev/null)
+mx=$(jget "$j" short_max_band); n2=$(jget "$j" short_groups_with)
+[ "${n2:-0}" -gt 0 ] && [ "${mx:-99}" -le 7 ] && ok "--is-hi 30 @ short: IS do short 7 (9 kHz), $n2 grup z IS" || bad "--is-hi 30 @ short: najwyzsze pasmo IS $mx, grup $n2"
+# Wymuszony IS long 25..45 (5..20 kHz) = short 6..12: kazda grupa ma IS na 6..
+blog "${OUT}_isl.txt" "$X64" -f2 -p2 -b48000 $ISA --is-force-lo 25 --is-force-hi 45 -o "${OUT}_isl.aac" "$ASH"
+j=$(python3 tools/msis/bandlog.py "${OUT}_isl.txt" 14,15 2>/dev/null)
+sg=$(jget "$j" short_groups); fw=$(python3 -c "import json,sys; d=json.loads(sys.argv[1]); print(d['short'].get('6',0))" "$j")
+[ "${sg:-0}" -gt 0 ] && [ "${fw:-0}" = "$sg" ] && [ "$(derr ${OUT}_isl.aac)" = "0" ] \
+  && ok "--is-force-lo 25 @ short: IS na short 6 (5.25 kHz) w kazdej z $sg grup" || bad "--is-force-lo 25 @ short: pasmo 6 z IS w $fw z $sg grup"
+# --isbands: limit w kazdej grupie (6 long -> 2 short przy 48 kHz), takze w pozniejszych grupach
+blog "${OUT}_isl.txt" "$X64" -f2 -p2 -b48000 $ISA --isbands 6 -o "${OUT}_isl.aac" "$ASH"
+j=$(python3 tools/msis/bandlog.py "${OUT}_isl.txt" 14,15 2>/dev/null)
+mp=$(jget "$j" max_per_group); lg=$(jget "$j" later_groups_with); lm=$(jget "$j" long_max_per_frame)
+[ "${mp:-99}" -le 2 ] && [ "${lg:-0}" -gt 0 ] && [ "${lm:-99}" -le 6 ] \
+  && ok "--isbands 6: long <= 6 na ramke, short <= 2 na grupe, IS takze w grupach > 0 ($lg)" || bad "--isbands 6: long max $lm, short max/grupe $mp, pozniejsze grupy z IS $lg"
+# --hole-start bez --hole-start-short przechodzi na short (verbose) ...
+"$X64" -f2 -p2 -b48000 --verbose --hole-start 25 -o "${OUT}_ash.aac" "$ASH" 2>&1 | tr -d '\r' | grep -q "hole-start            : 25 (short blocks: moved to 6)" \
+  && ok "--hole-start 25 -> short 6 (5.25 kHz)" || bad "--hole-start 25: brak przekladu na short"
+# ... a jawne --hole-start-short wygrywa (strumien = sam --hole-start-short 6 + hole-start 25)
+enc "$X64" -f2 -p2 -b48000 --hole-start 25 -o "${OUT}_ash1.aac" "$ASH"
+enc "$X64" -f2 -p2 -b48000 --hole-start 25 --hole-start-short 6 -o "${OUT}_ash2.aac" "$ASH"
+enc "$X64" -f2 -p2 -b48000 --hole-start 25 --hole-start-short 3 -o "${OUT}_ash3.aac" "$ASH"
+[ -s "${OUT}_ash1.aac" ] && cmp -s "${OUT}_ash1.aac" "${OUT}_ash2.aac" && ! cmp -s "${OUT}_ash1.aac" "${OUT}_ash3.aac" \
+  && ok "--hole-start-short jawne wygrywa z przekladem" || bad "--hole-start-short: przeklad i jawna wartosc sie nie zgadzaja"
+# --hole-spread 3.0 (wartosc stock long) nie zmienia juz ramek short; 9 zmienia
+# (64 kbps, --block-bias 255 = 141/143 ramek short: tu beta.1 zmieniala strumien przy 3.0)
+enc "$X64" -f2 -p2 -b64000 --block-bias 255 -o "${OUT}_hsp0.aac" "$ASH"
+enc "$X64" -f2 -p2 -b64000 --block-bias 255 --hole-spread 3.0 -o "${OUT}_hsp3.aac" "$ASH"
+enc "$X64" -f2 -p2 -b64000 --block-bias 255 --hole-spread 9 -o "${OUT}_hsp9.aac" "$ASH"
+[ -s "${OUT}_hsp3.aac" ] && cmp -s "${OUT}_hsp0.aac" "${OUT}_hsp3.aac" && ! cmp -s "${OUT}_hsp0.aac" "${OUT}_hsp9.aac" \
+  && ok "--hole-spread 3.0 = stock takze w short (2 dB), 9 zmienia" || bad "--hole-spread 3.0 zmienia ramki short albo 9 nic nie robi"
+# --tns-start dziala tez w ramkach short: pierwsza roznica strumienia musi byc w
+# ramce short (w beta.1 zmienialy sie tylko ramki long, tu jedyne 2 na koncu)
+enc "$X64" -f2 -p2 -b96000 --block-bias 255 -o "${OUT}_tns0.aac" "$ASH"
+enc "$X64" -f2 -p2 -b96000 --block-bias 255 --tns-start 6000 -o "${OUT}_tns1.aac" "$ASH"
+fdk=$(python3 - "${OUT}_tns0.aac" "${OUT}_tns1.aac" <<'PY'
+import sys; sys.path.insert(0,'tools/msis'); import parse_ms as p
+a=list(p.frames(open(sys.argv[1],'rb').read())); b=list(p.frames(open(sys.argv[2],'rb').read()))
+d=next((i for i,(x,y) in enumerate(zip(a,b)) if x[0]!=y[0]), None)
+print('S' if d is not None and p.parse_frame(a[d][0],a[d][1]).get('short') else 'L')
+PY
+)
+[ "$fdk" = "S" ] && [ "$(derr ${OUT}_tns1.aac)" = "0" ] \
+  && ok "--tns-start 6000 zmienia ramki short (dekodowalne)" || bad "--tns-start: pierwsza zmiana w ramce $fdk, nie short"
+# --side-cutoff: obie tablice zaokraglaja w gore (9 kHz: long 31 = 9.0 kHz, short 9 = 10.5 kHz)
+"$X64" -f2 -p2 -b48000 --verbose --side-cutoff 9000 -o "${OUT}_asc.aac" "$ASH" 2>&1 | tr -d '\r' | grep -q "long SFB 31, short SFB 9 up" \
+  && ok "--side-cutoff 9000: long SFB 31 / short SFB 9 (w gore)" || bad "--side-cutoff 9000: zla granica short"
+# DAB+ 960/120: wlasne tablice, przeklad z nich (long 18..30 = 2700..9600 Hz -> short 3..7)
+"$X64" --dab -p2 -b64 --verbose --msbands-lo 18 --msbands-hi 30 -o "${OUT}_asd.dabp" "$ASH" 2>&1 | tr -d '\r' | grep -q "long 18..30 (2700..9600 Hz) -> short 3..7" \
+  && ok "DAB+ 960/120: przeklad z tablic 960" || bad "DAB+ 960/120: zly przeklad pasm"
+# Material bez ramek short: przeklad nie zmienia niczego w long. Wymaga binarki
+# referencyjnej sprzed zmiany (FRANKEN_REF=sciezka wzgledna .exe), inaczej pomijane.
+if [ -n "${FRANKEN_REF:-}" ] && [ -f "$FRANKEN_REF" ]; then
+python3 - _check_longonly.wav <<'PY'
+import wave,struct,math,random,sys
+sr=48000; n=sr*3; rnd=random.Random(3); w=wave.open(sys.argv[1],'wb'); w.setnchannels(2); w.setsampwidth(2); w.setframerate(sr)
+o=[]
+for i in range(n):
+    t=i/sr; f=min(1.0,t/0.5)
+    s=f*(3000*math.sin(2*math.pi*300*t)+1500*math.sin(2*math.pi*2500*t)+800*math.sin(2*math.pi*9000*t)+700*math.sin(2*math.pi*14000*t)); z=f*400*(rnd.random()-0.5)
+    o.append(struct.pack('<hh',int(s+z),int(0.8*s-z)))
+w.writeframes(b''.join(o)); w.close()
+PY
+  enc "$X64" -f2 -p2 -b48000 -o "${OUT}_lo0.aac" _check_longonly.wav
+  shl=$(jget "$(ms_json ${OUT}_lo0.aac)" short)
+  lok=1
+  for a in "--msbands 18" "--msbands-lo 18 --msbands-hi 30" "--is 1 --is-aggression 100 --is-lo 33" "--isbands 6 --is 1 --is-aggression 100" "--hole-start 25" "--tns-start 4000"; do
+    enc "$X64" -f2 -p2 -b48000 $a -o "${OUT}_lo1.aac" _check_longonly.wav
+    enc "$FRANKEN_REF" -f2 -p2 -b48000 $a -o "${OUT}_lo2.aac" _check_longonly.wav
+    cmp -s "${OUT}_lo1.aac" "${OUT}_lo2.aac" || { lok=0; echo "    rozne: $a"; }
+  done
+  [ "$shl" = "0" ] && [ $lok = 1 ] && ok "material bez short: 6 przelacznikow pasmowych bit w bit jak binarka referencyjna" || bad "material bez short: short=$shl, przeklad zmienil ramki long"
+fi
+rm -f "$ASH" _check_longonly.wav
 
 echo "==================================="
 echo "WYNIK: PASS=$PASS FAIL=$FAIL"

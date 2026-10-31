@@ -509,18 +509,6 @@ extern "C" void frankenBuildBandMaps(const int *offL, int cntL, int actL,
       S->isMax = (n < 1) ? 1 : n;
     }
   }
-  /* --side-cutoff <Hz>: the long table takes the first band border at or above
-   * the frequency (psy_configuration.cpp). The short border used to be found
-   * the same way on its own, coarser table, so 9 kHz became 10.5 kHz in short
-   * frames. Now the short border is the one nearest to the LONG edge, ties
-   * upwards, like every other band switch. */
-  if (g_franken.sideCutoffHz > 0 && g_franken.effSideCutSfbLong >= 0) {
-    const int cl = g_franken.effSideCutSfbLong;
-    g_franken.effSideCutSfbShort =
-        (cl >= s_cntL) ? s_cntS
-                       : frNearestBorder(s_offL[cl], s_offL[s_cntL], s_offS, s_cntS,
-                                         s_offS[s_cntS]);
-  }
   /* --hole-start without --hole-start-short: the long start moved to the
    * short table the same way (stock pair 15 / 3 maps onto itself at 44.1 and
    * 48 kHz). An explicit --hole-start-short wins. */

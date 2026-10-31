@@ -514,10 +514,19 @@ BOTTOM of the spectrum. Band 0 is bass, the highest number is the top of the cod
 How many bands exist depends on profile and sample rate: at LC 48 kHz stereo `--verbose`
 prints `active SFBs (long): 49`, so legal band numbers run 0..48. Always read that line
 before setting a range, because the count changes with the configuration and a number you
-remembered from another encode may be out of the spectrum entirely. Short blocks are
-numbered the same way, from 0 inside each window group, and a short frame has far fewer
-bands (around 14 at 44.1 and 48 kHz); a range that reaches above the short band count
-simply leaves short frames in plain L/R.
+remembered from another encode may be out of the spectrum entirely.
+
+**Short blocks.** The numbers you give are always LONG-block bands. A short frame has its
+own, much coarser table (around 14 bands at 44.1 and 48 kHz, counted from 0 inside each
+window group), so the same number would mean another frequency there. The encoder
+therefore moves every range to the short table by frequency: each edge goes to the
+nearest short band edge in Hz, an exact tie goes up. A short band is in the range when
+at least half of it is. A narrow range that falls inside one wide short band takes that
+band. The result is the same region of the spectrum in long and short frames, for every
+sample rate, for DAB+ (960/120) and for every `--short-groups` setting. `--verbose` prints
+both, for example `long 18..30 (2531..9000 Hz) -> short 3..7 (2250..8250 Hz)`. Up to
+1.4.0-beta.1 the numbers were compared directly: `--msbands-lo 18` left short frames with
+no MS at all, and `--msbands 18` (MS up to 2.5 kHz) gave short frames MS up to 24 kHz.
 
 **Why a range above the coded bandwidth does nothing.** The SFB count is the full table
 for the profile, but only bands up to the coded bandwidth carry anything. Bands above the
@@ -669,9 +678,8 @@ anchored at band 0.
 The upper edge of the from..to window described above, and inclusive: `--msbands-hi 5`
 includes band 5. Bands above it go to plain L/R.
 
-In short blocks the number means the same frequency region, counted from 0 inside each
-window group, and short frames have only about 14 bands at 44.1 and 48 kHz. A range whose
-upper edge sits above the short band count leaves short frames in L/R rather than failing.
+In short blocks the range covers the same frequencies on the short table (see *Short
+blocks* above), so `--msbands-lo 18 --msbands-hi 30` at 48 kHz is short bands 3..7.
 
 Examples:
 - Mild: `--msbands-lo 0 --msbands-hi 44`. Top four bands excluded from MS. Small change.
@@ -881,7 +889,10 @@ Above the cutoff the side signal is dropped and the band is written as mid only,
 cheap MS mask. FDK's own intensity stereo decision is cleared there, because pure mid is
 cheaper (IS needs positions and forbids the one-code MS mask); forced IS from
 `--is-force-lo/-hi` still wins. Bands that both channels code as PNS are left as they are.
-Below the cutoff stereo is untouched. `--verbose` prints the band where it starts.
+Below the cutoff stereo is untouched. `--verbose` prints the band where it starts, in the
+long and in the short table. Both round up to the next band edge, so on the coarse short
+table the edge can only move up (9 kHz: long band 31 at 9.0 kHz, short band 9 at 10.5 kHz),
+which destroys less side, never more.
 
 Examples (acoustic stereo music):
 - Mild: `-b 48000 --side-cutoff 8000`. Side info 238 to 235 bits per frame, mid a little cleaner.
@@ -1086,6 +1097,12 @@ let it swallow half the spectrum.
 Read the ceiling against `--verbose` `active SFBs`: at LC 48 kHz stereo there are 49
 bands, so a cap of 40 is barely a cap at all and a cap of 4 is severe. Bands beyond the
 cap are coded normally.
+
+In short frames the cap holds for every window group on its own (each group is a slice of
+time with its own copy of the band table) and is scaled to the coarser table: at 48 kHz
+`--isbands 6` allows 2 short bands per group. Up to 1.4.0-beta.1 it counted across the
+groups, so the first groups of a transient frame used it up and the rest of the frame got
+no IS at all.
 
 Examples:
 - Mild cap: `--isbands 24`. Half the spectrum may still go intensity. On most material
@@ -4595,14 +4612,19 @@ Examples, allowing deeper holes:
 - Exaggerated: `--hole-start 0`. Even the bass bands may be cut. Useful only to hear what
   the stock protection prevents.
 
-Works with / against: the mirror switch for short blocks is `--hole-start-short`.
+Short blocks: without `--hole-start-short` the same frequency is used there (the
+nearest short band edge; `--hole-start 25`, 5 kHz at 48 kHz, becomes short band 6, and
+the stock pair 15/3 maps onto itself). `--verbose` shows it.
+
+Works with / against: `--hole-start-short` sets the short value explicitly and wins.
 
 ### `--hole-start-short <sfb>`
 
 **The same protection for short blocks.**
 
 - Applies to: LC and the HE-AAC core, frames coded as short blocks. LD and ELD have none.
-- Values: short-block scalefactor band 0..15; default: off, which is stock behaviour (band 3)
+- Values: short-block scalefactor band 0..15; default: off, which is stock behaviour (band 3),
+  or the frequency of `--hole-start` when that one is given
 - Input: whole number
 
 A short block has about 14 bands at 44.1 or 48 kHz, so each band is wide and the numbers
@@ -4650,8 +4672,9 @@ Examples, allowing more holes:
 - Exaggerated: `--hole-spread 0`. The spread energy is taken at face value; any band
   sitting next to louder ones is a candidate.
 
-Note: setting this switch applies the same margin to long and short blocks, while stock
-uses 3 dB and 2 dB.
+The value is for long blocks; short blocks get two thirds of it, which keeps the stock
+ratio (3 dB long, 2 dB short). `--hole-spread 3` is therefore exactly stock in both. Up to
+1.4.0-beta.1 one value replaced both.
 
 ### `--preecho-rise <dB>`
 
@@ -4868,16 +4891,17 @@ large the filter may be; this switch decides how often it is worth it.
 
 ### `--tns-start <Hz>`
 
-**Sets the lowest frequency the lower TNS filter covers in long blocks.**
+**Sets the lowest frequency the lower TNS filter covers.**
 
-- Applies to: AAC-LC and the LC core of HE-AAC, long blocks. Measured no effect in LD and
-  ELD.
+- Applies to: AAC-LC and the LC core of HE-AAC, long and short blocks. Measured no effect
+  in LD and ELD.
 - Values: 0..24000 Hz; default: off, which is stock behaviour (8 scalefactor bands, about
   1.4 kHz at 48 kHz)
 - Input: whole number
 
-Stock keeps the lowest bands out of TNS. The value is rounded to the nearest scalefactor
-band edge, and it cannot go above the top of the TNS range.
+Stock keeps the lowest bands out of TNS in long blocks and starts at 0 Hz in short ones.
+The value is rounded to the nearest scalefactor band edge of each table, and it cannot go
+above the top of the TNS range. Up to 1.4.0-beta.1 short blocks ignored it.
 
 Examples, reaching lower:
 - Mild: `--tns-start 1000`.

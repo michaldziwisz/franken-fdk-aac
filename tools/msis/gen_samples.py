@@ -4,6 +4,9 @@
 short_ms.wav  - silnie skorelowane L~R (MS oplacalne) + gesto rozmieszczone
                 transjenty (klik + wybuch szumu co 60 ms) -> duzo ramek
                 EIGHT_SHORT z kilkoma grupami okien.
+all_short.wav - 48 kHz, atak co 1024 probki (w kazdej ramce) na skorelowanym
+                tle z tonami 330/2700/9100 Hz -> ~85% ramek EIGHT_SHORT, MS i IS
+                oplacalne, pasmo do ~14 kHz. Do testow przekladu pasm long->short.
 is_alt.wav    - kazde pasmo czestotliwosci naprzemiennie TYLKO w L albo TYLKO
                 w R (tony w kolejnych pasmach) -> skrajne, przeciwne isScale
                 w sasiednich SFB przy wymuszonym IS.
@@ -59,8 +62,29 @@ def is_alt(path, secs=3.0):
     write(path, L, R)
 
 
+def all_short(path, secs=3.0, seed=5, sr=48000):
+    rnd = random.Random(seed)
+    n = int(sr * secs)
+    c = lambda x: max(-32768, min(32767, int(x)))
+    w = wave.open(path, "wb")
+    w.setnchannels(2); w.setsampwidth(2); w.setframerate(sr)
+    out = []
+    for i in range(n):
+        t = i / sr
+        k = i % 1024
+        base = (2500 * math.sin(2 * math.pi * 330 * t) + 1200 * math.sin(2 * math.pi * 2700 * t)
+                + 700 * math.sin(2 * math.pi * 9100 * t))
+        burst = 13000 * math.exp(-k / 60.0) * rnd.uniform(-1, 1) if k < 300 else 0.0
+        com = base + burst + 900 * rnd.uniform(-1, 1)
+        d = 0.1 * com + 250 * rnd.uniform(-1, 1)
+        out.append(struct.pack("<hh", c(com + d), c(com - d)))
+    w.writeframes(b"".join(out))
+    w.close()
+
+
 if __name__ == "__main__":
     d = sys.argv[1] if len(sys.argv) > 1 else "."
     short_ms(d + "/short_ms.wav")
     is_alt(d + "/is_alt.wav")
+    all_short(d + "/all_short.wav")
     print("ok")

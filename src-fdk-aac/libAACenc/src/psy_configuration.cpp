@@ -859,7 +859,9 @@ AAC_ENCODER_ERROR FDKaacEnc_InitPsyConfiguration(INT bitrate, INT samplerate,
   psyConf->sfbActive = fMax(psyConf->sfbActive, psyConf->sfbActiveLFE);
 
   /* Frankenstein --side-cutoff <Hz>: first SFB that starts at or above the
-   * cutoff, per block type (the SFB tables differ). */
+   * cutoff, per block type (the SFB tables differ). Rounding up on both tables
+   * is deliberate: above the edge the side is destroyed, so a coarse short
+   * table moves the edge up (less destroyed), never down. */
   {
     INT cut = -1;
     if (g_franken.sideCutoffHz > 0) {

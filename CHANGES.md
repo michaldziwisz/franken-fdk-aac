@@ -5,6 +5,54 @@ Library** (per section 2 of the FDK AAC license, see `NOTICE.fdk-aac`).
 
 ## Releases
 
+### v1.4.0-beta.2 (in progress) — band switches in short blocks
+
+#### Short blocks: band switches follow the frequency
+
+Every switch that takes a band number takes a LONG-block scalefactor band. A short
+frame has its own, much coarser table (48 kHz: 49 long bands, 14 short ones, counted
+from 0 in every window group). Up to beta.1 the numbers were compared with the short
+table directly, so in short frames they pointed at other frequencies. Measured on
+beta.1 (48 kHz, 96 kbps, MS mask read from the bitstream): `--msbands-lo 18
+--msbands-hi 30` (2.5..9 kHz) left short frames with no MS at all, `--msbands 18`
+(MS up to 2.5 kHz) gave short frames MS on every band up to 24 kHz, `--is-lo 33`
+(10.5 kHz) removed IS from short frames.
+
+- `--msbands`, `--msbands-lo/-hi`, `--is-lo/-hi`, `--is-force-lo/-hi`: at init each
+  range is moved to the short table by frequency, from the real tables of the sample
+  rate and frame length (also DAB+ 960/120). Each edge goes to the nearest short band
+  edge in Hz, a tie goes up; a narrow range inside one short band takes that band.
+  Window groups repeat the table, so `--short-groups` makes no difference.
+- `--isbands`: counted per window group (the first groups of a transient frame used
+  to use up the cap and leave the rest of the frame without IS), scaled to the short
+  table (48 kHz: 6 long -> 2 short per group).
+- `--hole-start` without `--hole-start-short` now also moves the short start to the
+  same frequency (stock 15/3 maps onto itself at 44.1/48 kHz). An explicit
+  `--hole-start-short` wins.
+- `--hole-spread`: the value is for long blocks, short blocks get 2/3 of it (stock
+  3 dB / 2 dB). `--hole-spread 3` used to change short frames.
+- `--tns-start` also moves the TNS start of short blocks (stock 0 Hz there).
+- `--side-cutoff` unchanged: both tables round up, so the short edge can only move up
+  (less side destroyed).
+- `--verbose` prints the long and the short range in bands and Hz.
+- Without these switches, and on material without short frames, the stream is bit
+  for bit the beta.1 stream (checked against the beta.1 binary).
+- Test aid: `FRANKEN_BANDLOG=<file>` logs every written section per window group;
+  `tools/msis/bandlog.py` reads it. `parse_ms.py` takes `--slo/--shi/--smax`.
+
+#### Measured, not adopted: PNS in short frames
+
+The syntax allows noise substitution in short windows; FDK never does it. An
+experiment (`--pns-above` also in short frames, not in this build) was measured on a
+sample with an attack in every frame: at 32 kbps the PNS energies took 19% of the
+frame instead of 2% and the bits left for the spectrum fell by a third, at the same
+file size. With 4 groups the noise level per group follows the attack poorly
+(pre-echo +0.5..1 dB, the attack itself 1.4..2.8 dB too quiet). It only pays off with
+one group of 8 windows (`--short-groups 1`), where the file was 4% smaller and the
+band came out at the right level instead of 6 dB too quiet at 24 kbps, but there the
+noise is smeared over the whole frame: pre-echo +1.3 dB, attack 2.5 dB too quiet.
+Kept out until it is listened to.
+
 ### v1.4.0-beta.1 — side knee as an offset, side cutoff, IS gate, PNS that saves bits, bit statistics, documentation audit (plus the SBR estimator knobs, `--sbr-softness`, real low-bitrate unlock)
 
 #### Core transients, pre-echo and spectral holes (LC / LD / ELD)

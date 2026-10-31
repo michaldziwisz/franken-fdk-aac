@@ -526,9 +526,20 @@ kodowanego zakresu. Ile pasm istnieje, zależy od profilu i częstotliwości pr�
 przy LC 48 kHz stereo `--verbose` wypisuje `active SFBs (long): 49`, więc dozwolone
 numery pasm to 0..48. Zawsze przeczytaj tę linię, zanim ustawisz zakres, bo liczba zmienia
 się wraz z konfiguracją, a numer zapamiętany z innego kodowania może wypadać całkiem poza
-widmo. Bloki krótkie są numerowane tak samo, od `0` wewnątrz każdej grupy okien, a ramka
-krótka ma znacznie mniej pasm (około 14 przy 44,1 i 48 kHz); zakres, który sięga powyżej
-liczby pasm krótkich, po prostu zostawia ramki krótkie w zwykłym L/R.
+widmo.
+
+**Bloki krótkie.** Podawane numery to zawsze pasma bloku DŁUGIEGO. Ramka krótka ma własną,
+dużo grubszą tablicę (około 14 pasm przy 44,1 i 48 kHz, liczonych od `0` wewnątrz każdej
+grupy okien), więc ten sam numer oznaczałby tam inną częstotliwość. Dlatego enkoder
+przenosi każdy zakres na tablicę krótką według częstotliwości: każda krawędź trafia na
+najbliższą w Hz krawędź pasma krótkiego, a przy dokładnym remisie na wyższą. Pasmo krótkie
+należy do zakresu, gdy leży w nim co najmniej połowa jego szerokości. Wąski zakres, który
+mieści się w jednym szerokim paśmie krótkim, dostaje to pasmo. W efekcie ramki długie
+i krótkie obejmują ten sam obszar widma, przy każdej częstotliwości próbkowania, w DAB+
+(960/120) i przy każdym ustawieniu `--short-groups`. `--verbose` wypisuje oba przekłady, np.
+`long 18..30 (2531..9000 Hz) -> short 3..7 (2250..8250 Hz)`. Do 1.4.0-beta.1 numery były
+porównywane wprost: `--msbands-lo 18` zostawiało ramki krótkie całkiem bez MS, a
+`--msbands 18` (MS do 2,5 kHz) dawało w ramkach krótkich MS aż do 24 kHz.
 
 **Dlaczego zakres powyżej kodowanego pasma nie robi nic.** Liczba SFB to pełna tabela dla
 profilu, ale tylko pasma do kodowanego pasma cokolwiek niosą. Pasma powyżej częstotliwości
@@ -684,10 +695,9 @@ samą funkcją zakotwiczoną w pasmie 0.
 Górna krawędź opisanego wyżej okna od..do, i to włącznie: `--msbands-hi 5` obejmuje pasmo
 5. Pasma powyżej idą w zwykłe L/R.
 
-W blokach krótkich numer oznacza ten sam obszar częstotliwości, liczony od `0` wewnątrz
-każdej grupy okien, a ramki krótkie mają tylko około 14 pasm przy 44,1 i 48 kHz. Zakres,
-którego górna krawędź leży powyżej liczby pasm krótkich, zostawia ramki krótkie w L/R,
-a nie kończy się błędem.
+W blokach krótkich zakres obejmuje te same częstotliwości na tablicy krótkiej (zobacz
+*Bloki krótkie* wyżej), więc `--msbands-lo 18 --msbands-hi 30` przy 48 kHz to pasma
+krótkie 3..7.
 
 Przykłady:
 - Łagodnie: `--msbands-lo 0 --msbands-hi 44`. Cztery najwyższe pasma wykluczone z MS.
@@ -904,7 +914,10 @@ Powyżej granicy sygnał side jest porzucany, a pasmo zapisywane tylko jako mid,
 MS. Własna decyzja FDK o intensity stereo jest tam kasowana, bo czysty mid jest tańszy (IS
 potrzebuje pozycji i blokuje maskę MS zapisywaną jednym kodem); wymuszone IS z
 `--is-force-lo/-hi` nadal wygrywa. Pasma, które oba kanały kodują jako PNS, zostają bez zmian.
-Poniżej granicy stereo jest nietknięte. `--verbose` pokazuje pasmo, od którego działa.
+Poniżej granicy stereo jest nietknięte. `--verbose` pokazuje pasmo, od którego działa,
+w tablicy długiej i krótkiej. Obie zaokrąglają w górę do następnej krawędzi pasma, więc na
+grubej tablicy krótkiej granica może się tylko przesunąć w górę (9 kHz: pasmo długie 31 na
+9,0 kHz, krótkie 9 na 10,5 kHz), czyli niszczy mniej side, nigdy więcej.
 
 Przykłady (akustyczna muzyka stereo):
 - Łagodnie: `-b 48000 --side-cutoff 8000`. Informacje boczne z 238 do 235 bitów na ramkę, mid trochę czystszy.
@@ -1110,6 +1123,12 @@ połowy widma.
 Czytaj ten pułap wobec `active SFBs` z `--verbose`: przy LC 48 kHz stereo jest 49 pasm,
 więc pułap 40 jest ledwie pułapem, a pułap 4 jest surowy. Pasma za pułapem są kodowane
 normalnie.
+
+W ramkach krótkich pułap obowiązuje w każdej grupie okien osobno (każda grupa to odcinek
+czasu z własną kopią tablicy pasm) i jest przeliczany na grubszą tablicę: przy 48 kHz
+`--isbands 6` pozwala na 2 pasma krótkie w grupie. Do 1.4.0-beta.1 liczył przez grupy po
+kolei, więc pierwsze grupy ramki transjentowej go zużywały, a reszta ramki zostawała
+całkiem bez IS.
 
 Przykłady:
 - Łagodny pułap: `--isbands 24`. Połowa widma nadal może pójść w intensity. Przy
@@ -4694,8 +4713,11 @@ Przykłady, dopuszczać głębsze dziury:
 - Przesadnie: `--hole-start 0`. Nawet pasma basu wolno ściąć. Przydatne tylko do usłyszenia,
   czemu zapobiega stockowa ochrona.
 
-Współpraca i konflikty: lustrzanym przełącznikiem dla bloków krótkich jest
-`--hole-start-short`.
+Bloki krótkie: bez `--hole-start-short` używana jest tam ta sama częstotliwość (najbliższa
+krawędź pasma krótkiego; `--hole-start 25`, czyli 5 kHz przy 48 kHz, staje się pasmem
+krótkim 6, a para stock 15/3 przechodzi sama na siebie). `--verbose` to pokazuje.
+
+Współpraca i konflikty: `--hole-start-short` ustawia wartość krótką jawnie i wygrywa.
 
 ### `--hole-start-short <sfb>`
 
@@ -4704,7 +4726,7 @@ Współpraca i konflikty: lustrzanym przełącznikiem dla bloków krótkich jest
 - Dotyczy: LC i rdzenia HE-AAC, ramek kodowanych jako bloki krótkie. LD i ELD nie mają
   żadnych.
 - Wartości: pasmo współczynnika skali bloku krótkiego 0..15; domyślnie: wyłączone, czyli
-  zachowanie stock (pasmo 3)
+  zachowanie stock (pasmo 3) albo częstotliwość z `--hole-start`, gdy ten jest podany
 - Wpisywanie: liczba całkowita
 
 Blok krótki ma około 14 pasm przy 44,1 albo 48 kHz, więc każde pasmo jest szerokie, a liczby
@@ -4752,8 +4774,9 @@ Przykłady, dopuszczać więcej dziur:
 - Przesadnie: `--hole-spread 0`. Rozmyta energia jest brana za dobrą monetę; każde pasmo
   stojące obok głośniejszych jest kandydatem.
 
-Uwaga: ustawienie tego przełącznika stosuje ten sam margines do bloków długich i krótkich,
-podczas gdy stock używa 3 dB i 2 dB.
+Wartość dotyczy bloków długich; bloki krótkie dostają dwie trzecie, co zachowuje proporcję
+stock (3 dB długie, 2 dB krótkie). `--hole-spread 3` to więc dokładnie stock w obu. Do
+1.4.0-beta.1 jedna wartość zastępowała obie.
 
 ### `--preecho-rise <dB>`
 
@@ -4974,15 +4997,17 @@ być filtr; ten przełącznik decyduje, jak często się to opłaca.
 
 ### `--tns-start <Hz>`
 
-**Ustawia najniższą częstotliwość, którą dolny filtr TNS obejmuje w blokach długich.**
+**Ustawia najniższą częstotliwość, którą obejmuje dolny filtr TNS.**
 
-- Dotyczy: AAC-LC i rdzenia LC w HE-AAC, bloków długich. Zmierzony brak efektu w LD i ELD.
+- Dotyczy: AAC-LC i rdzenia LC w HE-AAC, bloków długich i krótkich. Zmierzony brak efektu
+  w LD i ELD.
 - Wartości: 0..24000 Hz; domyślnie: wyłączone, czyli zachowanie stock (8 pasm współczynnika
   skali, około 1,4 kHz przy 48 kHz)
 - Wpisywanie: liczba całkowita
 
-Stock trzyma najniższe pasma poza TNS. Wartość jest zaokrąglana do najbliższej krawędzi pasma
-współczynnika skali i nie może przekroczyć górnej granicy zakresu TNS.
+Stock trzyma najniższe pasma poza TNS w blokach długich, a w krótkich zaczyna od 0 Hz.
+Wartość jest zaokrąglana do najbliższej krawędzi pasma w każdej z tablic i nie może
+przekroczyć górnej granicy zakresu TNS. Do 1.4.0-beta.1 bloki krótkie ją pomijały.
 
 Przykłady, sięganie niżej:
 - Łagodnie: `--tns-start 1000`.
