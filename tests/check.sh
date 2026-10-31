@@ -1081,6 +1081,41 @@ for v in "--side-cutoff 999" "--side-cutoff 24001" "--is-admit 20.01" "--is-admi
 done
 rm -f "${OUT}"_sc*.wav
 
+# --- PNS: --pns-budget / --pns-shared / --pns-hold ---
+# Przy niskim bitrate wymuszony PNS jest ksiegowany przez FDK jako darmowy; w ramkach,
+# gdzie budzet sie nie domyka, awaryjne ciecie przelatuje przez pasma PNS i zeruje widmo
+# az do ~1.5 kHz. --pns-budget ma te ramki usunac, --pns-shared 1 sprowadzic maske MS do 2 bitow.
+PKW=_check_cov_dense.wav
+pk(){ "$X64" -f2 -p2 -b24000 --block-bias 0 -w 5500 --pns-above 2200 "$@" --bit-stats -o "${OUT}_pk.aac" "$PKW" 2>"${OUT}_pk.txt" >/dev/null; }
+cuts(){ python3 - "${OUT}_pk.aac" <<'PY'
+import sys; sys.path.insert(0,'tools/msis'); import parse_ms as p
+ms=[p.parse_frame(t[0],t[1]).get('max_sfb') for t in p.frames(open(sys.argv[1],'rb').read())]
+full=max(m for m in ms if m); print(sum(1 for m in ms if m and 5<m<full))
+PY
+}
+mask(){ tr -d '\r' < "${OUT}_pk.txt" | awk '/MS mask/{print int($3+0.5)}'; }
+pk; c0=$(cuts)
+pk --pns-budget 1; c1=$(cuts); [ "$(derr ${OUT}_pk.aac)" = 0 ] && [ "$c1" -lt "$c0" ] && [ "$c1" -le 2 ] \
+  && ok "--pns-budget 1: ramki z awaryjnym cieciem $c0 -> $c1, 0 bledow" || bad "--pns-budget 1: ciecia $c0 -> $c1"
+# maska i poziomy: dwa tony z szumem (maska stock MS_SOME, pasma dolne w MS)
+PKW="$WAV"; pk; m0=$(mask)
+pk --pns-shared 1; m1=$(mask); [ "$(derr ${OUT}_pk.aac)" = 0 ] && [ "$m1" -le 8 ] && [ "$m0" -gt 20 ] \
+  && ok "--pns-shared 1: maska MS $m0 -> $m1 bit/ramke" || bad "--pns-shared 1: maska $m0 -> $m1"
+pnsb(){ tr -d '\r' < "${OUT}_pk.txt" | awk '/PNS energies/{print int($3+0.5)}'; }
+pk --pns-budget 1 --pns-shared 1; p0=$(pnsb); pk --pns-budget 1 --pns-shared 1 --pns-hold 6; p1=$(pnsb)
+[ "$(derr ${OUT}_pk.aac)" = 0 ] && [ "$p1" -lt "$p0" ] && ok "--pns-hold 6: energie PNS $p0 -> $p1 bit/ramke" || bad "--pns-hold 6: $p0 -> $p1"
+PKW=_check_cov_dense.wav
+enc "$X64" -f2 -p2 -b24000 --pns-above 2200 -o "${OUT}_pn0.aac" _check_cov_dense.wav
+enc "$X64" -f2 -p2 -b24000 --pns-above 2200 --pns-budget 0 -o "${OUT}_pn1.aac" _check_cov_dense.wav
+[ "$(md5 ${OUT}_pn1.aac)" = "$(md5 ${OUT}_pn0.aac)" ] && ok "--pns-budget 0 = stock" || bad "--pns-budget 0 != stock"
+enc "$X64" -f2 -p2 -b24000 --pns 0 -o "${OUT}_pn2.aac" _check_cov_dense.wav
+enc "$X64" -f2 -p2 -b24000 --pns 0 --pns-budget 1 --pns-shared 1 --pns-hold 6 -o "${OUT}_pn3.aac" _check_cov_dense.wav
+[ "$(md5 ${OUT}_pn3.aac)" = "$(md5 ${OUT}_pn2.aac)" ] && ok "przelaczniki PNS bez PNS = strumien bez zmian" || bad "przelaczniki PNS zmieniaja strumien bez PNS"
+for v in "--pns-shared 2" "--pns-budget -1" "--pns-hold 0" "--pns-hold 12.01"; do
+  "$X64" -p2 -b32000 $v -f2 -o "${OUT}_vz.aac" _check_cov_dense.wav >/dev/null 2>&1; rc=$?
+  [ $rc = 1 ] && ok "$v odrzucone (rc=1)" || bad "$v rc=$rc"
+done
+
 # --- --bit-stats: tylko liczy, strumien bit w bit ten sam; tabela sie drukuje ---
 enc "$X64" -f2 -p2 -b14000 --uncap-bandwidth --unlock-bitrate -o "${OUT}_bs0.aac" _check_cov_dense.wav
 "$X64" -f2 -p2 -b14000 --uncap-bandwidth --unlock-bitrate --bit-stats -o "${OUT}_bs1.aac" _check_cov_dense.wav 2> "${OUT}_bs.txt" >/dev/null

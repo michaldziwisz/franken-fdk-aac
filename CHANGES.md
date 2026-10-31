@@ -48,6 +48,16 @@ is unchanged byte for byte.
   rescued.
 - `tools/core/core_measure.py` also reports `nsr_kept`, the error in the
   bands that were not cut.
+- `--pns-budget 0|1`: books the bits of PNS noise levels. Stock plans a PNS band as
+  free; with a lot of PNS at a low rate the frame overflows and crash recovery cuts
+  through the noise region into the coded spectrum (whole frames lose everything above
+  ~1.5 kHz, a crackle in frame rhythm). Now the spectrum target is lowered by the noise
+  cost and the cut gets those bits back. 24 kbps, PNS from 2.2 kHz: frames cut 42/766 to 1.
+- `--pns-shared 0|1`: bands that both channels code as PNS carry one shared noise (1) or
+  independent noise (0) uniformly, so the MS mask can fall back to 2 bits (28 to 2 bits
+  per frame measured). Noise levels stay per channel, the format has no shared level.
+- `--pns-hold <dB>`: neighbouring PNS bands within the tolerance share one level (delta
+  0 = 1 bit). 24 kbps: noise levels 94 to 70 bits per frame at 6 dB.
 - `--side-cutoff <Hz>`: from this frequency up every stereo band is coded as pure
   mid: MS forced, side zeroed, FDK's own IS decision cleared there (forced IS still
   wins). Bands that both channels code as PNS are left alone (their ms_used means

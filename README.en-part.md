@@ -4144,6 +4144,66 @@ Works with / against: usually given together with `--pns 1` and often with
 `--tns-mask 0` or under VBR, both of which force PNS off anyway. At bitrates above the
 gate it is a no-op.
 
+### `--pns-shared <0|1>`
+
+**In bands that both channels code as noise, write one shared noise or two independent ones, the same way in every band.**
+
+- Applies to: stereo AAC-LC core with PNS on (`--pns 1`, `--force-pns` or `--pns-above`). Off by default.
+- Values: `1` = one shared noise (the same noise in L and R), `0` = independent noise in each channel
+
+PNS replaces a band by noise of the right level. In a channel pair the format can say,
+band by band, that the decoder should use the same noise in both channels. That flag rides
+on the MS mask. Stock decides it per band by measuring the correlation, so the mask usually
+has to be written band by band: up to about 25 bits per frame at low rates. A uniform choice
+lets the mask fall back to its 2-bit all-bands form when the rest of the frame allows it.
+The noise level is still written for each channel: the format has no shared level.
+
+Examples (stereo music, 24 kbps, PNS from 2.2 kHz):
+- Typical: `--pns-shared 1`. MS mask 28 to 2 bits per frame on correlated material.
+- Wide stereo: `--pns-shared 0`. Independent noise keeps the width, the mask stays as expensive as stock.
+
+When the mask still stays per band (bands below the PNS region coded as L/R on wide
+material) the switch saves little: the mask is only cheap when every band agrees.
+ffmpeg 6.1.1 plays shared noise as independent noise; the FDK decoder plays it as shared.
+
+### `--pns-hold <dB>`
+
+**Let neighbouring noise bands share one level, so the noise envelope costs fewer bits.**
+
+- Applies to: AAC core with PNS on. Off by default.
+- Values: `0.1..12.0` dB
+
+Each PNS band carries its noise level as a difference from the previous one: 1 bit when
+it is the same, 3 to 9 bits otherwise. With this switch a band whose level is within the
+given tolerance of the previous noise band takes that level. The noise envelope over
+frequency gets coarser, in steps of about 1.5 dB.
+
+Examples (stereo music, 24 kbps, PNS from 2.2 kHz):
+- Mild: `--pns-hold 3`. Noise levels 94 to 87 bits per frame.
+- Strong: `--pns-hold 6`. 70 bits per frame; the freed bits go to the coded spectrum.
+- Exaggerated: `--pns-hold 12`. The noise is almost flat over its whole region.
+
+### `--pns-budget <0|1>`
+
+**Count the bits the PNS noise levels take, so a frame does not run out of bits and cut its spectrum.**
+
+- Applies to: AAC core with PNS on. Off by default.
+- Values: `1` = on, `0` = stock
+
+FDK treats a PNS band as free when it plans the bits of a frame, but every noise level costs
+bits in the stream. At low bitrates with a lot of PNS the frame then overflows, and the
+emergency cut removes bands from the top. Stock gives the cut no credit for the PNS bands,
+so it goes on through the noise region into the coded spectrum below it: whole frames lose
+everything above about 1.5 kHz, which sounds like a crackle in frame rhythm. With this switch
+the bit target for the spectrum is lowered by the cost of the noise levels, and the cut gets
+those bits back when it removes a noise band.
+
+Measured on acoustic stereo music, `-b 24000 --block-bias 0 -w 5500 --pns-above 2200`:
+frames hit by the emergency cut 42 of 766 to 1, frame-rhythm modulation of the noise band
+19.7 to 11.0 dB (11.6 without PNS). Together with `--pns-shared 1`: 0 frames cut, 8.3 dB.
+
+Recommended for any forced PNS at low bitrate: `--pns-budget 1 --pns-shared 1`, optionally `--pns-hold 3`.
+
 ### `--pns-gain <x>`
 
 **Sets how loud the fabricated noise is relative to the energy of the band it

@@ -4244,6 +4244,65 @@ Współpraca i konflikty: zwykle podaje się go razem z `--pns 1` i często z `-
 sensem wymuszania PNS jest potem nim sterować. Bez sensu z `--tns-mask 0` albo przy VBR,
 które i tak wymuszają wyłączenie PNS. Przy bitrate'ach powyżej bramki nie robi nic.
 
+### `--pns-shared <0|1>`
+
+**W pasmach, które oba kanały kodują jako szum, zapisz jeden wspólny szum albo dwa niezależne, wszędzie tak samo.**
+
+- Dotyczy: rdzeń AAC-LC w stereo z włączonym PNS (`--pns 1`, `--force-pns` albo `--pns-above`). Domyślnie wyłączone.
+- Wartości: `1` = jeden wspólny szum (ten sam w L i R), `0` = niezależny szum w każdym kanale
+
+PNS zastępuje pasmo szumem o właściwym poziomie. W parze kanałów format pozwala zaznaczyć,
+pasmo po paśmie, że dekoder ma użyć tego samego szumu w obu kanałach. Ta flaga jedzie na masce
+MS. Stock rozstrzyga ją dla każdego pasma osobno, mierząc korelację, więc maskę zwykle trzeba
+zapisać pasmo po paśmie: przy niskim bitrate do około 25 bitów na ramkę. Jednolity wybór
+pozwala masce wrócić do 2-bitowej postaci dla wszystkich pasm, jeśli reszta ramki na to
+pozwala. Poziom szumu nadal jest zapisywany dla każdego kanału: format nie ma wspólnego poziomu.
+
+Przykłady (muzyka stereo, 24 kbps, PNS od 2,2 kHz):
+- Typowo: `--pns-shared 1`. Maska MS z 28 do 2 bitów na ramkę na materiale skorelowanym.
+- Szerokie stereo: `--pns-shared 0`. Niezależny szum zachowuje szerokość, maska zostaje tak droga jak w stock.
+
+Gdy maska i tak zostaje pasmo po paśmie (pasma pod obszarem PNS kodowane jako L/R na szerokim
+materiale), przełącznik oszczędza niewiele: maska jest tania tylko wtedy, gdy zgadzają się
+wszystkie pasma. ffmpeg 6.1.1 gra wspólny szum jako niezależny; dekoder FDK jako wspólny.
+
+### `--pns-hold <dB>`
+
+**Pozwól sąsiednim pasmom szumu dzielić jeden poziom, żeby obwiednia szumu kosztowała mniej bitów.**
+
+- Dotyczy: rdzeń AAC z włączonym PNS. Domyślnie wyłączone.
+- Wartości: `0.1..12.0` dB
+
+Każde pasmo PNS zapisuje swój poziom szumu jako różnicę względem poprzedniego: 1 bit, gdy jest
+taki sam, 3 do 9 bitów w innym wypadku. Z tym przełącznikiem pasmo, którego poziom mieści się w
+podanej tolerancji względem poprzedniego pasma szumu, przejmuje jego poziom. Obwiednia szumu w
+częstotliwości robi się grubsza, w krokach około 1,5 dB.
+
+Przykłady (muzyka stereo, 24 kbps, PNS od 2,2 kHz):
+- Łagodnie: `--pns-hold 3`. Poziomy szumu z 94 do 87 bitów na ramkę.
+- Mocno: `--pns-hold 6`. 70 bitów na ramkę; uwolnione bity idą do kodowanego widma.
+- Przesadnie: `--pns-hold 12`. Szum jest prawie płaski w całym swoim obszarze.
+
+### `--pns-budget <0|1>`
+
+**Licz bity, które zajmują poziomy szumu PNS, żeby ramce nie zabrakło bitów i nie obcięła widma.**
+
+- Dotyczy: rdzeń AAC z włączonym PNS. Domyślnie wyłączone.
+- Wartości: `1` = włączone, `0` = stock
+
+FDK planując bity ramki traktuje pasmo PNS jako darmowe, a każdy poziom szumu kosztuje bity w
+strumieniu. Przy niskim bitrate i dużym obszarze PNS ramka się wtedy przepełnia, a awaryjne
+cięcie zdejmuje pasma od góry. Stock nie zalicza mu pasm PNS, więc tnie dalej przez obszar szumu
+w kodowane widmo pod nim: całe ramki tracą wszystko powyżej około 1,5 kHz, co słychać jako
+trzask w rytmie ramek. Z tym przełącznikiem cel bitowy dla widma jest obniżony o koszt poziomów
+szumu, a cięcie odzyskuje te bity, gdy zdejmuje pasmo szumu.
+
+Zmierzone na akustycznej muzyce stereo, `-b 24000 --block-bias 0 -w 5500 --pns-above 2200`:
+ramki z awaryjnym cięciem z 42 na 766 do 1, modulacja pasma szumu w rytmie ramek z 19,7 do
+11,0 dB (11,6 bez PNS). Razem z `--pns-shared 1`: 0 obciętych ramek, 8,3 dB.
+
+Zalecane przy każdym wymuszonym PNS przy niskim bitrate: `--pns-budget 1 --pns-shared 1`, opcjonalnie `--pns-hold 3`.
+
 ### `--pns-gain <x>`
 
 **Ustawia, jak głośny jest fabrykowany szum względem energii pasma, które zastąpił.**
