@@ -1421,6 +1421,75 @@ done; done
 [ $seqok = 1 ] && ok "--block-bias 1/200/245/255 x LC/HE/HEv2/short-groups 1: legalne przejscia okien, 0 bledow dekodera" || bad "--block-bias: nielegalna sekwencja okien albo blad dekodera"
 rm -f _check_bb.wav _check_bbs.wav
 
+# --- --resample: etap PCM przed enkoderem (1.4.0-beta.2) ---
+echo "== --resample =="
+python3 - _check_rs.wav <<'PY'
+import wave,struct,math,random,sys
+sr=48000; random.seed(3); c=lambda x:max(-32768,min(32767,int(x)))
+w=wave.open(sys.argv[1],'wb'); w.setnchannels(2); w.setsampwidth(2); w.setframerate(sr)
+w.writeframes(b''.join(struct.pack('<hh',
+   c(8000*math.sin(2*math.pi*1000*i/sr)+2000*random.uniform(-1,1)),
+   c(8000*math.sin(2*math.pi*5000*i/sr)+8000*math.sin(2*math.pi*21000*i/sr))) for i in range(sr*2)))
+w.close()
+PY
+rsr(){ ffprobe -v error -show_entries stream=sample_rate -of csv=p=0 "$1" 2>/dev/null | head -1; }
+# 1) ten sam sr / -1 = lancuch nietkniety, bit w bit
+enc "$X64" -f2 -p2 -b64000 -o "${OUT}_rs0.aac" _check_rs.wav
+enc "$X64" -f2 -p2 -b64000 --resample 48 -o "${OUT}_rs1.aac" _check_rs.wav
+enc "$X64" -f2 -p2 -b64000 --resample -1 -o "${OUT}_rs2.aac" _check_rs.wav
+[ "$(md5 ${OUT}_rs0.aac)" = "$(md5 ${OUT}_rs1.aac)" ] && [ "$(md5 ${OUT}_rs0.aac)" = "$(md5 ${OUT}_rs2.aac)" ] \
+  && ok "--resample 48 na 48k i --resample -1: strumien bit w bit jak bez przelacznika" || bad "--resample no-op zmienia strumien"
+# 2) skladnia: Hz i skroty kHz, przecinek; zle wartosci odrzucone
+rsok=1
+for a in "44:44100" "44.1:44100" "44,1:44100" "44100:44100" "22:22050" "22.05:22050" "32:32000" "24:24000" "16:16000" "11:11025"; do
+  enc "$X64" -f2 -p2 -b48000 --resample "${a%%:*}" -o "${OUT}_rs.aac" _check_rs.wav
+  [ "$(rsr ${OUT}_rs.aac)" = "${a##*:}" ] && [ "$(derr ${OUT}_rs.aac)" = "0" ] || { rsok=0; echo "    --resample ${a%%:*} -> $(rsr ${OUT}_rs.aac)"; }
+  rm -f "${OUT}_rs.aac"
+done
+for a in 45 44099 abc 0 7 1e3; do
+  "$X64" -f2 -p2 -b48000 --resample "$a" -o "${OUT}_rsx.aac" _check_rs.wav >/dev/null 2>&1 && { rsok=0; echo "    --resample $a przyjete"; }
+  rm -f "${OUT}_rsx.aac"
+done
+[ $rsok = 1 ] && ok "--resample: Hz, kHz, przecinek; 45/44099/abc/0/7/1e3 odrzucone" || bad "--resample: skladnia"
+# 3) enkoder pracuje w nowym sr: ASC, pasmo, dlugosc M4A (iTunSMPB) dokladnie n*32/48
+enc "$X64" -p2 -b32000 --resample 32 -o "${OUT}_rs.m4a" _check_rs.wav
+n=$(strings "${OUT}_rs.m4a" | grep -o ' 00000000 [0-9A-F]* [0-9A-F]* [0-9A-F]*' | head -1 | awk '{print strtonum("0x"$4)}')
+[ "$(rsr ${OUT}_rs.m4a)" = "32000" ] && [ "$n" = "64000" ] && [ "$(derr ${OUT}_rs.m4a)" = "0" ] \
+  && ok "--resample 32: M4A 32 kHz, dlugosc gapless $n = 96000*32/48" || bad "--resample 32: sr $(rsr ${OUT}_rs.m4a) dlugosc $n"
+# 4) jakosc: 1 kHz w L po 48->32 zachowany, 21 kHz z R wyciety (alias wypadlby na 11 kHz, w pasmie -w 15000), 5 kHz zostaje
+enc "$X64" -f2 -p2 -b128000 -w 15000 --resample 32 -o "${OUT}_rsq.aac" _check_rs.wav
+ffmpeg -v error -y -i "${OUT}_rsq.aac" -f f32le -ac 2 "${OUT}_rs.bin"
+python3 - "${OUT}_rs.bin" <<'PY' && ok "--resample 32: ton 1k/5k bez zmian poziomu, 21 kHz usuniety (alias na 11 kHz < -90 dB)" || bad "--resample 32: poziomy/alias"
+import sys,numpy as np
+y=np.frombuffer(open(sys.argv[1],'rb').read(),'<f4').reshape(-1,2)[8000:-8000]
+sr=32000; t=np.arange(len(y))/sr
+def lv(x,f):
+    w=np.hanning(len(x)); return 2*abs(np.dot(x*w,np.exp(-2j*np.pi*f*t)))/w.sum()
+l1=20*np.log10(lv(y[:,0],1000)/(8000/32768)); l5=20*np.log10(lv(y[:,1],5000)/(8000/32768))
+al=20*np.log10(lv(y[:,1],32000-21000)/(8000/32768)+1e-12)
+print(f"    1k {l1:+.2f} dB, 5k {l5:+.2f} dB, alias 11k {al:.1f} dB")
+sys.exit(0 if abs(l1)<0.5 and abs(l5)<0.5 and al<-90 else 1)
+PY
+# 5) stdin: plik == potok (wav) == raw z --raw-rate
+cat _check_rs.wav | "$X64" -S -f2 -p2 -b32000 --resample 32 -o "${OUT}_rsp.aac" - 2>/dev/null
+enc "$X64" -S -f2 -p2 -b32000 --resample 32 -o "${OUT}_rsf.aac" _check_rs.wav
+python3 -c "import wave,sys;w=wave.open('_check_rs.wav');sys.stdout.buffer.write(w.readframes(w.getnframes()))" \
+  | "$X64" -S -R --raw-rate 48000 -f2 -p2 -b32000 --resample 32 -o "${OUT}_rsr.aac" - 2>/dev/null
+[ -s "${OUT}_rsp.aac" ] && [ "$(md5 ${OUT}_rsp.aac)" = "$(md5 ${OUT}_rsf.aac)" ] && [ "$(md5 ${OUT}_rsr.aac)" = "$(md5 ${OUT}_rsf.aac)" ] \
+  && ok "--resample ze stdin (wav i raw) = z pliku, bit w bit" || bad "--resample stdin rozny od pliku"
+# 6) inne profile i DAB+ z 44.1k
+ffmpeg -v error -y -i _check_rs.wav -ar 44100 -c:a pcm_s16le _check_rs441.wav
+rsp=1
+for o in "-p5 -b48000" "-p29 -b24000"; do
+  enc "$X64" -f2 $o --resample 48 -o "${OUT}_rsh.aac" _check_rs441.wav
+  [ "$(rsr ${OUT}_rsh.aac)" = "48000" ] && [ "$(derr ${OUT}_rsh.aac)" = "0" ] || { rsp=0; echo "    $o: $(rsr ${OUT}_rsh.aac)"; }
+done
+enc "$X64" --dab -b 64 --resample 48 -o "${OUT}_rs.dabp" _check_rs441.wav
+"$X64" --dab -b 64 -o "${OUT}_rsn.dabp" _check_rs441.wav >/dev/null 2>&1 && rsp=0   # 44.1k bez --resample: odrzucone
+[ -s "${OUT}_rs.dabp" ] && [ $(( $(stat -c%s ${OUT}_rs.dabp) % 960 )) = 0 ] || rsp=0
+[ $rsp = 1 ] && ok "--resample 48 z 44.1k: HE/HEv2 48 kHz dekodowalne, DAB+ 64 kbps legalny (bez --resample odrzucony)" || bad "--resample: HE/HEv2/DAB+"
+rm -f _check_rs.wav _check_rs441.wav "${OUT}"_rs*
+
 echo "==================================="
 echo "WYNIK: PASS=$PASS FAIL=$FAIL"
 [ "$FAIL" = "0" ] && { echo "ALL PASS"; exit 0; } || { echo "SA BLEDY"; exit 1; }
