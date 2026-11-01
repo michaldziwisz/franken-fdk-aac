@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <title>Franken FDK AAC: podr��cznik</title>
+  <title>Franken FDK AAC: podręcznik</title>
   <style>
     html {
       color: #1a1a1a;
@@ -166,7 +166,7 @@
 </head>
 <body>
 <header id="title-block-header">
-<h1 class="title">Franken FDK AAC: podr��cznik</h1>
+<h1 class="title">Franken FDK AAC: podręcznik</h1>
 </header>
 <nav id="TOC" role="doc-toc">
 <ul>
@@ -301,12 +301,17 @@ id="toc-28-szum-zamiast-dziur-pns-który-naprawdę-oszczędza">28. Szum
 zamiast dziur: PNS, który naprawdę oszczędza</a></li>
 <li><a href="#29-pokrycie-albo-precyzja"
 id="toc-29-pokrycie-albo-precyzja">29. Pokrycie albo precyzja</a></li>
+<li><a
+href="#30-częstotliwość-próbkowania-jako-ustawienie-jakości---resample"
+id="toc-30-częstotliwość-próbkowania-jako-ustawienie-jakości---resample">30.
+Częstotliwość próbkowania jako ustawienie jakości:
+<code>--resample</code></a></li>
 </ul></li>
 <li><a href="#część-ix-radio-cyfrowe-dab"
 id="toc-część-ix-radio-cyfrowe-dab">Część IX. Radio cyfrowe DAB+</a>
 <ul>
-<li><a href="#30-wyjście-dab---dab---dab-label"
-id="toc-30-wyjście-dab---dab---dab-label">30. Wyjście DAB+
+<li><a href="#31-wyjście-dab---dab---dab-label"
+id="toc-31-wyjście-dab---dab---dab-label">31. Wyjście DAB+
 (<code>--dab</code>, <code>--dab-label</code>)</a></li>
 </ul></li>
 <li><a href="#część-x-słownik-pojęć"
@@ -1880,8 +1885,36 @@ o 4,75 dB czystsza, stock 11,7% i 1,96 dB, <code>+4</code> 0,2% dziur.
 <code>--enfac-patch 0|1</code> wyłącza przeważanie płaskich, szumowych
 ramek w FDK albo włącza je dla każdej ramki; w CBR to drobne pokrętło
 (najwyżej 1 punkt dziur), w VBR zmienia rozmiar pliku nawet o 29%.</p>
+<h2
+id="30-częstotliwość-próbkowania-jako-ustawienie-jakości---resample">30.
+Częstotliwość próbkowania jako ustawienie jakości:
+<code>--resample</code></h2>
+<p>Przy niskim bitrate i wąskim paśmie częstotliwość próbkowania rdzenia
+sama jest ustawieniem jakości. Rdzeń 48 kHz dzieli widmo na pasma
+współczynników skali pomyślane pod dźwięk do 20 kHz; poniżej odcięcia
+9,5 kHz tylko część z nich cokolwiek niesie, każde kosztuje dane
+poboczne, a ramka trwa 21 ms. Przy 32 kHz to samo odcięcie pokrywa
+więcej węższych pasm, a ramka trwa 32 ms; przy 24 kHz 43 ms.
+<code>--resample &lt;częstotliwość&gt;</code> przelicza wejście, zanim
+zobaczy je koder, więc cały koder pracuje w nowej częstotliwości.</p>
+<p>Zmierzone przy AAC-LC 32 kbps stereo z <code>-w 9500</code> (błąd w
+200..9000 Hz względem oryginału, niżej znaczy czyściej), 48 / 32 / 24
+kHz: długa muzyka -7,3 / -8,2 / -9,0 dB przy dziurach 5,6 / 0,1 / 0%,
+muzyka mieszana -11,1 / -14,8 / -16,8 dB, szerokie stereo -7,6 / -8,4 /
+-9,1 dB, gęsty materiał -8,3 / -7,7 / -8,6 dB. Ceną jest rozdzielczość
+czasowa: blok długi przy 24 kHz obejmuje 85 ms, a pre-echo przed ostrymi
+atakami wzrosło z -33,9 dB przy 48 kHz do -28,4 dB przy 32 kHz i -28,1
+dB przy 24 kHz. Dla muzyki z perkusją zwykle lepszym kompromisem jest 32
+kHz, dla mowy i spokojnego materiału 24 kHz. Koder nigdy nie wybiera
+częstotliwości sam; decyzja należy do ciebie.</p>
+<pre><code>fdkaac -p 2 -b 32000 -w 9500 --resample 32 -o out.m4a in48k.wav</code></pre>
+<p>Przelicznik nie dodaje opóźnienia ani słyszalnego śladu (płasko do
+95% niższej częstotliwości Nyquista, tłumienie 120 dB, zniekształcenia
+około -136 dB), działa na potoku i na surowym wejściu, a materiał 44,1
+kHz doprowadza też do <code>--dab</code>, które przyjmuje tylko 32 i 48
+kHz.</p>
 <h1 id="część-ix-radio-cyfrowe-dab">Część IX. Radio cyfrowe DAB+</h1>
-<h2 id="30-wyjście-dab---dab---dab-label">30. Wyjście DAB+
+<h2 id="31-wyjście-dab---dab---dab-label">31. Wyjście DAB+
 (<code>--dab</code>, <code>--dab-label</code>)</h2>
 <p>Do tej pory robiliśmy pliki — MP4/M4A dla odtwarzaczy, ADTS do
 streamingu. DAB+ to coś innego: to format naziemnego radia cyfrowego

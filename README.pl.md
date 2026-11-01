@@ -179,8 +179,8 @@ Przełączniki są pogrupowane w `--help` z grubsza od łatwych do dziwactw, a t
 trzyma się tej samej kolejności.
 
 - **A. Na początek**: pokrętła dla użytkownika. Diagnostyka, intensity stereo na jednym
-  suwaku, strojenie pod mowę i dwie flagi włączane świadomie, które zdejmują wbudowane
-  ograniczenia.
+  suwaku, strojenie pod mowę, dwie flagi włączane świadomie, które zdejmują wbudowane
+  ograniczenia, i przeliczanie częstotliwości próbkowania wejścia.
 - **B. Kodowanie stereo**: mid/side, intensity stereo w szczegółach, parametric stereo.
 - **C. Pasmo i SBR**: górne pasmo, jego detektory, estymatory i siatka.
 - **D. Maskowanie, kształtowanie szumu i szczegół**: progi psychoakustyczne, SNR, którego
@@ -193,8 +193,9 @@ trzyma się tej samej kolejności.
 
 ## A. Na początek
 
-Pięć przełączników. Jeden tylko zagląda do kodera, dwa go stroją, a dwa zdejmują
-ograniczenia, których pilnuje stock FDK. Jeśli ten build jest dla ciebie nowy, przeczytaj
+Sześć przełączników. Jeden tylko zagląda do kodera, dwa go stroją, dwa zdejmują
+ograniczenia, których pilnuje stock FDK, a jeden przelicza częstotliwość próbkowania
+wejścia. Jeśli ten build jest dla ciebie nowy, przeczytaj
 najpierw o `--verbose` i używaj go po każdym kolejnym przełączniku, który spróbujesz.
 
 ### `--verbose`
@@ -480,6 +481,76 @@ raportuje te same błędy na koderze stock w tych trybach, jeden `noise_facs_q i
 na HE-AAC v2 przy 12..14 kbps, co mieści się w tabelach stock, oraz wiele błędów na każdym
 strumieniu LOAS z ELD albo LD przy dowolnym bitrate. ffmpeg nie implementuje LD i ELD w
 pełni, więc te strumienie należy oceniać dekoderem Fraunhofera.
+
+### `--resample <częstotliwość>`
+
+**Przelicza wejście na inną częstotliwość próbkowania, zanim zobaczy je cokolwiek innego,
+więc cały koder pracuje już w nowej częstotliwości.**
+
+- Dotyczy: każdego profilu i transportu, także `--dab`. Tak samo działa na plikach, na
+  potoku (`-` jako wejście) i na wejściu `--raw`.
+- Wartości: częstotliwość próbkowania AAC w Hz (`44100`) albo w kHz (`44`, `44.1`, `44,1`,
+  `22`, `22.05`, `32`, `48`, `96` ...). Od 8000 do 96000. `-1` = wyłączone; domyślnie:
+  wyłączone.
+- Wpisywanie: częstotliwość
+
+Przelicznik stoi na samym początku łańcucha PCM, zaraz za czytnikiem WAV, CAF albo surowego
+PCM, przed limiterem, ekstrapolatorem brzegów i koderem. Nic dalej nie zna pierwotnej
+częstotliwości: koder dobiera tabele, pasmo, układ SBR i budżet bitów dla nowej, skala
+czasu M4A i długość gapless są liczone w nowej, a `--verbose` pokazuje nową wartość
+`samplerate`. Źródło, które już ma żądaną częstotliwość, idzie nietkniętym łańcuchem, bit
+w bit jak bez przełącznika.
+
+Jak przelicza: dokładny stosunek wymierny (48000 na 44100 to 147/160, więc przez godziny
+dźwięku nic się nie rozjeżdża), jądro sinc z oknem Kaisera liczone na starcie, arytmetyka
+zmiennoprzecinkowa. Pasmo przenoszenia jest płaskie do 95 procent niższej częstotliwości
+Nyquista, tłumienie zaczyna się na tej częstotliwości i wynosi 120 dB, więc nic nie odbija
+się w pasmo słyszalne. Jądro jest symetryczne, a chwile wyjściowe są wyrównane z wejściem,
+więc przeliczenie nie dodaje opóźnienia: opóźnienie kodera i priming gapless zostają takie,
+jakie są w nowej częstotliwości. Jądro potrzebuje kilku milisekund wyprzedzenia wewnątrz
+przelicznika, czego z zewnątrz nie widać. Żadnej zewnętrznej biblioteki ani DLL.
+
+Po co: poniżej mniej więcej 48 kbps stereo z wąskim `-w` rdzeń 48 kHz wydaje bity na pasma
+współczynników skali i siatkę ramek pomyślaną pod dźwięk do 20 kHz. Niższa częstotliwość
+daje drobniejsze pasma poniżej odcięcia i dłuższą ramkę. Dłuższa ramka to też cena: przy
+24 kHz jeden blok długi trwa 85 ms, więc pre-echo przed ostrymi atakami rośnie. Wyższa
+częstotliwość też się przydaje: `--dab` przyjmuje tylko 32 i 48 kHz, więc źródło 44,1 kHz
+potrzebuje `--resample 48`.
+
+Wartości:
+- pominięta albo `-1`: bez przeliczania (stock).
+- `--resample 32`: źródło 48 albo 44,1 kHz kodowane w 32 kHz. Przy `-w 9500` i 32 kbps
+  stereo zwykle najlepszy kompromis (patrz Zmierzone).
+- `--resample 24`: jeszcze dalej w tę stronę, z dłuższymi blokami; warto tylko dla
+  materiału bez ostrych ataków.
+- `--resample 48`: źródło 44,1 kHz dla `--dab` albo dla HE-AAC w 48 kHz.
+
+Przykład w kontekście:
+
+    fdkaac -p 2 -b 32000 -w 9500 --resample 32 -o out.m4a in48k.wav
+    ffmpeg -i in.flac -f wav - | fdkaac --dab -b 64 --resample 48 -o out.dabp -
+
+Współpraca i konflikty: `-w` i `--core-cutoff` są w Hz, więc w każdej częstotliwości znaczą
+to samo, ale nie mogą przekroczyć nowej częstotliwości Nyquista. `--raw-rate` podaje
+częstotliwość surowego wejścia, a `--resample` przelicza z niej. Przełączniki z numerem
+pasma (`--msbands`, `--is-lo` ...) liczą pasma tabeli nowej częstotliwości, sprawdź je w
+`--verbose`.
+
+Zmierzone: sam przelicznik (harness `tools/resample/rs_test.c`,
+`tools/resample/rs_quality.py`) dla 48 na 32, 48 na 24, 44,1 na 32, 48 na 44,1, 44,1 na
+22,05, 32 na 48, 44,1 na 48 i 48 na 16 kHz: odchyłka pasma przenoszenia poniżej 0,0001 dB
+do 95 procent Nyquista, aliasy tonów leżących między nową a starą częstotliwością Nyquista
+od -120 do -132 dB, THD+N tonu 1 kHz od -135 do -141 dB, przesunięcie fazy 0, długość
+wyjścia dokładnie `ceil(n * nowa / stara)`, te same próbki niezależnie od wielkości porcji
+odczytu. Szybkość: od 37 do 106 razy szybciej niż czas rzeczywisty dla stereo na jednym
+rdzeniu (przypadek 48 na 32 kHz: kodowanie 30 s trwało 0,94 s wobec 0,62 s bez
+przełącznika). Po kodowaniu (AAC-LC 32 kbps stereo, `-w 9500`, błąd mierzony w 200..9000 Hz
+względem oryginału 48 kHz): to samo z dokładnością do 0,03 dB co wcześniejsze przeliczenie
+programem SoX w najwyższej precyzji. W porównaniu z kodowaniem w 48 kHz stosunek szumu do
+sygnału na czterech próbkach muzyki 48 / 32 / 24 kHz: -7,3 / -8,2 / -9,0 dB,
+-11,1 / -14,8 / -16,8 dB, -7,6 / -8,4 / -9,1 dB, -8,3 / -7,7 / -8,6 dB; dziury w widmie
+5,6 / 0,1 / 0 procent na pierwszej próbce. Pre-echo na sygnale testowym z atakami:
+-33,9 dB przy 48 kHz, -28,4 dB przy 32 kHz, -28,1 dB przy 24 kHz.
 
 ## B. Kodowanie stereo
 

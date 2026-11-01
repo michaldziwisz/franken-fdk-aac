@@ -175,7 +175,8 @@ The switches are grouped in `--help` roughly from easy to geeky, and this refere
 follows the same order.
 
 - **A. Start here**: the consumer knobs. Diagnostics, intensity stereo in one slider,
-  speech tuning, and the two opt-in flags that remove built-in limits.
+  speech tuning, the two opt-in flags that remove built-in limits, and input sample
+  rate conversion.
 - **B. Stereo coding**: mid/side, intensity stereo in detail, parametric stereo.
 - **C. Bandwidth and SBR**: the high band, its detectors, estimators and grid.
 - **D. Masking, noise shaping and detail**: the psychoacoustic thresholds, the SNR
@@ -188,8 +189,8 @@ follows the same order.
 
 ## A. Start here
 
-Five switches. One of them only looks at the encoder, two of them tune it, and two
-remove limits that stock FDK enforces. If you are new to this build, read `--verbose`
+Six switches. One of them only looks at the encoder, two of them tune it, two
+remove limits that stock FDK enforces, and one converts the input sample rate. If you are new to this build, read `--verbose`
 first and use it after every other switch you try.
 
 ### `--verbose`
@@ -470,6 +471,75 @@ same errors on the stock encoder in these modes, one `noise_facs_q is invalid` o
 HE-AAC v2 at 12..14 kbps, which is inside the stock tables, and many errors on every
 ELD or LD LOAS stream at any bitrate. ffmpeg does not implement LD and ELD fully, so
 judge those streams with the Fraunhofer decoder.
+
+### `--resample <rate>`
+
+**Converts the input to another sample rate before anything else sees it, so the
+whole encoder runs at the new rate.**
+
+- Applies to: every profile and transport, `--dab` included. Works on files, pipes
+  (`-` as input) and `--raw` input the same way.
+- Values: an AAC sample rate, in Hz (`44100`) or in kHz (`44`, `44.1`, `44,1`,
+  `22`, `22.05`, `32`, `48`, `96` ...). 8000..96000. `-1` = off; default: off.
+- Input: rate
+
+The converter sits at the very start of the PCM chain, right after the WAV/CAF/raw
+reader and before the limiter, the edge extrapolator and the encoder. Nothing
+downstream knows the original rate: the encoder picks its tables, bandwidth, SBR
+layout and bit budget for the new rate, the M4A timescale and the gapless length are
+counted in the new rate, and `--verbose` prints the new `samplerate`. A source already
+at the requested rate goes through the untouched chain, byte for byte the stream you
+get without the switch.
+
+How it converts: an exact rational ratio (48000 to 44100 is 147/160, so there is no
+drift over hours of audio), a windowed sinc (Kaiser) kernel computed at start, float
+arithmetic. The passband is flat up to 95 percent of the lower Nyquist, the stopband
+starts at that Nyquist with 120 dB attenuation, so nothing folds back into the audible
+band. The kernel is symmetric and the output instants are aligned with the input, so
+the conversion adds no delay: the encoder delay and the gapless priming stay what they
+are at the new rate. The kernel needs a few milliseconds of look-ahead inside the
+converter, which is invisible from the outside. No external library, no DLL.
+
+Why you would use it: below about 48 kbps stereo with a narrow `-w`, a 48 kHz core
+spends bits on scalefactor bands and a frame grid made for 20 kHz audio. A lower rate
+gives finer bands below the cutoff and a longer frame. Long frames are also the price:
+at 24 kHz one long block is 85 ms, so pre-echo before sharp attacks grows. A higher
+rate is useful too: `--dab` accepts only 32 and 48 kHz, so a 44.1 kHz source needs
+`--resample 48`.
+
+Values:
+- omitted or `-1`: no conversion (stock).
+- `--resample 32`: 48 or 44.1 kHz source coded at 32 kHz. With `-w 9500` and 32 kbps
+  stereo, the usual sweet spot (see Measured).
+- `--resample 24`: more of the same, with longer blocks; worth it only for material
+  without sharp attacks.
+- `--resample 48`: 44.1 kHz source for `--dab`, or for HE-AAC at 48 kHz.
+
+Example in context:
+
+    fdkaac -p 2 -b 32000 -w 9500 --resample 32 -o out.m4a in48k.wav
+    ffmpeg -i in.flac -f wav - | fdkaac --dab -b 64 --resample 48 -o out.dabp -
+
+Works with / against: `-w` and `--core-cutoff` are in Hz, so they mean the same
+frequency at any rate, but they cannot exceed the new Nyquist. `--raw-rate` gives the
+rate of raw input; `--resample` then converts from it. Band-number switches
+(`--msbands`, `--is-lo` ...) count bands of the new rate's table, check them with
+`--verbose`.
+
+Measured: the converter alone (harness `tools/resample/rs_test.c`,
+`tools/resample/rs_quality.py`) for 48 to 32, 48 to 24, 44.1 to 32, 48 to 44.1, 44.1
+to 22.05, 32 to 48, 44.1 to 48 and 48 to 16 kHz: passband deviation below 0.0001 dB up
+to 95 percent of Nyquist, aliases of tones between the new and the old Nyquist at
+-120 to -132 dB, THD+N of a 1 kHz tone -135 to -141 dB, phase shift 0, output length
+exactly `ceil(n * new / old)`, the same samples whatever the read size. Speed: 37 to
+106 times real time for stereo on one core (the 48 to 32 kHz case: an encode of 30 s
+took 0.94 s against 0.62 s without the switch). After encoding (AAC-LC 32 kbps stereo,
+`-w 9500`, error measured 200..9000 Hz against the 48 kHz original): the same within
+0.03 dB as converting first with SoX at its highest precision. Against coding at 48 kHz,
+noise-to-signal on four music samples 48 / 32 / 24 kHz: -7.3 / -8.2 / -9.0 dB,
+-11.1 / -14.8 / -16.8 dB, -7.6 / -8.4 / -9.1 dB, -8.3 / -7.7 / -8.6 dB; spectral holes
+5.6 / 0.1 / 0 percent on the first sample. Pre-echo on a test signal with attacks:
+-33.9 dB at 48 kHz, -28.4 dB at 32 kHz, -28.1 dB at 24 kHz.
 
 ## B. Stereo coding
 

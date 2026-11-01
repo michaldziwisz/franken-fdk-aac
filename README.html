@@ -478,8 +478,8 @@ HE-AAC.</p>
 geeky, and this reference follows the same order.</p>
 <ul>
 <li><strong>A. Start here</strong>: the consumer knobs. Diagnostics,
-intensity stereo in one slider, speech tuning, and the two opt-in flags
-that remove built-in limits.</li>
+intensity stereo in one slider, speech tuning, the two opt-in flags that
+remove built-in limits, and input sample rate conversion.</li>
 <li><strong>B. Stereo coding</strong>: mid/side, intensity stereo in
 detail, parametric stereo.</li>
 <li><strong>C. Bandwidth and SBR</strong>: the high band, its detectors,
@@ -494,10 +494,11 @@ long/short decision, the bit reservoir and the quasi-VBR knobs.</li>
 <li><strong>G. DAB+ output</strong>: digital radio superframes.</li>
 </ul>
 <h2 id="a-start-here">A. Start here</h2>
-<p>Five switches. One of them only looks at the encoder, two of them
-tune it, and two remove limits that stock FDK enforces. If you are new
-to this build, read <code>--verbose</code> first and use it after every
-other switch you try.</p>
+<p>Six switches. One of them only looks at the encoder, two of them tune
+it, two remove limits that stock FDK enforces, and one converts the
+input sample rate. If you are new to this build, read
+<code>--verbose</code> first and use it after every other switch you
+try.</p>
 <h3 id="--verbose"><code>--verbose</code></h3>
 <p><strong>Prints the encoder's real, initialised settings to stderr
 before encoding, so you can see what actually took effect.</strong></p>
@@ -838,6 +839,82 @@ on HE-AAC v2 at 12..14 kbps, which is inside the stock tables, and many
 errors on every ELD or LD LOAS stream at any bitrate. ffmpeg does not
 implement LD and ELD fully, so judge those streams with the Fraunhofer
 decoder.</p>
+<h3 id="--resample-rate"><code>--resample &lt;rate&gt;</code></h3>
+<p><strong>Converts the input to another sample rate before anything
+else sees it, so the whole encoder runs at the new rate.</strong></p>
+<ul>
+<li>Applies to: every profile and transport, <code>--dab</code>
+included. Works on files, pipes (<code>-</code> as input) and
+<code>--raw</code> input the same way.</li>
+<li>Values: an AAC sample rate, in Hz (<code>44100</code>) or in kHz
+(<code>44</code>, <code>44.1</code>, <code>44,1</code>, <code>22</code>,
+<code>22.05</code>, <code>32</code>, <code>48</code>, <code>96</code>
+...). 8000..96000. <code>-1</code> = off; default: off.</li>
+<li>Input: rate</li>
+</ul>
+<p>The converter sits at the very start of the PCM chain, right after
+the WAV/CAF/raw reader and before the limiter, the edge extrapolator and
+the encoder. Nothing downstream knows the original rate: the encoder
+picks its tables, bandwidth, SBR layout and bit budget for the new rate,
+the M4A timescale and the gapless length are counted in the new rate,
+and <code>--verbose</code> prints the new <code>samplerate</code>. A
+source already at the requested rate goes through the untouched chain,
+byte for byte the stream you get without the switch.</p>
+<p>How it converts: an exact rational ratio (48000 to 44100 is 147/160,
+so there is no drift over hours of audio), a windowed sinc (Kaiser)
+kernel computed at start, float arithmetic. The passband is flat up to
+95 percent of the lower Nyquist, the stopband starts at that Nyquist
+with 120 dB attenuation, so nothing folds back into the audible band.
+The kernel is symmetric and the output instants are aligned with the
+input, so the conversion adds no delay: the encoder delay and the
+gapless priming stay what they are at the new rate. The kernel needs a
+few milliseconds of look-ahead inside the converter, which is invisible
+from the outside. No external library, no DLL.</p>
+<p>Why you would use it: below about 48 kbps stereo with a narrow
+<code>-w</code>, a 48 kHz core spends bits on scalefactor bands and a
+frame grid made for 20 kHz audio. A lower rate gives finer bands below
+the cutoff and a longer frame. Long frames are also the price: at 24 kHz
+one long block is 85 ms, so pre-echo before sharp attacks grows. A
+higher rate is useful too: <code>--dab</code> accepts only 32 and 48
+kHz, so a 44.1 kHz source needs <code>--resample 48</code>.</p>
+<p>Values:</p>
+<ul>
+<li>omitted or <code>-1</code>: no conversion (stock).</li>
+<li><code>--resample 32</code>: 48 or 44.1 kHz source coded at 32 kHz.
+With <code>-w 9500</code> and 32 kbps stereo, the usual sweet spot (see
+Measured).</li>
+<li><code>--resample 24</code>: more of the same, with longer blocks;
+worth it only for material without sharp attacks.</li>
+<li><code>--resample 48</code>: 44.1 kHz source for <code>--dab</code>,
+or for HE-AAC at 48 kHz.</li>
+</ul>
+<p>Example in context:</p>
+<pre><code>fdkaac -p 2 -b 32000 -w 9500 --resample 32 -o out.m4a in48k.wav
+ffmpeg -i in.flac -f wav - | fdkaac --dab -b 64 --resample 48 -o out.dabp -</code></pre>
+<p>Works with / against: <code>-w</code> and <code>--core-cutoff</code>
+are in Hz, so they mean the same frequency at any rate, but they cannot
+exceed the new Nyquist. <code>--raw-rate</code> gives the rate of raw
+input; <code>--resample</code> then converts from it. Band-number
+switches (<code>--msbands</code>, <code>--is-lo</code> ...) count bands
+of the new rate's table, check them with <code>--verbose</code>.</p>
+<p>Measured: the converter alone (harness
+<code>tools/resample/rs_test.c</code>,
+<code>tools/resample/rs_quality.py</code>) for 48 to 32, 48 to 24, 44.1
+to 32, 48 to 44.1, 44.1 to 22.05, 32 to 48, 44.1 to 48 and 48 to 16 kHz:
+passband deviation below 0.0001 dB up to 95 percent of Nyquist, aliases
+of tones between the new and the old Nyquist at -120 to -132 dB, THD+N
+of a 1 kHz tone -135 to -141 dB, phase shift 0, output length exactly
+<code>ceil(n * new / old)</code>, the same samples whatever the read
+size. Speed: 37 to 106 times real time for stereo on one core (the 48 to
+32 kHz case: an encode of 30 s took 0.94 s against 0.62 s without the
+switch). After encoding (AAC-LC 32 kbps stereo, <code>-w 9500</code>,
+error measured 200..9000 Hz against the 48 kHz original): the same
+within 0.03 dB as converting first with SoX at its highest precision.
+Against coding at 48 kHz, noise-to-signal on four music samples 48 / 32
+/ 24 kHz: -7.3 / -8.2 / -9.0 dB, -11.1 / -14.8 / -16.8 dB, -7.6 / -8.4 /
+-9.1 dB, -8.3 / -7.7 / -8.6 dB; spectral holes 5.6 / 0.1 / 0 percent on
+the first sample. Pre-echo on a test signal with attacks: -33.9 dB at 48
+kHz, -28.4 dB at 32 kHz, -28.1 dB at 24 kHz.</p>
 <h2 id="b-stereo-coding">B. Stereo coding</h2>
 <p>Three different machines in this encoder turn two channels into fewer
 bits, and they work on different parts of the signal, with different
@@ -7506,9 +7583,9 @@ samowystarczalny strumień bajtów, tak jak ADTS dla LC i HE-AAC.</p>
 łatwych do dziwactw, a ten opis trzyma się tej samej kolejności.</p>
 <ul>
 <li><strong>A. Na początek</strong>: pokrętła dla użytkownika.
-Diagnostyka, intensity stereo na jednym suwaku, strojenie pod mowę i
-dwie flagi włączane świadomie, które zdejmują wbudowane
-ograniczenia.</li>
+Diagnostyka, intensity stereo na jednym suwaku, strojenie pod mowę, dwie
+flagi włączane świadomie, które zdejmują wbudowane ograniczenia, i
+przeliczanie częstotliwości próbkowania wejścia.</li>
 <li><strong>B. Kodowanie stereo</strong>: mid/side, intensity stereo w
 szczegółach, parametric stereo.</li>
 <li><strong>C. Pasmo i SBR</strong>: górne pasmo, jego detektory,
@@ -7524,10 +7601,11 @@ quasi-VBR.</li>
 <li><strong>G. Wyjście DAB+</strong>: superramki radia cyfrowego.</li>
 </ul>
 <h2 id="a-na-początek">A. Na początek</h2>
-<p>Pięć przełączników. Jeden tylko zagląda do kodera, dwa go stroją, a
-dwa zdejmują ograniczenia, których pilnuje stock FDK. Jeśli ten build
-jest dla ciebie nowy, przeczytaj najpierw o <code>--verbose</code> i
-używaj go po każdym kolejnym przełączniku, który spróbujesz.</p>
+<p>Sześć przełączników. Jeden tylko zagląda do kodera, dwa go stroją,
+dwa zdejmują ograniczenia, których pilnuje stock FDK, a jeden przelicza
+częstotliwość próbkowania wejścia. Jeśli ten build jest dla ciebie nowy,
+przeczytaj najpierw o <code>--verbose</code> i używaj go po każdym
+kolejnym przełączniku, który spróbujesz.</p>
 <h3 id="--verbose-1"><code>--verbose</code></h3>
 <p><strong>Wypisuje na stderr rzeczywiste, zainicjalizowane ustawienia
 kodera przed kodowaniem, żeby było widać, co faktycznie weszło w
@@ -7881,6 +7959,90 @@ na HE-AAC v2 przy 12..14 kbps, co mieści się w tabelach stock, oraz
 wiele błędów na każdym strumieniu LOAS z ELD albo LD przy dowolnym
 bitrate. ffmpeg nie implementuje LD i ELD w pełni, więc te strumienie
 należy oceniać dekoderem Fraunhofera.</p>
+<h3
+id="--resample-częstotliwość"><code>--resample &lt;częstotliwość&gt;</code></h3>
+<p><strong>Przelicza wejście na inną częstotliwość próbkowania, zanim
+zobaczy je cokolwiek innego, więc cały koder pracuje już w nowej
+częstotliwości.</strong></p>
+<ul>
+<li>Dotyczy: każdego profilu i transportu, także <code>--dab</code>. Tak
+samo działa na plikach, na potoku (<code>-</code> jako wejście) i na
+wejściu <code>--raw</code>.</li>
+<li>Wartości: częstotliwość próbkowania AAC w Hz (<code>44100</code>)
+albo w kHz (<code>44</code>, <code>44.1</code>, <code>44,1</code>,
+<code>22</code>, <code>22.05</code>, <code>32</code>, <code>48</code>,
+<code>96</code> ...). Od 8000 do 96000. <code>-1</code> = wyłączone;
+domyślnie: wyłączone.</li>
+<li>Wpisywanie: częstotliwość</li>
+</ul>
+<p>Przelicznik stoi na samym początku łańcucha PCM, zaraz za czytnikiem
+WAV, CAF albo surowego PCM, przed limiterem, ekstrapolatorem brzegów i
+koderem. Nic dalej nie zna pierwotnej częstotliwości: koder dobiera
+tabele, pasmo, układ SBR i budżet bitów dla nowej, skala czasu M4A i
+długość gapless są liczone w nowej, a <code>--verbose</code> pokazuje
+nową wartość <code>samplerate</code>. Źródło, które już ma żądaną
+częstotliwość, idzie nietkniętym łańcuchem, bit w bit jak bez
+przełącznika.</p>
+<p>Jak przelicza: dokładny stosunek wymierny (48000 na 44100 to 147/160,
+więc przez godziny dźwięku nic się nie rozjeżdża), jądro sinc z oknem
+Kaisera liczone na starcie, arytmetyka zmiennoprzecinkowa. Pasmo
+przenoszenia jest płaskie do 95 procent niższej częstotliwości Nyquista,
+tłumienie zaczyna się na tej częstotliwości i wynosi 120 dB, więc nic
+nie odbija się w pasmo słyszalne. Jądro jest symetryczne, a chwile
+wyjściowe są wyrównane z wejściem, więc przeliczenie nie dodaje
+opóźnienia: opóźnienie kodera i priming gapless zostają takie, jakie są
+w nowej częstotliwości. Jądro potrzebuje kilku milisekund wyprzedzenia
+wewnątrz przelicznika, czego z zewnątrz nie widać. Żadnej zewnętrznej
+biblioteki ani DLL.</p>
+<p>Po co: poniżej mniej więcej 48 kbps stereo z wąskim <code>-w</code>
+rdzeń 48 kHz wydaje bity na pasma współczynników skali i siatkę ramek
+pomyślaną pod dźwięk do 20 kHz. Niższa częstotliwość daje drobniejsze
+pasma poniżej odcięcia i dłuższą ramkę. Dłuższa ramka to też cena: przy
+24 kHz jeden blok długi trwa 85 ms, więc pre-echo przed ostrymi atakami
+rośnie. Wyższa częstotliwość też się przydaje: <code>--dab</code>
+przyjmuje tylko 32 i 48 kHz, więc źródło 44,1 kHz potrzebuje
+<code>--resample 48</code>.</p>
+<p>Wartości:</p>
+<ul>
+<li>pominięta albo <code>-1</code>: bez przeliczania (stock).</li>
+<li><code>--resample 32</code>: źródło 48 albo 44,1 kHz kodowane w 32
+kHz. Przy <code>-w 9500</code> i 32 kbps stereo zwykle najlepszy
+kompromis (patrz Zmierzone).</li>
+<li><code>--resample 24</code>: jeszcze dalej w tę stronę, z dłuższymi
+blokami; warto tylko dla materiału bez ostrych ataków.</li>
+<li><code>--resample 48</code>: źródło 44,1 kHz dla <code>--dab</code>
+albo dla HE-AAC w 48 kHz.</li>
+</ul>
+<p>Przykład w kontekście:</p>
+<pre><code>fdkaac -p 2 -b 32000 -w 9500 --resample 32 -o out.m4a in48k.wav
+ffmpeg -i in.flac -f wav - | fdkaac --dab -b 64 --resample 48 -o out.dabp -</code></pre>
+<p>Współpraca i konflikty: <code>-w</code> i <code>--core-cutoff</code>
+są w Hz, więc w każdej częstotliwości znaczą to samo, ale nie mogą
+przekroczyć nowej częstotliwości Nyquista. <code>--raw-rate</code>
+podaje częstotliwość surowego wejścia, a <code>--resample</code>
+przelicza z niej. Przełączniki z numerem pasma (<code>--msbands</code>,
+<code>--is-lo</code> ...) liczą pasma tabeli nowej częstotliwości,
+sprawdź je w <code>--verbose</code>.</p>
+<p>Zmierzone: sam przelicznik (harness
+<code>tools/resample/rs_test.c</code>,
+<code>tools/resample/rs_quality.py</code>) dla 48 na 32, 48 na 24, 44,1
+na 32, 48 na 44,1, 44,1 na 22,05, 32 na 48, 44,1 na 48 i 48 na 16 kHz:
+odchyłka pasma przenoszenia poniżej 0,0001 dB do 95 procent Nyquista,
+aliasy tonów leżących między nową a starą częstotliwością Nyquista od
+-120 do -132 dB, THD+N tonu 1 kHz od -135 do -141 dB, przesunięcie fazy
+0, długość wyjścia dokładnie <code>ceil(n * nowa / stara)</code>, te
+same próbki niezależnie od wielkości porcji odczytu. Szybkość: od 37 do
+106 razy szybciej niż czas rzeczywisty dla stereo na jednym rdzeniu
+(przypadek 48 na 32 kHz: kodowanie 30 s trwało 0,94 s wobec 0,62 s bez
+przełącznika). Po kodowaniu (AAC-LC 32 kbps stereo,
+<code>-w 9500</code>, błąd mierzony w 200..9000 Hz względem oryginału 48
+kHz): to samo z dokładnością do 0,03 dB co wcześniejsze przeliczenie
+programem SoX w najwyższej precyzji. W porównaniu z kodowaniem w 48 kHz
+stosunek szumu do sygnału na czterech próbkach muzyki 48 / 32 / 24 kHz:
+-7,3 / -8,2 / -9,0 dB, -11,1 / -14,8 / -16,8 dB, -7,6 / -8,4 / -9,1 dB,
+-8,3 / -7,7 / -8,6 dB; dziury w widmie 5,6 / 0,1 / 0 procent na
+pierwszej próbce. Pre-echo na sygnale testowym z atakami: -33,9 dB przy
+48 kHz, -28,4 dB przy 32 kHz, -28,1 dB przy 24 kHz.</p>
 <h2 id="b-kodowanie-stereo">B. Kodowanie stereo</h2>
 <p>Dwa kanały na mniejszą liczbę bitów zamieniają w tym koderze trzy
 różne maszyny, które pracują na różnych częściach sygnału i mają różny

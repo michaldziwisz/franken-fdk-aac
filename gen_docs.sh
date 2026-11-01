@@ -2,17 +2,17 @@
 # gen_docs.sh <input.md> <lang> <title> <outbase>
 # Generuje <outbase>.pdf (dostepny PDF/UA), <outbase>.rtf, <outbase>.html
 set -u
-IN="$1"; LANG="$2"; TITLE="$3"; OUT="$4"
+IN="$1"; DOCLANG="$2"; TITLE="$3"; OUT="$4"   # not LANG: that is the locale (pandoc would read the title as ASCII)
 DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$DIR"
 
 # HTML: standalone, dostepny (lang, semantyczne naglowki, TOC)
 pandoc "$IN" -o "$OUT.html" --from gfm --standalone --toc --toc-depth=2 \
-  --metadata lang="$LANG" --metadata title="$TITLE" 2>/dev/null
+  --metadata lang="$DOCLANG" --metadata title="$TITLE" 2>/dev/null
 echo "  $OUT.html: $(stat -c%s "$OUT.html" 2>/dev/null) B"
 
 # DOCX posredni -> PDF/UA + RTF przez LibreOffice
-pandoc "$IN" -o "$OUT.docx" --from gfm --metadata lang="$LANG" 2>/dev/null
+pandoc "$IN" -o "$OUT.docx" --from gfm --metadata lang="$DOCLANG" 2>/dev/null
 soffice -env:UserInstallation="file:///tmp/lo_$$_p" --headless \
   --convert-to 'pdf:writer_pdf_Export:{"UseTaggedPDF":{"type":"boolean","value":"true"},"PDFUACompliance":{"type":"boolean","value":"true"},"SelectPdfVersion":{"type":"long","value":"0"}}' \
   --outdir "$DIR" "$OUT.docx" >/dev/null 2>&1

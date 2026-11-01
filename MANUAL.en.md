@@ -1207,9 +1207,32 @@ the bands empty with the rest 4.75 dB cleaner, stock 11.7% and 1.96 dB, `+4` 0.2
 frame; in CBR it is a fine knob (at most 1 point of holes), in VBR it changes the file size by up
 to 29%.
 
+## 30. The sample rate as a quality setting: `--resample`
+
+At a low bitrate with a narrow band, the sample rate of the core is a quality setting of its
+own. A 48 kHz core divides the spectrum into scalefactor bands made for audio up to 20 kHz;
+below a 9.5 kHz cutoff only a part of them carry anything, each costs side information, and
+the frame lasts 21 ms. At 32 kHz the same cutoff is covered by more, narrower bands, and a frame
+lasts 32 ms; at 24 kHz, 43 ms. `--resample <rate>` converts the input before the encoder sees
+it, so the whole encoder runs at the new rate.
+
+Measured at AAC-LC 32 kbps stereo with `-w 9500` (error in 200..9000 Hz against the original,
+lower is cleaner), 48 / 32 / 24 kHz: long music -7.3 / -8.2 / -9.0 dB with holes 5.6 / 0.1 / 0%,
+mixed music -11.1 / -14.8 / -16.8 dB, wide stereo -7.6 / -8.4 / -9.1 dB, dense material
+-8.3 / -7.7 / -8.6 dB. The price is time resolution: a long block at 24 kHz spans 85 ms, and
+pre-echo before sharp attacks went from -33.9 dB at 48 kHz to -28.4 dB at 32 kHz and -28.1 dB at
+24 kHz. 32 kHz is usually the better trade for music with drums, 24 kHz for speech and slow
+material. The encoder never picks the rate by itself; you decide.
+
+    fdkaac -p 2 -b 32000 -w 9500 --resample 32 -o out.m4a in48k.wav
+
+The converter adds no delay and no audible trace (flat to 95% of the lower Nyquist, 120 dB
+stopband, distortion around -136 dB), works on pipes and raw input, and also takes 44.1 kHz
+material to `--dab`, which accepts only 32 and 48 kHz.
+
 # Part IX. DAB+ Digital Radio
 
-## 30. DAB+ output (`--dab`, `--dab-label`)
+## 31. DAB+ output (`--dab`, `--dab-label`)
 
 So far we've been making files — MP4/M4A for players, ADTS for streaming. DAB+ is
 something else: it's the format of terrestrial digital radio (the standard is ETSI

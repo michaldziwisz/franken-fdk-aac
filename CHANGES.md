@@ -5,7 +5,29 @@ Library** (per section 2 of the FDK AAC license, see `NOTICE.fdk-aac`).
 
 ## Releases
 
-### v1.4.0-beta.2 (in progress) — band switches in short blocks
+### v1.4.0-beta.2 (in progress) — band switches in short blocks, input resampling
+
+#### New: `--resample <rate>`
+
+- Converts the input to another AAC sample rate before encoding. Hz (`44100`) or kHz
+  shorthand (`44`, `44.1`, `44,1`, `22.05`, `32` ...); `-1` = off. No automatic
+  choice: the rate is used only when asked for.
+- Placed right after the PCM reader (WAV, CAF, raw, file or pipe), before the
+  limiter, the edge extrapolator and the encoder, so the library, the M4A timescale,
+  the gapless length and `--verbose` all see only the new rate. Input already at the
+  requested rate: untouched chain, bit for bit the stream without the switch.
+- Exact rational ratio, windowed sinc (Kaiser), float; flat to 95% of the lower
+  Nyquist, 120 dB stopband, symmetric kernel aligned with the input = no added delay.
+  The float result passes the stock limiter and is rounded (not truncated) to the
+  library's integer PCM. Own code (`src-fdkaac/src/resample.c`), no external library.
+- Measured on the converter alone (`tools/resample/`): passband within 0.0001 dB,
+  aliases -120..-132 dB, THD+N -135..-141 dB, phase shift 0, exact length, output
+  independent of the read size; 37..106x real time stereo on one core. After encoding
+  at 32 kbps stereo `-w 9500`: within 0.03 dB of SoX at its highest precision.
+- Also lets a 44.1 kHz source go to `--dab` (`--resample 48`).
+- Fix: `--help` printed garbage instead of "~50% at 192" in the `--block-bias` text
+  (an unescaped `%` in the printf format).
+
 
 #### Short blocks: band switches follow the frequency
 

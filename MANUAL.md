@@ -1229,9 +1229,33 @@ można też ustawić osobno i wtedy wygrywa z makrem. Przy LC 32 kbps i 17 kHz `
 `--enfac-patch 0|1` wyłącza przeważanie płaskich, szumowych ramek w FDK albo włącza je dla każdej
 ramki; w CBR to drobne pokrętło (najwyżej 1 punkt dziur), w VBR zmienia rozmiar pliku nawet o 29%.
 
+## 30. Częstotliwość próbkowania jako ustawienie jakości: `--resample`
+
+Przy niskim bitrate i wąskim paśmie częstotliwość próbkowania rdzenia sama jest ustawieniem
+jakości. Rdzeń 48 kHz dzieli widmo na pasma współczynników skali pomyślane pod dźwięk do 20 kHz;
+poniżej odcięcia 9,5 kHz tylko część z nich cokolwiek niesie, każde kosztuje dane poboczne, a
+ramka trwa 21 ms. Przy 32 kHz to samo odcięcie pokrywa więcej węższych pasm, a ramka trwa 32 ms;
+przy 24 kHz 43 ms. `--resample <częstotliwość>` przelicza wejście, zanim zobaczy je koder, więc
+cały koder pracuje w nowej częstotliwości.
+
+Zmierzone przy AAC-LC 32 kbps stereo z `-w 9500` (błąd w 200..9000 Hz względem oryginału, niżej
+znaczy czyściej), 48 / 32 / 24 kHz: długa muzyka -7,3 / -8,2 / -9,0 dB przy dziurach
+5,6 / 0,1 / 0%, muzyka mieszana -11,1 / -14,8 / -16,8 dB, szerokie stereo -7,6 / -8,4 / -9,1 dB,
+gęsty materiał -8,3 / -7,7 / -8,6 dB. Ceną jest rozdzielczość czasowa: blok długi przy 24 kHz
+obejmuje 85 ms, a pre-echo przed ostrymi atakami wzrosło z -33,9 dB przy 48 kHz do -28,4 dB przy
+32 kHz i -28,1 dB przy 24 kHz. Dla muzyki z perkusją zwykle lepszym kompromisem jest 32 kHz, dla
+mowy i spokojnego materiału 24 kHz. Koder nigdy nie wybiera częstotliwości sam; decyzja należy
+do ciebie.
+
+    fdkaac -p 2 -b 32000 -w 9500 --resample 32 -o out.m4a in48k.wav
+
+Przelicznik nie dodaje opóźnienia ani słyszalnego śladu (płasko do 95% niższej częstotliwości
+Nyquista, tłumienie 120 dB, zniekształcenia około -136 dB), działa na potoku i na surowym
+wejściu, a materiał 44,1 kHz doprowadza też do `--dab`, które przyjmuje tylko 32 i 48 kHz.
+
 # Część IX. Radio cyfrowe DAB+
 
-## 30. Wyjście DAB+ (`--dab`, `--dab-label`)
+## 31. Wyjście DAB+ (`--dab`, `--dab-label`)
 
 Do tej pory robiliśmy pliki — MP4/M4A dla odtwarzaczy, ADTS do streamingu. DAB+ to
 coś innego: to format naziemnego radia cyfrowego (standard ETSI TS 102 563), a ten
