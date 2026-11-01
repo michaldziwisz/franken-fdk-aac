@@ -20,6 +20,7 @@ fdkaac_SOURCES = \
     src/pcm_readhelper.c       \
     src/pcm_sint16_converter.c \
     src/progress.c             \
+    src/resample.c             \
     src/wav_reader.c
 
 dist_man_MANS = man/fdkaac.1

@@ -38,6 +38,7 @@
 #include "aacenc.h"
 #include "dab_rs.h"
 #include "dab_pad.h"
+#include "resample.h"
 #include "m4af.h"
 #include "progress.h"
 #include "version.h"
@@ -286,6 +287,12 @@ PROGNAME " %s\n"
 "                               -b is then read literally as bps. Real limit left = the\n"
 "                               transport header (ADTS 56 bit/frame). Upper 6144*ch\n"
 "                               ceiling stays. Off-spec, deliberate opt-in.\n"
+" --resample <rate>           Resample the input before encoding: Hz (44100) or kHz\n"
+"                               (44, 44.1, 44,1, 22.05, 32 ...), AAC rates 8..96 kHz.\n"
+"                               The whole encoder then runs at that rate (tables,\n"
+"                               bandwidth, SBR, container, gapless length). Exact ratio,\n"
+"                               windowed sinc: flat to 95%% of the lower Nyquist, -120 dB\n"
+"                               stopband, no added delay. Input rate = no-op. -1 off.\n"
 "\n== B. Stereo coding ==\n"
 "   -- MS (mid/side), core -- \n"
 " --msmask <n>                Force MS: -1 auto(def), 0 off (pure L/R), 1 on (all bands).\n"
@@ -637,7 +644,7 @@ PROGNAME " %s\n"
 "\n== F. Block switching & bitrate control ==\n"
 " --block-bias <n>            Share of short blocks. 0 = long only, 128 = stock, 255 =\n"
 "                               short only (also silence); in between the share follows\n"
-"                               the value about evenly (music: ~50% at 192). Legal window\n"
+"                               the value about evenly (music: ~50%% at 192). Legal window\n"
 "                               sequence at every value. 0..255, -1 off.\n"
 " --vbr-reservoir <bits>      Quasi-VBR: bit-reservoir size. Bigger = more per-frame\n"
 "                               breathing around the average. Auto-clamped to\n"
@@ -685,6 +692,7 @@ typedef struct aacenc_param_ex_t {
     int minimal_moov;   /* skip the whole udta/meta metadata block */
 
     int is_raw;
+    unsigned resample_rate; /* --resample, 0 = off */
     unsigned raw_channels;
     unsigned raw_rate;
     const char *raw_format;
@@ -845,6 +853,7 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
 #define OPT_FR_VERBOSE           M4AF_FOURCC('f','v','r','b')
 #define OPT_FR_DAB               M4AF_FOURCC('f','d','a','b')
 #define OPT_FR_DAB_LABEL         M4AF_FOURCC('f','d','a','l')
+#define OPT_FR_RESAMPLE          M4AF_FOURCC('f','r','s','r')
 
     static const struct option long_options[] = {
         { "help",             no_argument,       0, 'h' },
@@ -1020,6 +1029,7 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
         { "verbose",          no_argument,       0, OPT_FR_VERBOSE         },
         { "dab",              no_argument,       0, OPT_FR_DAB             },
         { "dab-label",        required_argument, 0, OPT_FR_DAB_LABEL       },
+        { "resample",         required_argument, 0, OPT_FR_RESAMPLE        },
 
         { 0,                  0,                 0, 0                      },
     };
@@ -1855,6 +1865,14 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
             params->fr_dab = 1; break;
         case OPT_FR_DAB_LABEL:
             params->fr_dab_label = optarg; break;
+        case OPT_FR_RESAMPLE:
+            if (!strcmp(optarg, "-1")) { params->resample_rate = 0; break; }
+            if (resample_parse_rate(optarg, &params->resample_rate) < 0) {
+                fprintf(stderr, "invalid arg for resample (an AAC sample rate: "
+                        "Hz like 44100 or kHz like 44, 44.1, 22.05; -1 off)\n");
+                return -1;
+            }
+            break;
 
         default:
             return usage(), -1;
@@ -2258,7 +2276,24 @@ pcm_reader_t *open_input(aacenc_param_ex_t *params)
         }
     }
     reader = pcm_open_native_converter(reader);
-    if (reader && PCM_IS_FLOAT(pcm_get_format(reader)))
+    /* --resample sits right after decoding of the PCM container, before the
+       limiter and the conversion to the library's integer PCM: everything
+       downstream (limiter, extrapolator, encoder, M4A timescale, gapless
+       counts) sees only the new rate. Same rate = untouched chain. */
+    if (reader && params->resample_rate &&
+        params->resample_rate != pcm_get_format(reader)->sample_rate) {
+        pcm_reader_t *rs;
+        if (!PCM_IS_FLOAT(pcm_get_format(reader)))
+            reader = pcm_open_float_converter(reader);
+        if (!reader) goto FAIL;
+        if ((rs = resampler_open(reader, params->resample_rate,
+                                 params->fr_verbose)) == 0) {
+            pcm_teardown(&reader);
+            goto FAIL;
+        }
+        reader = limiter_open(rs);
+        if (reader) reader = pcm_open_s32_rounder(reader);
+    } else if (reader && PCM_IS_FLOAT(pcm_get_format(reader)))
         reader = limiter_open(reader);
     if (reader && (reader = pcm_open_sint16_converter(reader)) != 0) {
         /* DAB+ is a continuous superframe stream without gapless trimming
