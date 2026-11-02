@@ -2429,6 +2429,7 @@ Examples, lengthening the time:
 Works with / against: overrides `--sbr-header-period`. Check the result in `--verbose`,
 which prints the effective period both ways. Both `.` and `,` are accepted as the decimal
 separator.
+
 ### SBR transient detector: `--sbr-tran-peak` `--sbr-tran-quiet` `--sbr-tran-dom` `--sbr-tran-thr` `--sbr-tran-split`
 
 SBR divides each frame into time slots and decides, from the energy in those slots,
@@ -3012,6 +3013,7 @@ Examples, raising the distance:
 Works with / against: this reads the transient decision, so it is downstream of
 `--sbr-tran-thr` and `--sbr-tran-peak`: changing what counts as a transient changes what
 this knob is measuring distance to. It has no influence on framing itself.
+
 ### Inverse filtering and noise floor: `--sbr-invf` `--sbr-softness` `--sbr-invf-min` `--sbr-invf-max` `--sbr-invf-bias` `--sbr-invf-table` `--sbr-invf-hyst` `--sbr-invf-sbr-thr` `--sbr-invf-orig-thr` `--sbr-invf-smooth` `--sbr-nf-weight` `--sbr-nf-weight-from` `--sbr-nf-smooth` `--sbr-noise-max` `--sbr-noise-floor-offset`
 
 This is where the character of the high band is actually decided, and it is the part of

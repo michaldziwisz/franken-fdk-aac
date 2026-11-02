@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <title>Franken FDK AAC: podręcznik</title>
+  <title>Franken FDK AAC: podręcznik dla realizatora dźwięku</title>
   <style>
     html {
       color: #1a1a1a;
@@ -166,13 +166,14 @@
 </head>
 <body>
 <header id="title-block-header">
-<h1 class="title">Franken FDK AAC: podręcznik</h1>
+<h1 class="title">Franken FDK AAC: podręcznik dla realizatora
+dźwięku</h1>
 </header>
 <nav id="TOC" role="doc-toc">
 <ul>
-<li><a href="#franken-fdk-aac--manual-dla-dźwiękowca"
-id="toc-franken-fdk-aac--manual-dla-dźwiękowca">Franken FDK AAC — Manual
-dla dźwiękowca</a></li>
+<li><a href="#franken-fdk-aac-podręcznik-dla-realizatora-dźwięku"
+id="toc-franken-fdk-aac-podręcznik-dla-realizatora-dźwięku">Franken FDK
+AAC: podręcznik dla realizatora dźwięku</a></li>
 <li><a href="#część-i-jak-w-ogóle-działa-aac"
 id="toc-część-i-jak-w-ogóle-działa-aac">Część I. Jak w ogóle działa
 AAC</a>
@@ -209,9 +210,9 @@ Przepis: VBR, który nie tnie ostatnich ramek "na siłę"</a></li>
 id="toc-9-skrajne-bitrate-bardzo-nisko-i-bardzo-wysoko">9. Skrajne
 bitrate: bardzo nisko i bardzo wysoko</a></li>
 <li><a
-href="#9a-czy-warto-robić-afterburner-plus--więcej-iteracji-przy-skrajnym-bitrate"
-id="toc-9a-czy-warto-robić-afterburner-plus--więcej-iteracji-przy-skrajnym-bitrate">9a.
-Czy warto robić "afterburner plus" — więcej iteracji przy skrajnym
+href="#9a-czy-warto-robić-afterburner-plus-więcej-iteracji-przy-skrajnym-bitrate"
+id="toc-9a-czy-warto-robić-afterburner-plus-więcej-iteracji-przy-skrajnym-bitrate">9a.
+Czy warto robić "afterburner plus": więcej iteracji przy skrajnym
 bitrate</a></li>
 </ul></li>
 <li><a href="#część-iii-opcje-standardowe-nie-tylko-frankenstein"
@@ -227,18 +228,18 @@ sygnalizacja</a></li>
 <li><a href="#12-kontener-i-metadane"
 id="toc-12-kontener-i-metadane">12. Kontener i metadane</a></li>
 </ul></li>
-<li><a href="#część-iv-opcje-frankenstein--sterowanie-wnętrzem-enkodera"
-id="toc-część-iv-opcje-frankenstein--sterowanie-wnętrzem-enkodera">Część
-IV. Opcje Frankenstein — sterowanie wnętrzem enkodera</a>
+<li><a href="#część-iv-opcje-frankenstein-sterowanie-wnętrzem-kodera"
+id="toc-część-iv-opcje-frankenstein-sterowanie-wnętrzem-kodera">Część
+IV. Opcje Frankenstein: sterowanie wnętrzem kodera</a>
 <ul>
 <li><a href="#13-stereo-w-rdzeniu-ms-i-intensity"
 id="toc-13-stereo-w-rdzeniu-ms-i-intensity">13. Stereo w rdzeniu: MS i
 Intensity</a></li>
-<li><a href="#14-pasmo-i-cutoff-w-tym-audiofilskie-pełne-pasmo"
-id="toc-14-pasmo-i-cutoff-w-tym-audiofilskie-pełne-pasmo">14. Pasmo i
-cutoff (w tym audiofilskie pełne pasmo)</a></li>
-<li><a href="#15-sbr--sterowanie-górnym-pasmem"
-id="toc-15-sbr--sterowanie-górnym-pasmem">15. SBR — sterowanie górnym
+<li><a href="#14-pasmo-i-odcięcie-w-tym-audiofilskie-pełne-pasmo"
+id="toc-14-pasmo-i-odcięcie-w-tym-audiofilskie-pełne-pasmo">14. Pasmo i
+odcięcie (w tym audiofilskie pełne pasmo)</a></li>
+<li><a href="#15-sbr-sterowanie-górnym-pasmem"
+id="toc-15-sbr-sterowanie-górnym-pasmem">15. SBR: sterowanie górnym
 pasmem</a></li>
 <li><a href="#16-parametric-stereo-he-aac-v2"
 id="toc-16-parametric-stereo-he-aac-v2">16. Parametric Stereo (HE-AAC
@@ -275,16 +276,16 @@ rzetelności</a></li>
 id="toc-część-vii-tabele-referencyjne">Część VII. Tabele
 referencyjne</a>
 <ul>
-<li><a href="#23-tabela-1--górna-częstotliwość-pasma-sfb"
-id="toc-23-tabela-1--górna-częstotliwość-pasma-sfb">23. Tabela 1 — górna
+<li><a href="#23-tabela-1-górna-częstotliwość-pasma-sfb"
+id="toc-23-tabela-1-górna-częstotliwość-pasma-sfb">23. Tabela 1: górna
 częstotliwość pasma (SFB)</a></li>
-<li><a href="#24-tabela-2--sbr-indeks-startu-a-częstotliwość-przejścia"
-id="toc-24-tabela-2--sbr-indeks-startu-a-częstotliwość-przejścia">24.
-Tabela 2 — SBR: indeks startu a częstotliwość przejścia</a></li>
+<li><a href="#24-tabela-2-indeks-startu-sbr-a-pasmo-rdzenia"
+id="toc-24-tabela-2-indeks-startu-sbr-a-pasmo-rdzenia">24. Tabela 2:
+indeks startu SBR a pasmo rdzenia</a></li>
 <li><a
-href="#25-tabela-3--aac-lc-automatyczne-odcięcie-pasma-wg-bitrate"
-id="toc-25-tabela-3--aac-lc-automatyczne-odcięcie-pasma-wg-bitrate">25.
-Tabela 3 — AAC-LC: automatyczne odcięcie pasma wg bitrate</a></li>
+href="#25-tabela-3-aac-lc-automatyczne-odcięcie-pasma-według-bitrateu"
+id="toc-25-tabela-3-aac-lc-automatyczne-odcięcie-pasma-według-bitrateu">25.
+Tabela 3: AAC-LC, automatyczne odcięcie pasma według bitrate'u</a></li>
 <li><a href="#26-jak-czytać---verbose"
 id="toc-26-jak-czytać---verbose">26. Jak czytać
 <code>--verbose</code></a></li>
@@ -318,13 +319,13 @@ id="toc-31-wyjście-dab---dab---dab-label">31. Wyjście DAB+
 id="toc-część-x-słownik-pojęć">Część X. Słownik pojęć</a></li>
 </ul>
 </nav>
-<h1 id="franken-fdk-aac--manual-dla-dźwiękowca">Franken FDK AAC — Manual
-dla dźwiękowca</h1>
+<h1 id="franken-fdk-aac-podręcznik-dla-realizatora-dźwięku">Franken FDK
+AAC: podręcznik dla realizatora dźwięku</h1>
 <p>Kompletny przewodnik po kodowaniu dźwięku w AAC / MPEG-4 oraz po
-wszystkich opcjach tego enkodera. Napisany dla osoby, która zna się na
+wszystkich opcjach tego kodera. Napisany dla osoby, która zna się na
 dźwięku i biegle posługuje się komputerem, ale nie musi być programistą
 ani matematykiem.</p>
-<p>Wersja dokumentu: lipiec 2026. Enkoder: libfdk-aac 2.0.3 + frontend
+<p>Wersja dokumentu: lipiec 2026. Koder: libfdk-aac 2.0.3 + frontend
 nu774, z rozszerzeniami "Frankenstein".</p>
 <p>Autor: Michał Dziwisz. Konsultant merytoryczny: Patryk Faliszewski.
 Zbudowane na oprogramowaniu open source: libfdk-aac (Fraunhofer IIS)
@@ -337,34 +338,35 @@ AAC</h1>
 każdą próbkę dźwięku dokładnie. Przy 44,1 kHz i 16 bitach na kanał
 stereo to około 1411 kilobitów na sekundę. To dużo. Kodek stratny, taki
 jak AAC czy MP3, potrafi oddać ten sam materiał przy 128, 96, a nawet 64
-kilobitach tak, że ucho w codziennych warunkach różnicy nie usłyszy —
-albo usłyszy bardzo niewielką.</p>
+kilobitach tak, że ucho w codziennych warunkach różnicy nie usłyszy albo
+usłyszy bardzo niewielką.</p>
 <p>Sztuczka nie polega na "ściśnięciu" dźwięku jak plik ZIP. Polega na
-WYRZUCENIU tego, czego i tak nie usłyszysz, i zapisaniu tylko reszty.
-Cała inteligencja kodeka leży w tym, żeby dobrze zgadnąć, co jest
-nieistotne. To jest model psychoakustyczny — matematyczny opis tego, jak
+WYRZUCENIU tego, czego i tak nie słychać, i zapisaniu tylko reszty. Cała
+inteligencja kodeka leży w tym, żeby dobrze zgadnąć, co jest nieistotne.
+Służy do tego model psychoakustyczny, czyli matematyczny opis tego, jak
 działa ludzki słuch.</p>
 <h2 id="2-trzy-filary-psychoakustyki">2. Trzy filary psychoakustyki</h2>
-<p>Enkoder podejmuje decyzje w oparciu o kilka zjawisk, które warto
+<p>Koder podejmuje decyzje na podstawie kilku zjawisk, które warto
 rozumieć, bo połowa opcji tego programu właśnie nimi steruje.</p>
 <p>MASKOWANIE JEDNOCZESNE. Głośny dźwięk o jakiejś częstotliwości
-sprawia, że przestajesz słyszeć cichsze dźwięki tuż obok niego w widmie.
-Jeśli gra głośne 1000 Hz, to cichy sygnał 1100 Hz jest "zamaskowany" —
-ucho go nie wychwyci. Enkoder może więc zapisać ten zamaskowany fragment
-bardzo niedbale (mało bitów) albo w ogóle. To jest najważniejszy
-mechanizm oszczędzania bitów w AAC.</p>
+sprawia, że cichsze dźwięki tuż obok niego w widmie przestają być
+słyszalne. Taki głośny dźwięk to sygnał maskujący (masker). Jeśli gra
+głośne 1000 Hz, to cichy sygnał 1100 Hz jest dźwiękiem maskowanym: ucho
+go nie wychwyci. Koder może więc zapisać ten fragment bardzo niedbale
+(mało bitów) albo pominąć go w całości. To najważniejszy mechanizm
+oszczędzania bitów w AAC.</p>
 <p>MASKOWANIE CZASOWE. Tuż przed i tuż po głośnym uderzeniu (np. werbla)
-ucho jest "ogłuszone" i nie słyszy cichych detali. Enkoder to
+ucho jest "ogłuszone" i nie słyszy cichych detali. Koder to
 wykorzystuje.</p>
 <p>PRÓG SŁYSZALNOŚCI (ATH, Absolute Threshold of Hearing). Istnieje
-granica ciszy, poniżej której ucho po prostu nie rejestruje dźwięku — i
-granica ta jest różna dla różnych częstotliwości (najlepiej słyszymy 2–5
+granica ciszy, poniżej której ucho po prostu nie rejestruje dźwięku, a
+granica ta jest różna dla różnych częstotliwości (najlepiej słyszymy 2-5
 kHz, gorzej skraje pasma). Cokolwiek jest poniżej tego progu, można
 wyrzucić.</p>
-<p>Kiedy słyszysz, że kodek "zabrał powietrze" albo "spłaszczył blachy",
-to prawie zawsze znaczy, że model psychoakustyczny uznał coś za
-niesłyszalne, a Twoje ucho się z nim nie zgodziło. Duża część tego
-manuala to nauka, jak przesuwać te decyzje w stronę Twojego ucha.</p>
+<p>Gdy słychać, że kodek "zabrał powietrze" albo "spłaszczył blachy",
+prawie zawsze znaczy to, że model psychoakustyczny uznał coś za
+niesłyszalne, a ucho się z nim nie zgodziło. Duża część tego manuala to
+nauka, jak przesuwać te decyzje w stronę własnego ucha.</p>
 <h2 id="3-pasma-mdct-i-współczynniki-skali">3. Pasma, MDCT i
 współczynniki skali</h2>
 <p>AAC nie pracuje na próbkach w czasie, tylko na WIDMIE. Sygnał jest
@@ -373,43 +375,44 @@ częstotliwości (transformata MDCT). Powstałe współczynniki grupowane są
 w PASMA WSPÓŁCZYNNIKÓW SKALI (scale factor bands, w skrócie SFB).
 Numeracja SFB idzie OD DOŁU: SFB 0 to najniższe częstotliwości (basy), a
 im wyższy numer, tym wyżej w widmie.</p>
-<p>To ważne, bo wiele opcji tego enkodera operuje właśnie na numerach
-pasm SFB. Gdy mówimy "MS na 5 najwyższych pasmach", chodzi o pasma o
+<p>To ważne, bo wiele opcji tego kodera operuje właśnie na numerach pasm
+SFB. Gdy mówimy "MS na 5 najwyższych pasmach", chodzi o pasma o
 najwyższych numerach.</p>
-<p>W każdym paśmie enkoder decyduje, jak dokładnie (ile bitów) zapisać
-współczynniki. Im mniej bitów, tym większy błąd kwantyzacji — słyszalny
+<p>W każdym paśmie koder decyduje, jak dokładnie (ile bitów) zapisać
+współczynniki. Im mniej bitów, tym większy błąd kwantyzacji, słyszalny
 jako szum albo "dziura" w widmie. Model psychoakustyczny mówi, gdzie ten
 błąd się schowa pod maskowaniem, a gdzie będzie słyszalny.</p>
 <h2 id="4-rodziny-aac-lc-he-aac-he-aac-v2">4. Rodziny AAC: LC, HE-AAC,
 HE-AAC v2</h2>
-<p>AAC to nie jeden format, tylko rodzina profili. W tym enkoderze
-wybierasz je przełącznikiem <code>-p</code>:</p>
+<p>AAC to nie jeden format, tylko rodzina profili. W tym koderze wybiera
+się je przełącznikiem <code>-p</code>:</p>
 <p>AAC-LC (Low Complexity, profil 2). Podstawowy, najczęściej używany
 wariant. Koduje pełne pasmo tradycyjnie. Sensowny od około 96 kbps
 stereo w górę. Bezpieczny wybór do muzyki w dobrej jakości.</p>
 <p>HE-AAC (High Efficiency, profil 5, zwany też AAC+ albo aacPlus). Do
-LC dokłada SBR — Spectral Band Replication. Rdzeń AAC koduje tylko dolną
-część pasma (np. do 8–13 kHz), a górę SBR "odtwarza sztucznie" na
+LC dokłada SBR, czyli Spectral Band Replication. Rdzeń AAC koduje tylko
+dolną część pasma (np. do 8-13 kHz), a górę SBR "odtwarza sztucznie" na
 podstawie dolnej i niewielkiego opisu. Ogromna oszczędność bitów przy
-zachowaniu wrażenia szerokiego pasma. Sensowny w okolicach 32–80 kbps
+zachowaniu wrażenia szerokiego pasma. Sensowny w okolicach 32-80 kbps
 stereo.</p>
-<p>HE-AAC v2 (profil 29). Do HE-AAC dokłada PS — Parametric Stereo.
+<p>HE-AAC v2 (profil 29). Do HE-AAC dokłada PS, czyli Parametric Stereo.
 Zamiast kodować dwa kanały, koduje jeden (mono) plus garść parametrów
 opisujących, jak z niego odtworzyć stereo. Sensowny w bardzo niskich
-bitrate'ach, 16–48 kbps stereo.</p>
+bitrate'ach, 16-48 kbps stereo.</p>
 <p>Zasada praktyczna: im niższy bitrate, tym więcej "protez" (SBR, PS).
-Przy 320 kbps te protezy tylko przeszkadzają — używaj wtedy LC.</p>
+Przy 320 kbps te protezy tylko przeszkadzają, dlatego należy wtedy użyć
+LC.</p>
 <h2 id="5-co-to-jest-sbr-górne-pasmo-sztuczne">5. Co to jest SBR (górne
 pasmo sztuczne)</h2>
 <p>Warto zrozumieć SBR, bo steruje nim wiele opcji. SBR NIE koduje
 górnego pasma próbka po próbce. Zamiast tego wysyła OBWIEDNIE
-(envelopes) — informację "w tym kawałku czasu i w tym zakresie
-częstotliwości energia ma taki a taki kształt" — plus wskazówki, z
-których fragmentów dolnego pasma "skopiować" materiał w górę, i ile
+(envelopes), czyli informację "w tym kawałku czasu i w tym zakresie
+częstotliwości energia ma taki a taki kształt", plus wskazówki, z
+których fragmentów dolnego pasma "skopiować" materiał w górę i ile
 dołożyć szumu. Dekoder rekonstruuje górę na tej podstawie.</p>
 <p>Dlatego górne pasmo w HE-AAC brzmi inaczej niż oryginał: to
-inteligentna rekonstrukcja, nie kopia. Opcje SBR w tym enkoderze
-pozwalają sterować gęstością obwiedni w czasie, ich rozdzielczością
+inteligentna rekonstrukcja, nie kopia. Opcje SBR w tym koderze pozwalają
+sterować gęstością obwiedni w czasie, ich rozdzielczością
 częstotliwości, ilością wstrzykiwanego szumu i tak zwanym filtrowaniem
 odwrotnym (o tym dalej).</p>
 <h2 id="6-co-to-jest-parametric-stereo-ps">6. Co to jest Parametric
@@ -417,12 +420,13 @@ Stereo (PS)</h2>
 <p>PS idzie jeszcze dalej niż SBR w oszczędzaniu. Wysyła jeden kanał
 dźwięku i parametry opisujące różnice między lewym a prawym:</p>
 <ul>
-<li>IID (Inter-channel Intensity Difference) — różnica głośności między
+<li>IID (Inter-channel Intensity Difference): różnica głośności między
 kanałami.</li>
-<li>ICC (Inter-channel Coherence) — jak bardzo kanały są do siebie
-podobne/spójne.</li>
-<li>IPD/OPD (różnice fazy) — te w enkoderze FDK NIE są wspierane (zawsze
-zero); o tym uczciwie w części o opcjach PS.</li>
+<li>ICC (Inter-channel Coherence): jak bardzo kanały są do siebie
+podobne i spójne.</li>
+<li>IPD/OPD (różnice fazy): fabryczny FDK ich nie wysyła; ten build
+potrafi, przez <code>--ps-ipd 1</code> i <code>--ps-opd 1</code>
+(rozdział 16).</li>
 </ul>
 <p>Dekoder z tego jednego kanału i tych parametrów "rozkłada" dźwięk z
 powrotem na stereo. Przy 24 kbps to jedyny sposób, żeby stereo w ogóle
@@ -435,66 +439,67 @@ II. Bitrate, rezerwuar bitów i sterowanie jakością</h1>
 się naprawdę dzieje w środku</h2>
 <p>CBR (Constant Bitrate) to stały bitrate: każda sekunda dźwięku
 zajmuje mniej więcej tyle samo miejsca. Wygodne do streamingu,
-przewidywalne. Wybierasz go przełącznikiem <code>-b</code> (np.
+przewidywalne. Wybiera się go przełącznikiem <code>-b</code> (np.
 <code>-b 128000</code> = 128 kbit/s).</p>
 <p>VBR (Variable Bitrate) to bitrate zmienny: fragmenty trudne (dużo
 detali, transjenty) dostają więcej bitów, ciche i proste mniej.
 Teoretycznie lepsza jakość na bit. W FDK VBR wybiera się przełącznikiem
-<code>-m</code> (tryby 1–5), ale — i to trzeba powiedzieć wprost — VBR w
-FDK jest słaby. Presety są zachowawcze i nie dają tej swobody, co np.
-LAME w MP3.</p>
+<code>-m</code> (tryby 1-5), trzeba jednak powiedzieć wprost: VBR w FDK
+jest słaby. Presety są zachowawcze i nie dają tej swobody, co np. LAME w
+MP3.</p>
 <p>Kluczowa rzecz do zrozumienia: NAWET w trybie CBR bitrate lokalnie
 "oddycha". Służy do tego REZERWUAR BITÓW (bit reservoir). To bufor: gdy
-ramka jest łatwa, enkoder zapisuje ją oszczędnie i odkłada zaoszczędzone
+ramka jest łatwa, koder zapisuje ją oszczędnie i odkłada zaoszczędzone
 bity do rezerwuaru; gdy przychodzi ramka trudna, pożycza z rezerwuaru i
 wydaje więcej, niż wynikałoby ze średniej. Średnia zostaje zachowana,
 ale chwilowo bitrate skacze w górę i w dół. To dlatego "CBR" w AAC nie
 jest idealnie płaski.</p>
-<p>Ten enkoder wystawia sterowanie rezerwuarem na zewnątrz, i to jest
-podstawa naszego własnego, lepszego VBR — patrz następny rozdział.</p>
+<p>Ten koder wystawia sterowanie rezerwuarem na zewnątrz i to jest
+podstawa naszego własnego, lepszego VBR (patrz następny rozdział).</p>
 <h2 id="8-przepis-vbr-który-nie-tnie-ostatnich-ramek-na-siłę">8.
 Przepis: VBR, który nie tnie ostatnich ramek "na siłę"</h2>
-<p>To jest dokładnie sytuacja, o którą często chodzi: masz trudny
-fragment (np. wejście całej sekcji dętej albo talerze), enkoder wypuścił
-kilka ramek grubo powyżej średniej — i zamiast pozwolić tej jakości
-"żyć", zaczyna dusić kolejne ramki, żeby tylko wrócić do średniej.
-Efekt: słyszalne przygaszenie zaraz po głośnym momencie.</p>
+<p>To jest dokładnie sytuacja, o którą często chodzi: w trudnym
+fragmencie (np. wejście całej sekcji dętej albo talerze) koder wypuścił
+kilka ramek grubo powyżej średniej, a potem, zamiast pozwolić tej
+jakości "żyć", zaczyna dusić kolejne ramki, żeby tylko wrócić do
+średniej. Efekt: słyszalne przygaszenie zaraz po głośnym momencie.</p>
 <p>Nasze rozwiązanie to quasi-CVBR: bierzemy silnik CBR (który trzyma
-sensowną średnią), ale ROZSZERZAMY rezerwuar i widełki bitów, żeby
-enkoder mógł oddychać znacznie mocniej i nie musiał natychmiast "oddawać
-długu". Cztery przełączniki:</p>
-<p><code>--vbr-reservoir &lt;bity&gt;</code> — rozmiar rezerwuaru.
-Większy = enkoder może dłużej utrzymać podwyższoną jakość po trudnym
-fragmencie, zanim wróci do średniej.</p>
-<p><code>--peak-bitrate &lt;bps&gt;</code> — dozwolony chwilowy szczyt.
+sensowną średnią), ale ROZSZERZAMY rezerwuar i widełki bitów, żeby koder
+mógł oddychać znacznie mocniej i nie musiał natychmiast "oddawać długu".
+Cztery przełączniki:</p>
+<p><code>--vbr-reservoir &lt;bity&gt;</code>: rozmiar rezerwuaru.
+Większy oznacza, że koder może dłużej utrzymać podwyższoną jakość po
+trudnym fragmencie, zanim wróci do średniej.</p>
+<p><code>--peak-bitrate &lt;bps&gt;</code>: dozwolony chwilowy szczyt.
 Pozwala trudnym ramkom sięgnąć wysoko, przy zachowaniu średniej.</p>
 <p><code>--max-bits-frame &lt;n&gt;</code> i
-<code>--min-bits-frame &lt;n&gt;</code> — twarde widełki bitów na ramkę.
-To rdzeń "constrained VBR": mówisz "nie mniej niż X, nie więcej niż Y na
-ramkę".</p>
-<p><code>--bitres-mode &lt;0|1|2&gt;</code> — tryb rezerwuaru: 0 pełny,
-1 zredukowany, 2 wyłączony (sztywny bitrate ramka po ramce).</p>
+<code>--min-bits-frame &lt;n&gt;</code>: twarde widełki bitów na ramkę.
+To rdzeń "constrained VBR", czyli reguła "nie mniej niż X, nie więcej
+niż Y na ramkę".</p>
+<p><code>--bitres-mode &lt;0|1|2&gt;</code>: tryb rezerwuaru, gdzie 0
+oznacza pełny, 1 zredukowany, a 2 wyłączony (sztywny bitrate ramka po
+ramce).</p>
 <p>PRZEPIS PRAKTYCZNY dla materiału, który ma "żyć" po trudnych
 fragmentach (~128 kbps stereo, muzyka akustyczna/orkiestrowa):</p>
 <pre><code>fdkaac-franken-x64.exe -p 2 -b 128000 --peak-bitrate 200000 --vbr-reservoir 12000 -o out.m4a in.wav</code></pre>
 <p>Co to robi: średnia zostaje w okolicach 128, ale gdy przychodzi
 kulminacja, ramki mogą sięgnąć 200 kbps, a szeroki rezerwuar (12000
-bitów) sprawia, że enkoder NIE dusi natychmiast kolejnych ramek —
+bitów) sprawia, że koder NIE dusi natychmiast kolejnych ramek, lecz
 pozwala jakości opaść łagodnie. To jest dokładnie ten efekt "nie tnij na
 siłę, pozwól temu żyć".</p>
-<p>Chcesz mocniej: podnieś <code>--peak-bitrate</code> do 256000 i
-<code>--vbr-reservoir</code> do 18000. Chcesz twardziej trzymać średnią
-(limit łącza): zmniejsz rezerwuar do 4000.</p>
-<p>WAŻNE OGRANICZENIE, uczciwie: to nadal działa na silniku CBR +
-rezerwuar, nie na prawdziwej alokacji "po zawartości" jak w LAME.
-Wahania są umiarkowane (rzędu ±20–50%), bo AAC ma twardy limit 6144 bity
-na kanał na ramkę. Ale ten "lekki lot" to właśnie to, co zwykle chcesz —
-i jest w pełni kontrolowany.</p>
+<p>Dla mocniejszego działania podnieś <code>--peak-bitrate</code> do
+256000, a <code>--vbr-reservoir</code> do 18000. Gdy średnia ma być
+trzymana twardziej (limit łącza), zmniejsz rezerwuar do 4000.</p>
+<p>WAŻNE OGRANICZENIE: to nadal działa na silniku CBR plus rezerwuar,
+nie na prawdziwej alokacji "po zawartości" jak w LAME. Wahania są
+umiarkowane (rzędu ±20-50%), bo AAC ma twardy limit 6144 bity na kanał
+na ramkę. Ten "lekki lot" to jednak zwykle dokładnie to, o co chodzi, i
+jest w pełni kontrolowany.</p>
 <h2 id="9-skrajne-bitrate-bardzo-nisko-i-bardzo-wysoko">9. Skrajne
 bitrate: bardzo nisko i bardzo wysoko</h2>
-<p>BARDZO NISKO. Standardowo FDK nie pozwoli zejść poniżej pewnej
-podłogi. Jeśli naprawdę chcesz 6 kbps HE-AAC stereo, 4 kbps HE-AAC v2
-albo 3 kbps LC (choćby dla eksperymentu), użyj flagi
+<p>BARDZO NISKO. Standardowo FDK nie pozwoli zejść poniżej pewnej dolnej
+granicy. Aby uzyskać 6 kbps HE-AAC stereo, 4 kbps HE-AAC v2 albo 3 kbps
+LC (choćby dla eksperymentu), trzeba użyć flagi
 <code>--unlock-bitrate</code>. UWAGA na jeden szczegół: normalnie ten
 frontend traktuje małe liczby przy <code>-b</code> jako kilobity (czyli
 <code>-b 96</code> = 96 kbps). W trybie <code>--unlock-bitrate</code>
@@ -502,127 +507,127 @@ bierze <code>-b</code> DOSŁOWNIE jako bity na sekundę, czyli
 <code>-b 8000</code> to 8000 bps = 8 kbps.</p>
 <pre><code>fdkaac-franken-x64.exe -p 29 -b 6000 --unlock-bitrate -o out.m4a in48k.wav</code></pre>
 <p>DWA WAŻNE ZASTRZEŻENIA do bardzo niskich bitrate'ów:</p>
-<p>Po pierwsze: skąd w ogóle podłogi i co flaga zdejmuje. Popularne
-przekonanie, że HE-AAC ma twarde minimum 16 kbps, jest nieprawdziwe;
-dawniej powtarzała je także ta instrukcja. 16 kbps to tylko najniższy
-wiersz tabeli strojenia SBR dla 48 kHz stereo. Dla mono i niższych
-częstotliwości tabela zaczyna się od 8..12 kbps, dla HE-AAC v2 od 8
-kbps. Stock FDK podnosi wszystko, co leży niżej, do tego wiersza. Z
-<code>--unlock-bitrate</code> enkoder bierze najniższy wiersz i zostawia
-Twój bitrate: siatka SBR jest ta sama, rdzeń AAC dostaje po prostu mniej
-bitów. W LD i ELD flaga zdejmuje dodatkowo regułę 8 kbps na kanał i
-208-bitowy zapas na transport (prawdziwy narzut nagłówków nadal jest
-sprawdzany), a poniżej tabeli pasm bierze najwęższe pasmo. Najniższe
-<code>-b</code>, przy którym kodowanie przy 48 kHz się kończy (w
-nawiasie podłoga stock, do której enkoder dawniej podnosił): HE-AAC
-stereo 5050 (16008), HE-AAC mono 2505 (12008), HE-AAC v2 3122 (12008),
-LD 8291 (19500), ELD 9062 (19500), ELD z SBR około 10500..11300
-(36008..60008), LC 2659 (9750). Przy 24 i 32 kHz wartości są jeszcze
-niższe. Prawdziwa twarda granica to szacunek ładunku samego SBR (około
-2,5 kbps na kanał plus PS): poniżej niego rdzeń nie ma ani bitu i
-enkoder kończy czystym komunikatem „encoder initialization failed”.</p>
+<p>Po pierwsze: skąd w ogóle biorą się te dolne granice i co flaga
+zdejmuje. Popularne przekonanie, że HE-AAC ma twarde minimum 16 kbps,
+jest nieprawdziwe; powtarzała je także ta instrukcja. 16 kbps to tylko
+najniższy wiersz tabeli strojenia SBR dla 48 kHz stereo. Dla mono i
+niższych częstotliwości tabela zaczyna się od 8..12 kbps, dla HE-AAC v2
+od 8 kbps. Fabryczny FDK podnosi wszystko, co leży niżej, do tego
+wiersza. Z <code>--unlock-bitrate</code> koder bierze najniższy wiersz i
+zostawia zadany bitrate: siatka SBR jest ta sama, rdzeń AAC dostaje po
+prostu mniej bitów. W LD i ELD flaga zdejmuje dodatkowo regułę 8 kbps na
+kanał i 208-bitowy zapas na transport (prawdziwy narzut nagłówków nadal
+jest sprawdzany), a poniżej tabeli pasm bierze najwęższe pasmo.
+Najniższe <code>-b</code>, przy którym kodowanie przy 48 kHz się kończy
+(w nawiasie najniższy dozwolony poziom domyślny, do którego koder
+podnosił): HE-AAC stereo 5050 (16008), HE-AAC mono 2505 (12008), HE-AAC
+v2 3122 (12008), LD 8291 (19500), ELD 9062 (19500), ELD z SBR około
+10500..11300 (36008..60008), LC 2659 (9750). Przy 24 i 32 kHz wartości
+są jeszcze niższe. Prawdziwa twarda granica to szacunek ładunku samego
+SBR (około 2,5 kbps na kanał plus PS): poniżej niego rdzeń nie ma ani
+bitu i koder kończy czystym komunikatem „encoder initialization
+failed”.</p>
 <p>Przy takich wartościach licz się z tym, że gęste fragmenty wyjdą
 powyżej <code>-b</code>: ramka, która nie mieści nawet własnych
-nagłówków i danych pobocznych, przekracza budżet, a rezerwuar odrabia to
-na kolejnych ramkach. Przykład: <code>-b 6000</code> dla HE-AAC stereo
-dał realnie 7290 bps na muzyce. Sprawdzaj rozmiar pliku, a nie samą
-deklarację w <code>--verbose</code>. Do odsłuchu takich strumieni LD i
-ELD używaj dekodera Fraunhofera; ffmpeg 6.1 ma z nimi kłopot nawet przy
-enkoderze stock.</p>
-<p>Po drugie — UWAGA na interpretację <code>-b</code> w trybie unlock.
+nagłówków i informacji pobocznej (side information), przekracza budżet,
+a rezerwuar odrabia to na kolejnych ramkach. Przykład:
+<code>-b 6000</code> dla HE-AAC stereo dał realnie 7290 bps na muzyce.
+Trzeba sprawdzać rozmiar pliku, a nie samą deklarację w
+<code>--verbose</code>. Do odsłuchu takich strumieni LD i ELD służy
+dekoder Fraunhofera; ffmpeg 6.1 ma z nimi kłopot nawet przy koderze
+fabrycznym.</p>
+<p>Po drugie, UWAGA na interpretację <code>-b</code> w trybie unlock.
 Normalnie ten frontend traktuje małe liczby jako kilobity:
-<code>-b 128</code> = 128 kbps, <code>-b 1152</code> = 1152 kbps. Ale z
-<code>--unlock-bitrate</code> liczba jest brana DOSŁOWNIE jako bity na
-sekundę: <code>-b 8000</code> = 8000 bps = 8 kbps. Gdybyś przez pomyłkę
-napisał <code>-b 1152 --unlock-bitrate</code> (myśląc "1152 kbps"),
-dostałbyś 1152 bps — czyli praktycznie nic. Program ostrzeże, gdy
-wartość wygląda na taką pomyłkę. Reguła: w trybie unlock zawsze podawaj
-pełną liczbę bitów (np. <code>-b 6000</code>, nie
-<code>-b 6</code>).</p>
+<code>-b 128</code> = 128 kbps, <code>-b 1152</code> = 1152 kbps. Z
+<code>--unlock-bitrate</code> liczba jest jednak brana DOSŁOWNIE jako
+bity na sekundę: <code>-b 8000</code> = 8000 bps = 8 kbps. Pomyłkowe
+<code>-b 1152 --unlock-bitrate</code> (w zamiarze "1152 kbps") daje 1152
+bps, czyli praktycznie nic. Program ostrzeże, gdy wartość wygląda na
+taką pomyłkę. Reguła: w trybie unlock zawsze podawaj pełną liczbę bitów
+(np. <code>-b 6000</code>, nie <code>-b 6</code>).</p>
 <p>BARDZO WYSOKO. Górny sufit to 6144 bity na kanał na ramkę. Przy 48
 kHz to wychodzi około 576 kbps na kanał; przy stereo realne ograniczenie
-pojawia się w okolicach 600 kbps sumarycznie. Jeśli chcesz 1000+ kbps,
-musisz podnieść częstotliwość próbkowania powyżej 48 kHz (źródło 96 kHz)
-— wtedy sufit rośnie i osiągniesz 1024, a nawet 1152 kbps. To
+pojawia się w okolicach 600 kbps sumarycznie. Aby przekroczyć 1000 kbps,
+trzeba podnieść częstotliwość próbkowania powyżej 48 kHz (źródło 96
+kHz): wtedy sufit rośnie i pozwala osiągnąć 1024, a nawet 1152 kbps. To
 ograniczenie samego standardu AAC.</p>
-<p>Uwaga o jednoznaczności: przy tak wysokich bitrate'ach (1152) NIE
-używasz <code>--unlock-bitrate</code> (on służy do schodzenia w dół),
-więc <code>-b 1152</code> znaczy tam jednoznacznie 1152 kbps. Kolizja
-interpretacji dotyczy wyłącznie trybu unlock, gdzie i tak operujesz
-małymi liczbami bps. Praktycznie te dwa światy się nie stykają.</p>
+<p>Uwaga o jednoznaczności: przy tak wysokich bitrate'ach (1152) nie
+używa się <code>--unlock-bitrate</code> (ta flaga służy do schodzenia w
+dół), więc <code>-b 1152</code> znaczy tam jednoznacznie 1152 kbps.
+Kolizja interpretacji dotyczy wyłącznie trybu unlock, gdzie i tak w grze
+są małe liczby bps. Praktycznie te dwa światy się nie stykają.</p>
 <h2
-id="9a-czy-warto-robić-afterburner-plus--więcej-iteracji-przy-skrajnym-bitrate">9a.
-Czy warto robić "afterburner plus" — więcej iteracji przy skrajnym
+id="9a-czy-warto-robić-afterburner-plus-więcej-iteracji-przy-skrajnym-bitrate">9a.
+Czy warto robić "afterburner plus": więcej iteracji przy skrajnym
 bitrate</h2>
-<p>Skoro optymalizacja przy bardzo wysokim bitrate to Twój konik, jedno
-trzeba powiedzieć wprost, bo inaczej stracisz czas na ślepą uliczkę. W
-środku enkodera jest pętla, która iteracyjnie dobiera kwantyzację
-(parametr wewnętrzny "maxIterations"; afterburner włączony daje 5 prób,
-wyłączony 2). Kuszące jest myślenie "dam 20 iteracji, będzie
-dokładniej". Ale ta pętla to mechanizm RATUNKOWY na wypadek NIEDOBORU
-bitów — uruchamia się dopiero, gdy ramka nie mieści się w budżecie i
-trzeba ją docisnąć. Przy skrajnie WYSOKIM bitrate budżet jest ogromny,
-ramka mieści się od razu, więc pętla prawie nigdy nie wchodzi w kolejne
-iteracje. Zwiększanie limitu nic tam nie da — to nie jest "więcej
-polerowania", tylko "wyższy limit awaryjnego dociskania", którego i tak
-nie używasz. Sam afterburner (<code>--afterburner 1</code>) już wybiera
-dokładniejszą tabelę strojenia (i to jest włączone domyślnie) — a wyżej
-ten konkretny mechanizm nie sięga, bo w kodeku nie ma dodatkowych
+<p>Przy optymalizacji bardzo wysokiego bitrate'u jedno trzeba powiedzieć
+wprost, bo inaczej łatwo stracić czas na ślepą uliczkę. W środku kodera
+jest pętla, która iteracyjnie dobiera kwantyzację (parametr wewnętrzny
+"maxIterations"; afterburner włączony daje 5 prób, wyłączony 2). Kuszące
+jest myślenie "20 iteracji da dokładniejszy wynik". Ta pętla jest jednak
+mechanizmem RATUNKOWYM na wypadek NIEDOBORU bitów: uruchamia się
+dopiero, gdy ramka nie mieści się w budżecie i trzeba ją docisnąć. Przy
+skrajnie WYSOKIM bitrate budżet jest ogromny, ramka mieści się od razu,
+więc pętla prawie nigdy nie wchodzi w kolejne iteracje. Zwiększanie
+limitu nic tam nie da. To nie "więcej polerowania", tylko "wyższy limit
+awaryjnego dociskania", który w takich warunkach nie jest w ogóle
+używany. Sam afterburner (<code>--afterburner 1</code>) wybiera
+dokładniejszą tabelę strojenia i jest włączony domyślnie, a wyżej ten
+konkretny mechanizm nie sięga, bo w kodeku nie ma dodatkowych
 poziomów.</p>
 <p>Co NAPRAWDĘ daje więcej detalu przy wysokim bitrate, to nie liczba
-iteracji, ale OBNIŻENIE PROGÓW MASKOWANIA, żeby enkoder w ogóle uznał
+iteracji, ale OBNIŻENIE PROGÓW MASKOWANIA, żeby koder w ogóle uznał
 więcej rzeczy za warte zakodowania: <code>--ath-scale</code> poniżej
 256, <code>--spread-mask</code> poniżej 256 i <code>--side-bias</code>
 powyżej 0 (więcej bitów w szerokość stereo). To są dźwignie, które
 faktycznie zamieniają nadmiarowe bity na zachowany detal (patrz rozdział
 18). Iteracje kwantyzacji nie.</p>
-<p>BARDZO WYSOKO (ciąg dalszy właściwej optymalizacji) — patrz rozdział
+<p>BARDZO WYSOKO (ciąg dalszy właściwej optymalizacji): patrz rozdział
 18.</p>
 <hr />
 <h1 id="część-iii-opcje-standardowe-nie-tylko-frankenstein">Część III.
 Opcje standardowe (nie tylko Frankenstein)</h1>
-<p>To są przełączniki dostępne w każdej wersji tego frontendu. Znać je
-warto, bo to fundament, na którym budujesz resztę.</p>
+<p>To są przełączniki dostępne w każdej wersji tego frontendu. Warto je
+znać, bo to fundament, na którym opiera się reszta.</p>
 <h2 id="10-wybór-profilu-i-podstawy">10. Wybór profilu i podstawy</h2>
-<p><code>-p &lt;n&gt;</code> — profil (Audio Object Type).
-Najważniejsze: <code>2</code> = AAC-LC, <code>5</code> = HE-AAC,
-<code>29</code> = HE-AAC v2, <code>23</code> = AAC-LD (low delay, do
-komunikacji), <code>39</code> = AAC-ELD. Do muzyki: 2 dla wysokich
-bitrate, 5 dla średnich, 29 dla najniższych.</p>
-<p><code>-b &lt;n&gt;</code> — bitrate w bitach na sekundę dla CBR (np.
+<p><code>-p &lt;n&gt;</code>: profil (Audio Object Type). Najważniejsze:
+<code>2</code> = AAC-LC, <code>5</code> = HE-AAC, <code>29</code> =
+HE-AAC v2, <code>23</code> = AAC-LD (low delay, do komunikacji),
+<code>39</code> = AAC-ELD. Do muzyki: 2 dla wysokich bitrate, 5 dla
+średnich, 29 dla najniższych.</p>
+<p><code>-b &lt;n&gt;</code>: bitrate w bitach na sekundę dla CBR (np.
 <code>-b 192000</code>). Małe liczby frontend mnoży ×1000
-(<code>-b 192</code> = 192 kbps) — poza trybem
+(<code>-b 192</code> = 192 kbps), poza trybem
 <code>--unlock-bitrate</code>.</p>
-<p><code>-m &lt;n&gt;</code> — tryb VBR 1–5 (1 najniższa jakość, 5
-najwyższa). Jak wspomniano, w FDK słaby; do poważnej pracy użyj CBR +
-rozdział 8.</p>
-<p><code>-o &lt;plik&gt;</code> — plik wyjściowy. Rozszerzenie
+<p><code>-m &lt;n&gt;</code>: tryb VBR 1-5 (1 najniższa jakość, 5
+najwyższa). Jak wspomniano, w FDK słaby; do poważnej pracy lepiej użyć
+CBR z rozdziału 8.</p>
+<p><code>-o &lt;plik&gt;</code>: plik wyjściowy. Rozszerzenie
 <code>.m4a</code> daje kontener MP4; <code>-f 2</code> przełącza na
 surowy strumień ADTS (<code>.aac</code>).</p>
-<p><code>-w &lt;n&gt;</code> — szerokość pasma (bandwidth) rdzenia w Hz.
-Uwaga: pod SBR to nie działa tak, jak się spodziewasz — do sterowania
-pasmem rdzenia pod HE-AAC użyj <code>--core-cutoff</code> (część
-IV).</p>
+<p><code>-w &lt;n&gt;</code>: szerokość pasma rdzenia w Hz. Pod SBR jest
+ignorowane: rdzeń kończy się wtedy tam, gdzie zaczyna się SBR, a
+przesuwa go <code>--sbr-start</code> (rozdział 15).</p>
 <h2 id="11-afterburner-i-sygnalizacja">11. Afterburner i
 sygnalizacja</h2>
-<p><code>--afterburner &lt;0|1&gt;</code> — afterburner to dodatkowy,
+<p><code>--afterburner &lt;0|1&gt;</code>: afterburner to dodatkowy,
 wolniejszy algorytm optymalizacji kwantyzacji. <code>1</code> = włączony
-(lepsza jakość, wolniej), i to jest domyślne oraz zalecane. Wyłączaj
-tylko gdy zależy Ci na szybkości.</p>
-<p><code>-s &lt;n&gt;</code> / signaling — sposób sygnalizowania SBR/PS
-w strumieniu (kompatybilność ze starszymi dekoderami). Domyślne "auto"
+(lepsza jakość, wolniej), i to jest ustawienie domyślne oraz zalecane.
+Warto go wyłączać tylko dla szybkości.</p>
+<p><code>-s &lt;n&gt;</code> (signaling): sposób sygnalizowania SBR/PS w
+strumieniu (kompatybilność ze starszymi dekoderami). Domyślne "auto"
 jest w większości przypadków dobre.</p>
 <h2 id="12-kontener-i-metadane">12. Kontener i metadane</h2>
-<p><code>--moov-before-mdat</code> — umieszcza indeks MP4 na początku
+<p><code>--moov-before-mdat</code>: umieszcza indeks MP4 na początku
 pliku (przydatne do streamingu progresywnego). Standardowe tagi (tytuł,
 artysta itd.) ustawia się przełącznikami <code>--title</code>,
 <code>--artist</code>, <code>--album</code> i pokrewnymi.</p>
 <hr />
-<h1 id="część-iv-opcje-frankenstein--sterowanie-wnętrzem-enkodera">Część
-IV. Opcje Frankenstein — sterowanie wnętrzem enkodera</h1>
-<p>To jest sedno tego enkodera: przełączniki, które w zwykłym FDK są
+<h1 id="część-iv-opcje-frankenstein-sterowanie-wnętrzem-kodera">Część
+IV. Opcje Frankenstein: sterowanie wnętrzem kodera</h1>
+<p>To jest sedno tego kodera: przełączniki, które w fabrycznym FDK są
 zaszyte na sztywno, a tutaj wystawione na zewnątrz. Każdy opisany jest
-praktycznie — co robi dla ucha, kiedy go użyć, i jakie wartości mają
+praktycznie: co robi dla ucha, kiedy go użyć i jakie wartości mają
 sens.</p>
 <h2 id="13-stereo-w-rdzeniu-ms-i-intensity">13. Stereo w rdzeniu: MS i
 Intensity</h2>
@@ -662,8 +667,8 @@ granicę, knee łagodzi jej krawędź.</p>
 <p><code>--side-cutoff &lt;Hz&gt;</code> oddaje side powyżej zadanej
 częstotliwości: każde pasmo stereo jest tam kodowane jako czysty mid z
 zachowanym poziomem, a bity trafiają do mid. Stereo poniżej granicy jest
-nietknięte. Przy 48 kbps granica 5 kHz oszczędziła 16 bitów danych
-pobocznych na ramkę, a mid był czystszy o 0,7 dB. Przy 14 kbps zysk jest
+nietknięte. Przy 48 kbps granica 5 kHz oszczędziła 16 bitów informacji
+pobocznej na ramkę, a mid był czystszy o 0,7 dB. Przy 14 kbps zysk jest
 mały, bo FDK i tak zeruje tam większość side.</p>
 <p>Pozostałe przełączniki MS to laboratorium. <code>--msmask 0|1</code>
 wymusza czyste L/R albo MS w każdym paśmie; <code>--msbands</code>,
@@ -681,160 +686,175 @@ rozmiarem pliku (512: plik większy o 5%, błąd niższy o około 0,8 dB), a
 <code>--mid-bias</code> tylko pogrubia mid. Każdy z nich opisuje opis
 przełączników.</p>
 <p>INTENSITY STEREO (IS). Bardziej agresywna technika: dla wysokich
-pasm, gdzie ucho słabo lokalizuje kierunek, enkoder wysyła jedną
-obwiednię energii zamiast dwóch kanałów. Oszczędza dużo, ale może zwęzić
+pasm, gdzie ucho słabo lokalizuje kierunek, koder wysyła jedną obwiednię
+energii zamiast dwóch kanałów. Oszczędza dużo, ale może zwęzić
 scenę.</p>
-<p><code>--is &lt;0|1&gt;</code> — globalnie włącz/wyłącz IS.</p>
-<p><code>--is-aggression &lt;0..100&gt;</code> — KONSUMENCKI suwak
-agresywności IS. To jest to, czego zwykle chcesz używać. 0 = zachowanie
-domyślne FDK (bardzo ostrożne), 100 = maksymalnie agresywne intensity.
-Dlaczego to potrzebne: FDK ma trzy niezależne "bramki" wpuszczające IS
-(stosunek bitrate do pasma, próg korelacji kanałów, minimalna liczba
-ciągłych pasm) i muszą być spełnione JEDNOCZEŚNIE. Ruszenie jednego
-progu nic nie da, bo blokuje inny. Ten suwak rusza wszystkie naraz.
-Zacznij od 40–70 i słuchaj.</p>
-<p>Zaawansowane progi IS (dla eksperymentujących — działają PO przejściu
+<p><code>--is &lt;0|1&gt;</code>: globalnie włącza albo wyłącza IS.</p>
+<p><code>--is-aggression &lt;0..100&gt;</code>: KONSUMENCKI suwak
+agresywności IS. To zwykle najlepszy wybór. 0 = zachowanie domyślne FDK
+(bardzo ostrożne), 100 = maksymalnie agresywne intensity. Jest
+potrzebny, bo FDK ma trzy niezależne warunki dopuszczenia (gate)
+wpuszczające IS (stosunek bitrate do pasma, próg korelacji kanałów,
+minimalna liczba ciągłych pasm), a muszą być spełnione JEDNOCZEŚNIE.
+Ruszenie jednego progu nic nie da, bo blokuje inny. Ten suwak rusza
+wszystkie naraz. Zacznij od 40-70 i słuchaj.</p>
+<p>Zaawansowane progi IS (dla eksperymentujących, działają PO przejściu
 przez suwak agresywności): <code>--is-min-sfbs &lt;n&gt;</code>
 (minimalna liczba ciągłych pasm),
 <code>--is-corr-thresh &lt;n&gt;</code> (próg korelacji kanałów, Q8),
 <code>--is-lr-ratio &lt;n&gt;</code> (próg stosunku L/R, Q8). Uwaga
-praktyczna: te progi działają NIEINTUICYJNIE — niższa wartość progu
+praktyczna: te progi działają NIEINTUICYJNIE, bo niższa wartość progu
 korelacji oznacza AGRESYWNIEJSZE IS, nie odwrotnie.</p>
 <p>Umiejscowienie IS w pasmach. <code>--is-lo &lt;sfb&gt;</code> i
 <code>--is-hi &lt;sfb&gt;</code> pozwalają OGRANICZYĆ intensity stereo
 do zakresu pasm: IS jest dozwolone dopiero od <code>--is-lo</code> w
-górę i tylko do <code>--is-hi</code> włącznie. To nigdy nie wymusza IS —
-jedynie ogranicza, gdzie FDK może go użyć. W praktyce przy niskim
-bitrate IS ląduje na NISKICH pasmach, więc skanuj małe wartości, żeby w
-ogóle zobaczyć efekt. Jeśli chcesz pójść dalej i WYMUSIĆ IS,
+górę i tylko do <code>--is-hi</code> włącznie. To nigdy nie wymusza IS,
+a jedynie ogranicza, gdzie FDK może go użyć. W praktyce przy niskim
+bitrate IS ląduje na NISKICH pasmach, więc trzeba skanować małe
+wartości, żeby w ogóle zobaczyć efekt. Do WYMUSZENIA IS służą
 <code>--is-force-lo &lt;sfb&gt;</code> i
-<code>--is-force-hi &lt;sfb&gt;</code> wpychają intensity stereo na cały
-zakres z pominięciem bramek korelacji, min-sfbs i głośności. To tryb
-laboratoryjny: ponieważ IS jest stratne i kierunkowe (prawy kanał
-zostaje wyzerowany, zostaje tylko współczynnik panoramy), wymuszenie
-może celowo rozbić obraz stereo. Strumień i tak pozostaje zgodny ze
-standardem.</p>
-<h2 id="14-pasmo-i-cutoff-w-tym-audiofilskie-pełne-pasmo">14. Pasmo i
-cutoff (w tym audiofilskie pełne pasmo)</h2>
-<p><code>--core-cutoff &lt;Hz&gt;</code> — górna granica pasma
-kodowanego przez rdzeń, w Hz. Działa także pod SBR (w przeciwieństwie do
-<code>-w</code>). Np. <code>--core-cutoff 7500</code> pod HE-AAC v2
-oddaje rdzeniowi 7,5 kHz, resztę robi SBR.</p>
-<p>Uwaga o realnym cutoffie w <code>--verbose</code>: widmo AAC jest
-podzielone na granice SFB, więc enkoder nie potrafi uciąć pasma w
-dowolnym miejscu w Hz — zakotwicza cutoff na najbliższej granicy SFB.
-Dlatego <code>--verbose</code> pokazuje REALNY cutoff, który może różnić
-się od podanej wartości <code>-w</code>/<code>--core-cutoff</code> (np.
-<code>-w 17300</code> wyświetla się jako
-<code>17915 Hz (SFB-anchored)</code>). To nie jest błąd — to prawdziwe
-pasmo, które trafia do strumienia.</p>
-<p><code>--uncap-bandwidth</code> — audiofilskie. FDK ma zaszyty twardy
-limit pasma rdzenia: minimum z 20 kHz i połowy częstotliwości
-próbkowania. Oznacza to, że NAWET przy źródle 96 kHz i wysokim bitrate
-realnie nic powyżej 20 kHz nie było kodowane. Ta flaga zdejmuje limit —
-<code>--core-cutoff</code> może wtedy sięgnąć aż do połowy
-częstotliwości próbkowania. Dla materiału 96 kHz i słuchaczy, którzy
-chcą pełne pasmo:</p>
+<code>--is-force-hi &lt;sfb&gt;</code>, które wpychają intensity stereo
+na cały zakres z pominięciem warunku korelacji, warunku min-sfbs i
+warunku głośności. To tryb laboratoryjny: ponieważ IS jest stratne i
+kierunkowe (prawy kanał zostaje wyzerowany, zostaje tylko współczynnik
+panoramy), wymuszenie może celowo rozbić obraz stereo. Strumień i tak
+pozostaje zgodny ze standardem.</p>
+<h2 id="14-pasmo-i-odcięcie-w-tym-audiofilskie-pełne-pasmo">14. Pasmo i
+odcięcie (w tym audiofilskie pełne pasmo)</h2>
+<p><code>-w &lt;Hz&gt;</code> ustawia górną krawędź pasma kodowanego
+przez rdzeń. Bez SBR <code>--core-cutoff &lt;Hz&gt;</code> robi
+dokładnie to samo: we wszystkich zmierzonych profilach bez SBR oba dały
+strumienie identyczne co do bitu. Pod SBR oba ustępują startowi SBR:
+rdzeń kończy się tam, gdzie zaczyna się SBR, a ten punkt przesuwa
+<code>--sbr-start</code> (rozdział 15). <code>--core-cutoff</code> pod
+SBR może tylko ściągnąć rdzeń poniżej startu SBR, co zostawia między
+nimi dziurę, albo przesunąć go powyżej, gdzie dekoder i tak nadpisuje
+to, co wysłał rdzeń, własnym SBR. Żadne z tych zastosowań nie jest
+przepisem; oba to eksperymenty.</p>
+<p>Uwaga o rzeczywistym odcięciu w <code>--verbose</code>: widmo AAC
+jest podzielone na pasma współczynników skali (scalefactor bands, SFB),
+więc koder nie potrafi uciąć pasma w dowolnym miejscu w Hz; wyrównuje
+odcięcie do najbliższej granicy pasma SFB. Dlatego
+<code>--verbose</code> pokazuje rzeczywiste odcięcie, które może różnić
+się od wpisanej wartości (<code>-w 17300</code> wyświetla się jako
+<code>17915 Hz (SFB-anchored)</code>). To nie błąd, tylko pasmo, które
+naprawdę trafia do strumienia.</p>
+<p><code>--uncap-bandwidth</code>, dla materiału pełnopasmowego. FDK
+ogranicza rdzeń do mniejszej z wartości: 20 kHz i połowa częstotliwości
+próbkowania, więc nawet przy źródle 96 kHz i wysokim bitrate'ie nic
+powyżej 20 kHz nie było kodowane. Ta flaga zdejmuje limit i
+<code>-w</code> albo <code>--core-cutoff</code> mogą wtedy sięgnąć
+połowy częstotliwości próbkowania:</p>
 <pre><code>fdkaac-franken-x64.exe -p 2 -b 320000 --uncap-bandwidth --core-cutoff 40000 -o out.m4a in96k.wav</code></pre>
-<p>Zmierzono: bez tej flagi powyżej 20 kHz jest praktycznie zero
-energii; z nią realnie kodowane jest pasmo do 40 kHz.</p>
-<h2 id="15-sbr--sterowanie-górnym-pasmem">15. SBR — sterowanie górnym
+<p>Zmierzone: bez flagi powyżej 20 kHz praktycznie nie ma energii; z nią
+pasmo do 40 kHz jest naprawdę kodowane (<code>--verbose</code> podaje
+42000 Hz, najbliższą granicę pasma SFB).</p>
+<h2 id="15-sbr-sterowanie-górnym-pasmem">15. SBR: sterowanie górnym
 pasmem</h2>
 <p>Nadpisuje ustawienia z wewnętrznej tabeli tuningowej SBR.</p>
 <p><code>--sbr-start &lt;n&gt;</code> /
-<code>--sbr-stop &lt;n&gt;</code> — indeksy początku i końca pasma SBR.
-UWAGA: FDK waliduje kombinację — zła para da "encoder initialization
-failed". Dozwolone pary tworzą ukośny pas i zależą od bitrate'u oraz
-częstotliwości próbkowania. Na przykład przy HE-AAC 64 kbps stereo z 48
-kHz start 0..4 jest niedozwolony z każdym stopem, a 8/9, 8/14 i 14/12
-działają. Zmieniaj jedną rzecz naraz i czytaj <code>--verbose</code>;
-karta w opisie przełączników podaje zmierzone wartości.</p>
-<p><code>--sbr-freqscale &lt;n&gt;</code> — grupowanie częstotliwości (0
+<code>--sbr-stop &lt;n&gt;</code>: indeksy początku i końca pasma SBR.
+Start to najużyteczniejszy przełącznik całej grupy SBR, bo rdzeń idzie
+za nim: podniesienie startu o jeden indeks daje rdzeniowi prawdziwie
+kodowane widmo aż do następnego progu (przy HE-AAC 64 kbps z 48 kHz
+przejście z 14 na 15 poszerza rdzeń z 10,5 do 12 kHz), a obniżenie
+oddaje SBR większą część góry i zostawia rdzeniowi więcej bitów na to,
+co niżej. Start warto zmieniać o jeden indeks i słuchać; Tabela 2
+pokazuje, gdzie wypada każdy indeks. Stop przesuwa tylko górną krawędź
+pliku i nie rusza rdzenia. FDK sprawdza parę: zła daje "encoder
+initialization failed". Dozwolone pary tworzą ukośny pas i zależą od
+bitrate'u oraz częstotliwości próbkowania. Na przykład przy HE-AAC 64
+kbps stereo z 48 kHz start 0..4 jest niedozwolony z każdym stopem, a
+8/9, 8/14 i 14/12 działają. Po każdej zmianie warto przeczytać
+<code>--verbose</code>.</p>
+<p><code>--sbr-freqscale &lt;n&gt;</code>: grupowanie częstotliwości (0
 liniowe, wyżej = drobniejsze logarytmiczne).
-<code>--sbr-noise-bands &lt;0..3&gt;</code> — gęstość opisu szumu SBR: 0
+<code>--sbr-noise-bands &lt;0..3&gt;</code>: gęstość opisu szumu SBR: 0
 to jedno pasmo szumu, 1, 2 i 3 to około 1, 2 i 3 pasm na oktawę. W
 nagłówku SBR to pole ma 2 bity, więc większych wartości nie da się
-przesłać. <code>--sbr-amp-res &lt;0|1&gt;</code> — rozdzielczość
+przesłać. <code>--sbr-amp-res &lt;0|1&gt;</code>: rozdzielczość
 amplitudy obwiedni (0 = 1,5 dB, 1 = 3 dB).</p>
-<p><code>--sbr-num-env &lt;1|2|4&gt;</code> — liczba obwiedni na ramkę =
-rozdzielczość czasowa SBR. Więcej obwiedni = lepiej oddane zmiany w
-czasie w górnym paśmie, kosztem bitów. WAŻNE: ta opcja WYMUSZA statyczną
-siatkę czasową (wyłącza detektor transientów), więc na materiale z
-ostrymi atakami może być gorzej. Dobre do stabilnych, wybrzmiewających
-dźwięków. (Wartość 8 przekracza standardową siatkę i jest
-odrzucana.)</p>
-<p><code>--sbr-freqres-fixfix &lt;0|1&gt;</code> — rozdzielczość
+<p><code>--sbr-num-env &lt;1|2|4&gt;</code>: liczba obwiedni na ramkę,
+czyli rozdzielczość czasowa SBR. Więcej obwiedni to lepiej oddane zmiany
+w czasie w górnym paśmie, kosztem bitów. WAŻNE: ta opcja WYMUSZA
+statyczną siatkę czasową (wyłącza detektor transientów), więc na
+materiale z ostrymi atakami może być gorzej. Dobre do stabilnych,
+wybrzmiewających dźwięków. (Wartość 8 przekracza standardową siatkę i
+jest odrzucana.)</p>
+<p><code>--sbr-freqres-fixfix &lt;0|1&gt;</code>: rozdzielczość
 częstotliwości obwiedni.</p>
-<p><code>--sbr-stereo-mode &lt;0..3&gt;</code> — tryb stereo w warstwie
-SBR (osobny od MS rdzenia!): 0 = mono, 1 = LR (pełna, niezależna
-separacja lewego i prawego w górnym paśmie), 2 = coupling (oszczędny:
-wspólna obwiednia + poziom/balans), 3 = switch (domyślnie enkoder
-wybiera per ramkę). Wymuś 1 dla maksymalnej separacji stereo w górze
-(audiofilsko), 2 dla oszczędności bitów przy niskim bitrate.</p>
-<p><code>--sbr-invf &lt;0..3&gt;</code> — filtrowanie odwrotne (inverse
+<p><code>--sbr-stereo-mode &lt;1..3&gt;</code>: tryb stereo warstwy SBR,
+niezależny od MS rdzenia. 1 = LR (niezależne górne pasmo dla każdego
+kanału), 2 = coupling (wspólna obwiednia oraz poziom i balans), 3 =
+switch (LR albo coupling w każdej ramce). Bez przełącznika FDK używa 3
+poniżej 60 kbps stereo i 1 od 60 kbps. Wymuszenie 1 poniżej 60 kbps daje
+pełną separację na górze, 2 oszczędza bity przy niskim bitrate'ie.
+Wejście mono nie wymaga przełącznika.</p>
+<p><code>--sbr-invf &lt;0..3&gt;</code>: filtrowanie odwrotne (inverse
 filtering). To mechanizm sterowany przez ESTYMATOR TONALNOŚCI: SBR
 analizuje, czy górne pasmo powinno być bardziej tonalne czy bardziej
 szumowe, i odpowiednio "wybiela" skopiowany materiał. 0 = wyłączone, 1 =
-słabe, 2 = średnie, 3 = mocne. Mocniejsze = mniej "metalicznego"
-dzwonienia w górze, kosztem części detalu. Zwykle steruje tym automat;
-wymuś ręcznie, gdy słyszysz metaliczność.</p>
+słabe, 2 = średnie, 3 = mocne. Mocniejsze daje mniej "metalicznego"
+dzwonienia w górze, kosztem części detalu. Zwykle steruje tym automat, a
+ręczne wymuszenie ma sens, gdy słychać metaliczność.</p>
 <p>Wymuszenie ma jedną wadę: jeden poziom obowiązuje wtedy w całym
 pliku, także w pasmach i momentach, w których automat wybrałby inaczej.
 Drugi sposób to zostawić decyzję automatowi i zmienić tylko jego reguły.
 Decyzja zapada nadal osobno dla każdego pasma i każdej ramki.</p>
-<p><code>--sbr-softness &lt;0..7&gt;</code> — jedno pokrętło od „twardo,
+<p><code>--sbr-softness &lt;0..7&gt;</code>: jedno pokrętło od „twardo,
 metalicznie” do „bardzo miękko”. <code>2</code> to dokładnie estymatory
-stock dla muzyki, <code>4</code> estymatory stock dla mowy (bez reszty
-zmian z <code>--speech</code>, czyli bez innego crossovera). Poziomy
-0..1 dają mniej wybielania, 3 trzyma co najmniej słabe, 5..7 dokładają
-szumu i wybielania. Pomiar z bitstreamu: średni poziom filtrowania
-rośnie z 0 do około 3, a płaskość zdekodowanego pasma SBR z 0,37 do 0,42
-na mowie i z 0,40 do 0,52 na materiale tonalnym. Przełączanie między
-ramkami zostaje na poziomie stock.</p>
+fabryczne dla muzyki, <code>4</code> estymatory fabryczne dla mowy (bez
+reszty zmian z <code>--speech</code>, czyli bez innego crossovera).
+Poziomy 0..1 dają mniej wybielania, 3 trzyma co najmniej słabe, 5..7
+dokładają szumu i wybielania. Pomiar z bitstreamu: średni poziom
+filtrowania rośnie z 0 do około 3, a płaskość zdekodowanego pasma SBR z
+0,37 do 0,42 na mowie i z 0,40 do 0,52 na materiale tonalnym.
+Przełączanie między ramkami zostaje na poziomie domyślnym.</p>
 <p>Pokrętła dla eksperta, każde wygrywa z makrem:
 <code>--sbr-invf-min</code> i <code>--sbr-invf-max</code> ograniczają
 wybór automatu od dołu i od góry (np. <code>--sbr-invf-max 2</code> =
 nigdy mocne). <code>--sbr-invf-bias &lt;-3..3&gt;</code> przesuwa każdą
 decyzję o tyle stopni. <code>--sbr-invf-table 0|1</code> wybiera tabelę
 decyzji muzyki albo mowy niezależnie od <code>--speech</code>.
-<code>--sbr-invf-hyst</code> (0..2, stock 1) to histereza granic:
+<code>--sbr-invf-hyst</code> (0..2, fabrycznie 1) to histereza granic:
 mniejsza daje szybszą reakcję i częstsze przełączanie.
 <code>--sbr-invf-sbr-thr</code> i <code>--sbr-invf-orig-thr</code>
-przesuwają granice tonalności pasma łatanego i oryginalnego, mniej
-więcej w dB. Uwaga: przesunięcie granic potrafi wywołać migotanie
-decyzji między ramkami, dlatego makro ich nie używa.
+przesuwają granice tonalności pasma odtworzonego przez SBR i
+oryginalnego, mniej więcej w dB. Uwaga: przesunięcie granic potrafi
+wywołać migotanie decyzji między ramkami, dlatego makro ich nie używa.
 <code>--sbr-invf-smooth 0..2</code> mówi, ile ramek uśrednia
 estymator.</p>
 <p>Szum: <code>--sbr-nf-weight 0..1</code> to waga różnicy tonalności
-oryginału i łaty w poziomie szumu (muzyka 0,25, mowa 1,0),
-<code>--sbr-nf-weight-from 1..3</code> mówi, od którego poziomu
-filtrowania pasma dostają tę wagę (stock tylko mocne), a
+oryginału i pasma odtworzonego przez SBR w poziomie szumu (muzyka 0,25,
+mowa 1,0), <code>--sbr-nf-weight-from 1..3</code> mówi, od którego
+poziomu filtrowania pasma dostają tę wagę (fabrycznie tylko mocne), a
 <code>--sbr-nf-smooth 0</code> wyłącza wygładzanie szumu w czasie. Ważna
 rzecz z pomiaru: szum ogranicza sufit <code>--sbr-noise-max</code>. Z
 sufitem z tabeli strojenia (0,125) około 95% pasm już na nim siedzi,
-więc sama waga często nic nie zmienia. Łącz ją z
+więc sama waga często nic nie zmienia. Trzeba ją łączyć z
 <code>--sbr-noise-max 3</code> albo <code>6</code>.</p>
 <pre><code>fdkaac-franken-x64.exe -p 5 -b 32000 --sbr-softness 6 -o out.m4a in.wav
 fdkaac-franken-x64.exe -p 5 -b 32000 --sbr-invf-max 2 --sbr-invf-hyst 1.5 -o out.m4a in.wav</code></pre>
-<p><code>--sbr-noise-floor-offset &lt;0..11&gt;</code> — offset poziomu
-szumu wstrzykiwanego przez SBR. Większe wartości = więcej szumu
-wypełniającego rekonstrukcję. FDK przyjmuje tylko 0..11; inne wartości
-są odrzucane z błędem.</p>
-<p><code>--sbr-header-period &lt;n&gt;</code> — co ile ramek zapisywane
+<p><code>--sbr-noise-floor-offset &lt;0..11&gt;</code>: offset poziomu
+szumu SBR (noise floor), czyli minimalnego poziomu szumu wstrzykiwanego
+przez SBR. Większe wartości to więcej szumu wypełniającego
+rekonstrukcję. FDK przyjmuje tylko 0..11; inne wartości są odrzucane z
+błędem.</p>
+<p><code>--sbr-header-period &lt;n&gt;</code>: co ile ramek zapisywane
 są nagłówki SBR, co decyduje, jak szybko górne pasmo SBR "wchodzi", gdy
 dekoder podłącza się do strumienia HE-AAC NA ŻYWO (Icecast/Shoutcast).
 Haczyk jest taki: cała konfiguracja SBR mieszka w okresowym nagłówku, a
 nie w każdej ramce. Słuchacz, który wpina się w środek transmisji,
 słyszy najpierw sam rdzeń AAC (przytłumiony, bez góry), aż nadejdzie
-kolejny nagłówek. Ustaw <code>1</code>, a nagłówek zapisze się w każdej
-ramce, więc dekoder złapie SBR niemal natychmiast (~23 ms) — to właściwy
-wybór dla strumienia, do którego ludzie dołączają w losowych momentach.
-Większe wartości wydłużają ten moment "sam rdzeń". Domyślnie FDK daje 10
-ramek, czyli około 0,46 s przy 44,1 kHz (ramka HE-AAC to 2048 próbek
-wyjściowych). Wartość jest brana dosłownie, bez sufitu jednej sekundy,
-który ma stock FDK.</p>
-<p><code>--sbr-header-time &lt;s&gt;</code> — to samo, ale w sekundach,
-z częścią dziesiętną (0,01 do 600, np. <code>3.5</code>). Wygrywa z
+kolejny nagłówek. Po ustawieniu <code>1</code> nagłówek zapisuje się w
+każdej ramce, więc dekoder łapie SBR niemal natychmiast (~23 ms). To
+właściwy wybór dla strumienia, do którego ludzie dołączają w losowych
+momentach. Większe wartości wydłużają ten moment "sam rdzeń". Domyślnie
+FDK daje 10 ramek, czyli około 0,46 s przy 44,1 kHz (ramka HE-AAC to
+2048 próbek wyjściowych). Wartość jest brana dosłownie, bez sufitu
+jednej sekundy, który ma fabryczny FDK.</p>
+<p><code>--sbr-header-time &lt;s&gt;</code>: to samo, ale w sekundach, z
+częścią dziesiętną (0,01 do 600, np. <code>3.5</code>). Wygrywa z
 <code>--sbr-header-period</code>. Przydaje się, gdy operator strumienia
 wymaga konkretnego odstępu między poprawnymi nagłówkami SBR, np. 3,5 s.
 Działa w HE-AAC i HE-AAC v2 (nagłówek SBR w ramce, każdy transport) oraz
@@ -851,15 +871,15 @@ wejściu w środek strumienia wyniosło 3,41 s (HE-AAC), 3,46 s (HE-AAC v2)
 i 3,52 s (ELD).</p>
 <h2 id="16-parametric-stereo-he-aac-v2">16. Parametric Stereo (HE-AAC
 v2)</h2>
-<p><code>--ps &lt;0|1&gt;</code> — wymuś wysyłanie parametru IID
-(różnica głośności): 0 = nigdy (spłaszcza obraz stereo do
+<p><code>--ps &lt;0|1&gt;</code>: wymusza wysyłanie parametru IID
+(różnica głośności), gdzie 0 = nigdy (spłaszcza obraz stereo do
 mono-podobnego), 1 = zawsze.</p>
-<p><code>--ps-iid-quant &lt;0|1&gt;</code> — dokładność kwantyzacji IID:
-0 gruba, 1 dokładna.</p>
-<p><code>--ps-icc &lt;0|1&gt;</code> — wymuś ICC (Inter-channel
-Coherence — spójność/podobieństwo kanałów) on/off.
-<code>--ps-icc-mode &lt;0|1&gt;</code> — tryb rotacji ICC (ROT_A /
-ROT_B). Miej świadomość, że tryb rotacji to <em>wyłącznie
+<p><code>--ps-iid-quant &lt;0|1&gt;</code>: dokładność kwantyzacji IID,
+gdzie 0 gruba, 1 dokładna.</p>
+<p><code>--ps-icc &lt;0|1&gt;</code>: włącza albo wyłącza ICC
+(Inter-channel Coherence, czyli spójność i podobieństwo kanałów).
+<code>--ps-icc-mode &lt;0|1&gt;</code> to tryb rotacji ICC (ROT_A /
+ROT_B). Warto pamiętać, że tryb rotacji to <em>wyłącznie
 sygnalizacja</em>: oba tryby opisują tę samą macierz stereo, dekoder po
 prostu wylicza ją inaczej. To pokrętło kompatybilności, nie jakości.</p>
 <h3
@@ -868,69 +888,72 @@ PS: pasma (częstotliwość) i obwiednie (czas)</h3>
 <p>Dwa pokrętła, które realnie zmieniają jakość stereo, to te decydujące
 o tym, <em>ile</em> parametrów stereo w ogóle zostanie wysłanych.
 Baseline MPEG-4 PS dopuszcza dwie rozdzielczości pasmowe i do czterech
-obwiedni parametrów na ramkę, a stock FDK wybiera jedno i drugie
-wyłącznie na podstawie bitrate — więc powyżej 36 kbps jesteś zamknięty w
-20 pasmach i 4 obwiedniach, bez możliwości usłyszenia alternatyw.</p>
-<p><code>--ps-bands &lt;10|20&gt;</code> — rozdzielczość
+obwiedni parametrów na ramkę, a fabryczny FDK wybiera jedno i drugie
+wyłącznie na podstawie bitrate, więc powyżej 36 kbps wszystko jest
+zamknięte w 20 pasmach i 4 obwiedniach, bez możliwości usłyszenia
+alternatyw.</p>
+<p><code>--ps-bands &lt;10|20&gt;</code>: rozdzielczość
 częstotliwościowa parametrów stereo. Dwadzieścia pasm opisuje obraz
 stereo z drobniejszym podziałem widma; dziesięć opisuje go zgrubniej,
 ale zużywa mniej bitów. Przy bardzo niskich przepływnościach
 zgrubniejsza siatka potrafi brzmieć wręcz spokojniej, bo każde pasmo
 jest uśredniane po większym wycinku widma i parametry mniej „drgają"
 między ramkami.</p>
-<p><code>--ps-env &lt;1|2|4&gt;</code> — rozdzielczość czasowa. Jedna
-obwiednia oznacza, że cała ramka dostaje jedną migawkę stereo; cztery —
+<p><code>--ps-env &lt;1|2|4&gt;</code>: rozdzielczość czasowa. Jedna
+obwiednia oznacza, że cała ramka dostaje jedną migawkę stereo, a cztery,
 że panorama jest próbkowana cztery razy w ramce. To właśnie decyduje,
 czy jadąca panorama albo transjent utrzyma swoje położenie, czy rozmyje
 się na całą ramkę.</p>
-<p><code>--ps-env-reduce &lt;0|1&gt;</code> — i to jest pokrętło
-najważniejsze, z powodu pewnej pułapki. Poproszenie o cztery obwiednie
-nie oznacza, że je dostaniesz. FDK uruchamia automatyczną pętlę
-redukcji, która połowi liczbę obwiedni — cztery do dwóch do jednej — tak
+<p><code>--ps-env-reduce &lt;0|1&gt;</code> jest pokrętłem
+najważniejszym, z powodu pewnej pułapki. Żądanie czterech obwiedni nie
+oznacza, że faktycznie je dostaniemy. FDK uruchamia automatyczną pętlę
+redukcji, która połowi liczbę obwiedni (cztery do dwóch do jednej) tak
 długo, jak sąsiednie obwiednie wyglądają podobnie według zaszytego w
 kodzie progu błędu. Na zwykłej muzyce ten próg spełnia się bardzo
-często, więc enkoder po cichu wraca do jednej migawki na ramkę.
-Ustawienie <code>--ps-env-reduce 0</code> wyłącza tę pętlę i sprawia, że
+często, więc koder po cichu wraca do jednej migawki na ramkę. Ustawienie
+<code>--ps-env-reduce 0</code> wyłącza tę pętlę i sprawia, że
 <code>--ps-env</code> znaczy to, co mówi.</p>
 <p>Pomiar jest tu wyjątkowo czytelny. Na czterosekundowej próbce z
 panoramą celowo przeciąganą tam i z powrotem z częstotliwością 0,25 Hz
 oraz naprzemiennymi transjentami lewo/prawo, kodowanej jako HE-AAC v2
 przy 48 kbps, porównując trajektorię panoramy zdekodowanego wyniku z
-oryginałem: stock enkoder wychodzi na 0,177 RMS błędu panoramy
-(korelacja 0,9655). Samo poproszenie o cztery obwiednie nie zmienia
-<em>absolutnie nic</em> — wyjście jest bit w bit identyczne ze stockiem,
-bo pętla redukcji natychmiast wycofuje żądanie. Dodaj
-<code>--ps-env-reduce 0</code> i błąd spada do 0,117 (korelacja 0,9944)
+oryginałem: fabryczny koder wychodzi na 0,177 RMS błędu panoramy
+(korelacja 0,9655). Samo żądanie czterech obwiedni nie zmienia
+<em>absolutnie nic</em>, bo wyjście jest bit w bit identyczne z
+domyślnym: pętla redukcji natychmiast wycofuje żądanie. Po dodaniu
+<code>--ps-env-reduce 0</code> błąd spada do 0,117 (korelacja 0,9944)
 przy praktycznie tym samym rozmiarze pliku: o jedną trzecią mniejszy
-błąd panoramy, za darmo. Jeśli masz wziąć z tego rozdziału jedno
-ustawienie, weź <code>--ps-env 4 --ps-env-reduce 0</code>.</p>
-<p><code>--ps-noenv-skip &lt;0|1&gt;</code> — pokrewny fragment ukrytego
-zachowania. Poza przerzedzaniem obwiedni FDK potrafi też pominąć
-parametry stereo <em>całkowicie</em> na pewnym odcinku ramek: gdy
-kolejne zestawy IID/ICC wyglądają podobnie, może wysłać do dziesięciu
-kolejnych ramek bez żadnej informacji stereo, pozostawiając dekoder na
-ostatnich wartościach, jakie dostał. Na materiale, gdzie obraz dryfuje
-wolno, słychać to jako chwilowe spłaszczenie obrazu stereo i powrót.
-<code>--ps-noenv-skip 0</code> tego zabrania i wymusza parametry w
-każdej ramce.</p>
+błąd panoramy, za darmo. Jeśli z tego rozdziału ma zostać jedno
+ustawienie, niech to będzie
+<code>--ps-env 4 --ps-env-reduce 0</code>.</p>
+<p><code>--ps-noenv-skip &lt;0|1&gt;</code> to pokrewny fragment
+ukrytego zachowania. Poza przerzedzaniem obwiedni FDK potrafi też
+pominąć parametry stereo <em>całkowicie</em> na pewnym odcinku ramek:
+gdy kolejne zestawy IID/ICC wyglądają podobnie, może wysłać do
+dziesięciu kolejnych ramek bez żadnej informacji stereo, pozostawiając
+dekoder na ostatnich wartościach, jakie dostał. Na materiale, gdzie
+obraz dryfuje wolno, słychać to jako chwilowe spłaszczenie obrazu stereo
+i powrót. <code>--ps-noenv-skip 0</code> tego zabrania i wymusza
+parametry w każdej ramce.</p>
 <h3 id="ipd-wysyłanie-fazy---ps-ipd-1">IPD: wysyłanie fazy
 (<code>--ps-ipd 1</code>)</h3>
-<p>Stock FDK nigdy nie wysyła fazy międzykanałowej. Pola są zaszyte na
-zero z komentarzem „IPD OPD not supported right now" — ale ten komentarz
-zawyża dystans do działającej implementacji. Enkoder już teraz akumuluje
-zarówno część rzeczywistą, jak i urojoną widma skrośnego lewy/prawy, dla
-każdego pasma i każdej obwiedni; używa tylko modułu, do policzenia ICC,
-a kąt wyrzuca. Ten kąt <em>jest</em> IPD. Tablice Huffmana i writer
-bitstreamu też już były na miejscu. Brakującym elementem nigdy nie była
-więc „analiza fazy od zera" — było nim wzięcie <code>atan2</code> z
-dwóch liczb leżących już w tej samej pętli, zaokrąglenie do 8
-zdefiniowanych kroków fazy i włączenie writera.</p>
+<p>Fabryczny FDK nigdy nie wysyła fazy międzykanałowej. Pola są zaszyte
+na zero z komentarzem „IPD OPD not supported right now", ale ten
+komentarz zawyża dystans do działającej implementacji. Koder już teraz
+akumuluje zarówno część rzeczywistą, jak i urojoną widma skrośnego
+lewy/prawy, dla każdego pasma i każdej obwiedni; używa tylko modułu, do
+policzenia ICC, a kąt wyrzuca. Ten kąt <em>jest</em> IPD. Tablice
+Huffmana i writer bitstreamu też już były na miejscu. Brakującym
+elementem nigdy nie była więc „analiza fazy od zera", lecz wzięcie
+<code>atan2</code> z dwóch liczb leżących już w tej samej pętli,
+zaokrąglenie do 8 zdefiniowanych kroków fazy i włączenie writera.</p>
 <p>Dlaczego to ma znaczenie: bez fazy PS umieszcza dźwięk w przestrzeni
 wyłącznie różnicami poziomu i korelacją. To obejmuje wszystko, co
 spanoramowano poziomem, ale nie źródło umiejscowione <em>czasem</em>.
-Realne opóźnienie międzykanałowe — a tak działa lokalizacja w dole pasma
-w naturze — jest dla IID i ICC niewidzialne, bo oba kanały niosą ten sam
-sygnał na tym samym poziomie i różnią się tylko momentem dotarcia.</p>
+Realne opóźnienie międzykanałowe, a tak właśnie działa w naturze
+lokalizacja w dole pasma, jest dla IID i ICC niewidzialne, bo oba kanały
+niosą ten sam sygnał na tym samym poziomie i różnią się tylko momentem
+dotarcia.</p>
 <p>Pomiar korzysta z próbek zbudowanych dokładnie w ten sposób:
 identyczny sygnał w obu kanałach, równy poziom, różnica wyłącznie w
 opóźnieniu. Porównanie profilu fazy zdekodowanego materiału z
@@ -963,10 +986,10 @@ oryginałem, w zakresie, który IPD realnie pokrywa (60-690 Hz):</p>
 </table>
 <p>Przy ćwierci i czterech dziesiątych milisekundy błąd fazy spada o
 ponad połowę, z identycznym wynikiem przy 32 i 48 kbps. Przy 0,7 ms
-korzyść znika — i jest to reprezentacja dochodząca do swojej granicy, a
-nie usterka. Na górnym krańcu zasięgu IPD opóźnienie 0,7 ms przebiega
-już niemal całe plus-minus 180 stopni, więc siatka co 45 stopni nie
-potrafi jednoznacznie powiedzieć, gdzie ono jest. To ten sam sufit
+korzyść znika, bo to reprezentacja dochodząca do swojej granicy, a nie
+usterka. Na górnym krańcu zasięgu IPD opóźnienie 0,7 ms przebiega już
+niemal całe plus-minus 180 stopni, więc siatka co 45 stopni nie potrafi
+jednoznacznie powiedzieć, gdzie ono jest. To ten sam sufit
 niejednoznaczności fazowej, przez który słuch człowieka korzysta z
 przesłanek czasowych głównie na dole.</p>
 <p>Jedna uwaga praktyczna, zanim przejdziemy do drugiego parametru: IPD
@@ -978,16 +1001,16 @@ albo mierzenie powyżej tego zakresu nie pokaże zupełnie nic.</p>
 lewego kanału względem prawego; <strong>OPD to faza lewego kanału
 względem monofonicznego downmiksu.</strong> Dekoder używa obu: ścieżki
 karmione downmiksem obraca o <code>OPD</code>, a pozostałe o
-<code>OPD - IPD</code>. Odejmij jedno od drugiego i <code>OPD</code> się
-skraca — więc międzykanałowa <em>różnica</em> zawsze wychodzi równa IPD,
-niezależnie od tego, co mówi OPD. Ale to, gdzie ten obrót leży względem
-downmiksu, jest już wyłącznie sprawą OPD.</p>
-<p>Zostaw OPD na zerze i lewy kanał zostaje przypięty do fazy downmiksu,
-a cały obrót ląduje na prawym. Różnica jest nadal poprawna — i właśnie
+<code>OPD - IPD</code>. Po odjęciu jednego od drugiego <code>OPD</code>
+się skraca, więc międzykanałowa <em>różnica</em> zawsze wychodzi równa
+IPD, niezależnie od tego, co mówi OPD. To, gdzie ten obrót leży względem
+downmiksu, jest już jednak wyłącznie sprawą OPD.</p>
+<p>Przy OPD równym zeru lewy kanał zostaje przypięty do fazy downmiksu,
+a cały obrót ląduje na prawym. Różnica jest nadal poprawna i właśnie
 dlatego łatwo to przeoczyć: każdy pomiar <code>arg(L) - arg(R)</code>
-jest na to ślepy. Zmierz zamiast tego fazę bezwzględną każdego kanału
-względem oryginału, w zasięgu IPD, i asymetria staje się oczywista —
-podobnie jak to, że OPD ją usuwa:</p>
+jest na to ślepy. Wystarczy zmierzyć zamiast tego fazę bezwzględną
+każdego kanału względem oryginału, w zasięgu IPD, i asymetria staje się
+oczywista, podobnie jak to, że OPD ją usuwa:</p>
 <table>
 <thead>
 <tr class="header">
@@ -1014,10 +1037,10 @@ podobnie jak to, że OPD ją usuwa:</p>
 </tr>
 </tbody>
 </table>
-<p>Przy <code>OPD = 0</code> oba kanały nigdy się nie zgadzają — 14,7
+<p>Przy <code>OPD = 0</code> oba kanały nigdy się nie zgadzają: 14,7
 wobec 20,1, potem 48,1 wobec 56,2. Z policzonym OPD zbiegają się, a
 korzyść rośnie wraz z opóźnieniem: średnio +6,4 stopnia, przy 0,7 ms
-+13. Zwróć uwagę, że to jest właśnie ten przypadek, w którym
++13. Warto zauważyć, że to właśnie ten przypadek, w którym
 <em>zwykły</em> pomiar IPD nie pokazywał nic: przy 0,7 ms różnica
 międzykanałowa przekraczała już to, co rozstrzyga siatka 45 stopni, a
 jednak faza bezwzględna każdego kanału i tak wyraźnie się poprawiła.</p>
@@ -1025,34 +1048,33 @@ jednak faza bezwzględna każdego kanału i tak wyraźnie się poprawiła.</p>
 więc</p>
 <pre><code>sum(L * conj(L+R)) = sum(|L|²) + sum(L * conj(R))</code></pre>
 <p>czego część rzeczywista to <code>pwrL + pwrCr</code>, a urojona to
-<code>pwrCi</code> — te same akumulatory, które karmią już IID, ICC i
-IPD. Zatem <code>OPD = atan2(pwrCi, pwrL + pwrCr)</code>: jeszcze jeden
-<code>atan2</code> na liczbach, które i tak leżały w tej pętli, i nie
-trzeba przekazywać sygnału downmiksu skądkolwiek indziej. Dla równych
-poziomów sprowadza się to analitycznie do <code>IPD/2</code>, bo
-<code>arg(1 + e^{-i·φ}) = -φ/2</code> — wygodny sprawdzian, choć postać
-ogólna powyżej jest poprawna także wtedy, gdy kanały różnią się
+<code>pwrCi</code>, czyli te same akumulatory, które karmią już IID, ICC
+i IPD. Zatem <code>OPD = atan2(pwrCi, pwrL + pwrCr)</code>: jeszcze
+jeden <code>atan2</code> na liczbach, które i tak leżały w tej pętli, i
+nie trzeba przekazywać sygnału downmiksu skądkolwiek indziej. Dla
+równych poziomów sprowadza się to analitycznie do <code>IPD/2</code>, bo
+<code>arg(1 + e^{-i·φ}) = -φ/2</code>. To wygodny sprawdzian, choć
+postać ogólna powyżej jest poprawna także wtedy, gdy kanały różnią się
 poziomem, a <code>IPD/2</code> już nie.</p>
-<p>Wcześniejsza wersja tego enkodera wysyłała OPD jako zero i
-twierdziła, że pomiar wykazał, iż <code>IPD/2</code> nie pomaga. Ten
-pomiar był zakresowany na <code>arg(L) - arg(R)</code>, a to, jak
-wyjaśniono powyżej, w ogóle nie widzi OPD. Werdykt był błędny i został
-poprawiony; <code>--ps-opd 0</code> pozostaje dostępne do porównań
-A/B.</p>
+<p>Wcześniejsza wersja tego kodera wysyłała OPD jako zero i twierdziła,
+że pomiar wykazał, iż <code>IPD/2</code> nie pomaga. Ten pomiar był
+zakresowany na <code>arg(L) - arg(R)</code>, a to, jak wyjaśniono
+powyżej, w ogóle nie widzi OPD. Werdykt był błędny i został poprawiony;
+<code>--ps-opd 0</code> pozostaje dostępne do porównań A/B.</p>
 <p>Jedna praktyczna konsekwencja, wyciągnięta z błędu i naprawiona w
 v1.3.1: rozszerzenie fazy NIE niesie liczby pasm fazy. Dekoder wylicza
 ją z <code>iid_mode</code>, i to wyłącznie z nagłówka, który sygnalizuje
 również IID. FDK decyduje o wysłaniu IID na podstawie heurystyki różnicy
-głośności, więc na materiale o niemal równych poziomach kanałów — a
-przede wszystkim na treści bliskiej przeciwfazie — legalnie nie
+głośności, więc na materiale o niemal równych poziomach kanałów, a
+przede wszystkim na treści bliskiej przeciwfazie, legalnie nie
 sygnalizował IID, a wtedy dekoder odczytywał inną liczbę bitów niż
-zapisał enkoder i fazę wyrzucał. Dlatego włączenie <code>--ps-ipd</code>
+zapisał koder i fazę wyrzucał. Dlatego włączenie <code>--ps-ipd</code>
 powoduje teraz również zasygnalizowanie IID. To parametr zwykły, tani i
 zawsze legalny, a przy tym jedyna droga, którą liczba pasm dociera do
 dekodera.</p>
 <p>Kompatybilność jest bezpieczna z samej konstrukcji. Dane siedzą w
 rozszerzeniu z prefiksem długości, więc dekoder, który nie implementuje
-syntezy fazy — łącznie z własnym baseline'owym dekoderem PS w FDK —
+syntezy fazy (łącznie z własnym baseline'owym dekoderem PS w FDK),
 odczytuje liczbę bajtów i je pomija, na co standard wprost pozwala.
 Zweryfikowane w praktyce: przy wyłączonym przełączniku wyjście jest
 bit-identyczne z poprzednim, a przy włączonym zarówno ffmpeg, jak i faad
@@ -1060,11 +1082,11 @@ dekodują czysto przy 24, 32, 48 i 64 kbps.</p>
 <h3 id="detektory-sbr-ataki-i-dorabiane-harmoniczne">Detektory SBR:
 ataki i dorabiane harmoniczne</h3>
 <p>O tym, jak realnie brzmi odtwarzane pasmo górne, decydują w SBR
-głównie dwa detektory — i do tej pory żadnego z nich nie dało się
-dotknąć z linii poleceń.</p>
+głównie dwa detektory, a żadnego z nich nie dało się do tej pory dotknąć
+z linii poleceń.</p>
 <p><strong>Detektor transjentów</strong> decyduje, czy atak dostanie
 własną obwiednię, czy zostanie uśredniony na dłuższym odcinku. Kiedy
-przegapi atak, energia uderzenia rozlewa się w tył w czasie — słychać
+przegapi atak, energia uderzenia rozlewa się w tył w czasie: słychać
 krótki wysypek szumu wysokiego tuż <em>przed</em> hi-hatem, nie po nim.
 To jest pre-echo i w paśmie SBR należy do bardziej rozpoznawalnych
 artefaktów kodowania.</p>
@@ -1074,14 +1096,14 @@ zmiany; poniżej 100 odpala chętniej, powyżej 100 rzadziej). Okazało się
 najskuteczniejszym pokrętłem w tej grupie. Pomiar na sygnale z 24
 atakami perkusyjnymi i tonami wygaszającymi się między 8 a 13 kHz,
 licząc energię pasma górnego pojawiającą się przed atakiem, a nieobecną
-w źródle: stock daje 1,610 przy 32 kbps, a obniżenie progu do 40 zbija
-to do 0,041 — pre-echo praktycznie znika. To samo dzieje się przy 64
-kbps (1,186 do 0,059). Efekt saturuje poniżej 60 i zanika zupełnie od
-100 w górę, gdzie wyjście jest bit-identyczne ze stockiem. Na materiale
-perkusyjnym <code>--sbr-tran-thr 40</code> to miejsce, od którego warto
-zacząć.</p>
+w źródle: ustawienie fabryczne daje 1,610 przy 32 kbps, a obniżenie
+progu do 40 zbija to do 0,041, czyli pre-echo praktycznie znika. To samo
+dzieje się przy 64 kbps (1,186 do 0,059). Efekt saturuje poniżej 60 i
+zanika zupełnie od 100 w górę, gdzie wyjście jest bit-identyczne z
+domyślnym. Na materiale perkusyjnym <code>--sbr-tran-thr 40</code> to
+miejsce, od którego warto zacząć.</p>
 <p><code>--sbr-tran-peak &lt;n&gt;</code> steruje tym, jak
-<em>szpilkowy</em> musi być kandydat, żeby liczyć się jako atak — to
+<em>szpilkowy</em> musi być kandydat, żeby liczyć się jako atak: to
 surowa stała 0,90, wpisywana jako 90.
 <code>--sbr-tran-split &lt;n&gt;</code> rządzi tym, jak chętnie ramka
 bez wykrytego transjentu jest i tak dzielona na dwie obwiednie, co
@@ -1095,17 +1117,17 @@ zaobserwowaliśmy zmiany na naszym materiale.</p>
 <p><strong>Detektor missing harmonics</strong> zajmuje się problemem
 odwrotnym. Gdy SBR kopiuje pasmo dolne w górę, ton obecny w oryginale
 może trafić w złe miejsce albo zniknąć. Detektor to zauważa i dorabia
-syntetyczną harmoniczną, żeby go przywrócić. Ustawisz go zbyt gorliwie —
-dostajesz gwizdy i metaliczne artefakty, których w nagraniu nigdy nie
-było; zbyt zachowawczo — dzwonki, glockenspiel i talerze matowieją, bo
-ich partiale po cichu znikają.</p>
+syntetyczną harmoniczną, żeby go przywrócić. Zbyt gorliwe ustawienie
+daje gwizdy i metaliczne artefakty, których w nagraniu nigdy nie było, a
+zbyt zachowawcze sprawia, że dzwonki, glockenspiel i talerze matowieją,
+bo ich partiale po cichu znikają.</p>
 <p><code>--sbr-mh-tone &lt;n&gt;</code> skaluje to, jak tonalne musi być
 pasmo, zanim harmoniczna zostanie dorobiona, i jest tu głównym sterem.
 <code>--sbr-mh-diff &lt;n&gt;</code> skaluje <em>różnicę</em> tonalności
 między oryginałem a pasmem odtworzonym, która uruchamia kompensację.
 <code>--sbr-mh-decay-orig</code> i <code>--sbr-mh-decay-diff</code>
 zmieniają to, jak długo znaleziony już ton jest dalej śledzony przy
-wygasaniu — a to właśnie słychać na wybrzmieniach talerzy i dzwonków.
+wygasaniu, a to właśnie słychać na wybrzmieniach talerzy i dzwonków.
 <code>--sbr-mh-sfm-sbr</code> i <code>--sbr-mh-sfm-orig</code>
 przesuwają granicę płaskości widmowej między „to jest ton" a „to jest
 szum", odpowiednio dla pasma odtworzonego i oryginalnego.
@@ -1113,78 +1135,79 @@ szum", odpowiednio dla pasma odtworzonego i oryginalnego.
 dorobionej harmonicznej, co wpływa na to, ile szumu siedzi tuż obok
 niej.</p>
 <p>Na koniec <code>--sbr-noise-max &lt;6|3|-3&gt;</code> ustawia sufit
-tego, jak głośny może być szum wstrzykiwany przez SBR — odpowiednio 1,0,
+tego, jak głośny może być szum wstrzykiwany przez SBR: odpowiednio 1,0,
 0,5 albo 0,125. To najbardziej bezpośrednia kontrola nad „powietrzem
 kontra syczeniem" na samej górze. W FDK było to już polem
 konfiguracyjnym, wybieranym z tabeli tuningu po bitrate i nigdy nie
 wystawionym.</p>
 <p>Wszystkie te pokrętła są opcjonalne: przy wartościach neutralnych
-wyjście jest bit-identyczne ze stockiem, a zestaw testów tego
+wyjście jest bit-identyczne z fabrycznym, a zestaw testów tego
 pilnuje.</p>
 <h2 id="17-tns-pns-i-afterburner">17. TNS, PNS i afterburner</h2>
-<p><code>--tns-mask &lt;n&gt;</code> /
-<code>--tns-order &lt;n&gt;</code> — TNS (Temporal Noise Shaping)
+<p><code>--tns-mask &lt;n&gt;</code> i
+<code>--tns-order &lt;n&gt;</code>: TNS (Temporal Noise Shaping)
 kształtuje szum kwantyzacji w czasie, żeby chował się pod transjentami
 (ważne dla ostrych ataków, np. perkusji). Maska to bitowa mapa aktywnych
 filtrów, rząd to długość filtra.</p>
-<p><code>--pns &lt;0|1&gt;</code> — PNS (Perceptual Noise Substitution)
+<p><code>--pns &lt;0|1&gt;</code>: PNS (Perceptual Noise Substitution)
 zastępuje szumowe pasma opisem "tu jest szum o takiej energii" zamiast
 kodować go dokładnie. Duża oszczędność na szumowym materiale.</p>
-<p><code>--pns-start &lt;Hz&gt;</code> — od jakiej częstotliwości PNS
+<p><code>--pns-start &lt;Hz&gt;</code>: od jakiej częstotliwości PNS
 może działać.</p>
-<p><code>--force-pns</code> — obejdź bramkę niskiego bitrate dla PNS.
+<p><code>--force-pns</code>: omija warunek niskiego bitrate'u dla PNS.
 WYJAŚNIENIE: FDK ma tabelę, która przy bardzo niskich bitrate'ach
-(poniżej około 28 kbps) całkowicie wyłącza PNS — i wtedy
+(poniżej około 28 kbps) całkowicie wyłącza PNS, a wtedy
 <code>--pns-start</code> jest ignorowane, bo PNS w ogóle nie działa. To
-dlatego przy 24 kbps słyszałeś artefakty jak z MP3, a przy 64 kbps PNS
-działał. Ta flaga omija tabelę i włącza PNS mimo niskiego bitrate.</p>
+dlatego przy 24 kbps słychać artefakty jak z MP3, a przy 64 kbps PNS
+działa. Ta flaga omija tabelę i włącza PNS mimo niskiego bitrate.</p>
 <p>Słowo o jednostkach, zanim przejdziemy do poszczególnych pokręteł, bo
 dzięki temu reszta nabiera sensu. FDK trzyma te parametry detekcji PNS
 wewnętrznie jako liczby stałoprzecinkowe, a nasze przełączniki przyjmują
-zwykły dziesiętny MNOŻNIK: to, co wpiszesz, jest mnożone przez 100 i
-użyte do przeskalowania fabrycznej wartości FDK. Czyli <code>1.0</code>
+zwykły dziesiętny MNOŻNIK: wpisana wartość jest mnożona przez 100 i
+użyta do przeskalowania fabrycznej wartości FDK. Czyli <code>1.0</code>
 znaczy „×1,0 = zostaw fabryczną wartość", <code>1.5</code> znaczy
 „×1,5", <code>0.5</code> znaczy „×0,5", a <code>-1</code> znaczy, że
 przełącznik jest wyłączony. Ta jedna konwencja
 (<code>wartość × 100</code>, <code>1.0</code> = bez zmian) dotyczy
 każdego skalującego pokrętła <code>--pns-*</code> poniżej.</p>
-<p><code>--pns-gain &lt;x&gt;</code> — GŁOŚNOŚĆ dorabianego szumu PNS i
-pokrętło PNS, po które sięgniesz najczęściej. Gdy PNS uzna pasmo za „sam
-szum", wyrzuca faktyczne linie widmowe i zapisuje tylko jedną liczbę:
-energię szumu tego pasma. Przy odtwarzaniu dekoder odtwarza losowy szum
+<p><code>--pns-gain &lt;x&gt;</code>: GŁOŚNOŚĆ dorabianego szumu PNS i
+pokrętło PNS używane najczęściej. Gdy PNS uzna pasmo za „sam szum",
+wyrzuca faktyczne linie widmowe i zapisuje tylko jedną liczbę: energię
+szumu tego pasma. Przy odtwarzaniu dekoder odtwarza losowy szum
 wyskalowany do tej energii. <code>--pns-gain</code> skaluje tę zapisaną
 energię wprost. <code>1.0</code> = bez zmian (odtworzony szum niesie
 energię oryginalnego pasma); <code>&gt;1.0</code> czyni szum
 głośniejszym niż oryginał (przydatne, gdy podstawiony szum brzmi zbyt
 nieśmiało i miks robi się głuchy); <code>&lt;1.0</code> czyni go
-cichszym (gdy szum za mocno syczy). Traktuj to jak pokrętło „jak głośny
+cichszym (gdy szum za mocno syczy). To w praktyce pokrętło „jak głośny
 jest podstawiony szum". Wejście dziesiętne, <code>-1</code> = off.</p>
 <p>Pozostałe pokrętła PNS rządzą tym, KTÓRE pasma w ogóle zostaną
-zamienione w szum — etapem detekcji — a nie tym, jak głośny jest wynik.
-<code>--pns-tonality &lt;x&gt;</code> skaluje próg detekcji tonalności.
-PNS odpala się tylko na pasmach, które enkoder uzna za „szumopodobne"
-(niska tonalność); podniesienie tego progu pozwala większej liczbie pasm
-— nawet nieco tonalnym — zakwalifikować się jako szum, więc podstawianie
-szumu robi się SZERSZE (więcej widma zastąpione tanim szumem, większa
-oszczędność, ale i większe ryzyko rozmycia prawdziwych tonów). Obniżenie
-czyni PNS bardziej wybrednym. <code>1.0</code> = domyślnie.</p>
+zamienione w szum, czyli etapem detekcji, a nie tym, jak głośny jest
+wynik. <code>--pns-tonality &lt;x&gt;</code> skaluje próg detekcji
+tonalności. PNS odpala się tylko na pasmach, które koder uzna za
+„szumopodobne" (niska tonalność); podniesienie tego progu pozwala
+większej liczbie pasm, nawet nieco tonalnym, zakwalifikować się jako
+szum, więc podstawianie szumu robi się SZERSZE (więcej widma zastąpione
+tanim szumem, większa oszczędność, ale i większe ryzyko rozmycia
+prawdziwych tonów). Obniżenie czyni PNS bardziej wybrednym.
+<code>1.0</code> = domyślnie.</p>
 <p><code>--pns-refpower &lt;x&gt;</code> skaluje próg mocy referencyjnej
 detekcji. PNS porównuje moc każdego pasma z referencją, zanim uzna je za
-kandydata na szum; to pokrętło przesuwa tę bramkę mocy. <code>1.0</code>
-= domyślnie; działa w parze z tonalnością — oba warunki muszą się
-zgodzić, żeby pasmo stało się PNS.</p>
+kandydata na szum; to pokrętło przesuwa ten warunek mocy.
+<code>1.0</code> = domyślnie; działa w parze z tonalnością, bo oba
+warunki muszą się zgodzić, żeby pasmo stało się PNS.</p>
 <p><code>--pns-gapfill &lt;x&gt;</code> skaluje próg wypełniania luk.
 Gdy PNS oznaczył pasma po obu stronach małej luki, ta heurystyka może
 „domknąć lukę" i oznaczyć jako PNS także pasmo pomiędzy nimi, żeby nie
 zostawić zakodowanej wyspy uwięzionej między dwoma pasmami szumu.
-Zaawansowane i subtelne — rzadko słyszalne samo w sobie.
-<code>1.0</code> = domyślnie.</p>
+Zaawansowane i subtelne, rzadko słyszalne samo w sobie. <code>1.0</code>
+= domyślnie.</p>
 <p><code>--pns-min-width &lt;n&gt;</code> ustala minimalną szerokość
 SFB, w liniach widmowych, jaką musi mieć pasmo, zanim PNS będzie mógł na
 nim zadziałać. To jedyny z tej grupy, który jest surową liczbą linii, a
 nie mnożnikiem <code>×100</code>. Jest skuteczny dopiero powyżej
 wbudowanej domyślnej (LC = 16 linii); podbicie do 32 albo 64 ogranicza
-PNS tylko do szerszych pasm, powstrzymując enkoder przed podstawianiem
+PNS tylko do szerszych pasm, powstrzymując koder przed podstawianiem
 szumu na wąskich niskich pasmach, gdzie byłoby to bardziej słyszalne.
 <code>-1</code> = off (użyj domyślnej FDK).</p>
 <h3 id="transjenty-pre-echo-i-dziury-w-rdzeniu-lc-ld-eld">Transjenty,
@@ -1193,15 +1216,15 @@ pre-echo i dziury w rdzeniu (LC, LD, ELD)</h3>
 <code>-w 17000</code>) rdzeń nie ma bitów na wszystkie pasma. Słychać to
 na dwa sposoby: szum rozmazany przed uderzeniem (pre-echo) i bulgocące,
 migające pasma, które co chwilę znikają (dziury). Te pokrętła sięgają do
-obu mechanizmów. Bez nich enkoder działa dokładnie jak stock.</p>
+obu mechanizmów. Bez nich koder działa jak fabryczny FDK.</p>
 <p>DZIURY. <code>--hole-ladder &lt;1..8&gt;</code> to najmocniejsze
 pokrętło. Gdy ramki nie stać na wszystko, FDK zeruje pasma w 8 krokach,
 od najcichszych w górę. Mniej kroków znaczy, że wolno zerować tylko
-najcichsze, a resztę oszczędności enkoder robi grubszą kwantyzacją.
+najcichsze, a resztę oszczędności koder robi grubszą kwantyzacją.
 Zmierzone przy 32 kbps i 17 kHz: wyzerowanych pasm ubywa z 37% do 8%
 (<code>2</code>), przy 40 kbps z 37% do 1,7%. W zamian pozostałe pasma
-mają trochę więcej szumu, czyli zamiast dziur dostajesz nieco bardziej
-ziarniste wypełnienie. Zacznij od <code>2</code>.
+mają trochę więcej szumu, czyli zamiast dziur pojawia się nieco bardziej
+ziarniste wypełnienie. Warto zacząć od <code>2</code>.
 <code>--avoid-holes 1</code> włącza ochronę wąskich głośnych pasm, którą
 FDK wyłącza poniżej 40 kbps stereo.
 <code>--hole-start &lt;sfb&gt;</code> chroni dolne pasma przed
@@ -1213,7 +1236,7 @@ sąsiadów.</p>
 bloki, także krótkie, dostają okno KBD, które słabiej przepuszcza szum
 daleko od dźwięku. Zmierzone: pre-echo średnio niższe o 3,4 do 6,1 dB
 przy 24, 40 i 128 kbps. <code>--window-shape 0</code> daje odwrotnie,
-sinus wszędzie. <code>--attack-decay &lt;x&gt;</code> (stock 0,7)
+sinus wszędzie. <code>--attack-decay &lt;x&gt;</code> (fabrycznie 0,7)
 ustawia pamięć detektora uderzeń: wyżej porównuje atak z dłuższą
 średnią, w pomiarze <code>0,9</code> obniżyło najgorszy przypadek
 pre-echa o 2,9 dB. <code>--attack-floor &lt;dB&gt;</code> w dół sprawia,
@@ -1231,49 +1254,49 @@ kształtuje szum w czasie. <code>--tns-start &lt;Hz&gt;</code> ustala,
 jak nisko sięga dolny filtr TNS.</p>
 <p>Na start dla LC stereo 24 do 50 kbps z szerokim pasmem:</p>
 <pre><code>fdkaac-franken-x64.exe -p 2 -b 32000 -w 17000 --hole-ladder 2 --avoid-holes 1 --window-shape 1 -o out.m4a in.wav</code></pre>
-<p><code>--ath-scale &lt;n&gt;</code> — skalowanie progu słyszalności
-(ATH), w Q8 (256 = ×1,0). To jest GLOBALNY regulator maskowania. Powyżej
-256 = podnosi progi = enkoder uznaje więcej rzeczy za niesłyszalne =
-agresywniej, mniej bitów. Poniżej 256 = obniża progi = enkoder zachowuje
-więcej detalu = więcej bitów. To najprostszy sposób powiedzieć
-enkoderowi "bądź czystszy" albo "bądź oszczędniejszy".</p>
+<p><code>--ath-scale &lt;n&gt;</code>: skalowanie progu słyszalności
+(ATH), w Q8 (256 = ×1,0). To GLOBALNY regulator maskowania. Powyżej 256
+podnosi progi, więc koder uznaje więcej rzeczy za niesłyszalne, działa
+agresywniej i zużywa mniej bitów. Poniżej 256 obniża progi, więc koder
+zachowuje więcej detalu za cenę większej liczby bitów. To najprostszy
+sposób powiedzieć koderowi "bądź czystszy" albo "bądź
+oszczędniejszy".</p>
 <hr />
 <h1 id="część-v-detale-w-wysokich-bitrate-i-dostrajanie-do-mowy">Część
 V. Detale w wysokich bitrate i dostrajanie do mowy</h1>
 <h2 id="18-więcej-bitów--więcej-detalu-jak-to-naprawdę-wycisnąć">18.
 "Więcej bitów = więcej detalu": jak to naprawdę wycisnąć</h2>
-<p>Pytanie, które często pada: skoro daję 400 kbps, czy enkoder naprawdę
-wykorzysta je na lepszy opis detali, czy część się marnuje? W AAC nie ma
-tak zaawansowanych, osobnych regulatorów jak w MusePack (signal-to-mask
-ratio, tone-masks-noise, noise-masks-tone jako oddzielne pokrętła). Ale
-efekt "opisz dokładniej, mniej maskuj" osiągamy dwoma narzędziami, które
-razem robią dokładnie to samo.</p>
-<p><code>--ath-scale &lt;n&gt;</code> PONIŻEJ 256 — obniża globalny próg
-słyszalności. Enkoder przestaje zakładać, że coś jest niesłyszalne, i
+<p>Pytanie, które często pada: czy przy 400 kbps koder naprawdę
+wykorzysta te bity na lepszy opis detali, czy część się marnuje? W AAC
+nie ma tak zaawansowanych, osobnych regulatorów jak w MusePack
+(signal-to-mask ratio, tone-masks-noise, noise-masks-tone jako oddzielne
+pokrętła). Efekt "opisz dokładniej, mniej maskuj" osiągamy jednak dwoma
+narzędziami, które razem robią dokładnie to samo.</p>
+<p><code>--ath-scale &lt;n&gt;</code> PONIŻEJ 256 obniża globalny próg
+słyszalności. Koder przestaje zakładać, że coś jest niesłyszalne, i
 zaczyna to dokładnie kodować. To najbliższy odpowiednik obniżenia progu
-maskowania z MusePacka. Przy 320–400 kbps spróbuj 200 albo 180.</p>
-<p><code>--spread-mask &lt;n&gt;</code> PONIŻEJ 256 — steruje
-ROZLEWANIEM maskowania między sąsiednimi pasmami. W psychoakustyce
-głośne pasmo "rozlewa" swoją zdolność maskowania na sąsiadów (to właśnie
-tone-masks-noise). Zmniejszając ten parametr, mówisz enkoderowi: mniej
-zakładaj, że sąsiednie pasma się nawzajem maskują — przez co więcej pasm
+maskowania z MusePacka. Przy 320-400 kbps warto spróbować 200 albo
+180.</p>
+<p><code>--spread-mask &lt;n&gt;</code> PONIŻEJ 256 steruje ROZLEWANIEM
+maskowania między sąsiednimi pasmami. W psychoakustyce sygnał maskujący
+"rozlewa" swoją zdolność maskowania na sąsiadów (to właśnie
+tone-masks-noise). Zmniejszenie tego parametru każe koderowi mniej
+zakładać, że sąsiednie pasma się nawzajem maskują, przez co więcej pasm
 jest traktowanych jako słyszalne i dokładnie kodowanych. Największy
-efekt tam, gdzie bity są ograniczeniem (96–192 kbps); przy bardzo
-wysokim bitrate enkoder i tak ma nadmiar bitów, więc zmiana bywa
-mała.</p>
+efekt tam, gdzie bity są ograniczeniem (96-192 kbps); przy bardzo
+wysokim bitrate koder i tak ma nadmiar bitów, więc zmiana bywa mała.</p>
 <p>PRZEPIS audiofilski (maksimum detalu, wysoki bitrate, materiał z
 bogatą górą):</p>
 <pre><code>fdkaac-franken-x64.exe -p 2 -b 400000 --ath-scale 190 --spread-mask 128 -o out.m4a in.wav</code></pre>
-<p>Połączenie: obniżony globalny próg (ath-scale 190) + zmniejszone
-rozlewanie maskowania (spread-mask 128). Enkoder zachowuje znacznie
-więcej mikrodetalu, co w porównaniu fazowym z oryginałem daje mniejsze
-różnice. To jest w duchu tego, co robił MusePack przy 1000 kbps — w
-granicach tego, co AAC pozwala wystawić bez przepisywania całego
-modelu.</p>
-<p>Gdy w materiale więcej budżetu ma pójść w szerokość stereo, dołóż
-<code>--side-bias 6</code> albo <code>--side-knee 6</code>: skierowanie
-bitów do kanału side to kolejne miejsce, w którym wysoki bitrate daje
-naprawdę lepszy dźwięk.</p>
+<p>Połączenie: obniżony globalny próg (ath-scale 190) oraz zmniejszone
+rozlewanie maskowania (spread-mask 128). Koder zachowuje znacznie więcej
+mikrodetalu, co w porównaniu fazowym z oryginałem daje mniejsze różnice.
+To jest w duchu tego, co robił MusePack przy 1000 kbps, w granicach
+tego, co AAC pozwala wystawić bez przepisywania całego modelu.</p>
+<p>Gdy w materiale więcej budżetu ma pójść w szerokość stereo, warto
+dołożyć <code>--side-bias 6</code> albo <code>--side-knee 6</code>:
+skierowanie bitów do kanału side to kolejne miejsce, w którym wysoki
+bitrate daje naprawdę lepszy dźwięk.</p>
 <p>Poza ath-scale jest jeszcze bardziej bezpośrednia dźwignia i warto
 zrozumieć jej jednostki. Te pokrętła min-SNR działają w skali
 stałoprzecinkowej Q8, gdzie 256 oznacza 1,0 (więc 256 = „zostaw w
@@ -1281,14 +1304,14 @@ spokoju", 128 = ×0,5, 512 = ×2,0); <code>-1</code> oznacza, że
 przełącznik jest wyłączony. <code>--minsnr-scale &lt;n&gt;</code> (Q8,
 256 = off) to najbliższy FDK-owy odpowiednik gałek TMN/NMT z MusePacka:
 skaluje WYMAGANY per-pasmo SNR kodowania (<code>sfbMinSnrLdData</code>),
-czyli minimalny stosunek sygnału do szumu, jaki enkoder upiera się
+czyli minimalny stosunek sygnału do szumu, jaki koder upiera się
 osiągnąć w każdym paśmie skali. Wartości PONIŻEJ 256 wymagają WYŻSZEGO
-SNR — enkoder musi kodować każde pasmo dokładniej, więc więcej detalu i
-więcej bitów — a powyżej 256 rozluźniają wymóg i kodują zgrubniej. Jest
-skuteczniejsza niż <code>--ath-scale</code>, bo to właśnie do min-SNR
-logika „avoid holes" (unikania dziur) cofa progi; samo ruszenie kopii
-progu (jak robi ath-scale) jest częściowo cofane dalej w łańcuchu, ale
-podłoga min-SNR już nie.</p>
+SNR, czyli koder musi kodować każde pasmo dokładniej, co daje więcej
+detalu za więcej bitów, a powyżej 256 rozluźniają wymóg i kodują
+zgrubniej. Jest skuteczniejsza niż <code>--ath-scale</code>, bo to
+właśnie do min-SNR logika „avoid holes" (unikania dziur) cofa progi;
+samo ruszenie kopii progu (jak robi ath-scale) jest częściowo cofane
+dalej w łańcuchu, ale dolna granica min-SNR już nie.</p>
 <p>Dwa przełączniki okna przesuwają końce przedziału, w którym FDK
 trzyma wymagany SNR. Domyślnie żadne pasmo nie może żądać więcej niż
 około 25 dB SNR i żadne nie dostaje mniej niż około 1 dB.
@@ -1301,24 +1324,24 @@ SNR. Przy CBR pętla dopasowania odkręca oba prawie całkowicie; przy VBR
 widać je w jakości i w rozmiarze pliku.</p>
 <p>Na koniec <code>--reduce-clamp 0</code> zdejmuje sufit „29 dB Ratio"
 redukcji progów wewnątrz kwantyzatora CBR. Gdy pętli alokacji bitów CBR
-brakuje bitów, podnosi (rozluźnia) progi, ale stock FDK nie pozwala
-zredukować progu o więcej niż około 29 dB względem referencji — to clamp
-bezpieczeństwa. Ustawienie <code>--reduce-clamp 0</code> zdejmuje ten
-clamp, pozwalając enkoderowi wepchnąć progi głębiej i wlać bity w
+brakuje bitów, podnosi (rozluźnia) progi, ale fabryczny FDK nie pozwala
+zredukować progu o więcej niż około 29 dB względem referencji, bo to
+clamp bezpieczeństwa. Ustawienie <code>--reduce-clamp 0</code> zdejmuje
+ten clamp, pozwalając koderowi wepchnąć progi głębiej i wlać bity w
 najbardziej wymagające pasma. Łączy się naturalnie z
 <code>--minsnr-scale</code> dla ekstremalnego detalu i dotyczy tylko CBR
 (VBR chodzi inną ścieżką). Domyślnie jest <code>1</code> (clamp
-włączony, zachowanie stockowe).</p>
+włączony, zachowanie fabryczne).</p>
 <h2 id="19-dostrajanie-do-mowy-ludzkiej">19. Dostrajanie do mowy
 ludzkiej</h2>
-<p>Tak, w HE-AAC (a konkretnie w warstwie SBR) istnieje osobny tryb
-strojenia pod mowę. W zwykłym FDK jest zaszyty na sztywno jako wyłączony
-— tutaj wystawiliśmy go flagą:</p>
-<p><code>--speech</code> — włącza strojenie SBR pod mowę ludzką. Zmienia
+<p>W HE-AAC, a konkretnie w warstwie SBR, istnieje osobny tryb strojenia
+pod mowę. W fabrycznym FDK jest zaszyty na sztywno jako wyłączony, a
+tutaj został wystawiony flagą:</p>
+<p><code>--speech</code>: włącza strojenie SBR pod mowę ludzką. Zmienia
 progi filtrowania odwrotnego, poziom szumu i wyłącza kodowanie
-parametryczne górnego pasma — wszystko po to, żeby mowa (podcast,
+parametryczne górnego pasma, wszystko po to, żeby mowa (podcast,
 audiobook, dialog) w niskim bitrate brzmiała naturalniej, bez
-"bulgotania" w górze. Dotyczy HE-AAC/HE-AAC v2 (bo działa w SBR).</p>
+"bulgotania" w górze. Dotyczy HE-AAC i HE-AAC v2, bo działa w SBR.</p>
 <pre><code>fdkaac-franken-x64.exe -p 5 -b 32000 --speech -o mowa.m4a podcast.wav</code></pre>
 <p><code>--speech</code> zmienia kilka rzeczy naraz. Jego część
 dotyczącą estymatorów SBR można teraz brać osobno:
@@ -1328,12 +1351,11 @@ dotyczącą estymatorów SBR można teraz brać osobno:
 wyłączania kodowania parametrycznego.</p>
 <p>Uczciwie o LC: czysty AAC-LC (bez SBR) NIE ma osobnego, oddzielnego
 "trybu mowy" w FDK. Model psychoakustyczny LC jest ten sam dla mowy i
-muzyki. Dla mowy w LC najlepiej po prostu zejść z pasmem
-(<code>--core-cutoff</code> np. 12000–14000 Hz, bo mowa nie ma dużo
-powyżej) i ewentualnie włączyć <code>--pns</code> z
-<code>--force-pns</code> przy bardzo niskich bitrate'ach. Ale
-dedykowanego przełącznika "speech" dla LC nie ma, bo nie ma go w samym
-kodeku — i nie chcę udawać, że jest.</p>
+muzyki. Dla mowy w LC zwykle pomaga węższe pasmo (<code>-w 12000</code>
+do <code>14000</code>, bo mowa ma niewiele powyżej), a przy bardzo
+niskim bitrate'ie <code>--pns 1</code> z <code>--force-pns</code>.
+Osobnego przełącznika mowy dla LC nie ma, bo nie ma go w samym
+kodeku.</p>
 <hr />
 <h1 id="część-vi-gotowe-przepisy-od-skrajności-do-skrajności">Część VI.
 Gotowe przepisy (od skrajności do skrajności)</h1>
@@ -1345,10 +1367,12 @@ receptur</h2>
 <pre><code>fdkaac-franken-x64.exe -p 2 -b 160000 --peak-bitrate 256000 --vbr-reservoir 16000 -o out.m4a in.wav</code></pre>
 <p>AUDIOFIL, PEŁNE PASMO 96 kHz + maksimum detalu:</p>
 <pre><code>fdkaac-franken-x64.exe -p 2 -b 400000 --uncap-bandwidth --core-cutoff 40000 --ath-scale 190 --spread-mask 128 -o out.m4a in96k.wav</code></pre>
-<p>STREAMING MUZYKI, ŚREDNI BITRATE:</p>
-<pre><code>fdkaac-franken-x64.exe -p 5 -b 64000 --sbr-stereo-mode 3 -o out.m4a in.wav</code></pre>
-<p>PODCAST / MOWA, NISKI BITRATE:</p>
-<pre><code>fdkaac-franken-x64.exe -p 5 -b 32000 --speech --core-cutoff 12000 -o out.m4a mowa.wav</code></pre>
+<p>STREAMING MUZYKI, ŚREDNI BITRATE (prawdziwie kodowany rdzeń do 12 kHz
+zamiast 10,5):</p>
+<pre><code>fdkaac-franken-x64.exe -p 5 -b 64000 --sbr-start 15 -o out.m4a in.wav</code></pre>
+<p>PODCAST / MOWA, NISKI BITRATE (strojenie pod mowę stawia SBR na 5,5
+kHz; o indeks wyżej to 7 kHz):</p>
+<pre><code>fdkaac-franken-x64.exe -p 5 -b 32000 --speech --sbr-start 10 -o out.m4a mowa.wav</code></pre>
 <p>SKRAJNIE NISKO (eksperyment, 8 kbps stereo):</p>
 <pre><code>fdkaac-franken-x64.exe -p 29 -b 8000 --unlock-bitrate -o out.m4a in48k.wav</code></pre>
 <p>RATOWANIE STEREO PRZY NISKIM BITRACIE (agresywne intensity):</p>
@@ -1358,47 +1382,54 @@ receptur</h2>
 <pre><code>fdkaac-franken-x64.exe -p 2 -b 64000 --side-knee 4 -o out.m4a in.wav</code></pre>
 <h2 id="21-jak-podejść-do-własnych-eksperymentów">21. Jak podejść do
 własnych eksperymentów</h2>
-<p>Zmieniaj JEDEN parametr naraz i słuchaj (albo porównuj widmo/fazę z
-oryginałem). Enkoder bez żadnych flag Frankenstein zachowuje się
-dokładnie jak oryginalny FDK — to Twój punkt odniesienia. Każda flaga to
-świadome odchylenie od domyślnego, sprawdzonego zachowania.</p>
+<p>Zmieniaj JEDEN parametr naraz i słuchaj (albo porównuj widmo i fazę z
+oryginałem). Koder bez żadnych flag Frankenstein zachowuje się dokładnie
+jak oryginalny FDK i to jest punkt odniesienia. Każda flaga to świadome
+odchylenie od domyślnego, sprawdzonego zachowania.</p>
 <p>Kolejność, w jakiej warto próbować przy problemach:</p>
 <ul>
-<li>"za mało detalu / za płasko" → <code>--ath-scale</code> w dół, potem
-<code>--spread-mask</code> w dół.</li>
+<li>"za mało detalu / za płasko" → przy VBR <code>--minsnr-scale</code>
+albo <code>--ath-scale</code> poniżej 256 (płaci się rozmiarem pliku);
+przy CBR najpierw wyższy bitrate, te pokrętła ruszają tam niewiele.</li>
 <li>"stereo za wąskie, przestrzeń zapada się do środka" →
 <code>--side-knee 3..6</code> albo <code>--side-bias 3..9</code> (LC),
 <code>--sbr-stereo-mode 1</code> (górne pasmo HE-AAC), mniej agresywne
 IS.</li>
-<li>"metaliczne wysokie" → <code>--sbr-invf 2</code> lub 3.</li>
+<li>"metaliczne wysokie" → <code>--sbr-softness 4..6</code> albo
+<code>--sbr-invf-min 1</code>; wymuszone <code>--sbr-invf</code> ustala
+jeden poziom dla całego pliku i służy do diagnozy.</li>
 <li>"tnie po głośnych fragmentach" → <code>--peak-bitrate</code> +
 <code>--vbr-reservoir</code> (rozdział 8).</li>
 <li>"artefakty jak MP3 przy bardzo niskim bitrate" →
 <code>--force-pns</code>.</li>
-<li>"chcę pełne pasmo z 96 kHz" →
-<code>--uncap-bandwidth --core-cutoff 40000</code>.</li>
+<li>"potrzebne pełne pasmo z 96 kHz" →
+<code>--uncap-bandwidth -w 40000</code> (albo
+<code>--core-cutoff</code>).</li>
+<li>"rdzeń pod SBR brzmi wąsko" → <code>--sbr-start</code> o jeden
+indeks wyżej, nie <code>--core-cutoff</code>.</li>
 </ul>
 <h2 id="22-uwaga-końcowa-o-rzetelności">22. Uwaga końcowa o
 rzetelności</h2>
 <p>Wszystkie opisane tu zachowania zostały sprawdzone pomiarowo
 (dekodowalność strumienia, realny rozrzut bitrate, zawartość widma), a
-nie tylko założone. Tam, gdzie coś ma ograniczenie (IPD/OPD
-nieobsługiwane, brak trybu mowy w LC, sufit 6144 bity na kanał,
-rezydualna podłoga bitrate ~10 kbps), jest to powiedziane wprost,
-zamiast obiecywać rzeczy, których kodek nie potrafi.</p>
-<p>Enkoder bez flag = czysty FDK. Flagi = Twoje świadome decyzje. Miłego
-strojenia.</p>
+nie tylko założone. Tam, gdzie coś ma ograniczenie (brak trybu mowy w
+LC, sufit 6144 bity na kanał, progi bitrate'u poszczególnych profili,
+które zdejmuje dopiero <code>--unlock-bitrate</code>), jest to
+powiedziane wprost, zamiast obiecywać rzeczy, których kodek nie
+potrafi.</p>
+<p>Koder bez flag to czysty FDK. Flagi to świadome decyzje realizatora.
+Miłego strojenia.</p>
 <h1 id="część-vii-tabele-referencyjne">Część VII. Tabele
 referencyjne</h1>
 <p>Trzy tabele orientacyjne wyliczone z tablic strojenia w kodzie FDK.
 Są PRZYBLIŻONE (siatka pasm jest schodkowa), ale pokazują właściwy rząd
 wielkości i pomagają świadomie dobrać ustawienia bez zgadywania.</p>
-<h2 id="23-tabela-1--górna-częstotliwość-pasma-sfb">23. Tabela 1 — górna
+<h2 id="23-tabela-1-górna-częstotliwość-pasma-sfb">23. Tabela 1: górna
 częstotliwość pasma (SFB)</h2>
 <p>Widmo jest podzielone na pasma (scale factor bands, SFB), numerowane
 od dołu: pasmo 0 to najniższy bas, im wyżej numer, tym wyżej w
-częstotliwości. Kiedy ograniczasz coś do "N pasm"
-(<code>--msbands</code>, <code>--isbands</code>), ta tabela mówi, jakiej
+częstotliwości. Przy ograniczaniu czegoś do "N pasm"
+(<code>--msbands</code>, <code>--isbands</code>) ta tabela mówi, jakiej
 częstotliwości to mniej więcej odpowiada. Pokazano co czwarte pasmo;
 ostatni wiersz to łączna liczba pasm i częstotliwość Nyquista (połowa
 próbkowania).</p>
@@ -1516,21 +1547,21 @@ próbkowania).</p>
 </tr>
 <tr class="even">
 <td style="text-align: right;">44</td>
-<td style="text-align: right;">—</td>
+<td style="text-align: right;">brak</td>
 <td style="text-align: right;">9647</td>
 <td style="text-align: right;">13000</td>
 <td style="text-align: right;">17916</td>
 <td style="text-align: right;">19500</td>
-<td style="text-align: right;">—</td>
+<td style="text-align: right;">brak</td>
 </tr>
 <tr class="odd">
 <td style="text-align: right;">48</td>
-<td style="text-align: right;">—</td>
-<td style="text-align: right;">—</td>
+<td style="text-align: right;">brak</td>
+<td style="text-align: right;">brak</td>
 <td style="text-align: right;">15000</td>
 <td style="text-align: right;">22050</td>
 <td style="text-align: right;">24000</td>
-<td style="text-align: right;">—</td>
+<td style="text-align: right;">brak</td>
 </tr>
 <tr class="even">
 <td style="text-align: right;">liczba pasm / Nyquist</td>
@@ -1544,112 +1575,137 @@ próbkowania).</p>
 </tbody>
 </table>
 <p>Przykład odczytu: przy 44,1 kHz pasmo nr 40 kończy się około 15,2
-kHz. Jeśli MS ma działać tylko poniżej ~15 kHz (przypadek techniczny,
-zobacz rozdział 13), ustaw <code>--msbands 40</code>.</p>
-<h2 id="24-tabela-2--sbr-indeks-startu-a-częstotliwość-przejścia">24.
-Tabela 2 — SBR: indeks startu a częstotliwość przejścia</h2>
-<p>W HE-AAC dolną część pasma koduje rdzeń AAC, a górną dorabia SBR.
-<code>--sbr-start</code> (indeks 0..15) decyduje, od jakiej
-częstotliwości zaczyna się SBR — niższy indeks oznacza, że SBR wchodzi
-niżej, więc rdzeń jest węższy. "core" to częstotliwość próbkowania
-rdzenia; przy trybie dual-rate wyjście jest dwa razy wyższe niż
-rdzeń.</p>
+kHz. Gdy MS ma działać tylko poniżej ~15 kHz (przypadek techniczny,
+zobacz rozdział 13), należy ustawić <code>--msbands 40</code>.</p>
+<h2 id="24-tabela-2-indeks-startu-sbr-a-pasmo-rdzenia">24. Tabela 2:
+indeks startu SBR a pasmo rdzenia</h2>
+<p>W HE-AAC dolną część pasma koduje rdzeń AAC, a górną odtwarza SBR.
+<code>--sbr-start</code> (indeks 0..15) decyduje, gdzie zaczyna się SBR,
+a rdzeń idzie za nim: niższy indeks daje węższy rdzeń. Tabela podaje
+pasmo rdzenia, które wypisuje <code>--verbose</code> przy HE-AAC 32 kbps
+stereo dla trzech częstotliwości wejścia. "x" oznacza, że koder nie
+zainicjalizował się z domyślnym stopem. Indeks przechodzi przez tablicę,
+a nie wzór, więc sąsiednie indeksy mogą dawać tę samą wartość.</p>
 <table>
 <thead>
 <tr class="header">
 <th style="text-align: right;">indeks startu</th>
-<th style="text-align: right;">core 16 kHz</th>
-<th style="text-align: right;">core 24 kHz</th>
-<th style="text-align: right;">core 32 kHz</th>
-<th style="text-align: right;">core 44,1 kHz</th>
-<th style="text-align: right;">core 48 kHz</th>
+<th style="text-align: right;">wejście 32 kHz</th>
+<th style="text-align: right;">wejście 44,1 kHz</th>
+<th style="text-align: right;">wejście 48 kHz</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
 <td style="text-align: right;">0</td>
-<td style="text-align: right;">2750</td>
-<td style="text-align: right;">2250</td>
-<td style="text-align: right;">2500</td>
-<td style="text-align: right;">1378</td>
-<td style="text-align: right;">1500</td>
+<td style="text-align: right;">x</td>
+<td style="text-align: right;">x</td>
+<td style="text-align: right;">x</td>
 </tr>
 <tr class="even">
 <td style="text-align: right;">1</td>
-<td style="text-align: right;">3000</td>
-<td style="text-align: right;">2625</td>
-<td style="text-align: right;">3000</td>
-<td style="text-align: right;">2067</td>
-<td style="text-align: right;">2250</td>
+<td style="text-align: right;">x</td>
+<td style="text-align: right;">x</td>
+<td style="text-align: right;">x</td>
 </tr>
 <tr class="odd">
 <td style="text-align: right;">2</td>
-<td style="text-align: right;">3250</td>
-<td style="text-align: right;">3000</td>
-<td style="text-align: right;">3500</td>
-<td style="text-align: right;">2756</td>
-<td style="text-align: right;">3000</td>
+<td style="text-align: right;">3562</td>
+<td style="text-align: right;">3919</td>
+<td style="text-align: right;">x</td>
 </tr>
 <tr class="even">
 <td style="text-align: right;">3</td>
-<td style="text-align: right;">3500</td>
-<td style="text-align: right;">3375</td>
-<td style="text-align: right;">4000</td>
-<td style="text-align: right;">3445</td>
-<td style="text-align: right;">3750</td>
+<td style="text-align: right;">3843</td>
+<td style="text-align: right;">4263</td>
+<td style="text-align: right;">4265</td>
 </tr>
 <tr class="odd">
 <td style="text-align: right;">4</td>
-<td style="text-align: right;">3750</td>
-<td style="text-align: right;">3750</td>
-<td style="text-align: right;">4500</td>
-<td style="text-align: right;">4134</td>
-<td style="text-align: right;">4500</td>
+<td style="text-align: right;">4156</td>
+<td style="text-align: right;">4651</td>
+<td style="text-align: right;">4640</td>
 </tr>
 <tr class="even">
 <td style="text-align: right;">5</td>
-<td style="text-align: right;">4000</td>
-<td style="text-align: right;">4125</td>
-<td style="text-align: right;">5000</td>
-<td style="text-align: right;">4823</td>
-<td style="text-align: right;">5250</td>
+<td style="text-align: right;">4468</td>
+<td style="text-align: right;">5038</td>
+<td style="text-align: right;">5062</td>
 </tr>
 <tr class="odd">
 <td style="text-align: right;">6</td>
-<td style="text-align: right;">4250</td>
-<td style="text-align: right;">4500</td>
-<td style="text-align: right;">5500</td>
-<td style="text-align: right;">5512</td>
-<td style="text-align: right;">6000</td>
+<td style="text-align: right;">4812</td>
+<td style="text-align: right;">5469</td>
+<td style="text-align: right;">5484</td>
 </tr>
 <tr class="even">
 <td style="text-align: right;">7</td>
-<td style="text-align: right;">4500</td>
-<td style="text-align: right;">4875</td>
-<td style="text-align: right;">6000</td>
-<td style="text-align: right;">6202</td>
-<td style="text-align: right;">6750</td>
+<td style="text-align: right;">4812</td>
+<td style="text-align: right;">5943</td>
+<td style="text-align: right;">5953</td>
 </tr>
 <tr class="odd">
 <td style="text-align: right;">8</td>
-<td style="text-align: right;">4750</td>
-<td style="text-align: right;">5250</td>
+<td style="text-align: right;">5187</td>
+<td style="text-align: right;">5943</td>
+<td style="text-align: right;">6468</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">9</td>
+<td style="text-align: right;">5593</td>
+<td style="text-align: right;">6459</td>
+<td style="text-align: right;">6468</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">10</td>
+<td style="text-align: right;">5593</td>
+<td style="text-align: right;">7019</td>
+<td style="text-align: right;">7031</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">11</td>
+<td style="text-align: right;">6031</td>
+<td style="text-align: right;">7579</td>
+<td style="text-align: right;">7640</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">12</td>
 <td style="text-align: right;">6500</td>
-<td style="text-align: right;">6891</td>
+<td style="text-align: right;">8268</td>
+<td style="text-align: right;">8250</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">13</td>
+<td style="text-align: right;">7000</td>
+<td style="text-align: right;">8957</td>
+<td style="text-align: right;">9000</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">14</td>
 <td style="text-align: right;">7500</td>
+<td style="text-align: right;">9646</td>
+<td style="text-align: right;">10500</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">15</td>
+<td style="text-align: right;">8000</td>
+<td style="text-align: right;">11025</td>
+<td style="text-align: right;">12000</td>
 </tr>
 </tbody>
 </table>
-<p>Górną granicę SBR ustawia <code>--sbr-stop</code> (0..13) — wyższy
-indeks to SBR sięgające wyżej. Domyślnie biblioteka dobiera oba indeksy
-pod bitrate; te wartości podawaj tylko, gdy świadomie chcesz przesunąć
-punkt przejścia.</p>
-<h2 id="25-tabela-3--aac-lc-automatyczne-odcięcie-pasma-wg-bitrate">25.
-Tabela 3 — AAC-LC: automatyczne odcięcie pasma wg bitrate</h2>
-<p>Gdy nie podasz <code>-w</code>, koder sam dobiera szerokość pasma z
-tej tablicy — według bitrate NA KANAŁ (stereo 128 kbps to 64 kbps na
-kanał). Tabela jest wspólna dla 32/44,1/48 kHz i wyższych; próbkowanie
-wpływa tylko na górny limit (Nyquista).</p>
+<p>To, które indeksy są dozwolone, zależy też od bitrate'u: przy 64 kbps
+z 48 kHz inicjalizuje się tylko górna część zakresu (zobacz kartę
+<code>--sbr-start</code> w opisie przełączników). Górną granicę SBR
+ustawia <code>--sbr-stop</code> (0..13); wyższy indeks to SBR sięgające
+wyżej. Domyślnie biblioteka dobiera oba indeksy pod bitrate.</p>
+<h2
+id="25-tabela-3-aac-lc-automatyczne-odcięcie-pasma-według-bitrateu">25.
+Tabela 3: AAC-LC, automatyczne odcięcie pasma według bitrate'u</h2>
+<p>Bez podanego <code>-w</code> koder sam dobiera szerokość pasma z tej
+tablicy, według bitrate NA KANAŁ (stereo 128 kbps to 64 kbps na kanał).
+Tabela jest wspólna dla 32/44,1/48 kHz i wyższych; próbkowanie wpływa
+tylko na górny limit (Nyquista).</p>
 <table>
 <thead>
 <tr class="header">
@@ -1712,28 +1768,28 @@ oczywiste:</p>
 <li>channel-mode: 1 = mono, 2 = stereo. W HE-AAC v2 rdzeń jest mono, a
 stereo odtwarza się z parametrów (Parametric Stereo).</li>
 <li>core bandwidth: górna częstotliwość rdzenia AAC. W nawiasie podane
-jest ŹRÓDŁO: "from -w" (podałeś ręcznie), "from --core-cutoff" albo
-"auto". Pod SBR to tylko rdzeń — SBR gra powyżej tej wartości.</li>
-<li>final BW (AAC+SBR): pokazywane tylko przy aktywnym SBR —
-orientacyjna górna częstotliwość CAŁEGO sygnału (rdzeń plus SBR),
-wyliczona z indeksu stopu SBR. To dopełnienie "core bandwidth": tamto
-mówi dokąd sięga sam rdzeń, a to dokąd sięga cały HE-AAC po dołożeniu
-SBR.</li>
+jest ŹRÓDŁO: "from -w" (wartość podana ręcznie), "from --core-cutoff"
+albo "auto". Pod SBR to tylko rdzeń, bo SBR gra powyżej tej
+wartości.</li>
+<li>final BW (AAC+SBR): pokazywane tylko przy aktywnym SBR, orientacyjna
+górna częstotliwość CAŁEGO sygnału (rdzeń plus SBR), wyliczona z indeksu
+stopu SBR. To dopełnienie "core bandwidth": tamto mówi dokąd sięga sam
+rdzeń, a to dokąd sięga cały HE-AAC po dołożeniu SBR.</li>
 <li>sbr-ratio: 1 = single-rate (downsampled), 2 = dual-rate (rdzeń na
 połowie częstotliwości wyjścia).</li>
 <li>sbr amp res: 0 = rozdzielczość 1,5 dB, 1 = 3,0 dB.</li>
-<li>codec delay: opóźnienie kodeka w próbkach na kanał — istotne przy
+<li>codec delay: opóźnienie kodeka w próbkach na kanał, istotne przy
 gapless.</li>
 <li>IS corr threshold, IS L/R ratio: progi w skali Q8, gdzie 256 = 1,0.
 Niższy próg korelacji oznacza, że intensity stereo włącza się CHĘTNIEJ
 (odwrotnie do intuicji).</li>
 <li>franken overrides applied: lista przełączników, które w tym
-uruchomieniu odbiegają od czystego FDK (albo "none", gdy nic nie
-zmieniałeś).</li>
+uruchomieniu odbiegają od czystego FDK (albo "none", gdy nic nie zostało
+zmienione).</li>
 </ul>
 <p>Wartości w skali Q8 (jak progi IS, <code>--ms-precision</code>,
 <code>--ms-bias</code>, <code>--ath-scale</code>,
-<code>--spread-mask</code>) to liczby, gdzie 256 znaczy 1,0 — na
+<code>--spread-mask</code>) to liczby, gdzie 256 znaczy 1,0, a na
 przykład 243 to około 0,95.</p>
 <h1 id="część-viii-jak-wycisnąć-najwięcej-ze-skrajnego-bitrate">Część
 VIII. Jak wycisnąć najwięcej ze skrajnego bitrate</h1>
@@ -1745,16 +1801,16 @@ kodowania, jak dzielą się zapisane ramki. Dla stereo LC przy 14 kbps i
 48 kHz ramka ma około 307 bitów: nagłówek ADTS zajmuje 56 (LOAS 41 do
 44), nagłówek pary kanałów i wyrównanie około 47, sekcje 12 do 16%,
 współczynniki skali 8 do 12%, maska MS 2 bity albo 22 do 27, gdy jest
-zapisywana pasmo po paśmie. Informacje boczne razem to 35 do 47% ramki;
-na widmo zostaje tylko 35 do 46%. Tabela nie zmienia strumienia, więc
-można ją dopisać do każdego polecenia.</p>
+zapisywana pasmo po paśmie. Informacja poboczna razem to 35 do 47%
+ramki; na widmo zostaje tylko 35 do 46%. Tabela nie zmienia strumienia,
+więc można ją dopisać do każdego polecenia.</p>
 <p>Z tego pomiaru wynikają trzy dźwignie:</p>
 <ul>
 <li>Intensity stereo jest przy tych prędkościach drogie. Wymusza maskę
 MS pasmo po paśmie i dokłada pozycje IS. <code>--is-admit 0</code> nie
-pozwala FDK go użyć (stock dopuszcza je, gdy bitrate podzielony przez
-pasmo jest mniejszy niż 5); na gęstym materiale przy 14 kbps udział
-wyzerowanych pasm spadł z 85% do 70%.</li>
+pozwala FDK go użyć (fabrycznie jest dopuszczone, gdy bitrate podzielony
+przez pasmo jest mniejszy niż 5); na gęstym materiale przy 14 kbps
+udział wyzerowanych pasm spadł z 85% do 70%.</li>
 <li><code>--side-cutoff &lt;Hz&gt;</code> zamienia górne pasma w czysty
 mid. Opłaca się bardziej przy średnich prędkościach (48 kbps) niż przy
 14 kbps, gdzie side i tak w większości znika.</li>
@@ -1804,10 +1860,11 @@ pasm czysto i dopuszcza dziury. Steruje <code>--band-knee</code>,
 <code>--scf-range</code>, a przy +4 i +5 także <code>--pns-above</code>;
 każdy z nich można też ustawić osobno i wtedy wygrywa z makrem. Przy LC
 32 kbps i 17 kHz <code>-5</code> zostawiło puste 51% pasm, a reszta była
-o 4,75 dB czystsza, stock 11,7% i 1,96 dB, <code>+4</code> 0,2% dziur.
-<code>--enfac-patch 0|1</code> wyłącza przeważanie płaskich, szumowych
-ramek w FDK albo włącza je dla każdej ramki; w CBR to drobne pokrętło
-(najwyżej 1 punkt dziur), w VBR zmienia rozmiar pliku nawet o 29%.</p>
+o 4,75 dB czystsza, ustawienie fabryczne 11,7% i 1,96 dB,
+<code>+4</code> 0,2% dziur. <code>--enfac-patch 0|1</code> wyłącza
+przeważanie płaskich, szumowych ramek w FDK albo włącza je dla każdej
+ramki; w CBR to drobne pokrętło (najwyżej 1 punkt dziur), w VBR zmienia
+rozmiar pliku nawet o 29%.</p>
 <h2
 id="30-częstotliwość-próbkowania-jako-ustawienie-jakości---resample">30.
 Częstotliwość próbkowania jako ustawienie jakości:
@@ -1815,8 +1872,8 @@ Częstotliwość próbkowania jako ustawienie jakości:
 <p>Przy niskim bitrate i wąskim paśmie częstotliwość próbkowania rdzenia
 sama jest ustawieniem jakości. Rdzeń 48 kHz dzieli widmo na pasma
 współczynników skali pomyślane pod dźwięk do 20 kHz; poniżej odcięcia
-9,5 kHz tylko część z nich cokolwiek niesie, każde kosztuje dane
-poboczne, a ramka trwa 21 ms. Przy 32 kHz to samo odcięcie pokrywa
+9,5 kHz tylko część z nich cokolwiek niesie, każde kosztuje informację
+poboczną, a ramka trwa 21 ms. Przy 32 kHz to samo odcięcie pokrywa
 więcej węższych pasm, a ramka trwa 32 ms; przy 24 kHz 43 ms.
 <code>--resample &lt;częstotliwość&gt;</code> przelicza wejście, zanim
 zobaczy je koder, więc cały koder pracuje w nowej częstotliwości.</p>
@@ -1829,7 +1886,7 @@ czasowa: blok długi przy 24 kHz obejmuje 85 ms, a pre-echo przed ostrymi
 atakami wzrosło z -33,9 dB przy 48 kHz do -28,4 dB przy 32 kHz i -28,1
 dB przy 24 kHz. Dla muzyki z perkusją zwykle lepszym kompromisem jest 32
 kHz, dla mowy i spokojnego materiału 24 kHz. Koder nigdy nie wybiera
-częstotliwości sam; decyzja należy do ciebie.</p>
+częstotliwości sam; decyzję podejmuje realizator.</p>
 <pre><code>fdkaac -p 2 -b 32000 -w 9500 --resample 32 -o out.m4a in48k.wav</code></pre>
 <p>Przelicznik nie dodaje opóźnienia ani słyszalnego śladu (płasko do
 95% niższej częstotliwości Nyquista, tłumienie 120 dB, zniekształcenia
@@ -1839,44 +1896,43 @@ kHz.</p>
 <h1 id="część-ix-radio-cyfrowe-dab">Część IX. Radio cyfrowe DAB+</h1>
 <h2 id="31-wyjście-dab---dab---dab-label">31. Wyjście DAB+
 (<code>--dab</code>, <code>--dab-label</code>)</h2>
-<p>Do tej pory robiliśmy pliki — MP4/M4A dla odtwarzaczy, ADTS do
-streamingu. DAB+ to coś innego: to format naziemnego radia cyfrowego
-(standard ETSI TS 102 563), a ten enkoder potrafi wyprodukować gotowy
+<p>Dotąd mowa była o plikach: MP4/M4A dla odtwarzaczy, ADTS do
+streamingu. DAB+ to coś innego, bo to format naziemnego radia cyfrowego
+(standard ETSI TS 102 563), a ten koder potrafi wyprodukować gotowy
 strumień DAB+ bezpośrednio, bez żadnego zewnętrznego
 przepakowywania.</p>
 <p>Dlaczego nie można po prostu wziąć zwykłego pliku AAC i wysłać go w
 eter? Bo DAB+ niesie AAC na swój własny sposób. Po pierwsze,
-transformata jest krótsza — 960 próbek zamiast typowych 1024 — żeby
+transformata jest krótsza (960 próbek zamiast typowych 1024), żeby
 długość ramki pasowała do siatki czasowej radia. Po drugie, dźwięk
 pakowany jest w <strong>super-ramkę</strong> trwającą dokładnie 120
 milisekund. Po trzecie, i najważniejsze, eter to środowisko wrogie:
 sygnał zanika, samochody wjeżdżają w tunele, zakłócenia przychodzą i
 odchodzą. Dlatego DAB+ otula dźwięk dwiema warstwami ochrony:
 <strong>firecode'em</strong> (CRC Fire) strzegącym nagłówka oraz
-kodowaniem korekcyjnym <strong>Reed-Solomon</strong> — konkretnie
-RS(120,110) nad ciałem Galois GF(256) — które pozwala odbiornikowi
+kodowaniem korekcyjnym <strong>Reed-Solomon</strong>, konkretnie
+RS(120,110) nad ciałem Galois GF(256), które pozwala odbiornikowi
 odtworzyć dane nawet wtedy, gdy część sygnału dotrze uszkodzona. To
-wszystko enkoder robi za ciebie.</p>
+wszystko koder robi sam.</p>
 <p>Wychodzi z tego surowy strumień <code>.dabp</code>: jedna super-ramka
-po drugiej, nic więcej. To nie jest plik, który odtworzysz w odtwarzaczu
-multimediów — to surowiec, który połyka multiplekser DAB+. W praktyce
-łańcuch wygląda tak:</p>
+po drugiej, nic więcej. To nie plik do odtwarzacza multimediów, lecz
+surowiec, który połyka multiplekser DAB+. W praktyce łańcuch wygląda
+tak:</p>
 <pre><code>out.dabp → odr-dabmux → ETI → nadajnik (albo programowy odbiornik: welle.io, dablin)</code></pre>
 <p><code>odr-dabmux</code> to multiplekser, który łączy kilka stacji w
 jeden zespół (ensemble) i produkuje strumień ETI, a ten idzie potem albo
 do prawdziwego nadajnika, albo do programowego odbiornika do testów.</p>
 <h3 id="włączenie---dab">Włączenie: <code>--dab</code></h3>
 <pre><code>fdkaac --dab -b 96 -o out.dabp input.wav</code></pre>
-<p>Przełącznik <code>--dab</code> przestawia enkoder w tryb wyjścia
-DAB+. Kilka reguł, które narzuca standard, a których enkoder
-pilnuje:</p>
+<p>Przełącznik <code>--dab</code> przestawia koder w tryb wyjścia DAB+.
+Kilka reguł, które narzuca standard, a których koder pilnuje:</p>
 <ul>
 <li>Częstotliwość próbkowania MUSI wynosić 32000 lub 48000 Hz. Nic
 innego nie jest w DAB+ legalne.</li>
 <li>Bitrate musi być wielokrotnością 8 kbps, od 8 do 192 kbps.</li>
 <li>Mono i stereo są dozwolone.</li>
 </ul>
-<p>Ciekawe jest to, że zwykle NIE wybierasz profilu samodzielnie.
+<p>Ciekawe jest to, że profilu zwykle NIE wybiera się samodzielnie.
 Praktyka DAB+ (i narzędzie referencyjne <code>odr-audioenc</code>)
 polega na wyprowadzeniu profilu AAC z bitrate i liczby kanałów, tak aby
 niskie bitrate automatycznie sięgały po oszczędniejsze narzędzia:</p>
@@ -1889,21 +1945,21 @@ SBR),</li>
 profil).</li>
 </ul>
 <p>Więc <code>-b 96</code> na pliku stereo trafi na AAC-LC,
-<code>-b 64</code> na HE-AAC, a <code>-b 32</code> na HE-AAC v2 — nie
-musisz o tym myśleć. Jeśli się upierasz, profil nadal wymusisz
+<code>-b 64</code> na HE-AAC, a <code>-b 32</code> na HE-AAC v2, bez
+potrzeby zajmowania się tym ręcznie. Profil nadal można wymusić
 przełącznikiem <code>-p</code> (2 = LC, 5 = HE-AAC, 29 = HE-AAC v2), tak
-samo jak w każdym innym trybie tego enkodera. Wymuszony profil daje ten
+samo jak w każdym innym trybie tego kodera. Wymuszony profil daje ten
 sam strumień co dobór automatyczny dla tego profilu. Inne wartości są
 odrzucane, tak samo <code>-p 29</code> na pliku mono.</p>
 <pre><code>fdkaac --dab -b 64 -o out.dabp input.wav    # → HE-AAC automatycznie
 fdkaac --dab -b 32 -o out.dabp input.wav    # → HE-AAC v2 automatycznie</code></pre>
 <h3 id="etykieta-stacji---dab-label">Etykieta stacji:
 <code>--dab-label</code></h3>
-<p>Odbiornik DAB+ pokazuje na wyświetlaczu tekst — nazwę stacji, a
-często i tytuł tego, co gra. W DAB+ ten tekst podróżuje kanałem zwanym
-DLS (Dynamic Label Segment), wetkniętym jako dane X-PAD wewnątrz
-super-ramki. Ten enkoder potrafi nieść etykietę STATYCZNĄ — jeden stały
-napis przez cały plik:</p>
+<p>Odbiornik DAB+ pokazuje na wyświetlaczu tekst: nazwę stacji, a często
+i tytuł tego, co gra. W DAB+ ten tekst podróżuje kanałem zwanym DLS
+(Dynamic Label Segment), wetkniętym jako dane X-PAD wewnątrz
+super-ramki. Ten koder potrafi nieść etykietę STATYCZNĄ, czyli jeden
+stały napis przez cały plik:</p>
 <pre><code>fdkaac --dab -b 96 --dab-label &quot;Radio DHT&quot; -o out.dabp input.wav</code></pre>
 <p>Mieści się do około 48 znaków (trzy segmenty upakowane w jeden PAD).
 "Statyczna" to słowo klucz: tekst nie zmienia się w trakcie pliku.
@@ -1911,23 +1967,22 @@ Prawdziwie dynamiczna etykieta, aktualizowana utwór po utworze, oraz
 pokaz slajdów MOT wrzucający okładkę albumu na ekran (zadanie
 <code>ODR-PadEnc</code> w świecie OpenDigitalRadio) są w planach, ale
 jeszcze ich tu nie ma. I uwaga: <code>--dab-label</code> bez
-<code>--dab</code> nic nie robi — etykieta jest po prostu ignorowana, bo
-nie ma super-ramki, do której można by ją wstawić.</p>
+<code>--dab</code> nic nie robi, bo etykieta jest ignorowana: nie ma
+super-ramki, do której można by ją wstawić.</p>
 <h3 id="słowo-o-zaufaniu">Słowo o zaufaniu</h3>
 <p>Wszystko powyżej sprawdzono niezależnymi narzędziami, nie tylko na
 zasadzie "się skompilowało". Strumienie dekodują się czysto w faad2
 (dekoder stojący za dablin), etykieta DLS odczytuje się poprawnie po
 stronie odbiornika, a wyjście AAC-LC jest bit-identyczne z tym, co z
 tego samego wejścia produkuje referencyjny <code>odr-audioenc</code>.
-Przetestowano dziewięć kombinacji — 48 i 32 kHz, mono i stereo, we
-wszystkich trzech profilach — i każda dekoduje się samodzielnie. Jak
-wszędzie w tym enkoderze: jeśli nie podasz <code>--dab</code>, nic się
-nie zmienia, a zwykłe wyjście do pliku pozostaje bit-identyczne ze
-stockowym FDK.</p>
+Przetestowano dziewięć kombinacji (48 i 32 kHz, mono i stereo, we
+wszystkich trzech profilach) i każda dekoduje się samodzielnie. Jak
+wszędzie w tym koderze: bez <code>--dab</code> nic się nie zmienia, a
+zwykłe wyjście do pliku pozostaje bit-identyczne z fabrycznym FDK.</p>
 <hr />
 <h1 id="część-x-słownik-pojęć">Część X. Słownik pojęć</h1>
-<p>Dla szybkiego przypomnienia — wszystkie terminy z tego manuala,
-wyjaśnione jednym–dwoma zdaniami, językiem dźwiękowca.</p>
+<p>Dla szybkiego przypomnienia: wszystkie terminy z tego manuala,
+wyjaśnione jednym lub dwoma zdaniami, językiem dźwiękowca.</p>
 <p>AAC (Advanced Audio Coding). Rodzina stratnych kodeków dźwięku z
 rodziny MPEG, następca MP3. Lepsza jakość na bit niż MP3, zwłaszcza w
 niskich bitrate'ach.</p>
@@ -1936,29 +1991,29 @@ klasycznie. Wybór do wysokich bitrate'ów i archiwizacji.</p>
 <p>Afterburner. Dodatkowy, wolniejszy algorytm optymalizujący
 kwantyzację w FDK. Włączony daje nieco lepszą jakość. Domyślnie i
 zalecanie włączony.</p>
-<p>ATH (Absolute Threshold of Hearing). Próg słyszalności — granica
+<p>ATH (Absolute Threshold of Hearing). Próg słyszalności, czyli granica
 ciszy zależna od częstotliwości, poniżej której ucho nie rejestruje
-dźwięku. Enkoder wyrzuca to, co jest poniżej. W tym enkoderze regulowany
+dźwięku. Koder wyrzuca to, co jest poniżej. W tym koderze regulowany
 przez <code>--ath-scale</code>.</p>
 <p>Bitrate. Ilość danych na sekundę dźwięku, w kilobitach (kbps) lub
-bitach (bps). Wyższy = więcej miejsca na detale = lepsza jakość (do
-pewnej granicy).</p>
+bitach (bps). Wyższy daje więcej miejsca na detale, czyli lepszą jakość
+(do pewnej granicy).</p>
 <p>Bit reservoir (rezerwuar bitów). Bufor pozwalający pożyczać bity
 między ramkami. Dzięki niemu nawet CBR lokalnie "oddycha". Podstawa
 naszego quasi-VBR.</p>
 <p>CBR (Constant Bitrate). Stały bitrate. Przewidywalny rozmiar, wygodny
 do streamingu. W AAC i tak lekko zmienny dzięki rezerwuarowi.</p>
 <p>Coupling (SBR). Tryb stereo w warstwie SBR, w którym oba kanały
-dzielą wspólną obwiednię plus opis poziomu — oszczędny, ale węższa scena
-w górnym paśmie.</p>
+dzielą wspólną obwiednię plus opis poziomu: oszczędny, ale daje węższą
+scenę w górnym paśmie.</p>
 <p>Cutoff. Górna granica pasma kodowanego przez rdzeń. Powyżej niej albo
 cisza, albo (w HE-AAC) robotę przejmuje SBR.</p>
-<p>HE-AAC (High Efficiency). AAC-LC + SBR. Rdzeń koduje dół pasma, SBR
-odtwarza górę. Do średnich i niskich bitrate'ów.</p>
-<p>HE-AAC v2. HE-AAC + Parametric Stereo. Do najniższych bitrate'ów
+<p>HE-AAC (High Efficiency). AAC-LC plus SBR. Rdzeń koduje dół pasma,
+SBR odtwarza górę. Do średnich i niskich bitrate'ów.</p>
+<p>HE-AAC v2. HE-AAC plus Parametric Stereo. Do najniższych bitrate'ów
 stereo.</p>
 <p>ICC (Inter-channel Coherence). Parametr PS opisujący, jak bardzo
-kanały są do siebie podobne/spójne. Sterowany przez
+kanały są do siebie podobne i spójne. Sterowany przez
 <code>--ps-icc</code>.</p>
 <p>IID (Inter-channel Intensity Difference). Parametr PS opisujący
 różnicę głośności między kanałami. Podstawowy nośnik obrazu stereo w
@@ -1968,16 +2023,16 @@ jako jedna obwiednia energii zamiast dwóch kanałów. Oszczędna, ale może
 zwęzić scenę. Sterowana suwakiem <code>--is-aggression</code>.</p>
 <p>Inverse filtering (filtrowanie odwrotne). Mechanizm SBR "wybielający"
 skopiowany materiał górnego pasma, sterowany estymatorem tonalności.
-Mocniejsze = mniej metaliczności. Regulowane
+Mocniejsze daje mniej metaliczności. Regulowane
 <code>--sbr-invf</code>.</p>
-<p>IPD/OPD (różnice fazy w PS). W enkoderze FDK NIE obsługiwane (zawsze
-zero).</p>
+<p>IPD/OPD (różnice fazy w PS). Fabryczny FDK ich nie wysyła; ten build
+wysyła je na żądanie (<code>--ps-ipd</code>, <code>--ps-opd</code>).</p>
 <p>Kwantyzacja. Zaokrąglanie współczynników widma do skończonej
 dokładności. Im mniej bitów, tym większy błąd (szum/dziury). Serce
 stratnej kompresji.</p>
-<p>Maskowanie. Zjawisko, w którym głośny dźwięk sprawia, że nie słyszysz
-cichszych tuż obok (w widmie lub w czasie). Główne źródło oszczędności
-bitów w AAC.</p>
+<p>Maskowanie. Zjawisko, w którym sygnał maskujący sprawia, że cichsze
+dźwięki tuż obok (w widmie lub w czasie) stają się niesłyszalne, czyli
+maskowane. Główne źródło oszczędności bitów w AAC.</p>
 <p>MDCT. Transformata przenosząca ramkę dźwięku z czasu do dziedziny
 częstotliwości. Na jej wyniku pracuje cały model psychoakustyczny.</p>
 <p>MS Stereo (Mid/Side). Kodowanie sumy (mid) i różnicy (side) zamiast L
@@ -1989,18 +2044,18 @@ i R. Prawie darmowa oszczędność, gdy kanały są podobne.</p>
 których dekoder odtwarza stereo. Do najniższych bitrate'ów.</p>
 <p>Profil (AOT, Audio Object Type). Wariant AAC wybierany przez
 <code>-p</code> (LC, HE, v2, LD, ELD).</p>
-<p>Ramka. Porcja dźwięku (1024 próbki), którą enkoder przetwarza
+<p>Ramka. Porcja dźwięku (1024 próbki), którą koder przetwarza
 naraz.</p>
 <p>SBR (Spectral Band Replication). Rekonstrukcja górnego pasma z
 dolnego plus niewielki opis. Serce HE-AAC.</p>
 <p>SFB (Scale Factor Band). Pasmo współczynników skali. Grupa sąsiednich
-współczynników widma, dla której enkoder podejmuje wspólną decyzję o
+współczynników widma, dla której koder podejmuje wspólną decyzję o
 dokładności. Numerowane od dołu (0 = basy).</p>
 <p>Spreading (rozlewanie maskowania). Rozprzestrzenianie zdolności
 maskowania na sąsiednie pasma. Zmniejszane przez
 <code>--spread-mask</code> dla większego detalu.</p>
-<p>Tabela tuningowa. Zestaw domyślnych ustawień SBR/PS dobieranych przez
-FDK wg bitrate i częstotliwości. Nasze flagi ją nadpisują.</p>
+<p>Tabela tuningowa. Zestaw domyślnych ustawień SBR i PS dobieranych
+przez FDK według bitrate i częstotliwości. Nasze flagi ją nadpisują.</p>
 <p>TNS (Temporal Noise Shaping). Kształtuje szum kwantyzacji w czasie,
 żeby chował się pod transjentami. Ważne dla perkusji i ostrych
 ataków.</p>

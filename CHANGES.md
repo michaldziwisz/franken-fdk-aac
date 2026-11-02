@@ -33,6 +33,12 @@ Library** (per section 2 of the FDK AAC license, see `NOTICE.fdk-aac`).
   `1..320` (320 = 0 dB) and both SNR limits are capped inside the representable range.
   The help and the documentation had the direction of both clamps reversed: `-hi`
   moves the coarsest SNR a band is held to, `-lo` the finest it may demand.
+- Docs (PL): README and the manual edited for clarity with an agreed glossary: "stock"
+  becomes "fabryczny"/"domyślny"; "zagłodzona ramka" kept in quotes and explained;
+  scale factor band, bias, noise floor, knee, masker and gate get the English term in
+  brackets at first use; "podłoga" and "bramka" replaced by what they mean; no second
+  person, no dashes. Code, headings and every number were checked unchanged by script.
+  Manual EN: dashes removed, Table 1 empty cells marked n/a.
 - Fix: `--sbr-stereo-mode 0` on stereo input crashed the encoder (access violation, no
   message, empty output file): SBR_MONO is not a mode of a two channel SBR element. The
   switch now takes `1..3`; mono input gets a mono high band from FDK by itself.
