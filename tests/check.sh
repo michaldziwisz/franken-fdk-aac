@@ -121,7 +121,7 @@ test_exe(){
 
   local specs=( "msbands5:--msbands 5" "msmask0:--msmask 0" "is-bias:--is 1 --is-min-sfbs 20"
                 "tns2:--tns-order 2" "ath512:--ath-scale 512" "block-bias:--block-bias 200"
-                "ms-bias:--ms-bias 128" "core-cutoff:-p 29 -b 48000 --core-cutoff 7500"
+                "ms-bias:--ms-bias 128" "core-cutoff:-p 29 -b 48000 --core-cutoff 8250" "sbr-start:-p 29 -b 48000 --sbr-start 14"
                 "is-aggr:--is 1 --is-aggression 70" "force-pns:-b 24000 --pns 1 --force-pns"
                 "msbands-hi:--msbands-lo 20 --msbands-hi 40" "ms-precision:--ms-precision 512"
                 "sbr-invf:-p5 -b64000 --sbr-invf 3" "sbr-stereo:-p5 -b64000 --sbr-stereo-mode 1"
@@ -660,6 +660,22 @@ done
 enc "$X64" -f2 -p2 -b96000 --minsnr-clamp-lo 100000 -o "${OUT}_cl.aac" "$WAV"
 if [ -s "${OUT}_cl.aac" ] && [ "$(derr ${OUT}_cl.aac)" = "0" ]; then ok "--minsnr-clamp-lo 100000 dekodowalne"
 else bad "--minsnr-clamp-lo 100000"; fi
+
+# --- --sbr-stereo-mode 0: przy wejsciu stereo enkoder padal (bug naprawiony 02.11.2026) ---
+# SBR_MONO w elemencie dwukanalowym: ekstraktor obwiedni dostawal jeden kanal,
+# proces konczyl sie naruszeniem dostepu (WSL rc=5), bez komunikatu, z pustym plikiem.
+rm -f "${OUT}_ssm0.aac"
+"$X64" -f2 -p5 -b32000 --sbr-stereo-mode 0 -o "${OUT}_ssm0.aac" "$WAV" >/dev/null 2>&1; rc=$?
+if [ "$rc" = "1" ] && [ ! -s "${OUT}_ssm0.aac" ]; then ok "--sbr-stereo-mode 0 odrzucone komunikatem (rc=1)"
+else bad "--sbr-stereo-mode 0 (rc=$rc)"; fi
+# Domyslny tryb SBR stereo: 3 ponizej 60 kbps, 1 od 60 kbps (tabela strojenia FDK)
+for pair in "48000:3" "64000:1"; do
+  b=${pair%%:*}; m=${pair##*:}
+  enc "$X64" -f2 -p5 -b$b -o "${OUT}_ssd.aac" "$WAV"
+  enc "$X64" -f2 -p5 -b$b --sbr-stereo-mode $m -o "${OUT}_ssm.aac" "$WAV"
+  if [ -s "${OUT}_ssd.aac" ] && cmp -s "${OUT}_ssd.aac" "${OUT}_ssm.aac"; then ok "SBR stereo domyslnie = $m przy $b"
+  else bad "SBR stereo domyslnie != $m przy $b"; fi
+done
 
 # --- --sbr-noise-bands: pole bs_noise_bands ma 2 bity (bug naprawiony 21.10.2026) ---
 # Wartosci 4 i 5 byly przyjmowane: naglowek zapisywal je obciete do 2 bitow

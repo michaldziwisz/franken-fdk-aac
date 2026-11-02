@@ -277,9 +277,9 @@ PROGNAME " %s\n"
 " --speech                    Tune SBR for human SPEECH (different inverse-filtering,\n"
 "                               noise floor, no parametric coding). HE-AAC only; LC has no\n"
 "                               speech mode. For clean voice at low bitrate.\n"
-" --uncap-bandwidth           Lift the hard 20 kHz core cap so --core-cutoff can reach up\n"
-"                               to Nyquist (e.g. full band from 96 kHz input). Use WITH\n"
-"                               --core-cutoff <hz>; alone it does nothing.\n"
+" --uncap-bandwidth           Lift the hard 20 kHz core cap so -w / --core-cutoff can\n"
+"                               reach Nyquist (e.g. full band from 96 kHz input). Use WITH\n"
+"                               -w or --core-cutoff; alone it does nothing.\n"
 " --unlock-bitrate            Remove the LOWER bitrate floors: the 40 bit/channel core\n"
 "                               minimum, the LD/ELD 8 kbps/ch rule and 208-bit transport\n"
 "                               guess, the LD/ELD bandwidth table start and the SBR/PS\n"
@@ -470,11 +470,13 @@ PROGNAME " %s\n"
 " --sbr-nf-smooth <0>         0 = no time smoothing of the noise floor (stock smooths\n"
 "                               over 4 frames). -1 off.\n"
 
-" --core-cutoff <hz>          Force core bandwidth in Hz even under SBR (where -w is\n"
-"                               ignored). 0..48000, 0=default; the encoder stops at the core\n"
-"                               Nyquist (half the core sample rate). See --uncap-bandwidth.\n"
-" --sbr-start <n>             SBR bs_start_freq index: -1 def, 0..15. (Validated by FDK;\n"
-"                               bad start/stop pair => init fails.)\n"
+" --core-cutoff <hz>          Core bandwidth in Hz. Without SBR the same as -w. Under SBR\n"
+"                               LAB: below the SBR start it leaves a hole, above it is\n"
+"                               overwritten by SBR; widen the core with --sbr-start.\n"
+"                               0..48000, 0=default. See --uncap-bandwidth.\n"
+" --sbr-start <n>             SBR bs_start_freq index: -1 def, 0..15. The core follows\n"
+"                               it: +1 = wider real core (64k 48 kHz: 14 -> 15 = 10.5 ->\n"
+"                               12 kHz). Bad start/stop pair => init fails.\n"
 " --sbr-stop <n>              SBR bs_stop_freq index: -1 def, 0..13.\n"
 " --sbr-freqscale <n>         Freq grouping: -1 def, 0..3. 0 = linear, 1/2/3 = 12/10/8\n"
 "                               bands per octave (1 finest, 3 coarsest and cheapest).\n"
@@ -487,8 +489,9 @@ PROGNAME " %s\n"
 "                               framing (ignores transient detector); worse on sharp attacks.\n"
 "                               -1 off.\n"
 " --sbr-freqres-fixfix <0|1>  FIXFIX envelope freq resolution (0 low, 1 high). -1 off.\n"
-" --sbr-stereo-mode <0..3>    SBR stereo: 0 mono, 1 LR (full separation), 2 coupling\n"
-"                               (cheap), 3 switch-LRC (default, per-frame). -1 off.\n"
+" --sbr-stereo-mode <1..3>    SBR stereo: 1 LR (full separation), 2 coupling (cheap),\n"
+"                               3 switch-LRC (per frame). Default: 3 below 60 kbps\n"
+"                               stereo, 1 from 60 kbps. -1 off.\n"
 " --sbr-invf <0..3>           Force inverse filtering: 0 off,1 low,2 mid,3 high. Higher =\n"
 "                               less metallic top, less detail. -1 = auto (tonality est.).\n"
 " --sbr-noise-floor-offset <n> SBR noise floor offset (small int). Bigger = more fill\n"
@@ -1598,7 +1601,9 @@ int parse_options(int argc, char **argv, aacenc_param_ex_t *params)
             if (fr_scan_int(optarg, &n) != 1 || n < 0 || n > 1) { fprintf(stderr, "invalid arg for sbr-freqres-fixfix (0,1)\n"); return -1; }
             params->fr_sbr_freqres_fixfix = n; break;
         case OPT_FR_SBR_STEREO_MODE:
-            if (fr_scan_int(optarg, &n) != 1 || n < 0 || n > 3) { fprintf(stderr, "invalid arg for sbr-stereo-mode (0..3)\n"); return -1; }
+            /* 0 (SBR_MONO) is not a mode of a stereo SBR element: with stereo input
+             * the encoder crashed. Mono input gets SBR_MONO from FDK by itself. */
+            if (fr_scan_int(optarg, &n) != 1 || n < 1 || n > 3) { fprintf(stderr, "invalid arg for sbr-stereo-mode (1..3; mono input needs no switch, stereo has no mono mode)\n"); return -1; }
             params->fr_sbr_stereo_mode = n; break;
         case OPT_FR_SBR_INVF:
             if (fr_scan_int(optarg, &n) != 1 || n < 0 || n > 3) { fprintf(stderr, "invalid arg for sbr-invf (0..3)\n"); return -1; }

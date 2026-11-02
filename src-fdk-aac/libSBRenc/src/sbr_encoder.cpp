@@ -676,7 +676,9 @@ static UINT FDKsbrEnc_AdjustSbrSettings(
       config->freq_res_fixfix[0] = (FREQ_RES)g_franken.sbrFreqResFixfix;
       config->freq_res_fixfix[1] = (FREQ_RES)g_franken.sbrFreqResFixfix;
     }
-    if (g_franken.sbrStereoMode >= 0 && g_franken.sbrStereoMode <= 3)
+    /* SBR_MONO (0) is never valid for a two channel element: the envelope
+     * extractor then runs with one channel handle and the encoder crashed. */
+    if (g_franken.sbrStereoMode >= 1 && g_franken.sbrStereoMode <= 3)
       config->stereoMode = (SBR_STEREO_MODE)g_franken.sbrStereoMode;
     if (g_franken.sbrNoiseFloorOffset != -128)
       config->noiseFloorOffset = g_franken.sbrNoiseFloorOffset;
