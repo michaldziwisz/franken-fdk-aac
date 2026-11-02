@@ -608,512 +608,467 @@ that matters. Force the band open with `-w 20000` and the two stop being equal. 
 your range against the coded bandwidth, not just against the SFB count.
 
 All switches in this group are off unless you give them. Off means stock: the sentinel
-`-1`, and `0` for `--side-bias`, `--side-knee` and `--mask-slope`, leaves FDK's own
-decision alone. `--side-bias`, `--side-knee` and `--mask-slope` take decimals, with `.`
-or `,` and up to 3 decimal places; the rest are whole numbers and reject fractions.
+`-1`, and `0` for `--side-bias` and `--side-knee`, leaves FDK's own decision alone.
+`--side-bias` and `--side-knee` take decimals, with `.` or `,` and up to 3 decimal places;
+`--side-cutoff` takes Hz; the rest are whole numbers and reject fractions.
 
 ### MS
 
-MS costs nothing in sound quality, so there is no "MS damages the image" tradeoff to
-manage. What you can manage is where MS is allowed and how the bit budget is split
-between the mid and the side channel once a band is in MS. Two of these switches are the
-real control (`--msmask`, and the band range), two are honest curiosities
-(`--ms-bias`, `--ms-precision`), and three are the quality knobs that repay study
-(`--side-bias`, `--side-knee`, `--mask-slope`).
+The MS rotation itself costs nothing in sound, because it is lossless. What decides how a
+stereo image comes through the encoder is the split of bits between the mid and the side
+channel once a band is coded in MS, and above all the decision which side bands are coded
+at all. Every side band cut to zero is a piece of the image moved to the centre.
+
+The switches in this section fall into three tiers:
+
+- **The two levers**: `--side-bias` moves the line at which side bands are kept or
+  dropped, `--side-knee` grades the bands near that line by their own level. Width against
+  centre is set with these two, alone or together.
+- **A trade for low bitrates**: `--side-cutoff` gives up the side above a frequency and
+  hands its bits to the mid.
+- **Laboratory**: `--msmask`, `--msbands`, `--msbands-lo`, `--msbands-hi`, `--ms-bias`,
+  `--ms-precision`, `--mid-bias`. They reach into the MS decision and the MS thresholds
+  directly. They are there to reproduce a technical condition or to find out what the
+  encoder does; measured on music, none of them beats the two levers, and several make
+  the result worse than stock.
+
+How the measurements in this section were taken: AAC-LC stereo, Fraunhofer decoder, the
+decoded file aligned to the source and compared in the mid/side domain from 100 Hz to the
+coded bandwidth. *Mid error* and *side error* are the energy of the coding error relative
+to the energy of that channel in the source, in dB, so lower is cleaner. *Side bands cut*
+is the number of side bands per frame coded as zero, from `--bit-stats`. The main material
+is acoustic stereo music at 44.1 kHz; `dense48` is the synthetic dense signal of group E.
+
+#### `--side-bias <dB>`
+
+**Moves the line at which side bands are kept or dropped: the main lever for stereo width
+against centre quality.**
+
+- Applies to: stereo AAC core (LC, LD, ELD and the stereo core under HE-AAC), bands coded
+  in MS. No effect in HE-AAC v2, nothing to do under `--msmask 0`.
+- Values: `-24.0..50.0` dB; `0` = off (default, stock threshold)
+- Input: decimal, up to 3 places, `.` or `,`
+
+For every band in MS the encoder compares the energy of the side signal with its masking
+threshold. Below the threshold the side band is cut to zero; above it the band is coded,
+and the further above, the more finely. The side signal is everything that differs between
+left and right, so this one comparison is where the width of the image is decided.
+`--side-bias` shifts the side threshold of every MS band by the given number of dB.
+
+A positive value lowers the threshold. Fewer side bands are cut, the remaining ones are
+quantised more finely, and what you hear is a steadier image: reverb tails that decay
+instead of stopping, room sound that stays where it was. The bit budget does not grow, so
+the bits come from the mid, and at low bitrate the centre audibly pays for them. Between
++3 and +9 the trade is usually worth it. Beyond about +12 the side stops improving while
+the mid keeps losing.
+
+A negative value raises the threshold: side bands fall out, the image narrows toward mono,
+and the freed bits go to the mid. Small negative values act smoothly. At about -0.97 dB
+there is a step. There the raised threshold crosses the minimum SNR that FDK's hole
+avoidance keeps under every band, and the side bands FDK was holding only through that
+rescue fall out together. How big the step is depends on how short of bits the frames are.
+At a comfortable bitrate it is moderate and the narrowing goes on gradually below it. In
+frames that are already starved most side bands exist only thanks to the rescue, so the
+step takes nearly the whole side, and -1, -4 and -12 give the same stream. For gentle
+narrowing stay between 0 and -0.95, or use a negative `--side-knee`, which has no step.
+
+Examples (acoustic stereo music, 96 kbps; stock: mid -20.3 dB, side -11.4 dB, 7.0 side
+bands cut per frame):
+- Mild, more to the side: `--side-bias 3`. Side 0.8 dB cleaner, mid 0.4 dB worse, 3.4
+  side bands cut.
+- Strong, more to the side: `--side-bias 6`. Side 1.3 dB cleaner, mid 1.3 dB worse, 1.2
+  side bands cut. The usual working value.
+- Exaggerated, more to the side: `--side-bias 24`. The side is worse again than at +12 and
+  the mid has lost 3.3 dB: bits poured into a channel that can no longer use them.
+- Mild, narrower: `--side-bias -0.5`. A few marginal side bands given up; mid and side
+  within 0.15 dB of stock.
+- Strong, narrower: `--side-bias -3`. Past the step: 13.8 side bands cut, side 0.9 dB
+  worse, mid 0.2 dB cleaner.
+- Exaggerated, narrower: `--side-bias -12`. 26 of about 37 side bands cut, the side
+  error 5.7 dB higher. On `dense48` at 40 kbps already `-6` leaves the side 6 bits per
+  frame, practically mono.
+
+Works with / against: `--side-knee` acts on the same decision and combines cleanly with
+this one: the bias places the line, the knee grades the bands near it. `--side-cutoff`
+removes the side above its frequency whatever the bias. `--msmask 0` removes MS and makes
+this switch inert; `--msbands`, `--msbands-lo` and `--msbands-hi` limit the bands it can
+reach.
+
+Measured (acoustic stereo music; mid error / side error in dB / side bands cut per
+frame):
+
+| `--side-bias` | 48 kbps | 96 kbps |
+|---|---|---|
+| stock | -21.6 / -8.5 / 16.0 | -20.3 / -11.4 / 7.0 |
+| `+3` | -19.1 / -7.9 / 11.6 | -19.8 / -12.3 / 3.4 |
+| `+6` | -16.5 / -11.3 / 3.5 | -19.0 / -12.7 / 1.2 |
+| `+9` | -15.4 / -12.3 / 1.8 | -18.6 / -13.1 / 0.6 |
+| `-1` | -22.9 / -8.6 / 18.3 | -20.4 / -11.2 / 10.0 |
+| `-3` | -24.2 / -8.0 / 20.7 | -20.5 / -10.5 / 13.8 |
+
+At 48 kbps `+3` already codes more side bands, but so coarsely that the side error is
+still 0.6 dB worse than stock; the gain arrives at `+6`. At 128 kbps `+6` takes the side from -14.2 to
+-16.9 dB and the mid from -28.5 to -24.8 dB. The step: at 96 kbps 7.7 side bands are cut
+at -0.96 and 9.9 at -0.97. On `dense48` at 40 kbps with `-w 18000` the side comes out
+1.4 dB quieter than in the source at -0.95 and 10.8 dB quieter at -0.97, the same at -1,
+-4 and -12.
+
+#### `--side-knee <dB>`
+
+**Grades the side bands near the kept/dropped line by their own level: finer or coarser
+side detail, without a step.**
+
+- Applies to: the same as `--side-bias`.
+- Values: `-24.0..50.0` dB; `0` = off (default, stock behaviour)
+- Input: decimal, up to 3 places, `.` or `,`
+
+Where `--side-bias` moves the line, this switch works on the margin of each side band: how
+far its energy lies above its threshold, which decides how finely the band is coded and
+whether it survives. The value is added to that margin near the line and fades out above
+it, so the loud, well coded part of the side is left alone, and every band keeps a
+precision that follows its real level.
+
+It exists because of one detail of FDK. When a frame runs out of bits, FDK does not drop a
+weak band at once: it pins the band's threshold about 0.97 dB under its energy and codes
+it at the coarsest step. On music around a tenth of the side bands sit on that one value,
+whatever their real level. The knee reads the margin the rate control wanted before that
+rescue, so those bands are graded again by their real level instead of moving as one
+block. That is why a negative knee narrows smoothly where a negative bias jumps.
+
+A positive value adds precision: bands up to N dB under their threshold are kept, graded
+by how far under they were, and bands just above it get up to N dB finer. A negative value
+takes precision away: the weakest bands near the line go first and their bits go to the
+mid. In frames starved of bits most side bands exist only because of the rescue, so there
+a small negative knee already removes most of them; at a comfortable bitrate it narrows
+the image gradually all the way to -24.
+
+Against `--side-bias` at the same value, a positive knee buys about the same side
+improvement for less mid. At 96 kbps `+6` gives side -12.9 dB and mid -19.4 dB, the bias
+-12.7 and -19.0; at 128 kbps the knee gives -16.8 and -25.7, the bias -16.9 and -24.8.
+The knee suits material where the centre matters most, the bias material where the width
+does, and the two together place the line and soften its edge.
+
+Examples (acoustic stereo music, 96 kbps; stock as above):
+- Mild, finer: `--side-knee 2`. Side bands cut from 7.0 to 3.4, side 0.5 dB cleaner, mid
+  0.2 dB worse.
+- Strong, finer: `--side-knee 6`. 1.2 side bands cut, side 1.5 dB cleaner, mid 0.8 dB
+  worse.
+- Exaggerated, finer: `--side-knee 24`. More bits go to the side than to the mid, and both
+  channels end up worse than at +12.
+- Mild, coarser: `--side-knee -1`. About five of the weakest side bands go (11.8 cut),
+  mid 0.1 dB cleaner.
+- Strong, coarser: `--side-knee -6`. 19 side bands cut, side 2.2 dB worse, mid 0.3 dB
+  cleaner. Clearly narrower, still stereo.
+- Exaggerated, coarser: `--side-knee -24`. 36 of 37 side bands gone, the side 8.9 dB
+  quieter than in the source: a mono image with stereo bookkeeping.
+
+Diagnostic companions, kept for measurements and possibly removed in a later version;
+without `--side-knee` they do nothing:
+- `--side-knee-zone <x>`, `1.0..20.0`, stock `3`: the offset is full up to |knee| dB above
+  the threshold and fades out linearly to zero at x times |knee| dB.
+- `--side-knee-spread <dB>`, `0.1..24.0`, stock `1`: for a negative knee, how many dB of
+  knee it takes to spread the rescued bands fully by their real margin.
+
+Works with / against: made to be used together with `--side-bias`. Inert under
+`--msmask 0`.
+
+Measured: at 96 kbps the coded side bands per frame fall evenly with a negative knee: 30.2
+(stock), 29.4 (-0.25), 27.6 (-0.5), 25.4 (-1), 22.2 (-3), 18.1 (-6), 10.5 (-12), 1.1
+(-24). On `dense48` at 40 kbps with `-w 18000`, where the frames are starved, -0.25 leaves
+1.1 of 10.3 coded side bands, and from -4 on the stream no longer changes. The companions
+move little: `--side-knee 6` with zone 1 and zone 10 differs by 0.06 dB of side error,
+`--side-knee -3` with spread 0.1 and 10 by 0.15 dB.
+
+#### `--side-cutoff <Hz>`
+
+**From this frequency up, code every stereo band as pure mid: the top of the image for a
+cleaner centre.**
+
+- Applies to: stereo AAC core (LC, LD, ELD). Off by default.
+- Values: `1000..24000` Hz, moved to the scalefactor band that starts at or above it
+- Input: whole number, in Hz
+
+Above the cutoff the side signal is dropped and the band is written as mid only, with the
+cheap MS mask; pure L/R never happens there. Below the cutoff stereo is untouched. The
+bits the side would have taken go to the mid, which matters at low bitrate, where the
+side above a few kHz is mostly cut anyway and what is left of it is coarse.
+
+The level stays. With the side gone both channels play the mid, which alone carries less
+energy than the original channels whenever L and R differ (uncorrelated L/R would come out
+3 dB quieter). So the mid is raised to the energy of the original, by at most 6 dB, and
+only where the side is above its masking threshold; a side that stock would cut anyway is
+not added. Two things the mid cannot carry at any level: content in anti-phase (L = -R,
+its mid is zero) and the direction of a hard panned sound, which ends up in the centre.
+
+Intensity stereo above the cutoff: FDK's own IS decision is cleared there, because pure
+mid is cheaper. IS stays when it is asked for explicitly:
+- `--is-force-lo/-hi`: IS on the given bands, always.
+- loosened IS criteria (`--is-aggression`, `--is-corr-thresh`, `--is-lr-ratio`,
+  `--is-min-sfbs`, `--is-admit` above 5): FDK's own IS decision with those criteria. Single
+  panned regions above the cutoff then keep their direction (IS carries it per band), the
+  rest stays mid, like the intensity stereo of MPEG-1 Layer II.
+
+Bands that both channels code as PNS are left as they are. `--verbose` prints the band
+where the cutoff starts, in the long and in the short table. Both round up to the next
+band edge, so on the coarse short table the edge can only move up (9 kHz: long band 31 at
+9.0 kHz, short band 9 at 10.5 kHz), which removes less side, never more.
+
+Examples (acoustic stereo music, 48 kbps):
+- Mild: `--side-cutoff 8000`. Side information from 238 to 235 bits per frame, the mid a
+  little cleaner.
+- Strong: `--side-cutoff 5000`. Side information 222 bits, mid error 0.7 dB lower, side
+  above 5 kHz about 27..31 dB down.
+- Exaggerated: `--side-cutoff 1000`. Practically mono with a stereo bass.
+
+Works with / against: `--side-bias` and `--side-knee` still act below the cutoff. At
+14 kbps the gain is small, because FDK already cuts almost all of the side there;
+`--is-admit 0` is the bigger lever at that rate.
+
+Measured: on `dense48` at 40 kbps, `8000` leaves the mid as it was and takes the side
+1.2 dB down; `5000` makes the mid 1.3 dB cleaner and the side 3.4 dB quieter. With a
+3..6 kHz source panned 4 dB left and right in turn over a mono mix (40 kbps,
+`--side-cutoff 1000`) the cutoff alone leaves 0 dB of panning, with `--is-aggression 100`
+3..4 dB, as in the source.
+
+### MS laboratory
+
+These switches reach into the MS decision and the MS thresholds directly. They answer
+technical questions (what happens in pure L/R, with MS in a fixed range of bands, with the
+decision tilted) and serve experiments. Measured on music, none of them makes the decoded
+result clearly better than stock, and several make it worse. Three of them are Q8 numbers,
+FDK's internal fixed point scale where `256` means 1.0 (see *Shared conventions*).
+
+Under CBR the three threshold switches (`--ms-bias`, `--ms-precision`, `--mid-bias`) are
+mostly undone by the rate loop, which still has to hit the same number of bits per frame.
+Under VBR (`-m 1..5`) the bit count follows the thresholds, so there `--ms-precision` and
+`--mid-bias` do have an audible effect, on quality and on file size.
 
 #### `--msmask <n>`
 
-**Force the mid/side decision globally instead of letting the encoder choose per band.**
+**Forces the mid/side decision for every band instead of letting the encoder choose band
+by band.**
 
-- Applies to: stereo AAC core (LC, LD, ELD, and the stereo core under HE-AAC). No effect
-  in HE-AAC v2, where the core is mono.
-- Values: `-1` auto (default, FDK decides per band), `0` off (pure L/R everywhere), `1`
-  on (MS in every band); default `-1`
+- Applies to: stereo AAC core (LC, LD, ELD and the stereo core under HE-AAC). No effect in
+  HE-AAC v2, where the core is mono.
+- Values: `-1` auto (default, FDK decides per band), `0` off (pure L/R everywhere), `1` on
+  (MS in every band)
 - Input: whole number
 
-The encoder normally tests each band both ways and keeps whichever packs smaller. That is
-close to optimal for file size, and because the transform is lossless it is also close to
-irrelevant for sound. Two situations make the forced settings worth having anyway.
+The encoder normally tries each band both ways and keeps whichever is cheaper. On
+correlated music that is MS in nearly every band, and because the rotation is lossless
+the choice costs nothing in sound. Forcing it either way is a technical tool.
 
-`--msmask 0` guarantees that the coder never mixes your channels. Quantisation noise then
-stays inside the channel that caused it, instead of being shared between mid and side and
-redistributed to both outputs on reconstruction. That matters if the file will later be
-put through center cancellation, vocal removal, or any other subtraction of one channel
-from the other: with pure L/R the residual is your material plus its own noise, with MS
-it is your material plus noise that was fitted to the sum and difference. It costs bits,
-and on correlated music it costs real bits.
+`--msmask 0` guarantees that the coder never mixes the channels. Quantisation noise then
+stays in the channel that caused it instead of being shared between mid and side and
+spread to both outputs. That matters if the file will later go through centre
+cancellation, vocal removal or any other subtraction of one channel from the other. It
+costs quality at the same bitrate, clearly on correlated music.
 
-`--msmask 1` is the opposite extreme, MS forced even where the encoder judged L/R cheaper.
-Useful as a reference point and for strongly correlated material, slightly wasteful on
-material with genuinely independent channels, for instance two unrelated mono sources
-hard panned.
+`--msmask 1` forces MS even where L/R would be cheaper. Useful as a reference point; on
+material with genuinely independent channels, two unrelated sources panned hard, it
+wastes bits.
 
 Values:
-- `-1`: stock. Per band decision from the encoder's own cost comparison.
+- `-1`: stock, per band decision from the encoder's own cost comparison.
 - `0`: pure L/R in every band. Nothing is mixed between channels.
 - `1`: MS in every band.
 
-```
-fdkaac -p 2 -b 128000 --msmask 0 in.wav -o lr.m4a
-```
+Example in context:
+
+    fdkaac -p 2 -b 128000 --msmask 0 -o lr.m4a in.wav
 
 Works with / against: `--msmask 0` makes the whole mid/side family inert, including
-`--msbands`, `--side-bias`, `--side-knee` and `--mid-bias`, because no band is in MS.
-`--msbands`/`--msbands-lo`/`--msbands-hi` narrow where the chosen mask may apply.
+`--side-bias`, `--side-knee`, `--msbands` and `--mid-bias`, because no band is in MS.
+`--msbands`, `--msbands-lo` and `--msbands-hi` narrow where the mask may apply.
 
-Measured: on a 2 second sample the difference between `--msmask 0` and `--msmask 1` is
-about 900 bytes of payload, which puts the whole MS decision in perspective next to
-`--ms-bias` at about 2 bytes.
+Measured (acoustic stereo music, 96 kbps): `--msmask 0` makes the mid error 1.3 dB and the
+side error 3.9 dB higher than stock. `--msmask 1` stays within 0.4 dB of stock, because
+stock already codes 39.5 of about 40 bands per frame in MS.
 
 #### `--msbands <n>`
 
-**Allow MS only in the N lowest scalefactor bands and leave everything above in L/R.**
+**Allows MS only in the N lowest scalefactor bands and leaves everything above in L/R.**
 
 - Applies to: stereo AAC core. No effect in HE-AAC v2.
 - Values: `-1` no limit (default), or `0..N` where N is the active SFB count; `n` means
   bands `0..n-1` may use MS
 - Input: whole number
 
-This is the "from the bottom up to" form of the band limit. It is counted from the bass
-upward, always, so `--msbands 6` means bands 0 to 5 may be coded mid/side and bands 6 and
-above stay strictly L/R. `--msbands 0` allows MS nowhere, which is the same thing as
-`--msmask 0`.
+The "from the bottom up to" form of the band limit, counted from the bass upward:
+`--msbands 6` lets bands 0 to 5 use MS and keeps bands 6 and above in L/R. `--msbands 0`
+allows MS nowhere, the same as `--msmask 0`. The difference from `--msbands-lo` and
+`--msbands-hi` is only the shape of the region: this switch always starts at band 0.
 
-Why restrict MS at all, given that it is lossless? Because the bit split follows the mask.
-Inside MS bands the encoder allocates against the mid and side thresholds, and the side
-channel of a band is only as good as the bits the budget allows it. Keeping the top of the
-spectrum in L/R keeps the channel separation up there independent of that negotiation,
-which is a defensible choice on material whose high content really is uncorrelated. It
-also pairs well with high band experiments: L/R up top and MS down low is a different
-balance of risks from the encoder's own per band choice.
-
-The difference from `--msbands-lo`/`--msbands-hi` is only the shape of the region: this
-switch always starts at band 0, the pair can start anywhere.
+The reason to use it is technical, a later process that needs untouched L/R above some
+frequency. There is no quality reason: every restriction measured so far made both
+channels worse at the same bitrate.
 
 Examples:
-- Mild restriction: `--msbands 40`. Only the very top bands are pushed back to L/R; on
-  most material the stream barely moves, because those bands often carried little.
-- Strong restriction: `--msbands 12`. MS confined to roughly the bass and low mids. Expect
-  a measurably larger file at the same quality target, or coarser quantisation at the same
-  bitrate.
-- Exaggerated restriction: `--msbands 2`. MS on essentially nothing. A caricature: you
-  are paying nearly the full price of independent stereo while still signalling MS in two
-  bands.
+- Mild: `--msbands 40`. Only the top bands go back to L/R; on most material the stream
+  barely moves, because those bands carry little.
+- Strong: `--msbands 20`. MS confined to the lower part of the spectrum; at 96 kbps on
+  acoustic music the mid error rises 1.3 dB and the side error 3.5 dB.
+- Exaggerated: `--msbands 2`. MS on essentially nothing: nearly the full price of pure
+  L/R, with MS still signalled in two bands.
 
 Works with / against: equal to `--msbands-lo 0 --msbands-hi n-1` (`--msbands 6` and
 `--msbands-lo 0 --msbands-hi 5` give the same stream). Inert under `--msmask 0`. A limit
 above the active SFB count is the same as no limit.
+
+Measured (acoustic stereo music, 96 kbps): `--msbands 30` raises the mid error by 0.9 dB
+and the side error by 2.4 dB, `--msbands 20` by 1.3 and 3.5 dB.
 
 #### `--msbands-lo <n>`
 
 **Lowest scalefactor band of the range in which MS is allowed.**
 
 - Applies to: stereo AAC core. No effect in HE-AAC v2.
-- Values: `-1` off (default), or `0..N` within the active SFB count; pair it with
-  `--msbands-hi`
+- Values: `-1` off (default), or `0..N` within the active SFB count; give it together
+  with `--msbands-hi`
 - Input: whole number
 
 Together with `--msbands-hi` this defines a from..to window: MS may be used in bands
-`lo..hi` inclusive and nowhere else. Unlike `--msbands`, the window does not have to touch
-the bottom of the spectrum, which is the only way to put MS exclusively high up, for
-instance to let the encoder merge correlated noise and air at the top while the bass and
-mids stay in fully independent L/R.
-
-Give both halves of the pair. `--msbands-lo` on its own leaves the upper edge unset, which
-is not a range.
+`lo..hi` inclusive and nowhere else. Unlike `--msbands` the window does not have to touch
+the bottom of the spectrum, which is the only way to keep MS out of the bass. Give both
+halves of the pair; `--msbands-lo` alone leaves the upper edge unset, which is not a
+range.
 
 Examples:
 - Mild, window starting low: `--msbands-lo 2 --msbands-hi 48`. Almost everything may use
-  MS, the two lowest bands are excluded. Near stock in size.
-- Strong, window in the middle: `--msbands-lo 10 --msbands-hi 30`. MS only across the mids.
-  Bass and top are L/R, so the file grows and the top keeps full separation.
+  MS; the two lowest bands are excluded.
+- Strong, window in the middle: `--msbands-lo 10 --msbands-hi 30`. MS only across the
+  mids, bass and top in L/R.
 - Exaggerated, window at the very top: `--msbands-lo 44 --msbands-hi 48` with `-w 20000`.
-  MS on five bands of air only. A caricature of the band range feature, and the clearest
-  demonstration of why the coded bandwidth matters: without `-w 20000` these bands are
-  above the default 15.75 kHz cutoff and the setting degenerates into `--msmask 0`.
+  MS on five bands of air only. Without `-w 20000` these bands lie above the default
+  cutoff of about 15.75 kHz and the setting becomes `--msmask 0` (see *Why a range above
+  the coded bandwidth does nothing*).
 
-Works with / against: must be read against `--verbose` `active SFBs` and against the coded
-bandwidth. Inert under `--msmask 0`. Overlaps `--msbands`, which is the same feature
-anchored at band 0.
+Works with / against: read it against `active SFBs` in `--verbose` and against the coded
+bandwidth. Inert under `--msmask 0`.
+
+Measured (acoustic stereo music, 96 kbps): `--msbands-lo 20 --msbands-hi 48` raises the
+mid error by 0.5 dB and the side error by 0.7 dB.
 
 #### `--msbands-hi <n>`
 
 **Highest scalefactor band, inclusive, of the range in which MS is allowed.**
 
 - Applies to: stereo AAC core. No effect in HE-AAC v2.
-- Values: `-1` off (default), or `0..N` within the active SFB count; pair it with
-  `--msbands-lo`
+- Values: `-1` off (default), or `0..N` within the active SFB count; give it together
+  with `--msbands-lo`
 - Input: whole number
 
-The upper edge of the from..to window described above, and inclusive: `--msbands-hi 5`
-includes band 5. Bands above it go to plain L/R.
-
-In short blocks the range covers the same frequencies on the short table (see *Short
-blocks* above), so `--msbands-lo 18 --msbands-hi 30` at 48 kHz is short bands 3..7.
+The upper edge of the window described above, inclusive: `--msbands-hi 5` includes band
+5, bands above it go to L/R. In short blocks the range covers the same frequencies on the
+short table (see *Short blocks* above), so `--msbands-lo 18 --msbands-hi 30` at 48 kHz is
+short bands 3..7.
 
 Examples:
-- Mild: `--msbands-lo 0 --msbands-hi 44`. Top four bands excluded from MS. Small change.
-- Strong: `--msbands-lo 0 --msbands-hi 20`. MS up to roughly the presence region, L/R above.
-- Exaggerated: `--msbands-lo 0 --msbands-hi 0`. MS in exactly one band, the bass. Functionally
-  independent stereo with one band of bookkeeping.
+- Mild: `--msbands-lo 0 --msbands-hi 44`. The top four bands excluded from MS.
+- Strong: `--msbands-lo 0 --msbands-hi 20`. MS up to roughly the presence region, L/R
+  above.
+- Exaggerated: `--msbands-lo 0 --msbands-hi 0`. MS in exactly one band, the bass.
 
-Works with / against: `--msbands-lo` is the other half; without it there is no range.
-A value above the active SFB count is the same as no upper limit. Inert under `--msmask 0`.
+Works with / against: `--msbands-lo` is the other half; without it there is no range. A
+value above the active SFB count is the same as no upper limit. Inert under `--msmask 0`.
 
 #### `--ms-bias <n>`
 
-**Nudge the L/R versus MS cost comparison toward MS.**
+**Tilts the encoder's L/R against MS cost comparison toward MS.**
 
 - Applies to: stereo AAC core. No effect in HE-AAC v2.
-- Values: `-1` off (default, stock comparison), `0` also stock, `1..255` in Q8 where 256
-  would be 1.0 in FDK's internal log units, so 128 is +0.5
+- Values: `0..255`, Q8 in FDK's logarithmic cost units; `-1` and `0` = stock (default)
 - Input: whole number
 
-Be honest with this one: it is a binary nudge dressed as a slider, and it is the weakest
-switch in the group. Measurement says so plainly. `0` gives the stock stream; every value
-from 1 to 255 gives one and the same different stream. There is no gradient to ride, so
-there is nothing to tune.
+For every band the encoder estimates what L/R and what MS would cost and takes the cheaper
+one. This switch adds a bonus to the MS side of that comparison. Since MS is lossless, the
+comparison decides only how the band is written, not how it sounds, and stock already
+picks MS in nearly every band of correlated music.
 
-The reason is structural. MS is lossless, so this threshold does not decide how a band
-sounds, only which of two encodings is cheaper to write. The encoder's own comparison is
-already close to optimal, so a shift of the decision line can only flip bands that were
-nearly tied, and nearly tied bands cost nearly the same either way. The net effect on file
-size is a fraction of a percent, and the channel correlation after decoding moves in the
-fourth decimal place.
-
-Use it to confirm that the decision point exists, not to shape sound. For real control
-over MS, `--msmask 0` or `--msmask 1` and the band range switches do the job properly, and
-`--side-bias` is the knob that actually changes what you hear.
+The useful range is tiny. Values 1, 2 and 4 give different streams. From about 8 (16 on
+dense material) the bonus is larger than any real difference between the two costs, every
+band that may use MS takes it, and higher values change nothing: the result is close to
+`--msmask 1`.
 
 Values:
-- `-1` or `0`: stock cost comparison.
-- `1..255`: one single alternative stream, slightly more eager to pick MS.
+- `-1` or `0`: stock comparison.
+- `1..8`: the decision tilted progressively toward MS.
+- `8..255`: MS wherever it is allowed, the same stream for every value.
 
-```
-fdkaac -p 2 -b 128000 --ms-bias 128 in.wav -o biased.m4a
-```
+Example in context:
 
-Works with / against: pointless together with `--msmask 0` or `--msmask 1`, which remove
-the decision entirely. Superseded for any practical purpose by `--msmask` and
-`--side-bias`.
+    fdkaac -p 2 -b 128000 --ms-bias 4 -o biased.m4a in.wav
 
-Measured: mix48 at 128 kbps and tonal48/sparse48 at 96 kbps, values 1..255 all produce an
-identical stream that differs from `0` only. Size effect under 0.1 percent, on the order of
-2 bytes on a 2 second sample.
+Works with / against: pointless with `--msmask 0` or `--msmask 1`, which remove the
+decision. For anything you can hear, use `--side-bias` and `--side-knee`.
+
+Measured: acoustic stereo music at 96 kbps, `128` raises the mid error by 0.3 dB and
+leaves the side as it was; on `dense48` at 40 kbps `255` changes nothing measurable.
 
 #### `--ms-precision <n>`
 
-**Scale the quantisation precision of MS bands as a whole, mid and side together.**
+**Lowers the thresholds of every MS band, mid and side together, so both are coded more
+finely.**
 
 - Applies to: stereo AAC core, MS bands only. No effect in HE-AAC v2.
-- Values: Q8 multiplier from `256` (no change) upward, `384` is about 1.5x, `512` about
-  2x, no upper limit; values below 256 are rejected; `-1` off (default)
+- Values: Q8 from `256` (no change) upward, `384` is 1.5x, `512` is 2x; below 256 is
+  rejected; `-1` off (default)
 - Input: whole number
 
-This is the closest thing here to a LAME style global quality lever for the stereo pair:
-raise it and the thresholds in MS bands get tighter, which means shallower spectral holes
-and finer quantisation in both mid and side at once. It is blunt, because it moves the
-mid and the side in the same direction and by the same factor, so it cannot shift the
-balance between them, which is usually what you actually want.
+The thresholds of a band in MS are divided by the given factor, so the encoder treats
+more of both channels as audible. It moves mid and side in the same direction by the same
+amount, so it does not change their balance; the balance is what `--side-bias` and
+`--side-knee` are for.
 
-Its reach is also limited in two ways worth knowing before you spend time on it. Above
-roughly 600 to 800 the thresholds run into FDK's own hard floor and further increases stop
-doing anything. And under CBR the bit budget does not grow, so a tighter threshold in MS
-bands mostly moves bits from somewhere else in the same frame rather than adding detail.
-The effect flattens out into a reshuffle.
+Under CBR it does almost nothing. The frame still gets the same number of bits, the rate
+loop raises the thresholds back until the frame fits, and the decoded result stays within
+a few tenths of a dB of stock. Under VBR the bit count follows the thresholds, and there
+this switch works as a quality lift for the stereo pair, paid for in file size.
 
-Reach for `--side-bias` instead when the goal is stereo quality: it acts per channel, at
-the decision that actually drops or keeps a side band.
+Examples (VBR `-m 3`, acoustic stereo music, stock about 108 kbps):
+- Mild: `--ms-precision 384`. A slightly larger file, mid and side a little cleaner.
+- Strong: `--ms-precision 512`. 5.3% larger, mid error 0.8 dB and side error 0.7 dB
+  lower.
+- Exaggerated: `--ms-precision 2048`. 15.2% larger, 2.2 and 1.9 dB lower: a bitrate
+  increase in disguise, which `-m` does more evenly.
 
-Examples:
-- Mild: `--ms-precision 320`. Slightly tighter MS thresholds, roughly 1.25x. Small
-  reduction in zeroed bands inside MS.
-- Strong: `--ms-precision 512`. About 2x. Noticeably fewer holes in MS bands; under CBR
-  expect the gain to be paid for elsewhere in the frame.
-- Exaggerated: `--ms-precision 2048`. Deep into the saturated region, where the threshold
-  floor has already taken over. A caricature: the number looks dramatic and the sound
-  stops tracking it.
-There is no other direction: the switch only tightens. To make MS bands coarser on
-purpose, raise the side threshold with a negative `--side-bias`, or the mid threshold with
-`--mid-bias`.
+Works with / against: inert under `--msmask 0`. Under VBR a higher `-m` raises quality
+across all bands, not only MS ones.
 
-Works with / against: inert under `--msmask 0`. Overlaps `--mid-bias` and `--side-bias`,
-which move one channel at a time; if you are using those, leave this at default.
+Measured: CBR 96 kbps, acoustic stereo music: `512` lowers the side error by 0.13 dB,
+`4096` by 0.4 dB, the mid not at all; on `dense48` at 40 kbps `1024` changes nothing
+measurable. VBR as in the examples.
 
-Under the hood: a Q8 multiplier applied to the MS band thresholds, hence 256 meaning 1.00.
+Under the hood: the factor is applied as an offset to the band thresholds in FDK's log
+domain, right after the MS rotation.
 
 #### `--mid-bias <n>`
 
-**Deliberately raise the mid channel threshold so the freed bits can go to the side.**
+**Raises the mid channel threshold in MS bands, so the mid is coded more coarsely.**
 
 - Applies to: stereo AAC core, MS bands. No effect in HE-AAC v2.
-- Values: Q8, `256` = off, above 256 raises the mid threshold, no upper limit; `-1` off
-  (default)
+- Values: Q8, `256` = no change, above 256 raises the mid threshold; below 256 is
+  rejected; `-1` off (default)
 - Input: whole number
 
-After the MS rotation the mid channel carries the sum, which on normal music is most of
-the loudness and most of the information people listen to. This switch raises its masking
-threshold on purpose, which makes the mid cheaper to code and leaves more of a fixed budget
-for the side. It is a legitimate way to buy stereo width, and a risky one, because you are
-paying with the channel that carries the melody.
+The idea is to free bits from the mid for the side. In measurement it does not do that
+well. Under CBR the rate loop undoes most of it: at 96 kbps `384` moves mid and side by
+about 0.1 dB, and only `4096` gives the side a full dB, for 0.65 dB of mid. Under VBR the
+mid simply gets coarser and the file smaller, while the side gains nothing. For width
+against centre use `--side-bias` or `--side-knee`.
 
-Use it sparingly, and prefer `--side-bias` for the same job. Both pull on the same
-mid/side budget, but `--side-bias` pulls from the side end, where the measurement is
-cleaner and where the effect of overdoing it shows up as a narrower image rather than a
-duller lead vocal.
+Examples (CBR, acoustic stereo music, 96 kbps):
+- Mild: `--mid-bias 288`. No measurable change.
+- Strong: `--mid-bias 1024`. Under CBR a fraction of a dB; under VBR `-m 3` a 6.8% smaller
+  file with the mid 1.7 dB worse and the side unchanged.
+- Exaggerated: `--mid-bias 4096`. The side 1 dB cleaner, the mid 0.65 dB worse. For
+  comparison `--side-knee 3` gives the side 0.8 dB for 0.3 dB of mid.
 
-Examples:
-- Mild: `--mid-bias 288`. Mid threshold raised slightly, a little headroom handed to the
-  side. Hard to fault on dense material.
-- Strong: `--mid-bias 384`. About 1.5x. The side gets a real share; the mid starts to lose
-  definition at low bitrate.
-- Exaggerated: `--mid-bias 1024`. The mid is given away to feed the difference signal.
-  A caricature: a wide, hollow image with a soft centre, which is almost never what anyone
-  wants from a music encode.
+Works with / against: inert under `--msmask 0`. Combined with a positive `--side-bias` it
+pulls on the same budget from the other end.
 
-Works with / against: inert under `--msmask 0`, and pointless in combination with a large
-positive `--side-bias`, since both spend the same budget from opposite ends. Overlaps
-`--ms-precision`, which moves mid and side together instead.
-
-#### `--side-bias <dB>`
-
-**Shift the side channel masking threshold on MS bands: the main stereo width versus
-centre quality lever.**
-
-- Applies to: stereo AAC core, MS bands. No effect in HE-AAC v2, and nothing to do under
-  `--msmask 0`.
-- Values: `-24.0..50.0` dB, `0` = off (default, stock threshold)
-- Input: decimal, up to 3 places, `.` or `,`
-
-This is the switch to learn in this group. The encoder decides, per scalefactor band,
-whether the side signal is worth coding by comparing its energy against a masking
-threshold; below the threshold the band is dropped to zero. That one comparison is where
-your stereo width lives. Moving the threshold moves the line.
-
-A positive value lowers the effective bar for the side channel: fewer side bands are
-zeroed, the survivors are quantised more finely, and what you hear is cleaner width,
-reverb tails that decay instead of stopping, and ambience that stays put instead of
-collapsing to the centre. It is not free. The bit budget is fixed, so those bits come out
-of the mid channel, and at low bitrate you can hear the centre give them up. That is the
-tradeoff working as designed, not a fault. The measurement below shows exactly this shape:
-the side error improves steadily from +1 to +9 while the mid error degrades steadily over
-the same span.
-
-A negative value does the reverse and raises the bar, so side bands fall out and the image
-narrows toward mono. That is a deliberate tool for very low bitrate work, or for an effect,
-and it has one hard structural feature you need to know about: it does not narrow
-smoothly all the way down.
-
-**The step at about -0.97 dB.** From 0 to -0.95 dB the side error moves smoothly, which is
-the gentle narrowing you would expect. At about -0.97 dB the raised side threshold crosses
-a minimum SNR line that the encoder keeps inside its hole avoidance logic, and most side
-bands drop out at once. Past that point the knob is finished: -1, -4 and -12 all give the
-same result, because the side has already been cut. This is a property of the encoder, a
-real discontinuity in its decision chain, not a rounding artefact of the command line: the
-decimals are read to 3 places and the value you type is the value used. The practical rule
-follows directly. For gentle narrowing stay inside 0 to -0.95, and treat anything at or
-beyond -0.97 as a single setting that means "drop the side".
-
-In the positive direction the useful span ends around +9. Beyond that, measurement shows
-both channels getting worse: the side stops improving and the mid keeps degrading, which
-is a bad trade in both directions at once.
-
-Examples:
-- Mild, more bits to the side: `--side-bias 1`. A touch more side detail, mid essentially
-  untouched. Safe on anything.
-- Strong, more bits to the side: `--side-bias 6`. Clearly wider and more spacious, with
-  the mid starting to pay for it at low bitrate. This is the normal working value.
-- Exaggerated, more bits to the side: `--side-bias 24`. Past the useful span. The side
-  gains nothing further and the mid is measurably damaged, so the image gets wide and the
-  centre gets thin. A caricature that shows where the budget went.
-- Mild, narrowing: `--side-bias -0.3`. Slightly tighter image, a few marginal side bands
-  given up. The fine control lives in this region.
-- Strong, narrowing: `--side-bias -0.9`. Noticeably narrower, still inside the smooth
-  region and still just short of the step.
-- Exaggerated, narrowing: `--side-bias -4`. Past the -0.97 dB step, so the side is simply
-  gone and the result is near mono. A caricature, and identical to -1 or -12: there is
-  nothing left to remove.
-
-Works with / against: `--side-knee` shapes the edge of the same decision and combines
-cleanly with this. `--mid-bias` pushes on the same budget from the mid end, so using both
-hard is double counting. `--msmask 0` removes the side channel entirely and makes this
-switch inert. `--msbands`/`--msbands-lo`/`--msbands-hi` limit which bands it can touch.
-
-Measured: dense48, LC stereo 40 kbps, Fraunhofer decoder, error energy relative to the
-source per channel. Default band (9.75 kHz): side error -0.53, -0.58, -0.62, -0.63,
--0.66 dB at 0, +1, +3, +6, +9, while mid error goes -8.62, -8.53, -8.27, -7.08, -6.43 dB.
-At +24 side gets worse again (-0.42 dB) and mid keeps losing (-5.81 dB). Negative
-direction with the band forced to 18 kHz (`-w 18000`): side error -1.13 dB at 0, -1.03 at
--0.5, -0.93 at -0.9, -0.92 at -0.95, then -0.31 at -0.97 and the same at -1, -4 and -12.
-Which quantity shows the step depends on material and bandwidth: at the default band on
-the same signal the step shows in the mid error instead (-8.72 to -9.04 dB at -0.97).
-
-#### `--side-cutoff <Hz>`
-
-**From this frequency up, code every stereo band as pure mid.**
-
-- Applies to: stereo AAC core (LC, LD, ELD). Off by default.
-- Values: `1000..24000` Hz, rounded to the scalefactor band that starts at or above it
-
-Above the cutoff the side signal is dropped and the band is written as mid only, with the
-cheap MS mask. Pure L/R never happens there.
-
-The level stays: both channels then play the mid, which alone carries less energy than the
-original channels whenever L and R differ (uncorrelated L/R would come out 3 dB quieter).
-So the mid is raised to the energy of the original, by at most 6 dB, and only where the
-side is above its masking threshold (a side that stock would zero anyway is not added).
-Measured at 96 kbps: a band 3 dB quieter than the source is 3 dB quieter with the cutoff
-too, for uncorrelated, partly correlated and correlated L/R. Up to 1.4.0-beta.1 the band
-lost up to 3 dB more. Two things mid cannot carry, whatever its level: content in
-anti-phase (L = -R, its mid is zero) and the direction of a hard panned sound, which ends
-up in the centre.
-
-Intensity stereo above the cutoff: FDK's stock IS decision is cleared there, because pure
-mid is cheaper. IS stays when it is asked for explicitly:
-- `--is-force-lo/-hi`: IS on the given bands, always.
-- loosened IS criteria (`--is-aggression`, `--is-corr-thresh`, `--is-lr-ratio`,
-  `--is-min-sfbs`, `--is-admit` above 5): FDK's own IS decision with those criteria. Single
-  panned regions above the cutoff then keep their side (IS carries the direction and the
-  phase per band), the rest stays mid, like the intensity stereo of MPEG-1 Layer II.
-  Measured (40 kbps, `--side-cutoff 1000`, a 3..6 kHz source panned 4 dB left and right in
-  turn over a mono mix): cutoff alone 0 dB, with `--is-aggression 100` 3..4 dB, as the
-  source.
-
-Bands that both channels code as PNS are left as they are.
-Below the cutoff stereo is untouched. `--verbose` prints the band where it starts, in the
-long and in the short table. Both round up to the next band edge, so on the coarse short
-table the edge can only move up (9 kHz: long band 31 at 9.0 kHz, short band 9 at 10.5 kHz),
-which destroys less side, never more.
-
-Examples (acoustic stereo music):
-- Mild: `-b 48000 --side-cutoff 8000`. Side info 238 to 235 bits per frame, mid a little cleaner.
-- Strong: `-b 48000 --side-cutoff 5000`. Side info 222 bits, mid error 0.7 dB lower, side above
-  5 kHz about 27..31 dB down.
-- Exaggerated: `-b 48000 --side-cutoff 1000`. Practically mono with a stereo bass.
-
-At 14 kbps the gain is small, because FDK already zeroes almost all of the side there;
-`--is-admit 0` is the bigger lever at that rate.
-
-#### `--is-admit <x>`
-
-**Move FDK's gate that decides whether intensity stereo may be used at all.**
-
-- Applies to: stereo AAC core. Stock `5`.
-- Values: `0.0..20.0`; `0` = never. `--is-aggression` still opens the gate.
-
-FDK allows intensity stereo only when bitrate divided by the core bandwidth (bits per second
-per Hz) is below 5. At very low rates IS is expensive: it forces the per-band MS mask (about
-22 bits per frame) and adds IS positions. Measured at 14 kbps stereo on dense material:
-`--is-admit 0` lowers zeroed bands from 85% to 70%.
-
-#### `--side-knee <dB>`
-
-**Give every side band near the coded/zeroed edge a precision that follows its own level.**
-
-- Applies to: stereo AAC core, MS bands. No effect in HE-AAC v2, and nothing to do under
-  `--msmask 0`.
-- Values: `-24.0..50.0` dB, `0` = off (default, stock behaviour)
-- Input: decimal, up to 3 places, `.` or `,`
-
-`--side-bias` moves where the coded/zeroed line sits. This switch works on the margin of
-each band: how far its energy lies above its masking threshold, which decides how finely
-the band is coded and whether it survives at all. The value is an offset added to that
-margin, so a band keeps the precision its real level deserves, just shifted.
-
-One detail of FDK makes this necessary. When bits run out, FDK does not drop a weak band at
-once: it pins the band at about 0.97 dB above its threshold and keeps it at the coarsest
-step. On real music some 10% of the side bands end up stacked on that one value, whatever
-their real level was. The switch reads the margin the rate control wanted before that
-rescue, so those bands are spread out again by their real level instead of moving as one
-block. Measured on acoustic music at 96 kbps, coded side bands per frame fall evenly from
-30.2 (stock) through 25.4 (-1), 22.2 (-3), 18.1 (-6), 10.5 (-12) to 1.1 (-24): no jump.
-
-A positive value adds precision: bands up to N dB below the threshold are kept, graded by
-how far below they were, and bands near the edge get up to N dB finer. A negative value
-takes precision away: the bands closest to the edge leave first and the bits go to mid.
-The offset is full near the edge and fades out above it, so the loud, well coded part of
-the side channel is not touched (the fade-out zone is `--side-knee-zone`).
-
-Examples (acoustic stereo music, 96 kbps):
-- Mild, finer: `--side-knee 2`. Side holes 6.9% to 2.2%, mid error up 0.8 dB.
-- Strong, finer: `--side-knee 6`. Side holes 0.6%, side error 2.4 dB lower, mid pays 3.5 dB.
-- Exaggerated, finer: `--side-knee 24`. More bits go to side than to mid. A caricature.
-- Mild, coarser: `--side-knee -1`. The weakest side bands go, about 5 of 37 per frame.
-- Strong, coarser: `--side-knee -6`. Side holes 29%, mid error 2.4 dB lower.
-- Exaggerated, coarser: `--side-knee -24`. Practically no side left; a mono image with
-  stereo bookkeeping.
-
-Diagnostic companions (may be removed in a later version):
-- `--side-knee-zone <x>`, `1.0..20.0`, stock `3`: the offset is full up to |knee| dB above
-  the threshold and fades out linearly to zero at x times |knee| dB.
-- `--side-knee-spread <dB>`, `0.1..24.0`, stock `1`: on the negative side, how many dB of
-  knee are needed to spread the rescued crowd fully by its real margin.
-Both changed little in measurement. Without `--side-knee` they do nothing.
-
-Works with / against: orthogonal to `--side-bias` and designed to be used with it; bias
-sets where the threshold is, knee sets how soft its edge is. Inert under `--msmask 0`.
-
-Measured: dense stereo LC. Negative values saturate at -6 dB (-6, -12 and -24 give an
-identical stream); positive values keep changing the stream across the range.
-
-#### `--mask-slope <dB>`
-
-**Shift how far below the frame average a band must sit before the encoder stops caring
-about it.**
-
-- Applies to: both channels, mid and side, in the AAC core. No effect in HE-AAC v2.
-- Values: `-24.0..50.0` dB, `0` = off (default); distinct results only inside roughly
-  -9.9..+9
-- Input: decimal, up to 3 places, `.` or `,`
-
-FDK carries a non masking heuristic: when a scalefactor band's energy sits far below the
-average energy of the frame, more than about 10 dB below in stock tuning, the required SNR
-for that band is relaxed. In plain words, the encoder deliberately starves very quiet bands
-in order to spend the bits on the loud ones. Most of the time that is correct, because a
-band 20 dB under the rest of the frame is usually masked. Sometimes it is not, and what
-gets starved is the reverb tail, the room, or the decay of the previous note.
-
-This switch shifts that "how far below average before I stop caring" line, for both
-channels at once. A positive value raises it, so fewer bands qualify as negligible and
-quiet detail survives. Quiet passages, decays and reverb tails keep more of their
-structure, and the bits come from somewhere else in the frame. A negative value lowers it,
-so more bands are starved and the result is leaner and hollower, with more bits for the
-loud material.
-
-Set expectations honestly: this is a subtle control. It only touches the quietest bands in
-a frame, so on dense material the decoded error barely moves, and on our sparse probe only
-large values shifted it at all. It is most worth trying on sparse, reverberant or
-deliberately quiet material, and least worth trying on a loud dense mix.
-
-The live range is narrower than the accepted range. Distinct results appear for roughly
--9.9 to +9. At -10 and below the result stops changing, +10 to +40 collapse to one stream,
-and 45 to 50 to another. Keep your examples inside the live span, where the number actually
-corresponds to behaviour.
-
-Examples:
-- Mild, protect quiet bands: `--mask-slope 2`. Slightly fewer bands starved. Expect tenths
-  of a dB in measurement and a marginally more open decay.
-- Strong, protect quiet bands: `--mask-slope 6`. A real share of quiet bands kept. The most
-  useful setting on reverberant material.
-- Exaggerated, protect quiet bands: `--mask-slope 9`. The top of the live range: almost
-  nothing is treated as negligible, and bits are being spent on content that is very
-  probably masked. A caricature, and the last value that still responds, since +10 and
-  above all behave the same.
-- Mild, starve quiet bands: `--mask-slope -2`. A few more quiet bands given up. Slightly
-  leaner.
-- Strong, starve quiet bands: `--mask-slope -6`. Quiet bands clearly starved, more bits for
-  the loud content, a hollower sound on sparse material.
-- Exaggerated, starve quiet bands: `--mask-slope -9.5`. The bottom of the live range,
-  quiet detail stripped wherever the heuristic can reach. A caricature of a lean setting,
-  and the floor of the control, since -10 and below stop changing anything.
-
-Works with / against: same family as `--side-bias`, but keyed on energy versus the frame
-average rather than on the side threshold, and applied to mid and side alike. Use one or
-the other while you learn what each does, then combine.
-
-Measured: mix48 at 40 kbps gives distinct streams only for about -9.9..+9; -10 and below
-collapse to one stream, +10..+40 to another, 45..50 to a third. On sparse48 at 40 kbps the
-decoded error barely moves, with only +12 and +24 shifting it.
+Measured: on `dense48` at 40 kbps `512` and `1024` change nothing measurable. VBR as in
+the examples.
 
 ### Intensity stereo (IS)
 
@@ -1138,6 +1093,22 @@ real maximum: the bitrate gate dropped, the correlation requirement loosened, th
 run reduced to a single band and the direction tolerance widened. Start around 30 to 50 and
 listen, then go up if the saving is worth more to you than the width. Only once you know
 what the slider does should you reach for the switches below, which override what it set.
+
+#### `--is-admit <x>`
+
+**Moves FDK's first gate, which decides whether intensity stereo may be used at all.**
+
+- Applies to: stereo AAC core. No effect in HE-AAC v2.
+- Values: `0.0..20.0`, stock `5`; `0` = never; `-1` off (default)
+- Input: decimal, up to 3 places, `.` or `,`
+
+FDK allows intensity stereo only when the bitrate divided by the core bandwidth, in bits
+per second per Hz, is below this value. At very low rates IS is expensive: it forces the
+per band MS mask (about 22 bits per frame) and adds IS positions, so closing the gate can
+free more bits than IS saves. `--is-aggression` opens the gate regardless of this value.
+
+Measured: at 14 kbps stereo on dense material `--is-admit 0` lowers the share of zeroed
+bands from 85% to 70%.
 
 #### `--is <n>`
 
@@ -3751,8 +3722,8 @@ threshold says. This is the closest FDK gets to the tone masking noise and noise
 masking tone constants that MusePack and LAME expose. It matters more than it sounds,
 because the hole avoidance logic clamps thresholds back to this demand: if the rate
 loop wants to starve a band, the SNR demand is the line it is not allowed to cross.
-`--minsnr-scale` scales the demand, and the two clamp switches move the ceiling and the
-floor the demand itself is held between.
+`--minsnr-scale` scales the demand, and `--minsnr-clamp-lo` and `--minsnr-clamp-hi`
+move the finest and the coarsest end of the window the demand is held in.
 
 **TNS, temporal noise shaping.** Inside one block, quantisation noise is spread evenly
 across the whole block in time. That is wrong for a transient: a block containing a
@@ -3777,284 +3748,6 @@ One convention before the cards: all the `--pns-*` scaling knobs take a plain de
 multiplier on FDK's factory value. `1.0` means leave the factory value alone, `1.5`
 means one and a half times it, `0.5` means half. `--pns-min-width` is the exception, it
 is a raw count.
-
-### `--ath-scale <n>`
-
-**The global masking threshold scale: one knob for "be cleaner" or "be more
-economical" across the whole spectrum.**
-
-- Applies to: every profile with an AAC core, so all of them. Under SBR it affects the
-  core only, since SBR has its own noise model.
-- Values: Q8, `1..4096`, where `256` is x1.0; default: `256`, no change
-- Input: whole number
-
-The masking threshold is the noise level the model believes you cannot hear in a given
-band. `--ath-scale` multiplies all of them at once. Above 256 the thresholds rise, the
-encoder concludes more noise is inaudible, and it spends fewer bits per band: more
-aggressive coding, which at a fixed bitrate means those bits go somewhere else or the
-frame simply finishes early. Below 256 the thresholds fall, more content is deemed
-worth coding accurately, and the demand for bits rises.
-
-Two things keep this knob from being as strong as its range suggests. It operates on
-the log domain threshold copy, and part of its effect is undone downstream by the
-minimum SNR logic and the 29 dB threshold reduction ceiling in the CBR quantiser. And
-under CBR a global threshold change mostly reshuffles bits rather than changing their
-number, because the rate loop still has to hit the target. If you want a stronger and
-more direct lever on detail, `--minsnr-scale` is the one, because it moves the line that
-the hole avoidance clamps back to.
-
-Where it earns its keep is at high bitrate, where you have surplus bits and want the
-encoder to find more things worth coding. Values a little below 256 convert that
-surplus into preserved detail. At low bitrate the useful direction is usually upward, as
-a way of accepting coarseness deliberately rather than having the rate loop decide where
-to cut.
-
-Examples:
-- Mild, cleaner: `--ath-scale 230`. Thresholds about 10 percent lower. Slightly more
-  bits to quiet detail; subtle at any bitrate, most visible above 192 kbps.
-- Strong, cleaner: `--ath-scale 180`. A clear shift of effort towards low level
-  content. Reverb tails and room noise survive better; at a tight bitrate this starves
-  something else.
-- Exaggerated, cleaner: `--ath-scale 64`. Thresholds a quarter of stock. The model is
-  effectively told almost nothing is masked. Under CBR the rate loop fights back all
-  frame long and the result is not better, just differently compromised; worth hearing
-  once to understand where the limit sits.
-- Mild, coarser: `--ath-scale 290`. A little more noise accepted per band, a small bit
-  saving.
-- Strong, coarser: `--ath-scale 512`. Thresholds doubled. Audibly grainier on
-  broadband material, noticeably cheaper per band.
-- Exaggerated, coarser: `--ath-scale 2048`. Thresholds eight times stock. The encoder
-  believes almost everything is masked, and the result is a caricature of aggressive
-  coding: hollow, hissy, with detail gone wherever anything louder sits nearby.
-
-Works with / against: `--minsnr-scale` is the stronger tool for the same goal and
-partly overrides the effect of this one, since the SNR demand is a floor on quality
-that a raised threshold cannot push through. `--reduce-clamp 0` lets thresholds be
-pushed deeper than the 29 dB ceiling, which gives low values here more room to act.
-`--spread-mask` is the companion knob for the width rather than the height of masking.
-
-### `--spread-mask <n>`
-
-**Scales how far masking leaks from one band into its neighbours, which decides how
-many quiet bands next to loud ones survive.**
-
-- Applies to: every profile with an AAC core. Largest effect where bits are tight but
-  not desperate, roughly 96..192 kbps.
-- Values: Q8, `0` and up, where `256` is x1.0; default: `-1`, off
-- Input: whole number
-
-A loud tone does not only mask noise in its own band, it masks a skirt of bands around
-it, more above than below. The model simulates that with a spreading function. The
-spread is the reason a quiet band sitting next to a loud one gets almost no bits: the
-model says its content is covered by the neighbour.
-
-This switch scales the spreading. Below 256 means less masking spread, so the skirt
-shrinks, fewer bands count as covered, and more of them get coded. That is the same idea
-as relaxing the tone masks noise assumption in other encoders. Above 256 widens the
-skirt and more bands are written off as covered by their neighbours, which is cheaper
-and flatter.
-
-The reason the effect concentrates in the 96..192 kbps region is simple arithmetic. Far
-below that, the bands next to loud ones are not the problem, the whole frame is starved
-and the rate loop is cutting everywhere. Far above it there are enough bits that the
-spread rarely decides anything. In between, the spread is what the encoder is actually
-using to choose what to skip.
-
-Examples:
-- Mild, less masking: `--spread-mask 230`. A slightly narrower skirt. A few more bands
-  survive beside loud content; more detail around strong partials.
-- Strong, less masking: `--spread-mask 180`. Clearly more bands coded next to loud
-  ones. On dense material this is where detail around transient energy is regained, at
-  real bit cost.
-- Exaggerated, less masking: `--spread-mask 32`. Spreading almost removed. The model
-  loses most of its ability to decide what is covered, so bits scatter across bands
-  that genuinely are inaudible; a caricature that shows what the spreading function
-  buys you.
-- Mild, more masking: `--spread-mask 300`. A touch wider skirt, a small saving.
-- Strong, more masking: `--spread-mask 512`. Spread doubled. Noticeably flatter
-  spectrum beside loud content, cheap, with quiet detail written off.
-- Exaggerated, more masking: `--spread-mask 1536`. Almost everything near anything loud
-  counts as masked. The result is hollow and smeared, and useful mainly as the opposite
-  end of the demonstration.
-
-Works with / against: combine with `--ath-scale` below 256 when you want both a lower
-and a narrower mask; the two are independent and the effects add. `--minsnr-scale`
-still bounds the result from below, so a very low spread cannot push any band below its
-SNR demand.
-
-### `--minsnr-scale <n>`
-
-**Scales the signal to noise ratio the coder is required to deliver in each band; the
-most direct knob for detail in this group.**
-
-- Applies to: every profile with an AAC core.
-- Values: Q8, `1` and up with no documented ceiling, where `256` is x1.0; default:
-  `-1`, off
-- Input: whole number
-
-Besides the masking threshold, each band carries a required coding SNR. It is the
-guaranteed minimum: whatever the threshold computation says, the coder must reach this
-quality in that band. FDK derives it from its tuning tables, and it is the nearest
-equivalent to the tone masking noise and noise masking tone constants that MusePack
-exposes directly.
-
-Below 256 demands a higher SNR than stock, so more detail and more bits per band. Above
-256 demands less and the result is coarser. Note the inversion against your intuition:
-you are scaling the permitted noise, not the demanded quality, so smaller is cleaner.
-
-This switch is more effective than `--ath-scale` for the same purpose, and the reason is
-structural. The hole avoidance logic clamps thresholds back to the minimum SNR line,
-which means the SNR demand is the quality floor the rate loop is not allowed to breach.
-Move the threshold and the clamp can undo you. Move the demand and the clamp follows.
-
-Examples:
-- Mild, more detail: `--minsnr-scale 220`. A modest lift in required quality per band.
-  Visible at medium bitrate as fewer bands dropping out.
-- Strong, more detail: `--minsnr-scale 150`. Clearly higher demand. Combined with a
-  generous bitrate, this is the knob that turns surplus bits into preserved detail; at
-  a tight bitrate it forces the rate loop to make the cut somewhere else.
-- Exaggerated, more detail: `--minsnr-scale 16`. A sixteen fold demand. The frame can
-  never satisfy it and the rate loop spends the whole frame in rescue mode, so the
-  result is worse than stock; instructive once, not a setting.
-- Mild, coarser: `--minsnr-scale 300`. A little less demanded per band, a small saving.
-- Strong, coarser: `--minsnr-scale 512`. Half the demanded quality. Audibly grainier,
-  with a real bit saving that can be redirected with other switches.
-- Exaggerated, coarser: `--minsnr-scale 4096`. The demand is effectively removed, the
-  floor under quality is gone, and bands collapse freely. A caricature of what the SNR
-  demand was protecting.
-
-Works with / against: `--minsnr-clamp-hi` and `--minsnr-clamp-lo` bound the result of
-this scaling, so pushing far below 256 eventually hits the stock ceiling of about -1 dB
-unless you raise it with `--minsnr-clamp-hi`. `--reduce-clamp 0` is the usual companion
-for extreme detail, since it removes the 29 dB reduction ceiling that otherwise limits
-how deep thresholds can be pushed. It is stronger than `--ath-scale`, so set this one
-first and use `--ath-scale` as a trim.
-
-### `--minsnr-clamp-hi <n>`
-
-**Raises or lowers the ceiling on how much SNR a band is allowed to demand.**
-
-- Applies to: every profile with an AAC core. Only acts when some band actually wants
-  more than the stock ceiling, which in practice means you are also using
-  `--minsnr-scale` below 256.
-- Values: Q8, `1` and up, where `256` is x1.0; default: `-1`, off
-- Input: whole number
-
-The per band SNR demand is held between a ceiling and a floor. The ceiling, FDK's
-MAX_SNR, sits at roughly -1 dB and exists so no band can demand an absurd amount of
-precision and starve the rest of the frame. If you scale the demand up with
-`--minsnr-scale`, bands pile up against that ceiling and the scaling stops producing
-any further effect.
-
-Above 256 here lifts the ceiling, so bands may demand more than stock allows. That is
-the only way to make very low `--minsnr-scale` values keep working. Below 256 lowers
-the ceiling, capping the demand sooner, which is a blunt way to limit how much any one
-band can take from the frame.
-
-Examples:
-- Mild, higher ceiling: `--minsnr-clamp-hi 320`. A small amount of headroom above the
-  stock cap. Lets a modest `--minsnr-scale` keep acting in the most demanding bands.
-- Strong, higher ceiling: `--minsnr-clamp-hi 512`. Twice the stock cap. This is the
-  pairing for serious detail work at high bitrate.
-- Exaggerated, higher ceiling: `--minsnr-clamp-hi 4096`. The ceiling is effectively
-  gone and one band can demand everything the frame has. Expect the rate loop to spend
-  its entire budget on a few bands and collapse the rest.
-- Mild, lower ceiling: `--minsnr-clamp-hi 220`. Demands capped a little sooner; a
-  slight evening out of bit distribution.
-- Strong, lower ceiling: `--minsnr-clamp-hi 128`. Half the stock cap. No band may ask
-  for much, so the spectrum is coded more uniformly and more coarsely at the peaks.
-- Exaggerated, lower ceiling: `--minsnr-clamp-hi 8`. The ceiling is so low that the
-  demand is essentially removed as a mechanism, which is the same end state as removing
-  it from below.
-
-Works with / against: only meaningful together with `--minsnr-scale`; alone it changes
-nothing unless stock demands were already at the cap. It is the counterpart of
-`--minsnr-clamp-lo`, which moves the other end of the same bracket.
-
-Measured: at AAC-LC 64 kbps, `--minsnr-clamp-hi 512` changes the stream.
-
-### `--minsnr-clamp-lo <n>`
-
-**Raises or lowers the floor under the per band SNR demand, the level below which no
-band may be allowed to fall.**
-
-- Applies to: every profile with an AAC core, but only where bands are actually being
-  pushed down to the floor, which means very low bitrate. At comfortable bitrates the
-  floor is never reached and the switch does nothing.
-- Values: Q8, `1` and up, where `256` is x1.0; default: `-1`, off
-- Input: whole number
-
-The other end of the bracket from `--minsnr-clamp-hi`. FDK's MIN_SNR floor sits at
-roughly -25 dB and is the worst quality any band may be assigned. Without it, a band
-under bit pressure could be allocated essentially nothing while still nominally being
-coded.
-
-Below 256 lowers the floor and lets bands be driven further down, which frees bits for
-the rest of the frame at the cost of the worst bands getting worse. Above 256 raises
-the floor, so nothing may get as bad as stock permits, which protects the weakest bands
-and takes those bits from elsewhere.
-
-Honest status: at ordinary bitrates this switch has no observable effect, because the
-floor is simply not reached. It is a tool for the 16..32 kbps region and for
-experiments where you have deliberately starved the core, for instance with a wide
-`--core-cutoff` at a low bitrate.
-
-Examples:
-- Mild, higher floor: `--minsnr-clamp-lo 300`. The worst bands are held slightly
-  better. Only visible at very low bitrate.
-- Strong, higher floor: `--minsnr-clamp-lo 512`. Twice the stock floor. At low bitrate
-  this reduces the gap between the best and worst coded bands.
-- Exaggerated, higher floor: `--minsnr-clamp-lo 2048`. The floor sits so high it
-  meets the ceiling and the bracket collapses; every band demands the same, which is
-  not a psychoacoustic model any more.
-- Mild, lower floor: `--minsnr-clamp-lo 220`. The worst bands may go a little further
-  down, a small amount of bits freed.
-- Strong, lower floor: `--minsnr-clamp-lo 128`. Half the stock floor. Audible at low
-  bitrate as the quietest bands giving up earlier in exchange for a cleaner midrange.
-- Exaggerated, lower floor: `--minsnr-clamp-lo 4`. No meaningful protection remains;
-  bands under pressure are allocated almost nothing, which is close to letting them
-  become holes without the hole logic being involved.
-
-Works with / against: pairs with `--minsnr-clamp-hi` as the two ends of one bracket and
-with `--minsnr-scale`, which is what moves the demand inside it. Group E's hole
-switches address the same symptom from the other side, by controlling which bands may
-be zeroed outright.
-
-Measured: `--minsnr-clamp-lo 512` produced no change at AAC-LC 64 kbps, because the
-floor is never reached there, while `--minsnr-clamp-hi 512` did change the stream at the
-same settings. Expect this one to need a much lower bitrate before it acts.
-
-### `--reduce-clamp <0|1>`
-
-**Removes the 29 dB ceiling on how far the CBR quantiser may push thresholds down,
-letting the other detail switches act without hitting a wall.**
-
-- Applies to: CBR, that is the default `-m 0` path. VBR uses a different code path and
-  is unaffected.
-- Values: `0` or `1`; default: `1`, the ceiling applies, as in stock
-- Input: whole number, on/off
-
-When the CBR rate loop needs more quality in a band, it reduces that band's threshold.
-There is a ceiling on the total reduction, about 29 dB, which stops the loop from
-chasing one demanding band indefinitely. For normal material the ceiling never binds. If
-you are deliberately demanding much more precision than stock, with `--minsnr-scale`
-well below 256 or `--ath-scale` well below 256, the ceiling is exactly what stops your
-setting from producing a further effect.
-
-Setting `0` drops the ceiling, so thresholds may be pushed deeper and more bits flow
-into the demanding bands. On its own this changes little, because stock rarely reaches
-29 dB of reduction. It is a companion switch, not a standalone one.
-
-Values:
-- `1`: the 29 dB reduction ceiling applies (stock, default).
-- `0`: ceiling removed, thresholds may be pushed deeper.
-
-Example in context:
-
-    fdkaac -p 2 -b 256000 --minsnr-scale 150 --reduce-clamp 0 -o out.m4a in.wav
-
-Works with / against: pair it with `--minsnr-scale` below 256 for extreme detail; it is
-near pointless alone. No effect under VBR (`-m 1..5`).
 
 ### `--tns-mask <n>`
 
@@ -4564,6 +4257,335 @@ each other and the tighter one wins. Does nothing when PNS is off.
 Measured: at AAC-LC, values `2` and `4` give the stock stream, confirming that the
 built-in default of 16 is the floor. `64` at AAC-LC 64 kbps produces exactly the stream
 that `--pns 0` produces, so PNS is effectively off at that width.
+
+### Masking thresholds: an advanced layer
+
+The seven switches below move the psychoacoustic model itself: the threshold, the masking
+spread, the required SNR and the limits around it. Most of them take Q8 numbers. Under CBR
+the rate loop has to hit the same number of bits per frame whatever the model says, so it
+takes most of their effect back: measured on music, each of them moves the decoded result
+by a few hundredths to a few tenths of a dB. Under VBR (`-m 1..5`) the bit count follows
+the model, and `--ath-scale` and `--minsnr-scale` become real quality settings, paid for in
+file size. `--spread-mask`, the two clamps, `--reduce-clamp` and `--mask-slope` remain
+laboratory switches either way.
+
+#### `--ath-scale <n>`
+
+**The global masking threshold scale: one knob for "be cleaner" or "be more
+economical" across the whole spectrum.**
+
+- Applies to: every profile with an AAC core, so all of them. Under SBR it affects the
+  core only, since SBR has its own noise model.
+- Values: Q8, `1..4096`, where `256` is x1.0; default: `256`, no change
+- Input: whole number
+
+The masking threshold is the noise level the model believes you cannot hear in a given
+band. `--ath-scale` multiplies all of them at once. Above 256 the thresholds rise, the
+encoder concludes more noise is inaudible, and it spends fewer bits per band: more
+aggressive coding, which at a fixed bitrate means those bits go somewhere else or the
+frame simply finishes early. Below 256 the thresholds fall, more content is deemed
+worth coding accurately, and the demand for bits rises.
+
+Two things keep this knob from being as strong as its range suggests. It operates on
+the log domain threshold copy, and part of its effect is undone downstream by the
+minimum SNR logic and the 29 dB threshold reduction ceiling in the CBR quantiser. And
+under CBR a global threshold change mostly reshuffles bits rather than changing their
+number, because the rate loop still has to hit the target. `--minsnr-scale` works
+on the line the hole avoidance clamps back to, which `--ath-scale` cannot move.
+
+Where it earns its keep is at high bitrate, where you have surplus bits and want the
+encoder to find more things worth coding. Values a little below 256 convert that
+surplus into preserved detail. At low bitrate the useful direction is usually upward, as
+a way of accepting coarseness deliberately rather than having the rate loop decide where
+to cut.
+
+Examples:
+- Mild, cleaner: `--ath-scale 230`. Thresholds about 10 percent lower. Slightly more
+  bits to quiet detail; subtle at any bitrate, most visible above 192 kbps.
+- Strong, cleaner: `--ath-scale 180`. A clear shift of effort towards low level
+  content. Reverb tails and room noise survive better; at a tight bitrate this starves
+  something else.
+- Exaggerated, cleaner: `--ath-scale 64`. Thresholds a quarter of stock. The model is
+  effectively told almost nothing is masked. Under CBR the rate loop fights back all
+  frame long and the result is not better, just differently compromised; worth hearing
+  once to understand where the limit sits.
+- Mild, coarser: `--ath-scale 290`. A little more noise accepted per band, a small bit
+  saving.
+- Strong, coarser: `--ath-scale 512`. Thresholds doubled. Audibly grainier on
+  broadband material, noticeably cheaper per band.
+- Exaggerated, coarser: `--ath-scale 2048`. Thresholds eight times stock. The encoder
+  believes almost everything is masked, and the result is a caricature of aggressive
+  coding: hollow, hissy, with detail gone wherever anything louder sits nearby.
+
+Works with / against: `--minsnr-scale` is the stronger tool for the same goal and
+partly overrides the effect of this one, since the SNR demand is a floor on quality
+that a raised threshold cannot push through. `--reduce-clamp 0` lets thresholds be
+pushed deeper than the 29 dB ceiling, which gives low values here more room to act.
+`--spread-mask` is the companion knob for the width rather than the height of masking.
+
+Measured (acoustic stereo music): CBR 96 kbps, `128` lowers the overall error by 0.04 dB
+and `384` raises it by 0.04 dB; at 256 kbps `190` lowers it by 0.2 dB with the file size
+unchanged. VBR `-m 3` (about 108 kbps): `128` makes the file 5.5% larger and the error
+0.8 dB lower, `192` 2.3% and 0.3 dB, `384` 3.3% smaller and 0.5 dB higher, `512` 5.6%
+smaller and 0.8 dB higher.
+
+#### `--minsnr-scale <n>`
+
+**Scales the signal to noise ratio the coder is required to deliver in each band; the
+most direct knob for detail in this group.**
+
+- Applies to: every profile with an AAC core.
+- Values: Q8, `1` and up with no documented ceiling, where `256` is x1.0; default:
+  `-1`, off
+- Input: whole number
+
+Besides the masking threshold, each band carries a required coding SNR. It is the
+guaranteed minimum: whatever the threshold computation says, the coder must reach this
+quality in that band. FDK derives it from its tuning tables, and it is the nearest
+equivalent to the tone masking noise and noise masking tone constants that MusePack
+exposes directly.
+
+Below 256 demands a higher SNR than stock, so more detail and more bits per band. Above
+256 demands less and the result is coarser. Note the inversion against your intuition:
+you are scaling the permitted noise, not the demanded quality, so smaller is cleaner.
+
+The difference from `--ath-scale` is where the change lands. The hole avoidance logic
+clamps thresholds back to the minimum SNR line, so the SNR demand is a floor the rate loop
+may not breach, while a moved threshold can be pulled back. In measurement the two cost
+about the same per dB gained under VBR; `--minsnr-scale` puts more of the gain into the
+low band, `--ath-scale` spreads it more evenly.
+
+Examples:
+- Mild, more detail: `--minsnr-scale 220`. A modest lift in required quality per band.
+  Visible at medium bitrate as fewer bands dropping out.
+- Strong, more detail: `--minsnr-scale 150`. Clearly higher demand. Combined with a
+  generous bitrate, this is the knob that turns surplus bits into preserved detail; at
+  a tight bitrate it forces the rate loop to make the cut somewhere else.
+- Exaggerated, more detail: `--minsnr-scale 16`. A sixteen fold demand. The frame can
+  never satisfy it and the rate loop spends the whole frame in rescue mode, so the
+  result is worse than stock; instructive once, not a setting.
+- Mild, coarser: `--minsnr-scale 300`. A little less demanded per band, a small saving.
+- Strong, coarser: `--minsnr-scale 512`. Half the demanded quality. Audibly grainier,
+  with a real bit saving that can be redirected with other switches.
+- Exaggerated, coarser: `--minsnr-scale 4096`. The demand is effectively removed, the
+  floor under quality is gone, and bands collapse freely. A caricature of what the SNR
+  demand was protecting.
+
+Works with / against: the result is held inside the window set by
+`--minsnr-clamp-lo` (the finest demand, about 25 dB in stock) and `--minsnr-clamp-hi`
+(the coarsest, about 1 dB). Pushing far below 256 runs into the fine end, which
+`--minsnr-clamp-lo` below 256 moves further. `--reduce-clamp 0` removes the 29 dB
+reduction ceiling of the CBR rate loop.
+
+Measured: under CBR the rate loop takes most of it back: at 96 kbps on acoustic music
+`150` moves the low band 0.8 dB cleaner and the top 0.05 dB coarser, the total by
+hundredths. Under VBR `-m 3` it works as a quality setting: `150` makes the file 1.3%
+larger and the error 0.3 dB lower, `64` 7.2% larger and 1.1 dB lower, `512` 0.7% smaller
+and 0.3 dB higher.
+
+#### `--spread-mask <n>`
+
+**Scales how far masking leaks from one band into its neighbours, which decides how
+many quiet bands next to loud ones survive.**
+
+- Applies to: every profile with an AAC core. In our measurements the effect was small at
+  every bitrate tried, CBR and VBR alike.
+- Values: Q8, `0` and up, where `256` is x1.0; default: `-1`, off
+- Input: whole number
+
+A loud tone does not only mask noise in its own band, it masks a skirt of bands around
+it, more above than below. The model simulates that with a spreading function. The
+spread is the reason a quiet band sitting next to a loud one gets almost no bits: the
+model says its content is covered by the neighbour.
+
+This switch scales the spreading. Below 256 means less masking spread, so the skirt
+shrinks, fewer bands count as covered, and more of them get coded. That is the same idea
+as relaxing the tone masks noise assumption in other encoders. Above 256 widens the
+skirt and more bands are written off as covered by their neighbours, which is cheaper
+and flatter.
+
+In theory the spread decides most where bits are tight but not desperate: far below, the
+whole frame is starved and the rate loop cuts everywhere; far above, there are bits for
+everything. On our material, however, the spread decided very few bands at any bitrate,
+see Measured.
+
+Examples:
+- Mild, less masking: `--spread-mask 230`. A slightly narrower skirt. A few more bands
+  survive beside loud content; more detail around strong partials.
+- Strong, less masking: `--spread-mask 180`. Clearly more bands coded next to loud
+  ones. On dense material this is where detail around transient energy is regained, at
+  real bit cost.
+- Exaggerated, less masking: `--spread-mask 32`. Spreading almost removed. The model
+  loses most of its ability to decide what is covered, so bits scatter across bands
+  that genuinely are inaudible; a caricature that shows what the spreading function
+  buys you.
+- Mild, more masking: `--spread-mask 300`. A touch wider skirt, a small saving.
+- Strong, more masking: `--spread-mask 512`. Spread doubled. Noticeably flatter
+  spectrum beside loud content, cheap, with quiet detail written off.
+- Exaggerated, more masking: `--spread-mask 1536`. Almost everything near anything loud
+  counts as masked. The result is hollow and smeared, and useful mainly as the opposite
+  end of the demonstration.
+
+Works with / against: combine with `--ath-scale` below 256 when you want both a lower
+and a narrower mask; the two are independent and the effects add. `--minsnr-scale`
+still bounds the result from below, so a very low spread cannot push any band below its
+SNR demand.
+
+Measured (acoustic stereo music): CBR 96 kbps, `128` and `384` both within 0.01 dB of
+stock; on `dense48` at 40 kbps within 0.05 dB. VBR `-m 3`: `128` makes the file 0.4% larger,
+`64` 0.6%, with the error unchanged within 0.01 dB. On our material the spread decides
+very little; the card describes the mechanism, the measurement its size.
+
+#### `--minsnr-clamp-hi <n>`
+
+**Moves the coarsest SNR any band is held to: a guarantee that even the least demanding
+band keeps some detail.**
+
+- Applies to: every profile with an AAC core. Matters most under VBR.
+- Values: Q8, `1..320`, where `256` is x1.0 (stock); `-1` off (default). `320` is the
+  loosest possible limit, 0 dB.
+- Input: whole number
+
+Every band carries a required SNR from the tuning tables (see *SNR demand* above), and FDK
+holds that requirement inside a window. This switch moves the coarse end of the window,
+which in stock means that no band is ever allowed more noise than about 1 dB below its own
+energy. It matters for bands the tables consider unimportant: they would otherwise be
+written off almost entirely.
+
+Below 256 the limit tightens, so every band is guaranteed more SNR and the least demanding
+bands get more bits. Above 256 it loosens, up to 0 dB at `320`, where a band may be coded
+with as much noise as signal. Under CBR the rate loop undoes most of either direction; the
+measurable effect is under VBR, where the bit count follows.
+
+Examples (VBR `-m 3`, acoustic stereo music, stock about 108 kbps):
+- Mild, tighter: `--minsnr-clamp-hi 192`. File 0.3% larger, overall error 0.06 dB lower.
+- Strong, tighter: `--minsnr-clamp-hi 128`. File 1.4% larger, overall error 0.2 dB lower,
+  mostly above 4 kHz.
+- Exaggerated, tighter: `--minsnr-clamp-hi 64`. File 5.9% larger, error 0.5 dB lower: the
+  quiet bands bought back at the price of a higher bitrate.
+- Looser: `--minsnr-clamp-hi 320`. The loosest limit; on our material it changed nothing
+  measurable, because the tables seldom demand so little.
+
+Works with / against: `--minsnr-scale` moves the demand inside the window, this switch and
+`--minsnr-clamp-lo` move the window's ends. Under CBR expect differences of hundredths of
+a dB.
+
+Measured: CBR 96 kbps, acoustic stereo music: `128` moves the overall error by 0.06 dB,
+in the wrong direction, because the rate loop pays for the quiet bands elsewhere. Values
+above 320 are rejected: past 0 dB the internal fixed point number overflowed and
+the encoder produced garbage requirements.
+
+#### `--minsnr-clamp-lo <n>`
+
+**Moves the finest SNR a band may demand: the limit that `--minsnr-scale` below 256 runs
+into.**
+
+- Applies to: every profile with an AAC core, when `--minsnr-scale` asks for more SNR than
+  stock or when the tables already demand the most.
+- Values: Q8, `1` and up, where `256` is x1.0 (stock); `-1` off (default)
+- Input: whole number
+
+The fine end of the same window: in stock no band may demand more than about 25 dB of
+SNR, however important the tables think it is. That keeps one band from taking the whole
+frame.
+
+Below 256 the limit moves further, so a band may demand more than 25 dB. On its own that
+changes little, because few bands reach the limit; it becomes useful with
+`--minsnr-scale` well below 256, which pushes the demanding bands against it. Above 256 the
+limit comes closer, the most demanding bands are capped sooner and their bits go to the
+rest. Very large values bring the two ends of the window together and every band demands
+the same, which is no longer a psychoacoustic model.
+
+Examples (VBR `-m 3`, acoustic stereo music):
+- Mild, finer: `--minsnr-clamp-lo 64`. Without `--minsnr-scale` no measurable change.
+- Strong, finer: `--minsnr-scale 64 --minsnr-clamp-lo 64`. The low band (100 Hz..1 kHz)
+  0.4 dB cleaner than with `--minsnr-scale 64` alone.
+- Mild, coarser: `--minsnr-clamp-lo 1024`. File 0.2% smaller, error in the low band
+  0.3 dB higher.
+- Exaggerated, coarser: `--minsnr-clamp-lo 4096`. File 0.8% smaller, low band 1.4 dB
+  worse: the bands the tables care about most are the ones that lose.
+
+Works with / against: the partner of `--minsnr-scale` below 256. Group E's hole switches
+work on the same problem from the other side, by deciding which bands may be cut to zero.
+
+Measured: CBR 96 kbps, acoustic stereo music: `4096` raises the low band error by 1.1 dB
+and the overall error by 0.03 dB; `64` alone changes nothing measurable.
+
+#### `--reduce-clamp <0|1>`
+
+**Removes the 29 dB ceiling on how far the CBR quantiser may push thresholds down,
+letting the other detail switches act without hitting a wall.**
+
+- Applies to: CBR, that is the default `-m 0` path. VBR uses a different code path and
+  is unaffected.
+- Values: `0` or `1`; default: `1`, the ceiling applies, as in stock
+- Input: whole number, on/off
+
+When the CBR rate loop needs more quality in a band, it reduces that band's threshold.
+There is a ceiling on the total reduction, about 29 dB, which stops the loop from
+chasing one demanding band indefinitely. For normal material the ceiling never binds. If
+you are deliberately demanding much more precision than stock, with `--minsnr-scale`
+well below 256 or `--ath-scale` well below 256, the ceiling is exactly what stops your
+setting from producing a further effect.
+
+Setting `0` drops the ceiling, so thresholds may be pushed deeper and more bits flow
+into the demanding bands. On its own this changes little, because stock rarely reaches
+29 dB of reduction. It is a companion switch, not a standalone one.
+
+Values:
+- `1`: the 29 dB reduction ceiling applies (stock, default).
+- `0`: ceiling removed, thresholds may be pushed deeper.
+
+Example in context:
+
+    fdkaac -p 2 -b 256000 --minsnr-scale 150 --reduce-clamp 0 -o out.m4a in.wav
+
+Works with / against: pair it with `--minsnr-scale` below 256 for extreme detail; it is
+near pointless alone. No effect under VBR (`-m 1..5`).
+
+#### `--mask-slope <dB>`
+
+**Shifts how far below the frame average a band must sit before the encoder relaxes its
+SNR requirement.**
+
+- Applies to: every profile with an AAC core, both channels. Off by default.
+- Values: `-24.0..50.0` dB, `0` = off (default); distinct results only in about -9.9..+9
+- Input: decimal, up to 3 places, `.` or `,`
+
+FDK carries a heuristic that relaxes the required SNR of a band whose energy lies far
+below the average energy of the frame, more than about 10 dB below in stock. In plain
+words the encoder spends less on very quiet bands, on the grounds that the loud ones mask
+them. This switch shifts that 10 dB line: a positive value raises it, so fewer bands
+count as negligible; a negative value lowers it, so more do.
+
+Measured on music the effect is small. The heuristic touches only the quietest bands, and
+the rate loop redistributes whatever it saves, so under CBR the decoded error moves by
+hundredths of a dB. Under VBR the file grows or shrinks by a fraction of a percent. It is
+a laboratory switch for checking what that heuristic contributes, not a tool for detail.
+For quiet detail use `--minsnr-scale` under VBR or the hole switches of group E.
+
+The accepted range is wider than the live one. Distinct results appear for about -9.9 to
++9; at -10 and below the result stops changing, +10 to +40 give one stream and 45 to 50
+another.
+
+Examples:
+- Mild, protect quiet bands: `--mask-slope 2`. A few more quiet bands keep their
+  requirement.
+- Strong, protect quiet bands: `--mask-slope 6`. Under VBR the file grows 0.1% on acoustic
+  music, the overall error drops 0.03 dB.
+- Exaggerated, protect quiet bands: `--mask-slope 9`. The top of the live range; beyond it
+  nothing changes.
+- Mild, starve quiet bands: `--mask-slope -2`. A few more quiet bands relaxed.
+- Strong, starve quiet bands: `--mask-slope -6`. Under CBR within 0.1 dB of stock.
+- Exaggerated, starve quiet bands: `--mask-slope -9.5`. The bottom of the live range.
+
+Works with / against: applies to mid and side alike. It does not touch the side
+threshold, which is the business of `--side-bias` and `--side-knee`.
+
+Measured: mix48 at 40 kbps gives distinct streams only for about -9.9..+9. Acoustic stereo
+music at 96 kbps CBR (`+6`, `-6`) and `dense48` at 40 kbps (`+9`, `-9`): mid and side
+within 0.1 dB of stock. VBR `-m 3`: `+9` and `-9` change the file by +0.3% and +0.6%, the
+mid error by under 0.2 dB.
 
 ## E. Core transients, pre-echo and spectral holes
 

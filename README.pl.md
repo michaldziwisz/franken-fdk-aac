@@ -622,523 +622,475 @@ wyłączone wszędzie tam, gdzie ma to znaczenie. Otwórz pasmo siłą przez `-w
 dwa ustawienia przestaną być równe. Sprawdzaj więc swój zakres wobec kodowanego pasma, a
 nie tylko wobec liczby SFB.
 
-Wszystkie przełączniki w tej grupie są wyłączone, dopóki się ich nie poda. Wyłączony
-znaczy stock (zachowanie niezmienionego FDK): wartownik `-1`, a dla `--side-bias`,
-`--side-knee` i `--mask-slope` wartość `0`, zostawia własną decyzję FDK w spokoju.
-`--side-bias`, `--side-knee` i `--mask-slope` przyjmują liczby dziesiętne, z `.` albo `,`
-i do 3 miejsc po przecinku; pozostałe to liczby całkowite i odrzucają części dziesiętne.
+Wszystkie przełączniki tej grupy są wyłączone, dopóki się ich nie poda. Wyłączony znaczy
+domyślne zachowanie FDK: wartość `-1`, a dla `--side-bias` i `--side-knee` wartość `0`.
+`--side-bias` i `--side-knee` przyjmują liczby dziesiętne, z `.` albo `,`, do 3 miejsc po
+przecinku; `--side-cutoff` przyjmuje herce; pozostałe to liczby całkowite i odrzucają
+części dziesiętne.
 
 ### MS
 
-MS nic nie kosztuje w jakości dźwięku, więc nie ma tu kompromisu typu „MS psuje obraz”,
-którym trzeba by zarządzać. Zarządzać można tym, gdzie MS jest dozwolone i jak budżet
-bitów dzieli się między kanał mid i kanał side, gdy pasmo już jest w MS. Dwa z tych
-przełączników to prawdziwa kontrola (`--msmask` oraz zakres pasm), dwa to szczere
-ciekawostki (`--ms-bias`, `--ms-precision`), a trzy to przełączniki jakości, które wynagradzają
-czas poświęcony na naukę (`--side-bias`, `--side-knee`, `--mask-slope`).
+Sam obrót MS nic nie kosztuje w dźwięku, bo jest bezstratny. O tym, jak obraz stereo
+przechodzi przez koder, decyduje podział bitów między kanał mid i kanał side w pasmach
+kodowanych jako MS, a przede wszystkim decyzja, które pasma side w ogóle zostaną
+zakodowane. Każde pasmo side wyzerowane w ramce to kawałek obrazu przesunięty na środek.
 
-#### `--msmask <n>`
+Przełączniki tej części dzielą się na trzy poziomy:
 
-**Wymuś decyzję mid/side globalnie, zamiast pozwolić koderowi wybierać osobno dla każdego pasma.**
+- **Dwie dźwignie**: `--side-bias` przesuwa granicę, przy której pasmo side zostaje albo
+  wypada, a `--side-knee` stopniuje pasma leżące przy tej granicy według ich własnego
+  poziomu. Szerokość obrazu wobec jakości środka ustawia się tymi dwoma, osobno albo razem.
+- **Wymiana na niskie bitrate'y**: `--side-cutoff` oddaje side powyżej zadanej
+  częstotliwości, a jego bity przekazuje kanałowi mid.
+- **Laboratorium**: `--msmask`, `--msbands`, `--msbands-lo`, `--msbands-hi`, `--ms-bias`,
+  `--ms-precision`, `--mid-bias`. Sięgają wprost do decyzji MS i do progów pasm MS. Służą
+  do odtworzenia warunku technicznego albo do sprawdzenia, co robi koder. Na muzyce żaden
+  z nich nie wypadł w pomiarze lepiej niż dwie dźwignie, a kilka pogarsza wynik względem
+  ustawień domyślnych.
 
-- Dotyczy: rdzeń AAC w stereo (LC, LD, ELD oraz rdzeń stereo pod HE-AAC). Brak działania
-  w HE-AAC v2, gdzie rdzeń jest mono.
-- Wartości: `-1` auto (domyślnie, FDK decyduje dla każdego pasma), `0` wyłączone (czyste
-  L/R wszędzie), `1` włączone (MS w każdym pasmie); domyślnie `-1`
-- Wpisywanie: liczba całkowita
-
-Koder normalnie testuje każde pasmo na oba sposoby i zostawia to, które pakuje się
-mniejszym kosztem. To jest blisko optimum dla rozmiaru pliku, a ponieważ przekształcenie
-jest bezstratne, jest też blisko nieistotne dla dźwięku. Mimo to dwie sytuacje sprawiają,
-że wymuszone ustawienia warto mieć pod ręką.
-
-`--msmask 0` gwarantuje, że koder nigdy nie zmiesza kanałów. Szum kwantyzacji
-zostaje wtedy w tym kanale, który go wywołał, zamiast być dzielony między mid i side i
-rozprowadzany na oba wyjścia przy rekonstrukcji. To ma znaczenie, jeśli plik pójdzie
-później przez kasowanie środka, usuwanie wokalu albo jakiekolwiek inne odejmowanie
-jednego kanału od drugiego: przy czystym L/R pozostałość to materiał plus jego
-własny szum, przy MS to materiał plus szum dopasowany do sumy i różnicy. Kosztuje to
-bity, a przy skorelowanej muzyce kosztuje prawdziwe bity.
-
-`--msmask 1` to przeciwna skrajność, MS wymuszone nawet tam, gdzie koder uznał L/R za
-tańsze. Przydatne jako punkt odniesienia i przy materiale mocno skorelowanym, trochę
-marnotrawne przy materiale o naprawdę niezależnych kanałach, na przykład dwóch
-niezwiązanych źródłach mono rozpanoramowanych na skraje.
-
-Wartości:
-- `-1`: stock. Decyzja osobno dla każdego pasma, z własnego porównania kosztów kodera.
-- `0`: czyste L/R w każdym pasmie. Nic nie jest mieszane między kanałami.
-- `1`: MS w każdym pasmie.
-
-```
-fdkaac -p 2 -b 128000 --msmask 0 in.wav -o lr.m4a
-```
-
-Współpraca i konflikty: `--msmask 0` czyni bezczynną całą rodzinę mid/side, w tym
-`--msbands`, `--side-bias`, `--side-knee` i `--mid-bias`, bo żadne pasmo nie jest w MS.
-`--msbands`/`--msbands-lo`/`--msbands-hi` zwężają obszar, w którym wybrana maska może
-obowiązywać.
-
-Zmierzone: na dwusekundowej próbce różnica między `--msmask 0` a `--msmask 1` to około
-900 bajtów ładunku, co ustawia całą decyzję MS w odpowiedniej perspektywie obok
-`--ms-bias` z jego około 2 bajtami.
-
-#### `--msbands <n>`
-
-**Dopuść MS tylko w N najniższych pasmach współczynnika skali, a wszystko powyżej zostaw w L/R.**
-
-- Dotyczy: rdzeń AAC w stereo. Brak działania w HE-AAC v2.
-- Wartości: `-1` bez limitu (domyślnie) albo `0..N`, gdzie N to liczba aktywnych SFB; `n`
-  oznacza, że pasma `0..n-1` mogą użyć MS
-- Wpisywanie: liczba całkowita
-
-To jest postać „od dołu aż do” ograniczenia pasmowego. Liczy się zawsze od basu w górę,
-więc `--msbands 6` oznacza, że pasma od 0 do 5 mogą być kodowane mid/side, a pasma 6 i
-wyższe zostają wyłącznie w L/R. `--msbands 0` nie dopuszcza MS nigdzie, co jest tym samym
-co `--msmask 0`.
-
-Po co w ogóle ograniczać MS, skoro jest bezstratne? Bo podział bitów idzie za maską.
-Wewnątrz pasm MS koder przydziela bity wobec progów mid i side, a kanał side danego pasma
-jest tylko tak dobry, jak pozwalają na to bity z budżetu. Trzymanie szczytu widma w L/R
-utrzymuje tam separację kanałów niezależnie od tych negocjacji, co jest obronnym wyborem
-przy materiale, którego góra naprawdę jest nieskorelowana. Dobrze łączy się to też z
-eksperymentami na górnym pasmie: L/R na górze i MS nisko to inny rozkład ryzyka niż
-własny wybór kodera dla każdego pasma.
-
-Różnica wobec `--msbands-lo`/`--msbands-hi` to tylko kształt obszaru: ten przełącznik
-zawsze startuje od pasma 0, para może startować gdziekolwiek.
-
-Przykłady:
-- Łagodne ograniczenie: `--msbands 40`. Tylko najwyższe pasma są odepchnięte do L/R; przy
-  większości materiału strumień prawie się nie rusza, bo te pasma często niosły niewiele.
-- Mocne ograniczenie: `--msbands 12`. MS zamknięte mniej więcej w basie i niskim środku.
-  Oczekuj mierzalnie większego pliku przy tym samym celu jakościowym albo grubszej
-  kwantyzacji przy tym samym bitrate'ie.
-- Przesadzone ograniczenie: `--msbands 2`. MS praktycznie na niczym. Karykatura: płacisz
-  niemal pełną cenę niezależnego stereo, a przy tym nadal sygnalizujesz MS w dwóch
-  pasmach.
-
-Współpraca i konflikty: równoważne z `--msbands-lo 0 --msbands-hi n-1` (`--msbands 6` i
-`--msbands-lo 0 --msbands-hi 5` dają ten sam strumień). Bezczynne przy `--msmask 0`.
-Limit powyżej liczby aktywnych SFB jest tym samym co brak limitu.
-
-#### `--msbands-lo <n>`
-
-**Najniższe pasmo współczynnika skali w zakresie, w którym MS jest dozwolone.**
-
-- Dotyczy: rdzeń AAC w stereo. Brak działania w HE-AAC v2.
-- Wartości: `-1` wyłączone (domyślnie) albo `0..N` w granicach liczby aktywnych SFB;
-  używaj w parze z `--msbands-hi`
-- Wpisywanie: liczba całkowita
-
-Razem z `--msbands-hi` definiuje to okno od..do: MS może być użyte w pasmach `lo..hi`
-włącznie i nigdzie więcej. W odróżnieniu od `--msbands` okno nie musi dotykać dołu widma,
-a to jedyny sposób, żeby umieścić MS wyłącznie wysoko, na przykład po to, by koder scalał
-skorelowany szum i powietrze na górze, podczas gdy bas i środek zostają w pełni
-niezależnym L/R.
-
-Podaj obie połówki pary. Samo `--msbands-lo` zostawia górną krawędź nieustawioną, a to
-nie jest zakres.
-
-Przykłady:
-- Łagodnie, okno startujące nisko: `--msbands-lo 2 --msbands-hi 48`. Prawie wszystko może
-  użyć MS, wykluczone są dwa najniższe pasma. Rozmiar blisko stock.
-- Mocno, okno w środku: `--msbands-lo 10 --msbands-hi 30`. MS tylko w zakresie środka.
-  Bas i góra są w L/R, więc plik rośnie, a góra zachowuje pełną separację.
-- Przesadnie, okno na samej górze: `--msbands-lo 44 --msbands-hi 48` z `-w 20000`. MS na
-  pięciu pasmach samego powietrza. Karykatura funkcji zakresu pasm i najwyraźniejszy
-  pokaz tego, dlaczego kodowane pasmo ma znaczenie: bez `-w 20000` te pasma leżą powyżej
-  domyślnego odcięcia 15,75 kHz i ustawienie degeneruje się do `--msmask 0`.
-
-Współpraca i konflikty: trzeba to czytać wobec `active SFBs` z `--verbose` oraz wobec
-kodowanego pasma. Bezczynne przy `--msmask 0`. Nakłada się na `--msbands`, które jest tą
-samą funkcją zakotwiczoną w pasmie 0.
-
-#### `--msbands-hi <n>`
-
-**Najwyższe pasmo współczynnika skali, włącznie, w zakresie, w którym MS jest dozwolone.**
-
-- Dotyczy: rdzeń AAC w stereo. Brak działania w HE-AAC v2.
-- Wartości: `-1` wyłączone (domyślnie) albo `0..N` w granicach liczby aktywnych SFB;
-  używaj w parze z `--msbands-lo`
-- Wpisywanie: liczba całkowita
-
-Górna krawędź opisanego wyżej okna od..do, i to włącznie: `--msbands-hi 5` obejmuje pasmo
-5. Pasma powyżej idą w zwykłe L/R.
-
-W blokach krótkich zakres obejmuje te same częstotliwości na tablicy krótkiej (zobacz
-*Bloki krótkie* wyżej), więc `--msbands-lo 18 --msbands-hi 30` przy 48 kHz to pasma
-krótkie 3..7.
-
-Przykłady:
-- Łagodnie: `--msbands-lo 0 --msbands-hi 44`. Cztery najwyższe pasma wykluczone z MS.
-  Mała zmiana.
-- Mocno: `--msbands-lo 0 --msbands-hi 20`. MS do mniej więcej obszaru obecności, powyżej
-  L/R.
-- Przesadnie: `--msbands-lo 0 --msbands-hi 0`. MS w dokładnie jednym pasmie, w basie.
-  Funkcjonalnie niezależne stereo z jednym pasmem buchalterii.
-
-Współpraca i konflikty: `--msbands-lo` to druga połówka; bez niego nie ma zakresu.
-Wartość powyżej liczby aktywnych SFB jest tym samym co brak górnego limitu. Bezczynne
-przy `--msmask 0`.
-
-#### `--ms-bias <n>`
-
-**Przechyl porównanie kosztów L/R kontra MS w stronę MS.**
-
-- Dotyczy: rdzeń AAC w stereo. Brak działania w HE-AAC v2.
-- Wartości: `-1` wyłączone (domyślnie, porównanie stock), `0` też stock, `1..255` w Q8,
-  gdzie `256` oznaczałoby 1,0 w wewnętrznych jednostkach logarytmicznych FDK, więc 128 to
-  +0,5
-- Wpisywanie: liczba całkowita
-
-Bądźmy przy tym szczerzy: to binarne szturchnięcie przebrane za suwak i najsłabszy
-przełącznik w tej grupie. Pomiar mówi to wprost. `0` daje strumień stock; każda wartość
-od 1 do 255 daje jeden i ten sam inny strumień. Nie ma gradientu, po którym można by
-jechać, więc nie ma czego stroić.
-
-Powód jest strukturalny. MS jest bezstratne, więc ten próg nie decyduje o tym, jak pasmo
-brzmi, a tylko o tym, które z dwóch kodowań taniej się zapisuje. Własne porównanie kodera
-jest już blisko optimum, więc przesunięcie linii decyzyjnej może przerzucić tylko te
-pasma, które były niemal na remis, a pasma niemal na remis kosztują niemal tyle samo w
-jednym i w drugim wariancie. Wypadkowy efekt na rozmiarze pliku to części procenta, a
-korelacja kanałów po dekodowaniu rusza się na czwartym miejscu po przecinku.
-
-Używaj go po to, żeby potwierdzić, że punkt decyzyjny istnieje, a nie żeby kształtować
-dźwięk. Prawdziwą kontrolę nad MS porządnie zapewniają `--msmask 0` albo `--msmask 1`
-oraz przełączniki zakresu pasm, a `--side-bias` to przełącznik, który faktycznie zmienia to,
-co słyszysz.
-
-Wartości:
-- `-1` albo `0`: porównanie kosztów stock.
-- `1..255`: jeden jedyny alternatywny strumień, nieco chętniejszy do wybierania MS.
-
-```
-fdkaac -p 2 -b 128000 --ms-bias 128 in.wav -o biased.m4a
-```
-
-Współpraca i konflikty: bez sensu razem z `--msmask 0` albo `--msmask 1`, które usuwają
-decyzję w całości. Dla każdego praktycznego celu przesłonięte przez `--msmask` i
-`--side-bias`.
-
-Zmierzone: mix48 przy 128 kbps oraz tonal48/sparse48 przy 96 kbps, wartości 1..255 dają
-wszystkie identyczny strumień, który różni się jedynie od `0`. Efekt na rozmiarze poniżej
-0,1 procenta, rzędu 2 bajtów na dwusekundowej próbce.
-
-#### `--ms-precision <n>`
-
-**Przeskaluj precyzję kwantyzacji pasm MS jako całości, mid i side razem.**
-
-- Dotyczy: rdzeń AAC w stereo, tylko pasma MS. Brak działania w HE-AAC v2.
-- Wartości: mnożnik Q8 od `256` (bez zmiany) w górę, `384` to około 1,5x, `512` około 2x,
-  bez górnego limitu; wartości poniżej 256 są odrzucane; `-1` wyłączone (domyślnie)
-- Wpisywanie: liczba całkowita
-
-To tutaj najbliższa rzecz do globalnej dźwigni jakości w stylu LAME dla pary stereo:
-podnieś ją i progi w pasmach MS zacieśniają się, co oznacza płytsze dziury w widmie i
-drobniejszą kwantyzację naraz w mid i w side. Jest to narzędzie tępe, bo rusza mid i side
-w tym samym kierunku i o ten sam współczynnik, więc nie potrafi przesunąć równowagi
-między nimi, a to zwykle jest to, czego się naprawdę chce.
-
-Jego zasięg jest też ograniczony na dwa sposoby, które warto znać, zanim się na niego
-poświęci czas. Powyżej mniej więcej 600 do 800 progi wpadają we własną twardą podłogę FDK
-i dalsze podnoszenie przestaje cokolwiek dawać. A przy CBR budżet bitów nie rośnie, więc
-zacieśniony próg w pasmach MS przenosi głównie bity skądś indziej z tej samej ramki,
-zamiast dodawać szczegół. Efekt spłaszcza się w przetasowanie.
-
-Gdy celem jest jakość stereo, sięgnij raczej po `--side-bias`: działa on osobno na kanał,
-w tej decyzji, która faktycznie porzuca albo zachowuje pasmo side.
-
-Przykłady:
-- Łagodnie: `--ms-precision 320`. Nieco ciaśniejsze progi MS, mniej więcej 1,25x. Mały
-  spadek liczby wyzerowanych pasm wewnątrz MS.
-- Mocno: `--ms-precision 512`. Około 2x. Wyraźnie mniej dziur w pasmach MS; przy CBR
-  oczekuj, że zysk zostanie opłacony gdzie indziej w ramce.
-- Przesadnie: `--ms-precision 2048`. Głęboko w obszarze nasycenia, gdzie podłoga progu
-  już wzięła władzę. Karykatura: liczba wygląda dramatycznie, a dźwięk przestaje za nią
-  iść.
-Drugiego kierunku nie ma: ten przełącznik tylko zacieśnia. Aby celowo pogrubić pasma MS,
-podnieś próg side ujemnym `--side-bias` albo próg mid przez `--mid-bias`.
-
-Współpraca i konflikty: bezczynne przy `--msmask 0`. Nakłada się na `--mid-bias` i
-`--side-bias`, które ruszają po jednym kanale naraz; jeśli używasz tych dwóch, ten zostaw
-domyślny.
-
-Pod maską: mnożnik Q8 nakładany na progi pasm MS, stąd 256 oznaczające 1,00.
-
-#### `--mid-bias <n>`
-
-**Celowo podnieś próg kanału mid, żeby uwolnione bity mogły pójść do side.**
-
-- Dotyczy: rdzeń AAC w stereo, pasma MS. Brak działania w HE-AAC v2.
-- Wartości: Q8, `256` = wyłączone, powyżej 256 podnosi próg mid, bez górnego limitu; `-1`
-  wyłączone (domyślnie)
-- Wpisywanie: liczba całkowita
-
-Po obrocie MS kanał mid niesie sumę, a to przy normalnej muzyce większość głośności i
-większość informacji, której ludzie słuchają. Ten przełącznik celowo podnosi jego próg
-maskowania, co czyni mid tańszym w kodowaniu i zostawia więcej ze stałego budżetu dla
-side. To uprawniony sposób kupienia szerokości stereo, a przy tym ryzykowny, bo płacisz
-tym kanałem, który niesie melodię.
-
-Używaj oszczędnie, a do tej samej pracy wybieraj raczej `--side-bias`. Oba ciągną ten sam
-budżet mid/side, ale `--side-bias` ciągnie od strony side, gdzie pomiar jest czystszy i
-gdzie efekt przedobrzenia objawia się jako węższy obraz, a nie jako bardziej mętny wokal
-prowadzący.
-
-Przykłady:
-- Łagodnie: `--mid-bias 288`. Próg mid podniesiony nieznacznie, trochę zapasu przekazane
-  do side. Trudno się przyczepić przy gęstym materiale.
-- Mocno: `--mid-bias 384`. Około 1,5x. Side dostaje realny udział; mid zaczyna tracić
-  definicję przy niskim bitrate'ie.
-- Przesadnie: `--mid-bias 1024`. Mid jest oddany, żeby wykarmić sygnał różnicowy.
-  Karykatura: szeroki, wydrążony obraz z miękkim środkiem, czyli coś, czego przy
-  kodowaniu muzyki prawie nikt nie chce.
-
-Współpraca i konflikty: bezczynne przy `--msmask 0` i bez sensu w połączeniu z dużym
-dodatnim `--side-bias`, bo oba wydają ten sam budżet z przeciwnych stron. Nakłada się na
-`--ms-precision`, które zamiast tego rusza mid i side razem.
+Jak mierzyliśmy w tej części: AAC-LC stereo, dekoder Fraunhofera, plik po dekodowaniu
+wyrównany w czasie do źródła i porównany w dziedzinie mid/side od 100 Hz do górnej
+granicy kodowanego pasma. *Błąd mid* i *błąd side* to energia błędu kodowania względem
+energii danego kanału w źródle, w dB, więc niżej znaczy czyściej. *Wyzerowane pasma side*
+to liczba pasm side na ramkę zakodowanych jako zero, odczytana z `--bit-stats`. Głównym
+materiałem jest akustyczna muzyka stereo 44,1 kHz; `dense48` to syntetyczny gęsty sygnał
+z grupy E.
 
 #### `--side-bias <dB>`
 
-**Przesuń próg maskowania kanału side w pasmach MS: główna dźwignia szerokości stereo
-kontra jakość środka.**
+**Przesuwa granicę, przy której pasmo side zostaje albo wypada: główna dźwignia
+szerokości stereo wobec jakości środka.**
 
-- Dotyczy: rdzeń AAC w stereo, pasma MS. Brak działania w HE-AAC v2, a przy `--msmask 0`
-  nie ma tu nic do roboty.
-- Wartości: `-24.0..50.0` dB, `0` = wyłączone (domyślnie, próg stock)
+- Dotyczy: rdzenia AAC w stereo (LC, LD, ELD i rdzeń stereo pod HE-AAC), pasm kodowanych
+  jako MS. Bez działania w HE-AAC v2, a przy `--msmask 0` nie ma na czym działać.
+- Wartości: `-24.0..50.0` dB; `0` = wyłączone (domyślnie, próg FDK)
 - Wpisywanie: liczba dziesiętna, do 3 miejsc, `.` albo `,`
 
-To ten przełącznik, którego warto się w tej grupie nauczyć. Koder decyduje, osobno dla
-każdego pasma współczynnika skali, czy sygnał side jest wart kodowania, porównując jego
-energię z progiem maskowania; poniżej progu pasmo zostaje wyzerowane. Od tego jednego
-porównania zależy szerokość stereo. Przesunięcie progu przesuwa tę linię.
+W każdym paśmie MS koder porównuje energię sygnału side z jego progiem maskowania. Poniżej
+progu pasmo side jest zerowane, powyżej jest kodowane, i to tym dokładniej, im wyżej
+ponad progiem leży. Sygnał side to wszystko, czym różnią się kanały lewy i prawy, więc od
+tego jednego porównania zależy szerokość obrazu. `--side-bias` przesuwa próg side w każdym
+paśmie MS o podaną liczbę decybeli.
 
-Wartość dodatnia obniża efektywną poprzeczkę dla kanału side: mniej pasm side jest
-zerowanych, te, które przeżyją, są kwantyzowane drobniej, a to, co słyszysz, to czystsza
-szerokość, ogony pogłosu, które wybrzmiewają, a nie urywają się, i ambience, które
-zostaje na miejscu, a nie zapada się do środka. Nie jest to darmowe. Budżet bitów jest
-stały, więc te bity biorą się z kanału mid, a przy niskim bitrate'ie da się usłyszeć, jak
-środek je oddaje. To zamierzony kompromis, a nie wada. Pomiar
-poniżej pokazuje dokładnie ten kształt: błąd side poprawia się równo od +1 do +9, podczas
-gdy błąd mid na tym samym odcinku równo się pogarsza.
+Wartość dodatnia obniża próg. Mniej pasm side jest zerowanych, pozostałe są kwantyzowane
+dokładniej, a w odsłuchu obraz robi się stabilniejszy: pogłos wybrzmiewa zamiast się
+urywać, a dźwięk pomieszczenia zostaje na swoim miejscu. Budżet bitów nie rośnie, więc te
+bity zabiera kanał mid i przy niskim bitrate'ie słychać, że płaci za to środek. Między
++3 a +9 ta wymiana zwykle się opłaca. Powyżej około +12 side przestaje zyskiwać, a mid
+dalej traci.
 
-Wartość ujemna działa odwrotnie i podnosi poprzeczkę, więc pasma side wypadają, a obraz
-zwęża się w stronę mono. To celowe narzędzie do pracy przy bardzo niskim bitrate'ie albo
-do efektu, i ma jedną twardą cechę strukturalną, o której trzeba wiedzieć: nie zwęża
-gładko do samego dołu.
+Wartość ujemna podnosi próg: pasma side wypadają, obraz zwęża się w stronę mono, a
+uwolnione bity idą do mid. Małe wartości ujemne działają płynnie. Przy około -0,97 dB jest
+jednak skok. Podniesiony próg przekracza tam minimalny SNR, który mechanizm unikania dziur
+w FDK utrzymuje w każdym paśmie, i pasma side, które FDK trzymało przy życiu tylko dzięki
+temu ratunkowi, wypadają razem. Wielkość skoku zależy od tego, jak bardzo ramkom brakuje
+bitów. Przy wygodnym bitrate'ie skok jest umiarkowany, a dalej zwężanie postępuje
+stopniowo. W ramkach już zagłodzonych większość pasm side istnieje tylko dzięki
+ratunkowi, więc skok zabiera prawie cały side, a -1, -4 i -12 dają ten sam strumień. Do
+łagodnego zwężania zostań w przedziale od 0 do -0,95 albo użyj ujemnego `--side-knee`,
+który skoku nie ma.
 
-**Skok przy około -0,97 dB.** Od 0 do -0,95 dB błąd side rusza się gładko, czyli
-następuje łagodne zwężanie, którego można się spodziewać. Przy około -0,97 dB podniesiony
-próg side przekracza linię minimalnego SNR, którą koder trzyma w swojej logice unikania
-dziur, i większość pasm side wypada naraz. Dalej przełącznik nic już nie zmienia: -1, -4
-i -12 dają ten sam wynik, bo side jest już odcięty. To właściwość kodera, prawdziwa
-nieciągłość w jego łańcuchu decyzyjnym, a nie artefakt zaokrąglania w linii poleceń:
-liczby dziesiętne są czytane do 3 miejsc, a wpisana wartość jest tą użytą. Praktyczna
-reguła wynika z tego bezpośrednio. Do łagodnego zwężania zostań w przedziale 0 do -0,95,
-a wszystko przy -0,97 i dalej traktuj jako jedno ustawienie, które znaczy „porzuć side”.
+Przykłady (akustyczna muzyka stereo, 96 kbps; bez przełącznika: mid -20,3 dB, side
+-11,4 dB, 7,0 wyzerowanych pasm side na ramkę):
+- Łagodnie, więcej dla side: `--side-bias 3`. Side czystszy o 0,8 dB, mid gorszy o 0,4 dB,
+  3,4 wyzerowanych pasm side.
+- Mocno, więcej dla side: `--side-bias 6`. Side czystszy o 1,3 dB, mid gorszy o 1,3 dB,
+  1,2 wyzerowanego pasma. Zwykła wartość robocza.
+- Przesadnie, więcej dla side: `--side-bias 24`. Side znów gorszy niż przy +12, a mid
+  stracił 3,3 dB: bity wlane w kanał, który nie umie ich już wykorzystać.
+- Łagodnie, węziej: `--side-bias -0,5`. Kilka brzegowych pasm side oddanych; mid i side
+  w granicach 0,15 dB od ustawień domyślnych.
+- Mocno, węziej: `--side-bias -3`. Za skokiem: 13,8 wyzerowanych pasm side, side gorszy o
+  0,9 dB, mid czystszy o 0,2 dB.
+- Przesadnie, węziej: `--side-bias -12`. Wyzerowanych 26 z około 37 pasm side, błąd side
+  wyższy o 5,7 dB. Na `dense48` przy 40 kbps już `-6` zostawia side 6 bitów na ramkę,
+  czyli praktycznie mono.
 
-W kierunku dodatnim użyteczny odcinek kończy się około +9. Dalej pomiar pokazuje, że oba
-kanały się pogarszają: side przestaje się poprawiać, a mid nadal się degraduje, co jest
-złym interesem naraz w obu kierunkach.
+Współpraca i konflikty: `--side-knee` działa na tej samej decyzji i łączy się z tym
+przełącznikiem bez kolizji: bias ustawia granicę, knee stopniuje pasma przy niej.
+`--side-cutoff` usuwa side powyżej swojej częstotliwości niezależnie od biasu.
+`--msmask 0` wyłącza MS i czyni ten przełącznik bezczynnym; `--msbands`, `--msbands-lo` i
+`--msbands-hi` ograniczają pasma, do których sięga.
 
-Przykłady:
-- Łagodnie, więcej bitów do side: `--side-bias 1`. Odrobinę więcej szczegółu side, mid
-  praktycznie nietknięty. Bezpieczne na wszystkim.
-- Mocno, więcej bitów do side: `--side-bias 6`. Wyraźnie szerzej i przestrzenniej, a mid
-  zaczyna za to płacić przy niskim bitrate'ie. To jest normalna wartość robocza.
-- Przesadnie, więcej bitów do side: `--side-bias 24`. Za użytecznym odcinkiem. Side nie
-  zyskuje już nic, a mid jest mierzalnie uszkodzony, więc obraz staje się szeroki, a
-  środek chudy. Karykatura, która pokazuje, gdzie poszedł budżet.
-- Łagodnie, zwężanie: `--side-bias -0,3`. Nieco ciaśniejszy obraz, kilka brzegowych pasm
-  side oddanych. Precyzyjna kontrola jest możliwa właśnie w tym obszarze.
-- Mocno, zwężanie: `--side-bias -0,9`. Zauważalnie węziej, jeszcze wewnątrz obszaru
-  gładkiego i jeszcze tuż przed skokiem.
-- Przesadnie, zwężanie: `--side-bias -4`. Za skokiem przy -0,97 dB, więc side po prostu
-  zniknął, a wynik jest blisko mono. Karykatura, i to identyczna z -1 albo -12: nie ma już
-  czego usuwać.
+Zmierzone (akustyczna muzyka stereo; błąd mid / błąd side w dB / wyzerowane pasma side na
+ramkę):
 
-Współpraca i konflikty: `--side-knee` kształtuje krawędź tej samej decyzji i łączy się z
-tym czysto. `--mid-bias` naciska ten sam budżet od strony mid, więc używanie obu mocno to
-liczenie podwójne. `--msmask 0` usuwa kanał side w całości i czyni ten przełącznik
-bezczynnym. `--msbands`/`--msbands-lo`/`--msbands-hi` ograniczają, których pasm może on
-dotknąć.
+| `--side-bias` | 48 kbps | 96 kbps |
+|---|---|---|
+| bez przełącznika | -21,6 / -8,5 / 16,0 | -20,3 / -11,4 / 7,0 |
+| `+3` | -19,1 / -7,9 / 11,6 | -19,8 / -12,3 / 3,4 |
+| `+6` | -16,5 / -11,3 / 3,5 | -19,0 / -12,7 / 1,2 |
+| `+9` | -15,4 / -12,3 / 1,8 | -18,6 / -13,1 / 0,6 |
+| `-1` | -22,9 / -8,6 / 18,3 | -20,4 / -11,2 / 10,0 |
+| `-3` | -24,2 / -8,0 / 20,7 | -20,5 / -10,5 / 13,8 |
 
-Zmierzone: dense48, LC stereo 40 kbps, dekoder Fraunhofera, energia błędu względem
-źródła w każdym kanale. Pasmo domyślne (9,75 kHz): błąd side -0,53, -0,58, -0,62, -0,63,
--0,66 dB przy 0, +1, +3, +6, +9, a błąd mid w tym czasie -8,62, -8,53, -8,27, -7,08,
--6,43 dB. Przy +24 side znów się pogarsza (-0,42 dB), a mid traci dalej (-5,81 dB).
-Kierunek ujemny przy paśmie wymuszonym na 18 kHz (`-w 18000`): błąd side -1,13 dB przy 0,
--1,03 przy -0,5, -0,93 przy -0,9, -0,92 przy -0,95, potem -0,31 przy -0,97 i tyle samo przy
--1, -4 i -12. To, w której wielkości widać skok, zależy od materiału i pasma: przy paśmie
-domyślnym na tym samym sygnale skok pojawia się w błędzie mid (z -8,72 na -9,04 dB przy
--0,97).
-
-#### `--side-cutoff <Hz>`
-
-**Od tej częstotliwości w górę koduj każde pasmo stereo jako czysty mid.**
-
-- Dotyczy: rdzeń AAC w stereo (LC, LD, ELD). Domyślnie wyłączone.
-- Wartości: `1000..24000` Hz, zaokrąglane do pasma współczynnika skali, które zaczyna się na tej częstotliwości lub wyżej
-
-Powyżej granicy sygnał side jest porzucany, a pasmo zapisywane tylko jako mid, z tanią maską
-MS. Czystego L/R tam nie ma nigdy.
-
-Poziom zostaje: oba kanały grają wtedy mid, który sam ma mniej energii niż kanały oryginału,
-gdy tylko L i R się różnią (nieskorelowane L/R wyszłyby o 3 dB ciszej). Dlatego mid jest
-podnoszony do energii oryginału, najwyżej o 6 dB i tylko tam, gdzie side leży ponad progiem
-maskowania (side, który stock i tak by wyzerował, nie jest dodawany). Zmierzone przy 96 kbps:
-pasmo o 3 dB cichsze od źródła jest z granicą też o 3 dB cichsze, dla nieskorelowanych,
-częściowo skorelowanych i skorelowanych L/R. Do 1.4.0-beta.1 pasmo traciło do 3 dB więcej.
-Dwóch rzeczy mid nie przeniesie przy żadnym poziomie: treści w przeciwfazie (L = -R, jej mid
-to zero) i kierunku twardo spanorowanego dźwięku, który ląduje na środku.
-
-Intensity stereo powyżej granicy: fabryczna decyzja FDK o IS jest tam kasowana, bo czysty mid
-jest tańszy. IS zostaje, gdy prosisz o nie jawnie:
-- `--is-force-lo/-hi`: IS na podanych pasmach, zawsze.
-- poluzowane kryteria IS (`--is-aggression`, `--is-corr-thresh`, `--is-lr-ratio`,
-  `--is-min-sfbs`, `--is-admit` powyżej 5): własna decyzja FDK z tymi kryteriami. Pojedyncze
-  spanorowane obszary powyżej granicy zachowują wtedy swój side (IS niesie kierunek i fazę
-  w paśmie), reszta zostaje mid, jak w intensity stereo z MPEG-1 Layer II. Zmierzone
-  (40 kbps, `--side-cutoff 1000`, źródło 3..6 kHz na przemian 4 dB w lewo i w prawo na tle
-  miksu mono): sama granica 0 dB, z `--is-aggression 100` 3..4 dB, jak w źródle.
-
-Pasma, które oba kanały kodują jako PNS, zostają bez zmian.
-Poniżej granicy stereo jest nietknięte. `--verbose` pokazuje pasmo, od którego działa,
-w tablicy długiej i krótkiej. Obie zaokrąglają w górę do następnej krawędzi pasma, więc na
-grubej tablicy krótkiej granica może się tylko przesunąć w górę (9 kHz: pasmo długie 31 na
-9,0 kHz, krótkie 9 na 10,5 kHz), czyli niszczy mniej side, nigdy więcej.
-
-Przykłady (akustyczna muzyka stereo):
-- Łagodnie: `-b 48000 --side-cutoff 8000`. Informacje boczne z 238 do 235 bitów na ramkę, mid trochę czystszy.
-- Mocno: `-b 48000 --side-cutoff 5000`. Informacje boczne 222 bity, błąd mid o 0,7 dB mniejszy, side
-  powyżej 5 kHz niżej o około 27 do 31 dB.
-- Przesadnie: `-b 48000 --side-cutoff 1000`. Praktycznie mono ze stereofonicznym basem.
-
-Przy 14 kbps zysk jest mały, bo FDK i tak zeruje tam prawie cały side; przy tej prędkości
-większą dźwignią jest `--is-admit 0`.
-
-#### `--is-admit <x>`
-
-**Przesuń bramkę FDK, która decyduje, czy intensity stereo w ogóle wolno użyć.**
-
-- Dotyczy: rdzeń AAC w stereo. Stock `5`.
-- Wartości: `0.0..20.0`; `0` = nigdy. `--is-aggression` nadal otwiera bramkę.
-
-FDK dopuszcza intensity stereo tylko wtedy, gdy bitrate podzielony przez pasmo rdzenia (bity
-na sekundę na Hz) jest mniejszy niż 5. Przy bardzo niskich prędkościach IS jest drogie:
-wymusza maskę MS pasmo po paśmie (około 22 bity na ramkę) i dokłada pozycje IS. Zmierzone przy
-14 kbps stereo na gęstym materiale: `--is-admit 0` zmniejsza udział wyzerowanych pasm z 85% do 70%.
+Przy 48 kbps `+3` koduje już więcej pasm side, ale tak zgrubnie, że błąd side jest jeszcze
+o 0,6 dB gorszy niż bez przełącznika; zysk przychodzi przy `+6`. Przy 128 kbps `+6`
+poprawia side z -14,2 na -16,9 dB, a mid zmienia z -28,5 na -24,8 dB. Skok: przy 96 kbps
+wartość -0,96 zeruje 7,7 pasma side, a -0,97 już 9,9. Na `dense48` przy 40 kbps z
+`-w 18000` side po dekodowaniu jest o 1,4 dB cichszy niż w źródle przy -0,95 i o 10,8 dB
+cichszy przy -0,97, tak samo przy -1, -4 i -12.
 
 #### `--side-knee <dB>`
 
-**Nadaj każdemu pasmu side przy krawędzi kodowane/wyzerowane precyzję zależną od jego własnego poziomu.**
+**Stopniuje pasma side leżące przy granicy kodowane/wyzerowane według ich własnego
+poziomu: więcej albo mniej szczegółu w side, bez skoku.**
 
-- Dotyczy: rdzeń AAC w stereo, pasma MS. Brak działania w HE-AAC v2, a przy `--msmask 0`
-  nie ma tu nic do roboty.
-- Wartości: `-24.0..50.0` dB, `0` = wyłączone (domyślnie, zachowanie stock)
+- Dotyczy: tak samo jak `--side-bias`.
+- Wartości: `-24.0..50.0` dB; `0` = wyłączone (domyślnie, zachowanie FDK)
 - Wpisywanie: liczba dziesiętna, do 3 miejsc, `.` albo `,`
 
-`--side-bias` przesuwa to, gdzie leży linia kodowane/wyzerowane. Ten przełącznik działa na
-zapasie każdego pasma: o ile jego energia leży nad progiem maskowania, co decyduje, jak
-dokładnie pasmo jest kodowane i czy w ogóle przetrwa. Wartość to przesunięcie dodawane do
-tego zapasu, więc pasmo zachowuje precyzję należną jego prawdziwemu poziomowi, tylko
-przesuniętą.
+`--side-bias` przesuwa granicę, a ten przełącznik działa na zapasie każdego pasma side,
+czyli na tym, o ile jego energia leży ponad progiem. Od zapasu zależy, jak dokładnie
+pasmo jest kodowane i czy w ogóle zostaje. Wartość dodaje się do zapasu przy granicy i
+wygasa wyżej, więc głośna, dobrze zakodowana część side zostaje nietknięta, a każde pasmo
+zachowuje dokładność zgodną ze swoim prawdziwym poziomem.
 
-Potrzebne jest to przez jeden szczegół FDK. Gdy brakuje bitów, FDK nie wyrzuca słabego pasma
-od razu: przypina je około 0,97 dB nad progiem i trzyma na najgrubszym kroku. W prawdziwej
-muzyce około 10% pasm side ląduje na tej jednej wartości, niezależnie od ich rzeczywistego
-poziomu. Przełącznik czyta zapas, którego pętla bitów chciała przed tym ratunkiem, więc
-takie pasma znów rozkładają się według prawdziwego poziomu, zamiast ruszać się jednym
-blokiem. Zmierzone na muzyce akustycznej przy 96 kbps: kodowanych pasm side na ramkę ubywa
-równo z 30,2 (stock) przez 25,4 (-1), 22,2 (-3), 18,1 (-6), 10,5 (-12) do 1,1 (-24), bez skoku.
+Przełącznik istnieje z powodu jednego szczegółu FDK. Gdy ramce brakuje bitów, FDK nie
+wyrzuca słabego pasma od razu: ustawia jego próg około 0,97 dB pod energią i koduje je
+najgrubszym krokiem. W muzyce mniej więcej co dziesiąte pasmo side ląduje na tej jednej
+wartości, niezależnie od swojego rzeczywistego poziomu. Knee czyta zapas, którego
+chciała pętla dopasowania bitów przed tym ratunkiem, więc takie pasma znów są
+stopniowane według prawdziwego poziomu, zamiast ruszać się jednym blokiem. Dlatego ujemny
+knee zwęża płynnie tam, gdzie ujemny bias skacze.
 
-Wartość dodatnia dodaje precyzji: pasma do N dB pod progiem zostają, stopniowane według
-tego, jak daleko pod nim były, a pasma przy krawędzi dostają do N dB dokładniej. Wartość
-ujemna odbiera precyzję: najpierw odchodzą pasma najbliżej krawędzi, a bity idą do mid.
-Przesunięcie działa w pełni przy krawędzi i wygasa wyżej, więc głośna, dobrze zakodowana
-część side zostaje nietknięta (strefę wygasania ustawia `--side-knee-zone`).
+Wartość dodatnia dodaje dokładności: pasma do N dB pod progiem zostają, stopniowane
+według tego, jak daleko pod nim leżały, a pasma tuż ponad progiem są kodowane do N dB
+dokładniej. Wartość ujemna odbiera dokładność: najpierw odchodzą najsłabsze pasma przy
+granicy, a ich bity idą do mid. W ramkach zagłodzonych większość pasm side istnieje tylko
+dzięki ratunkowi, więc tam już mały ujemny knee usuwa większość z nich; przy wygodnym
+bitrate'ie zwęża obraz stopniowo aż do -24.
 
-Przykłady (akustyczna muzyka stereo, 96 kbps):
-- Łagodnie, dokładniej: `--side-knee 2`. Dziury w side z 6,9% do 2,2%, błąd mid o 0,8 dB większy.
-- Mocno, dokładniej: `--side-knee 6`. Dziury w side 0,6%, błąd side o 2,4 dB mniejszy, mid płaci 3,5 dB.
-- Przesadnie, dokładniej: `--side-knee 24`. Więcej bitów idzie do side niż do mid. Karykatura.
-- Łagodnie, grubiej: `--side-knee -1`. Odchodzą najsłabsze pasma side, około 5 z 37 na ramkę.
-- Mocno, grubiej: `--side-knee -6`. Dziury w side 29%, błąd mid o 2,4 dB mniejszy.
-- Przesadnie, grubiej: `--side-knee -24`. Side praktycznie znika; obraz mono z księgowością stereo.
+W porównaniu z `--side-bias` o tej samej wartości dodatni knee daje podobny zysk w side
+mniejszym kosztem mid. Przy 96 kbps `+6` daje side -12,9 dB i mid -19,4 dB, a bias -12,7 i
+-19,0; przy 128 kbps knee daje -16,8 i -25,7, a bias -16,9 i -24,8. Knee pasuje do
+materiału, w którym najważniejszy jest środek, bias do materiału, w którym liczy się
+szerokość, a razem ustawiają granicę i łagodzą jej krawędź.
 
-Diagnostyczne przełączniki towarzyszące (mogą zniknąć w kolejnej wersji):
-- `--side-knee-zone <x>`, `1.0..20.0`, stock `3`: przesunięcie działa w pełni do |knee| dB
-  nad progiem i wygasa liniowo do zera przy x razy |knee| dB.
-- `--side-knee-spread <dB>`, `0.1..24.0`, stock `1`: po stronie ujemnej, ile dB knee
-  potrzeba, by w pełni rozłożyć uratowaną kupkę pasm według ich prawdziwego zapasu.
-Oba w pomiarze zmieniały niewiele. Bez `--side-knee` nic nie robią.
+Przykłady (akustyczna muzyka stereo, 96 kbps; wartości odniesienia jak wyżej):
+- Łagodnie, dokładniej: `--side-knee 2`. Wyzerowane pasma side z 7,0 do 3,4, side czystszy
+  o 0,5 dB, mid gorszy o 0,2 dB.
+- Mocno, dokładniej: `--side-knee 6`. 1,2 wyzerowanego pasma, side czystszy o 1,5 dB, mid
+  gorszy o 0,8 dB.
+- Przesadnie, dokładniej: `--side-knee 24`. Więcej bitów trafia do side niż do mid, a oba
+  kanały wychodzą gorzej niż przy +12.
+- Łagodnie, zgrubniej: `--side-knee -1`. Odchodzi około pięciu najsłabszych pasm side
+  (11,8 wyzerowanych), mid czystszy o 0,1 dB.
+- Mocno, zgrubniej: `--side-knee -6`. 19 wyzerowanych pasm side, side gorszy o 2,2 dB, mid
+  czystszy o 0,3 dB. Wyraźnie węziej, ale wciąż stereo.
+- Przesadnie, zgrubniej: `--side-knee -24`. Znika 36 z 37 pasm side, side jest o 8,9 dB
+  cichszy niż w źródle: obraz mono z księgowością stereo.
 
-Współpraca i konflikty: ortogonalne wobec `--side-bias` i zaprojektowane do używania razem
-z nim; bias ustala, gdzie jest próg, kolano ustala, jak miękka jest jego krawędź.
-Bezczynne przy `--msmask 0`.
+Przełączniki diagnostyczne, zostawione do pomiarów i możliwe do usunięcia w kolejnej
+wersji; bez `--side-knee` nie robią nic:
+- `--side-knee-zone <x>`, `1.0..20.0`, domyślnie `3`: przesunięcie działa w pełni do
+  |knee| dB ponad progiem i wygasa liniowo do zera przy x razy |knee| dB.
+- `--side-knee-spread <dB>`, `0.1..24.0`, domyślnie `1`: przy ujemnym knee, ile decybeli
+  knee trzeba, żeby uratowane pasma rozłożyć w pełni według ich prawdziwego zapasu.
 
-Zmierzone: gęste stereo LC. Wartości ujemne nasycają się przy -6 dB (-6, -12 i -24 dają
-identyczny strumień); wartości dodatnie zmieniają strumień w całym zakresie.
+Współpraca i konflikty: zaprojektowany do używania razem z `--side-bias`. Bezczynny przy
+`--msmask 0`.
 
-#### `--mask-slope <dB>`
+Zmierzone: przy 96 kbps liczba kodowanych pasm side na ramkę spada z ujemnym knee
+równomiernie: 30,2 (bez przełącznika), 29,4 (-0,25), 27,6 (-0,5), 25,4 (-1), 22,2 (-3),
+18,1 (-6), 10,5 (-12), 1,1 (-24). Na `dense48` przy 40 kbps z `-w 18000`, gdzie ramki są
+zagłodzone, -0,25 zostawia 1,1 z 10,3 kodowanych pasm side, a od -4 strumień już się nie
+zmienia. Przełączniki diagnostyczne ruszają niewiele: `--side-knee 6` ze strefą 1 i 10
+różni się o 0,06 dB błędu side, `--side-knee -3` z rozłożeniem 0,1 i 10 o 0,15 dB.
 
-**Przesuń, jak głęboko pod średnią ramki musi leżeć pasmo, żeby koder przestał się nim
-przejmować.**
+#### `--side-cutoff <Hz>`
 
-- Dotyczy: oba kanały, mid i side, w rdzeniu AAC. Brak działania w HE-AAC v2.
-- Wartości: `-24.0..50.0` dB, `0` = wyłączone (domyślnie); odmienne wyniki tylko w
-  przybliżeniu w zakresie -9.9..+9
-- Wpisywanie: liczba dziesiętna, do 3 miejsc, `.` albo `,`
+**Od tej częstotliwości w górę koduje każde pasmo stereo jako czysty mid: górę obrazu
+wymienia na czystszy środek.**
 
-FDK nosi w sobie heurystykę niemaskowania: gdy energia pasma współczynnika skali leży
-daleko pod średnią energią ramki, w strojeniu stock więcej niż około 10 dB pod nią,
-wymagany SNR dla tego pasma jest rozluźniany. Prościej: koder celowo głodzi bardzo ciche
-pasma, żeby wydać bity na te głośne. Przez większość czasu jest to słuszne, bo pasmo
-20 dB pod resztą ramki jest zwykle zamaskowane. Czasem nie jest, a tym, co zostaje
-zagłodzone, jest ogon pogłosu, pomieszczenie albo wybrzmienie poprzedniej nuty.
+- Dotyczy: rdzenia AAC w stereo (LC, LD, ELD). Domyślnie wyłączone.
+- Wartości: `1000..24000` Hz, przesuwane do pasma współczynnika skali, które zaczyna się na
+  tej częstotliwości albo wyżej
+- Wpisywanie: liczba całkowita, w Hz
 
-Ten przełącznik przesuwa tę linię „jak głęboko pod średnią, zanim przestanę się
-przejmować”, naraz dla obu kanałów. Wartość dodatnia ją podnosi, więc mniej pasm
-kwalifikuje się jako pomijalne i cichy szczegół przeżywa. Ciche fragmenty, wybrzmienia i
-ogony pogłosu zachowują więcej swojej struktury, a bity biorą się skądś indziej w ramce.
-Wartość ujemna ją obniża, więc więcej pasm jest głodzonych, a wynik jest chudszy i
-bardziej wydrążony, z większą liczbą bitów dla materiału głośnego.
+Powyżej granicy sygnał side jest porzucany, a pasmo zapisywane tylko jako mid, z tanią
+maską MS; czystego L/R tam nie ma. Poniżej granicy stereo jest nietknięte. Bity, które
+zabrałby side, dostaje mid, a to ma znaczenie przy niskim bitrate'ie, gdy side powyżej
+kilku kHz i tak jest w większości zerowany, a to, co z niego zostaje, jest zgrubne.
 
-Ustaw oczekiwania szczerze: to subtelna kontrola. Dotyka tylko najcichszych pasm w ramce,
-więc przy materiale gęstym błąd po dekodowaniu prawie się nie rusza, a na naszej rzadkiej
-próbce przesunęły go tylko duże wartości. Najbardziej warto jej próbować przy materiale
-rzadkim, pogłosowym albo celowo cichym, a najmniej przy głośnym, gęstym miksie.
+Poziom zostaje. Bez side oba kanały grają mid, który sam niesie mniej energii niż kanały
+oryginału, gdy tylko L i R się różnią (nieskorelowane L/R wyszłyby o 3 dB ciszej). Dlatego
+mid jest podnoszony do energii oryginału, najwyżej o 6 dB i tylko tam, gdzie side leży
+ponad progiem maskowania; side, który FDK i tak by wyzerowało, nie jest dodawany. Dwóch
+rzeczy mid nie przeniesie przy żadnym poziomie: treści w przeciwfazie (L = -R, jej mid to
+zero) i kierunku twardo spanoramowanego dźwięku, który ląduje na środku.
 
-Zakres żywy jest węższy niż zakres przyjmowany. Odmienne wyniki pojawiają się w
-przybliżeniu od -9,9 do +9. Przy -10 i niżej wynik przestaje się zmieniać, +10 do +40
-zapada się w jeden strumień, a 45 do 50 w inny. Trzymaj swoje przykłady wewnątrz żywego
-odcinka, gdzie liczba faktycznie odpowiada zachowaniu.
+Intensity stereo powyżej granicy: własna decyzja FDK o IS jest tam kasowana, bo czysty mid
+jest tańszy. IS zostaje, gdy prosi się o nie jawnie:
+- `--is-force-lo/-hi`: IS na podanych pasmach, zawsze.
+- poluzowane kryteria IS (`--is-aggression`, `--is-corr-thresh`, `--is-lr-ratio`,
+  `--is-min-sfbs`, `--is-admit` powyżej 5): własna decyzja FDK z tymi kryteriami.
+  Pojedyncze spanoramowane obszary powyżej granicy zachowują wtedy kierunek (IS niesie go
+  w każdym paśmie), a reszta zostaje mid, jak w intensity stereo z MPEG-1 Layer II.
+
+Pasma, które oba kanały kodują jako PNS, zostają bez zmian. `--verbose` pokazuje pasmo,
+od którego granica działa, w tablicy długiej i krótkiej. Obie zaokrąglają w górę do
+najbliższej krawędzi pasma, więc w grubej tablicy krótkiej granica może przesunąć się
+tylko w górę (9 kHz: pasmo długie 31 na 9,0 kHz, krótkie 9 na 10,5 kHz), czyli usuwa mniej
+side, nigdy więcej.
+
+Przykłady (akustyczna muzyka stereo, 48 kbps):
+- Łagodnie: `--side-cutoff 8000`. Dane poboczne z 238 do 235 bitów na ramkę, mid odrobinę
+  czystszy.
+- Mocno: `--side-cutoff 5000`. Dane poboczne 222 bity, błąd mid niższy o 0,7 dB, side
+  powyżej 5 kHz niżej o około 27..31 dB.
+- Przesadnie: `--side-cutoff 1000`. Praktycznie mono ze stereofonicznym basem.
+
+Współpraca i konflikty: `--side-bias` i `--side-knee` działają dalej poniżej granicy. Przy
+14 kbps zysk jest mały, bo FDK i tak zeruje tam prawie cały side; większą dźwignią jest
+wtedy `--is-admit 0`.
+
+Zmierzone: na `dense48` przy 40 kbps `8000` zostawia mid bez zmian, a side obniża o 1,2 dB;
+`5000` daje mid czystszy o 1,3 dB i side cichszy o 3,4 dB. Ze źródłem 3..6 kHz
+panoramowanym na przemian 4 dB w lewo i w prawo na tle miksu mono (40 kbps,
+`--side-cutoff 1000`) sama granica zostawia 0 dB panoramy, a z `--is-aggression 100`
+3..4 dB, tak jak w źródle.
+
+### Laboratorium MS
+
+Te przełączniki sięgają wprost do decyzji MS i do progów pasm MS. Odpowiadają na pytania
+techniczne (co się dzieje w czystym L/R, przy MS w stałym zakresie pasm, przy decyzji
+przechylonej w jedną stronę) i służą eksperymentom. Na muzyce żaden z nich nie daje po
+dekodowaniu wyraźnie lepszego wyniku niż ustawienia domyślne, a kilka go pogarsza. Trzy
+z nich przyjmują liczby Q8, czyli wewnętrzną skalę stałoprzecinkową FDK, w której `256`
+oznacza 1,0 (zobacz *Wspólne zasady*).
+
+Przy CBR trzy przełączniki progów (`--ms-bias`, `--ms-precision`, `--mid-bias`) w
+większości odkręca pętla dopasowania bitów, która i tak musi trafić w tę samą liczbę bitów
+na ramkę. Przy VBR (`-m 1..5`) liczba bitów idzie za progami, więc tam `--ms-precision` i
+`--mid-bias` słyszalnie działają, i na jakość, i na rozmiar pliku.
+
+#### `--msmask <n>`
+
+**Wymusza decyzję mid/side we wszystkich pasmach, zamiast zostawić koderowi wybór pasmo
+po paśmie.**
+
+- Dotyczy: rdzenia AAC w stereo (LC, LD, ELD i rdzeń stereo pod HE-AAC). Bez działania w
+  HE-AAC v2, gdzie rdzeń jest mono.
+- Wartości: `-1` automatycznie (domyślnie, FDK decyduje dla każdego pasma), `0` wyłączone
+  (czyste L/R wszędzie), `1` włączone (MS w każdym paśmie)
+- Wpisywanie: liczba całkowita
+
+Koder zwykle sprawdza każde pasmo na oba sposoby i zostawia tańszy. W skorelowanej muzyce
+to MS w niemal każdym paśmie, a ponieważ obrót jest bezstratny, wybór nic nie kosztuje w
+dźwięku. Wymuszenie w którąkolwiek stronę to narzędzie techniczne.
+
+`--msmask 0` gwarantuje, że koder nigdy nie zmiesza kanałów. Szum kwantyzacji zostaje
+wtedy w kanale, który go wywołał, zamiast dzielić się między mid i side i trafiać do obu
+wyjść. Ma to znaczenie, gdy plik pójdzie później przez usuwanie środka, wycinanie wokalu
+albo inne odejmowanie jednego kanału od drugiego. Przy tym samym bitrate'ie kosztuje
+jakość, wyraźnie w skorelowanej muzyce.
+
+`--msmask 1` wymusza MS także tam, gdzie L/R byłoby tańsze. Przydaje się jako punkt
+odniesienia; przy materiale o naprawdę niezależnych kanałach, na przykład dwóch
+niezwiązanych źródłach rozstawionych na skraje, marnuje bity.
+
+Wartości:
+- `-1`: domyślnie, decyzja dla każdego pasma z porównania kosztów w koderze.
+- `0`: czyste L/R w każdym paśmie. Nic nie jest mieszane między kanałami.
+- `1`: MS w każdym paśmie.
+
+Przykład w kontekście:
+
+    fdkaac -p 2 -b 128000 --msmask 0 -o lr.m4a in.wav
+
+Współpraca i konflikty: `--msmask 0` czyni bezczynną całą rodzinę mid/side, w tym
+`--side-bias`, `--side-knee`, `--msbands` i `--mid-bias`, bo żadne pasmo nie jest w MS.
+`--msbands`, `--msbands-lo` i `--msbands-hi` zawężają obszar, w którym maska obowiązuje.
+
+Zmierzone (akustyczna muzyka stereo, 96 kbps): `--msmask 0` podnosi błąd mid o 1,3 dB i
+błąd side o 3,9 dB względem ustawień domyślnych. `--msmask 1` mieści się w 0,4 dB od nich,
+bo FDK i tak koduje 39,5 z około 40 pasm na ramkę jako MS.
+
+#### `--msbands <n>`
+
+**Dopuszcza MS tylko w N najniższych pasmach współczynnika skali, a wszystko wyżej
+zostawia w L/R.**
+
+- Dotyczy: rdzenia AAC w stereo. Bez działania w HE-AAC v2.
+- Wartości: `-1` bez limitu (domyślnie) albo `0..N`, gdzie N to liczba aktywnych SFB; `n`
+  oznacza, że pasma `0..n-1` mogą używać MS
+- Wpisywanie: liczba całkowita
+
+To ograniczenie w postaci „od dołu do”, liczone od basu w górę: `--msbands 6` pozwala
+pasmom 0..5 używać MS, a pasma 6 i wyższe trzyma w L/R. `--msbands 0` nie dopuszcza MS
+nigdzie, tak samo jak `--msmask 0`. Od pary `--msbands-lo` i `--msbands-hi` różni się
+tylko kształtem obszaru: ten przełącznik zawsze zaczyna od pasma 0.
+
+Powód, żeby go użyć, jest techniczny: późniejszy proces, który wymaga nietkniętego L/R
+powyżej jakiejś częstotliwości. Powodu jakościowego nie ma: każde zmierzone dotąd
+ograniczenie pogarszało oba kanały przy tym samym bitrate'ie.
 
 Przykłady:
-- Łagodnie, ochrona cichych pasm: `--mask-slope 2`. Nieco mniej pasm zagłodzonych. Oczekuj
-  dziesiątych części dB w pomiarze i minimalnie bardziej otwartego wybrzmienia.
-- Mocno, ochrona cichych pasm: `--mask-slope 6`. Realna część cichych pasm zachowana.
-  Najprzydatniejsze ustawienie przy materiale pogłosowym.
-- Przesadnie, ochrona cichych pasm: `--mask-slope 9`. Szczyt żywego zakresu: niemal nic nie
-  jest traktowane jako pomijalne, a bity są wydawane na treść, która bardzo prawdopodobnie
-  jest zamaskowana. Karykatura i ostatnia wartość, która jeszcze odpowiada, bo +10 i
-  powyżej zachowują się tak samo.
-- Łagodnie, głodzenie cichych pasm: `--mask-slope -2`. Kilka cichych pasm więcej oddanych.
-  Trochę chudziej.
-- Mocno, głodzenie cichych pasm: `--mask-slope -6`. Ciche pasma wyraźnie zagłodzone, więcej
-  bitów dla treści głośnej, bardziej wydrążone brzmienie przy materiale rzadkim.
-- Przesadnie, głodzenie cichych pasm: `--mask-slope -9.5`. Dno żywego zakresu, cichy
-  szczegół zdarty wszędzie, gdzie heurystyka sięgnie. Karykatura ustawienia chudego i
-  podłoga tej kontroli, bo -10 i niżej przestają cokolwiek zmieniać.
+- Łagodnie: `--msbands 40`. Do L/R wracają tylko najwyższe pasma; na większości
+  materiału strumień prawie się nie zmienia, bo te pasma niosą niewiele.
+- Mocno: `--msbands 20`. MS tylko w dolnej części widma; przy 96 kbps na muzyce
+  akustycznej błąd mid rośnie o 1,3 dB, a błąd side o 3,5 dB.
+- Przesadnie: `--msbands 2`. MS praktycznie nigdzie: niemal pełna cena czystego L/R, a MS
+  wciąż sygnalizowane w dwóch pasmach.
 
-Współpraca i konflikty: ta sama rodzina co `--side-bias`, ale kluczem jest energia wobec
-średniej ramki, a nie próg side, i stosuje się to jednakowo do mid i do side. Używaj
-jednego albo drugiego, póki uczysz się, co każde robi, a potem je łącz.
+Współpraca i konflikty: równoważne z `--msbands-lo 0 --msbands-hi n-1` (`--msbands 6` i
+`--msbands-lo 0 --msbands-hi 5` dają ten sam strumień). Bezczynne przy `--msmask 0`. Limit
+powyżej liczby aktywnych SFB działa jak brak limitu.
 
-Zmierzone: mix48 przy 40 kbps daje odmienne strumienie tylko dla około -9,9..+9; -10 i
-niżej zapada się w jeden strumień, +10..+40 w drugi, 45..50 w trzeci. Na sparse48 przy
-40 kbps błąd po dekodowaniu prawie się nie rusza, przesuwają go tylko +12 i +24.
+Zmierzone (akustyczna muzyka stereo, 96 kbps): `--msbands 30` podnosi błąd mid o 0,9 dB i
+błąd side o 2,4 dB, `--msbands 20` o 1,3 i 3,5 dB.
+
+#### `--msbands-lo <n>`
+
+**Najniższe pasmo współczynnika skali w zakresie, w którym wolno używać MS.**
+
+- Dotyczy: rdzenia AAC w stereo. Bez działania w HE-AAC v2.
+- Wartości: `-1` wyłączone (domyślnie) albo `0..N` w granicach liczby aktywnych SFB;
+  podawaj razem z `--msbands-hi`
+- Wpisywanie: liczba całkowita
+
+Razem z `--msbands-hi` wyznacza okno od..do: MS wolno użyć w pasmach `lo..hi` włącznie i
+nigdzie poza nimi. W odróżnieniu od `--msbands` okno nie musi zaczynać się od dołu widma,
+więc tylko w ten sposób da się trzymać MS z dala od basu. Podawaj obie połówki pary; samo
+`--msbands-lo` zostawia górną krawędź nieustawioną, a to nie jest zakres.
+
+Przykłady:
+- Łagodnie, okno od dołu: `--msbands-lo 2 --msbands-hi 48`. Prawie wszystko może używać MS,
+  wykluczone są dwa najniższe pasma.
+- Mocno, okno w środku: `--msbands-lo 10 --msbands-hi 30`. MS tylko w środku pasma, bas i
+  góra w L/R.
+- Przesadnie, okno na samej górze: `--msbands-lo 44 --msbands-hi 48` z `-w 20000`. MS
+  tylko w pięciu pasmach samego powietrza. Bez `-w 20000` te pasma leżą powyżej domyślnej
+  granicy około 15,75 kHz i ustawienie zamienia się w `--msmask 0` (zobacz *Dlaczego zakres
+  powyżej kodowanego pasma nie robi nic*).
+
+Współpraca i konflikty: czytaj wobec `active SFBs` z `--verbose` i wobec kodowanego pasma.
+Bezczynne przy `--msmask 0`.
+
+Zmierzone (akustyczna muzyka stereo, 96 kbps): `--msbands-lo 20 --msbands-hi 48` podnosi
+błąd mid o 0,5 dB, a błąd side o 0,7 dB.
+
+#### `--msbands-hi <n>`
+
+**Najwyższe pasmo współczynnika skali, włącznie, w zakresie, w którym wolno używać MS.**
+
+- Dotyczy: rdzenia AAC w stereo. Bez działania w HE-AAC v2.
+- Wartości: `-1` wyłączone (domyślnie) albo `0..N` w granicach liczby aktywnych SFB;
+  podawaj razem z `--msbands-lo`
+- Wpisywanie: liczba całkowita
+
+Górna krawędź opisanego wyżej okna, włącznie: `--msbands-hi 5` obejmuje pasmo 5, a pasma
+powyżej idą do L/R. W blokach krótkich zakres obejmuje te same częstotliwości w tablicy
+krótkiej (zobacz *Bloki krótkie* wyżej), więc `--msbands-lo 18 --msbands-hi 30` przy
+48 kHz to pasma krótkie 3..7.
+
+Przykłady:
+- Łagodnie: `--msbands-lo 0 --msbands-hi 44`. Cztery najwyższe pasma wyłączone z MS.
+- Mocno: `--msbands-lo 0 --msbands-hi 20`. MS mniej więcej do zakresu prezencji, wyżej
+  L/R.
+- Przesadnie: `--msbands-lo 0 --msbands-hi 0`. MS w dokładnie jednym paśmie, w basie.
+
+Współpraca i konflikty: `--msbands-lo` to druga połówka; bez niej nie ma zakresu. Wartość
+powyżej liczby aktywnych SFB działa jak brak górnego limitu. Bezczynne przy `--msmask 0`.
+
+#### `--ms-bias <n>`
+
+**Przechyla porównanie kosztów L/R i MS w stronę MS.**
+
+- Dotyczy: rdzenia AAC w stereo. Bez działania w HE-AAC v2.
+- Wartości: `0..255`, Q8 w logarytmicznych jednostkach kosztu FDK; `-1` i `0` = domyślnie
+- Wpisywanie: liczba całkowita
+
+Dla każdego pasma koder szacuje, ile kosztowałoby L/R, a ile MS, i wybiera taniej. Ten
+przełącznik dodaje premię stronie MS. Ponieważ MS jest bezstratne, porównanie decyduje
+tylko o sposobie zapisu pasma, a nie o jego brzmieniu, a FDK i tak wybiera MS w niemal
+każdym paśmie skorelowanej muzyki.
+
+Użyteczny zakres jest malutki. Wartości 1, 2 i 4 dają różne strumienie. Od około 8 (16
+na gęstym materiale) premia przewyższa każdą rzeczywistą różnicę kosztów, każde pasmo,
+któremu wolno używać MS, je dostaje, a wyższe wartości nic już nie zmieniają: wynik jest
+bliski `--msmask 1`.
+
+Wartości:
+- `-1` albo `0`: porównanie kosztów jak w FDK.
+- `1..8`: decyzja coraz mocniej przechylona w stronę MS.
+- `8..255`: MS wszędzie, gdzie wolno, ten sam strumień dla każdej wartości.
+
+Przykład w kontekście:
+
+    fdkaac -p 2 -b 128000 --ms-bias 4 -o biased.m4a in.wav
+
+Współpraca i konflikty: bez sensu razem z `--msmask 0` albo `--msmask 1`, które usuwają
+decyzję. Do wszystkiego, co słychać, służą `--side-bias` i `--side-knee`.
+
+Zmierzone: akustyczna muzyka stereo przy 96 kbps, `128` podnosi błąd mid o 0,3 dB i nie
+zmienia side; na `dense48` przy 40 kbps `255` nie zmienia niczego mierzalnego.
+
+#### `--ms-precision <n>`
+
+**Obniża progi każdego pasma MS, mid i side razem, więc oba kanały są kodowane
+dokładniej.**
+
+- Dotyczy: rdzenia AAC w stereo, tylko pasm MS. Bez działania w HE-AAC v2.
+- Wartości: Q8 od `256` (bez zmian) w górę, `384` to 1,5x, `512` to 2x; poniżej 256 jest
+  odrzucane; `-1` wyłączone (domyślnie)
+- Wpisywanie: liczba całkowita
+
+Progi pasma w MS są dzielone przez podany współczynnik, więc koder uznaje za słyszalną
+większą część obu kanałów. Przesuwa mid i side w tę samą stronę o tyle samo, więc nie
+zmienia równowagi między nimi; od równowagi są `--side-bias` i `--side-knee`.
+
+Przy CBR prawie nic nie robi. Ramka dostaje tyle samo bitów, pętla dopasowania podnosi
+progi z powrotem, aż ramka się zmieści, a wynik po dekodowaniu zostaje w granicach kilku
+dziesiątych decybela od ustawień domyślnych. Przy VBR liczba bitów idzie za progami i tam
+ten przełącznik podnosi jakość pary stereo, płacąc rozmiarem pliku.
+
+Przykłady (VBR `-m 3`, akustyczna muzyka stereo, bez przełącznika około 108 kbps):
+- Łagodnie: `--ms-precision 384`. Plik większy o 3,1%, błąd mid niższy o 0,5 dB, side o
+  0,4 dB.
+- Mocno: `--ms-precision 512`. Plik większy o 5,3%, błąd mid niższy o 0,8 dB, side o
+  0,7 dB.
+- Przesadnie: `--ms-precision 2048`. Plik większy o 15,2%, błędy niższe o 2,2 i 1,9 dB:
+  zakamuflowane podniesienie bitrate'u, które `-m` robi równiej.
+
+Współpraca i konflikty: bezczynne przy `--msmask 0`. Przy VBR wyższe `-m` podnosi jakość
+we wszystkich pasmach, nie tylko w MS.
+
+Zmierzone: CBR 96 kbps, akustyczna muzyka stereo: `512` obniża błąd side o 0,13 dB,
+`4096` o 0,4 dB, a mid nie zmienia się wcale; na `dense48` przy 40 kbps `1024` nie zmienia
+niczego mierzalnego. VBR jak w przykładach.
+
+Pod maską: współczynnik jest nakładany jako przesunięcie progów pasm w dziedzinie
+logarytmicznej FDK, zaraz po obrocie MS.
+
+#### `--mid-bias <n>`
+
+**Podnosi próg kanału mid w pasmach MS, więc mid jest kodowany zgrubniej.**
+
+- Dotyczy: rdzenia AAC w stereo, pasm MS. Bez działania w HE-AAC v2.
+- Wartości: Q8, `256` = bez zmian, powyżej 256 podnosi próg mid; poniżej 256 jest
+  odrzucane; `-1` wyłączone (domyślnie)
+- Wpisywanie: liczba całkowita
+
+Pomysł polega na oddaniu bitów z mid na rzecz side. W pomiarze nie wychodzi to dobrze.
+Przy CBR pętla dopasowania odkręca większość efektu: przy 96 kbps `384` przesuwa mid i
+side o około 0,1 dB, a dopiero `4096` daje side pełny decybel za 0,65 dB mid. Przy VBR mid
+po prostu robi się zgrubniejszy, a plik mniejszy, i side nic nie zyskuje. Do szerokości
+wobec środka służą `--side-bias` i `--side-knee`.
+
+Przykłady (CBR, akustyczna muzyka stereo, 96 kbps):
+- Łagodnie: `--mid-bias 288`. Bez mierzalnej zmiany.
+- Mocno: `--mid-bias 1024`. Przy CBR side czystszy o 0,4 dB, mid gorszy o 0,2 dB; przy VBR
+  `-m 3` plik mniejszy o 6,8%, mid gorszy o 1,7 dB, side bez zmian.
+- Przesadnie: `--mid-bias 4096`. Side czystszy o 1 dB, mid gorszy o 0,65 dB. Dla
+  porównania `--side-knee 3` daje side 0,8 dB za 0,3 dB mid.
+
+Współpraca i konflikty: bezczynne przy `--msmask 0`. Razem z dodatnim `--side-bias`
+ciągnie ten sam budżet z drugiego końca.
+
+Zmierzone: na `dense48` przy 40 kbps `512` i `1024` nie zmieniają niczego mierzalnego. VBR
+jak w przykładach.
 
 ### Intensity stereo (IS)
 
@@ -1163,6 +1115,23 @@ minimalny ciąg zredukowany do jednego pasma i tolerancja kierunku poszerzona. Z
 około 30 do 50 i posłuchaj, a potem idź wyżej, jeśli oszczędność jest dla ciebie warta
 więcej niż szerokość. Dopiero gdy wiesz, co robi ten suwak, sięgaj po przełączniki
 poniżej, które przesłaniają to, co on ustawił.
+
+#### `--is-admit <x>`
+
+**Przesuwa pierwszą bramkę FDK, która decyduje, czy intensity stereo w ogóle wolno użyć.**
+
+- Dotyczy: rdzenia AAC w stereo. Bez działania w HE-AAC v2.
+- Wartości: `0.0..20.0`, domyślnie w FDK `5`; `0` = nigdy; `-1` wyłączone (domyślnie)
+- Wpisywanie: liczba dziesiętna, do 3 miejsc, `.` albo `,`
+
+FDK dopuszcza intensity stereo tylko wtedy, gdy bitrate podzielony przez pasmo rdzenia,
+w bitach na sekundę na herc, jest mniejszy od tej wartości. Przy bardzo niskich
+bitrate'ach IS jest drogie: wymusza maskę MS pasmo po paśmie (około 22 bity na ramkę) i
+dokłada pozycje IS, więc zamknięcie bramki potrafi uwolnić więcej bitów, niż IS
+oszczędza. `--is-aggression` otwiera bramkę niezależnie od tej wartości.
+
+Zmierzone: przy 14 kbps stereo na gęstym materiale `--is-admit 0` zmniejsza udział
+wyzerowanych pasm z 85% do 70%.
 
 #### `--is <n>`
 
@@ -3850,14 +3819,14 @@ to globalna skala tego progu. `--spread-mask` zmienia, jak daleko maskowanie prz
 między sąsiednimi pasmami, a to już inne pytanie: nie jak głośna jest maska, lecz jak
 szeroka.
 
-**Żądanie SNR.** Niezależnie od progu FDK trzyma wymagany stosunek sygnału do szumu dla
+**Wymagany SNR.** Niezależnie od progu FDK trzyma wymagany stosunek sygnału do szumu dla
 każdego pasma, czyli minimalną jakość, jaką koder musi w tym pasmie dostarczyć bez względu
 na to, co mówi próg. To najbliższy odpowiednik stałych tone masking noise i noise masking
 tone, które udostępniają MusePack i LAME. Znaczy więcej, niż się wydaje, bo logika
 unikania dziur przyciąga progi z powrotem do tego żądania: jeśli pętla dopasowania
 bitrate'u chce zagłodzić pasmo, żądanie SNR jest linią, której nie wolno jej przekroczyć.
-`--minsnr-scale` skaluje to żądanie, a dwa przełączniki klamrowe przesuwają sufit i podłogę,
-między którymi samo żądanie jest trzymane.
+`--minsnr-scale` skaluje to wymaganie, a `--minsnr-clamp-lo` i `--minsnr-clamp-hi`
+przesuwają najwyższy i najniższy koniec okna, w którym wymaganie jest trzymane.
 
 **TNS, czyli kształtowanie szumu w czasie.** Wewnątrz jednego bloku szum kwantyzacji
 rozkłada się równo na cały blok w czasie. Dla transjentu to zły rozkład: blok z uderzeniem
@@ -3883,282 +3852,6 @@ Jedna konwencja przed kartami: wszystkie pokrętła skalujące `--pns-*` przyjmu
 mnożnik dziesiętny na fabryczną wartość FDK. `1.0` oznacza "zostaw wartość fabryczną",
 `1.5` oznacza półtora raza tyle, `0.5` oznacza połowę. Wyjątkiem jest `--pns-min-width`,
 które jest surową liczbą.
-
-### `--ath-scale <n>`
-
-**Globalna skala progu maskowania: jedno pokrętło na "bądź czystszy" albo "bądź
-oszczędniejszy" w całym widmie.**
-
-- Dotyczy: każdego profilu z rdzeniem AAC, czyli wszystkich. Pod SBR działa tylko na
-  rdzeń, bo SBR ma własny model szumu.
-- Wartości: Q8, `1..4096`, gdzie `256` to x1,0; domyślnie: `256`, bez zmiany
-- Wpisywanie: liczba całkowita
-
-Próg maskowania to poziom szumu, o którym model sądzi, że w danym pasmie go nie usłyszysz.
-`--ath-scale` mnoży wszystkie progi naraz. Powyżej 256 progi rosną, koder dochodzi do
-wniosku, że więcej szumu jest niesłyszalne, i wydaje mniej bitów na pasmo: kodowanie
-bardziej agresywne, co przy stałym bitrate oznacza, że te bity idą gdzie indziej albo
-ramka po prostu kończy się wcześniej. Poniżej 256 progi spadają, więcej treści uznaje się
-za warte dokładnego zakodowania, a zapotrzebowanie na bity rośnie.
-
-Dwie rzeczy nie pozwalają temu pokrętłu być tak mocnym, jak sugeruje jego zakres. Działa
-na logarytmicznej kopii progu, a część jego efektu znosi dalej w łańcuchu logika minimalnego
-SNR oraz sufit redukcji progu 29 dB w kwantyzatorze CBR. Poza tym przy CBR globalna zmiana
-progu raczej przetasowuje bity, niż zmienia ich liczbę, bo pętla dopasowania bitrate'u i tak
-musi trafić w cel. Jeśli chcesz mocniejszej i bardziej bezpośredniej dźwigni na szczegół,
-to `--minsnr-scale`, bo przesuwa linię, do której unikanie dziur przyciąga progi z powrotem.
-
-Na swoje zarabia przy wysokim bitrate, gdzie masz nadwyżkę bitów i chcesz, żeby koder
-znalazł więcej rzeczy wartych zakodowania. Wartości trochę poniżej 256 zamieniają tę
-nadwyżkę w zachowany szczegół. Przy niskim bitrate użyteczny kierunek jest zwykle w górę,
-jako sposób na świadome przyjęcie szorstkości zamiast pozostawienia pętli dopasowania
-bitrate'u decyzji, gdzie ciąć.
-
-Przykłady:
-- Łagodnie, czyściej: `--ath-scale 230`. Progi niższe o jakieś 10 procent. Trochę więcej
-  bitów na cichy szczegół; subtelne przy każdym bitrate, najlepiej widoczne powyżej
-  192 kbps.
-- Mocno, czyściej: `--ath-scale 180`. Wyraźne przesunięcie wysiłku w stronę treści o
-  niskim poziomie. Ogony pogłosu i szum pomieszczenia przeżywają lepiej; przy napiętym
-  bitrate coś innego na tym głodzi.
-- Przesadnie, czyściej: `--ath-scale 64`. Progi na jednej czwartej stocka. Modelowi mówi
-  się praktycznie, że nic nie jest maskowane. Przy CBR pętla dopasowania bitrate'u walczy
-  przez całą ramkę, a wynik nie jest lepszy, tylko inaczej skompromitowany; warto raz
-  posłuchać, żeby zrozumieć, gdzie leży granica.
-- Łagodnie, grubiej: `--ath-scale 290`. Trochę więcej szumu przyjętego na pasmo, mała
-  oszczędność bitów.
-- Mocno, grubiej: `--ath-scale 512`. Progi podwojone. Słyszalnie bardziej ziarniste na
-  materiale szerokopasmowym, zauważalnie tańsze na pasmo.
-- Przesadnie, grubiej: `--ath-scale 2048`. Progi osiem razy wyższe niż w stocku. Koder
-  wierzy, że prawie wszystko jest zamaskowane, a wynik to karykatura agresywnego kodowania:
-  wydrążony, syczący, z utraconym szczegółem wszędzie tam, gdzie obok siedzi coś
-  głośniejszego.
-
-Współpraca i konflikty: `--minsnr-scale` jest mocniejszym narzędziem do tego samego celu i
-częściowo nadpisuje efekt tego przełącznika, bo żądanie SNR jest podłogą jakości, przez
-którą podniesiony próg nie przepchnie. `--reduce-clamp 0` pozwala pchać progi głębiej niż
-sufit 29 dB, co daje niskim wartościom tutaj więcej miejsca na działanie. `--spread-mask`
-to pokrętło towarzyszące, od szerokości maskowania, a nie od jego wysokości.
-
-### `--spread-mask <n>`
-
-**Skaluje, jak daleko maskowanie przecieka z jednego pasma do sąsiadów, co decyduje, ile
-cichych pasm obok głośnych przeżyje.**
-
-- Dotyczy: każdego profilu z rdzeniem AAC. Największy efekt tam, gdzie bitów jest mało,
-  ale jeszcze nie rozpaczliwie, czyli z grubsza 96..192 kbps.
-- Wartości: Q8, `0` i wyżej, gdzie `256` to x1,0; domyślnie: `-1`, wyłączone
-- Wpisywanie: liczba całkowita
-
-Głośny ton maskuje szum nie tylko we własnym pasmie, maskuje też skraj pasm wokół siebie,
-bardziej w górę niż w dół. Model symuluje to funkcją rozmycia. To właśnie rozmycie jest
-powodem, dla którego ciche pasmo stojące obok głośnego dostaje prawie zero bitów: model
-mówi, że jego treść jest przykryta przez sąsiada.
-
-Ten przełącznik skaluje rozmycie. Poniżej 256 oznacza mniej rozmycia maskowania, więc skraj
-się zwęża, mniej pasm liczy się jako przykryte i więcej z nich zostaje zakodowanych. To ta
-sama idea, co rozluźnienie założenia "ton maskuje szum" w innych koderach. Powyżej 256 skraj
-się rozszerza i więcej pasm zostaje spisanych na straty jako przykryte przez sąsiadów, co
-jest tańsze i bardziej płaskie.
-
-Powód, dla którego efekt koncentruje się w okolicy 96..192 kbps, to prosta arytmetyka.
-Znacznie niżej pasma obok głośnych nie są problemem, bo głodzi się cała ramka i pętla
-dopasowania bitrate'u cięła wszędzie. Znacznie wyżej bitów jest tyle, że rozmycie rzadko
-o czymkolwiek decyduje. Pomiędzy rozmycie jest tym, czym koder faktycznie wybiera, co
-pominąć.
-
-Przykłady:
-- Łagodnie, mniej maskowania: `--spread-mask 230`. Nieco węższy skraj. Kilka pasm więcej
-  przeżywa obok głośnej treści; więcej szczegółu wokół mocnych składowych.
-- Mocno, mniej maskowania: `--spread-mask 180`. Wyraźnie więcej pasm zakodowanych obok
-  głośnych. Na gęstym materiale to właśnie tutaj odzyskuje się szczegół wokół energii
-  transjentów, realnym kosztem bitów.
-- Przesadnie, mniej maskowania: `--spread-mask 32`. Rozmycie prawie usunięte. Model traci
-  większość zdolności do decydowania, co jest przykryte, więc bity rozsypują się po pasmach,
-  które naprawdę są niesłyszalne; karykatura pokazująca, co daje funkcja rozmycia.
-- Łagodnie, więcej maskowania: `--spread-mask 300`. Odrobinę szerszy skraj, mała oszczędność.
-- Mocno, więcej maskowania: `--spread-mask 512`. Rozmycie podwojone. Zauważalnie bardziej
-  płaskie widmo obok głośnej treści, tanio, z cichym szczegółem spisanym na straty.
-- Przesadnie, więcej maskowania: `--spread-mask 1536`. Prawie wszystko blisko czegokolwiek
-  głośnego liczy się jako zamaskowane. Wynik jest wydrążony i rozmazany, przydatny głównie
-  jako przeciwny koniec pokazu.
-
-Współpraca i konflikty: łącz z `--ath-scale` poniżej 256, kiedy chcesz maski zarazem
-niższej i węższej; oba są niezależne i efekty się dodają. `--minsnr-scale` nadal ogranicza
-wynik od dołu, więc bardzo niskie rozmycie nie zepchnie żadnego pasma poniżej jego żądania
-SNR.
-
-### `--minsnr-scale <n>`
-
-**Skaluje stosunek sygnału do szumu, jaki koder musi dostarczyć w każdym pasmie; najbardziej
-bezpośrednie pokrętło od szczegółu w tej grupie.**
-
-- Dotyczy: każdego profilu z rdzeniem AAC.
-- Wartości: Q8, `1` i wyżej bez udokumentowanego sufitu, gdzie `256` to x1,0; domyślnie:
-  `-1`, wyłączone
-- Wpisywanie: liczba całkowita
-
-Oprócz progu maskowania każde pasmo nosi wymagany SNR kodowania. To gwarantowane minimum:
-cokolwiek mówi wyliczenie progu, koder musi w tym pasmie osiągnąć taką jakość. FDK wyprowadza
-je ze swoich tabel strojenia i jest to najbliższy odpowiednik stałych tone masking noise i
-noise masking tone, które MusePack udostępnia bezpośrednio.
-
-Poniżej 256 żąda wyższego SNR niż stock, czyli więcej szczegółu i więcej bitów na pasmo.
-Powyżej 256 żąda mniej i wynik jest grubszy. Zwróć uwagę na odwrócenie wbrew intuicji:
-skalujesz dozwolony szum, nie żądaną jakość, więc mniej znaczy czyściej.
-
-Ten przełącznik jest skuteczniejszy od `--ath-scale` w tym samym celu, a powód jest
-strukturalny. Logika unikania dziur przyciąga progi z powrotem do linii minimalnego SNR, co
-oznacza, że żądanie SNR jest podłogą jakości, której pętli dopasowania bitrate'u nie wolno
-przebić. Przesuń próg, a klamra może ci to odkręcić. Przesuń żądanie, a klamra pójdzie za tobą.
-
-Przykłady:
-- Łagodnie, więcej szczegółu: `--minsnr-scale 220`. Skromne podniesienie wymaganej jakości
-  na pasmo. Widoczne przy średnim bitrate jako mniej wypadających pasm.
-- Mocno, więcej szczegółu: `--minsnr-scale 150`. Wyraźnie wyższe żądanie. W połączeniu z
-  hojnym bitrate to właśnie to pokrętło zamienia nadwyżkę bitów w zachowany szczegół; przy
-  napiętym bitrate zmusza pętlę dopasowania bitrate'u, żeby cięła w innym miejscu.
-- Przesadnie, więcej szczegółu: `--minsnr-scale 16`. Żądanie szesnastokrotne. Ramka nigdy go
-  nie zaspokoi, a pętla dopasowania bitrate'u spędza całą ramkę w trybie ratunkowym, więc
-  wynik jest gorszy niż stock; pouczające raz, ale to nie ustawienie do pracy.
-- Łagodnie, grubiej: `--minsnr-scale 300`. Trochę mniej wymagane na pasmo, mała oszczędność.
-- Mocno, grubiej: `--minsnr-scale 512`. Połowa żądanej jakości. Słyszalnie bardziej
-  ziarniste, z realną oszczędnością bitów, którą można przekierować innymi przełącznikami.
-- Przesadnie, grubiej: `--minsnr-scale 4096`. Żądanie jest praktycznie usunięte, podłoga
-  pod jakością znika, a pasma swobodnie się zapadają. Karykatura pokazująca, czego to żądanie
-  SNR broniło.
-
-Współpraca i konflikty: `--minsnr-clamp-hi` i `--minsnr-clamp-lo` ograniczają wynik tego
-skalowania, więc schodząc daleko poniżej 256, w końcu uderzysz w stockowy sufit około -1 dB,
-o ile go nie podniesiesz przez `--minsnr-clamp-hi`. `--reduce-clamp 0` to zwykły towarzysz
-przy skrajnym szczególe, bo usuwa sufit redukcji 29 dB, który inaczej ogranicza, jak głęboko
-da się pchać progi. Jest mocniejszy od `--ath-scale`, więc ustaw najpierw ten, a `--ath-scale`
-użyj jako docinki.
-
-### `--minsnr-clamp-hi <n>`
-
-**Podnosi lub obniża sufit tego, ile SNR pasmo ma prawo żądać.**
-
-- Dotyczy: każdego profilu z rdzeniem AAC. Działa tylko wtedy, gdy jakieś pasmo faktycznie
-  chce więcej niż stockowy sufit, co w praktyce oznacza, że używasz też `--minsnr-scale`
-  poniżej 256.
-- Wartości: Q8, `1` i wyżej, gdzie `256` to x1,0; domyślnie: `-1`, wyłączone
-- Wpisywanie: liczba całkowita
-
-Żądanie SNR dla pasma jest trzymane między sufitem i podłogą. Sufit, czyli MAX_SNR w FDK,
-siedzi około -1 dB i istnieje po to, by żadne pasmo nie mogło żądać absurdalnej precyzji i
-zagłodzić resztę ramki. Jeśli przeskalujesz żądanie w górę przez `--minsnr-scale`, pasma
-piętrzą się pod tym sufitem i skalowanie przestaje dawać jakikolwiek dalszy efekt.
-
-Powyżej 256 sufit tutaj się podnosi, więc pasma mogą żądać więcej, niż pozwala stock. To
-jedyny sposób, żeby bardzo niskie wartości `--minsnr-scale` dalej działały. Poniżej 256
-sufit się obniża, ograniczając żądanie szybciej, co jest tępym sposobem ograniczenia, ile
-jedno pasmo może zabrać z ramki.
-
-Przykłady:
-- Łagodnie, wyższy sufit: `--minsnr-clamp-hi 320`. Niewielki zapas nad stockowym limitem.
-  Pozwala skromnemu `--minsnr-scale` dalej działać w najbardziej wymagających pasmach.
-- Mocno, wyższy sufit: `--minsnr-clamp-hi 512`. Dwa razy stockowy limit. To para do
-  poważnej pracy nad szczegółem przy wysokim bitrate.
-- Przesadnie, wyższy sufit: `--minsnr-clamp-hi 4096`. Sufitu praktycznie nie ma i jedno
-  pasmo może zażądać wszystkiego, co ramka ma. Spodziewaj się, że pętla dopasowania
-  bitrate'u wyda cały budżet na kilka pasm, a resztę zapadnie.
-- Łagodnie, niższy sufit: `--minsnr-clamp-hi 220`. Żądania ograniczone trochę szybciej;
-  lekkie wyrównanie rozkładu bitów.
-- Mocno, niższy sufit: `--minsnr-clamp-hi 128`. Połowa stockowego limitu. Żadne pasmo nie
-  może prosić o wiele, więc widmo jest kodowane bardziej jednolicie i grubiej w szczytach.
-- Przesadnie, niższy sufit: `--minsnr-clamp-hi 8`. Sufit jest tak nisko, że żądanie zostaje
-  w zasadzie usunięte jako mechanizm, co daje ten sam stan końcowy, co usunięcie go od dołu.
-
-Współpraca i konflikty: ma sens tylko razem z `--minsnr-scale`; sam nie zmienia nic, o ile
-stockowe żądania nie dochodziły już do limitu. To odpowiednik `--minsnr-clamp-lo`, który
-przesuwa drugi koniec tej samej klamry.
-
-Zmierzone: przy AAC-LC 64 kbps `--minsnr-clamp-hi 512` zmienia strumień.
-
-### `--minsnr-clamp-lo <n>`
-
-**Podnosi lub obniża podłogę pod żądaniem SNR dla pasma, czyli poziom, poniżej którego
-żadnemu pasmu nie wolno spaść.**
-
-- Dotyczy: każdego profilu z rdzeniem AAC, ale tylko tam, gdzie pasma faktycznie są pchane
-  do podłogi, co oznacza bardzo niski bitrate. Przy wygodnych bitrate'ach podłoga nigdy nie
-  zostaje osiągnięta i przełącznik nie robi nic.
-- Wartości: Q8, `1` i wyżej, gdzie `256` to x1,0; domyślnie: `-1`, wyłączone
-- Wpisywanie: liczba całkowita
-
-Drugi koniec klamry względem `--minsnr-clamp-hi`. Podłoga MIN_SNR w FDK siedzi około -25 dB
-i jest najgorszą jakością, jaką można przypisać pasmu. Bez niej pasmo pod presją bitową
-mogłoby dostać praktycznie nic, formalnie nadal będąc kodowane.
-
-Poniżej 256 podłoga się obniża i pozwala pchać pasma dalej w dół, co zwalnia bity dla resztek
-ramki kosztem tego, że najgorsze pasma stają się gorsze. Powyżej 256 podłoga się podnosi, więc
-nic nie może zrobić się tak złe, jak pozwala stock, co chroni najsłabsze pasma i zabiera te
-bity skądinąd.
-
-Szczerze o stanie: przy zwykłych bitrate'ach ten przełącznik nie ma obserwowalnego efektu,
-bo podłoga po prostu nie zostaje osiągnięta. To narzędzie na okolice 16..32 kbps i na
-eksperymenty, w których rdzeń jest celowo zagłodzony, na przykład szerokim `--core-cutoff` przy
-niskim bitrate.
-
-Przykłady:
-- Łagodnie, wyższa podłoga: `--minsnr-clamp-lo 300`. Najgorsze pasma trzymane nieco lepiej.
-  Widoczne tylko przy bardzo niskim bitrate.
-- Mocno, wyższa podłoga: `--minsnr-clamp-lo 512`. Dwa razy stockowa podłoga. Przy niskim
-  bitrate zmniejsza to przepaść między najlepiej i najgorzej zakodowanymi pasmami.
-- Przesadnie, wyższa podłoga: `--minsnr-clamp-lo 2048`. Podłoga siedzi tak wysoko, że
-  spotyka sufit i klamra się zapada; każde pasmo żąda tego samego, a to już nie jest żaden
-  model psychoakustyczny.
-- Łagodnie, niższa podłoga: `--minsnr-clamp-lo 220`. Najgorsze pasma mogą zejść trochę
-  dalej w dół, trochę zwolnionych bitów.
-- Mocno, niższa podłoga: `--minsnr-clamp-lo 128`. Połowa stockowej podłogi. Słyszalne przy
-  niskim bitrate jako wcześniejsze poddawanie się najcichszych pasm w zamian za czystsze
-  średnie pasmo.
-- Przesadnie, niższa podłoga: `--minsnr-clamp-lo 4`. Nie zostaje żadna sensowna ochrona;
-  pasma pod presją dostają prawie nic, co jest blisko pozwolenia im zostać dziurami bez
-  udziału logiki dziur.
-
-Współpraca i konflikty: łączy się w parę z `--minsnr-clamp-hi` jako dwa końce jednej klamry
-oraz z `--minsnr-scale`, który przesuwa żądanie w jej środku. Przełączniki dziur z grupy E
-zajmują się tym samym objawem z drugiej strony, kontrolując, które pasma wolno wyzerować
-całkowicie.
-
-Zmierzone: `--minsnr-clamp-lo 512` nie dało żadnej zmiany przy AAC-LC 64 kbps, bo podłoga
-nigdy tam nie zostaje osiągnięta, natomiast `--minsnr-clamp-hi 512` przy tych samych
-ustawieniach strumień zmienił. Licz się z tym, że ten potrzebuje znacznie niższego bitrate'u,
-żeby zadziałać.
-
-### `--reduce-clamp <0|1>`
-
-**Usuwa sufit 29 dB na to, jak daleko kwantyzator CBR może pchać progi w dół, pozwalając
-innym przełącznikom od szczegółu działać bez uderzania w ścianę.**
-
-- Dotyczy: CBR, czyli domyślnej ścieżki `-m 0`. VBR używa innej ścieżki kodu i nie jest tym
-  dotknięte.
-- Wartości: `0` albo `1`; domyślnie: `1`, sufit obowiązuje, jak w stocku
-- Wpisywanie: liczba całkowita, włącz/wyłącz
-
-Kiedy pętla dopasowania bitrate'u CBR potrzebuje w pasmie więcej jakości, redukuje próg tego
-pasma. Na łączną redukcję jest sufit, około 29 dB, który nie pozwala pętli gonić jednego
-wymagającego pasma w nieskończoność. Przy normalnym materiale sufit nigdy nie wiąże. Jeśli
-celowo żądasz znacznie większej precyzji niż stock, przez `--minsnr-scale` dobrze poniżej 256
-albo `--ath-scale` dobrze poniżej 256, to właśnie ten sufit zatrzymuje dalszy efekt
-ustawienia.
-
-Ustawienie `0` zdejmuje sufit, więc progi mogą być pchane głębiej i do wymagających pasm
-płynie więcej bitów. Samo z siebie zmienia niewiele, bo stock rzadko dochodzi do 29 dB
-redukcji. To przełącznik towarzyszący, nie samodzielny.
-
-Wartości:
-- `1`: sufit redukcji 29 dB obowiązuje (stock, domyślnie).
-- `0`: sufit usunięty, progi mogą być pchane głębiej.
-
-Przykład w kontekście:
-
-    fdkaac -p 2 -b 256000 --minsnr-scale 150 --reduce-clamp 0 -o out.m4a in.wav
-
-Współpraca i konflikty: łącz w parę z `--minsnr-scale` poniżej 256 dla skrajnego szczegółu;
-sam jest niemal bez sensu. Bez efektu przy VBR (`-m 1..5`).
 
 ### `--tns-mask <n>`
 
@@ -4658,6 +4351,342 @@ się nawzajem i wygrywa ciaśniejsze. Nie robi nic, gdy PNS jest wyłączony.
 Zmierzone: przy AAC-LC wartości `2` i `4` dają stockowy strumień, co potwierdza, że wbudowana
 wartość domyślna 16 jest podłogą. `64` przy AAC-LC 64 kbps daje dokładnie ten strumień, który
 daje `--pns 0`, więc przy tej szerokości PNS jest praktycznie wyłączony.
+
+### Progi maskowania: warstwa zaawansowana
+
+Siedem przełączników poniżej przesuwa sam model psychoakustyczny: próg, rozlewanie
+maskowania, wymagany SNR i granice wokół niego. Większość przyjmuje liczby Q8. Przy CBR
+pętla dopasowania musi trafić w tę samą liczbę bitów na ramkę bez względu na to, co mówi
+model, więc odbiera większość ich efektu: zmierzone na muzyce, każdy z nich zmienia wynik
+po dekodowaniu o setne albo dziesiąte części decybela. Przy VBR (`-m 1..5`) liczba bitów
+idzie za modelem, a `--ath-scale` i `--minsnr-scale` stają się prawdziwymi ustawieniami
+jakości, opłaconymi rozmiarem pliku. `--spread-mask`, obie granice okna, `--reduce-clamp`
+i `--mask-slope` zostają przełącznikami laboratoryjnymi w obu trybach.
+
+#### `--ath-scale <n>`
+
+**Globalna skala progu maskowania: jedno pokrętło na "bądź czystszy" albo "bądź
+oszczędniejszy" w całym widmie.**
+
+- Dotyczy: każdego profilu z rdzeniem AAC, czyli wszystkich. Pod SBR działa tylko na
+  rdzeń, bo SBR ma własny model szumu.
+- Wartości: Q8, `1..4096`, gdzie `256` to x1,0; domyślnie: `256`, bez zmiany
+- Wpisywanie: liczba całkowita
+
+Próg maskowania to poziom szumu, o którym model sądzi, że w danym pasmie go nie usłyszysz.
+`--ath-scale` mnoży wszystkie progi naraz. Powyżej 256 progi rosną, koder dochodzi do
+wniosku, że więcej szumu jest niesłyszalne, i wydaje mniej bitów na pasmo: kodowanie
+bardziej agresywne, co przy stałym bitrate oznacza, że te bity idą gdzie indziej albo
+ramka po prostu kończy się wcześniej. Poniżej 256 progi spadają, więcej treści uznaje się
+za warte dokładnego zakodowania, a zapotrzebowanie na bity rośnie.
+
+Dwie rzeczy nie pozwalają temu pokrętłu być tak mocnym, jak sugeruje jego zakres. Działa
+na logarytmicznej kopii progu, a część jego efektu znosi dalej w łańcuchu logika minimalnego
+SNR oraz sufit redukcji progu 29 dB w kwantyzatorze CBR. Poza tym przy CBR globalna zmiana
+progu raczej przetasowuje bity, niż zmienia ich liczbę, bo pętla dopasowania bitrate'u i tak
+musi trafić w cel. `--minsnr-scale` działa na
+linii, do której unikanie dziur przyciąga progi z powrotem, a tej `--ath-scale` przesunąć
+nie może.
+
+Na swoje zarabia przy wysokim bitrate, gdzie masz nadwyżkę bitów i chcesz, żeby koder
+znalazł więcej rzeczy wartych zakodowania. Wartości trochę poniżej 256 zamieniają tę
+nadwyżkę w zachowany szczegół. Przy niskim bitrate użyteczny kierunek jest zwykle w górę,
+jako sposób na świadome przyjęcie szorstkości zamiast pozostawienia pętli dopasowania
+bitrate'u decyzji, gdzie ciąć.
+
+Przykłady:
+- Łagodnie, czyściej: `--ath-scale 230`. Progi niższe o jakieś 10 procent. Trochę więcej
+  bitów na cichy szczegół; subtelne przy każdym bitrate, najlepiej widoczne powyżej
+  192 kbps.
+- Mocno, czyściej: `--ath-scale 180`. Wyraźne przesunięcie wysiłku w stronę treści o
+  niskim poziomie. Ogony pogłosu i szum pomieszczenia przeżywają lepiej; przy napiętym
+  bitrate coś innego na tym głodzi.
+- Przesadnie, czyściej: `--ath-scale 64`. Progi na jednej czwartej stocka. Modelowi mówi
+  się praktycznie, że nic nie jest maskowane. Przy CBR pętla dopasowania bitrate'u walczy
+  przez całą ramkę, a wynik nie jest lepszy, tylko inaczej skompromitowany; warto raz
+  posłuchać, żeby zrozumieć, gdzie leży granica.
+- Łagodnie, grubiej: `--ath-scale 290`. Trochę więcej szumu przyjętego na pasmo, mała
+  oszczędność bitów.
+- Mocno, grubiej: `--ath-scale 512`. Progi podwojone. Słyszalnie bardziej ziarniste na
+  materiale szerokopasmowym, zauważalnie tańsze na pasmo.
+- Przesadnie, grubiej: `--ath-scale 2048`. Progi osiem razy wyższe niż w stocku. Koder
+  wierzy, że prawie wszystko jest zamaskowane, a wynik to karykatura agresywnego kodowania:
+  wydrążony, syczący, z utraconym szczegółem wszędzie tam, gdzie obok siedzi coś
+  głośniejszego.
+
+Współpraca i konflikty: `--minsnr-scale` jest mocniejszym narzędziem do tego samego celu i
+częściowo nadpisuje efekt tego przełącznika, bo żądanie SNR jest podłogą jakości, przez
+którą podniesiony próg nie przepchnie. `--reduce-clamp 0` pozwala pchać progi głębiej niż
+sufit 29 dB, co daje niskim wartościom tutaj więcej miejsca na działanie. `--spread-mask`
+to pokrętło towarzyszące, od szerokości maskowania, a nie od jego wysokości.
+
+Zmierzone (akustyczna muzyka stereo): CBR 96 kbps, `128` obniża łączny błąd o 0,04 dB, a
+`384` podnosi go o 0,04 dB; przy 256 kbps `190` obniża go o 0,2 dB przy niezmienionym
+rozmiarze pliku. VBR `-m 3` (około 108 kbps): `128` daje plik większy o 5,5% i błąd niższy
+o 0,8 dB, `192` odpowiednio 2,3% i 0,3 dB, `384` plik mniejszy o 3,3% i błąd wyższy o
+0,5 dB, `512` mniejszy o 5,6% i błąd wyższy o 0,8 dB.
+
+#### `--minsnr-scale <n>`
+
+**Skaluje stosunek sygnału do szumu, jaki koder musi dostarczyć w każdym pasmie; najbardziej
+bezpośrednie pokrętło od szczegółu w tej grupie.**
+
+- Dotyczy: każdego profilu z rdzeniem AAC.
+- Wartości: Q8, `1` i wyżej bez udokumentowanego sufitu, gdzie `256` to x1,0; domyślnie:
+  `-1`, wyłączone
+- Wpisywanie: liczba całkowita
+
+Oprócz progu maskowania każde pasmo nosi wymagany SNR kodowania. To gwarantowane minimum:
+cokolwiek mówi wyliczenie progu, koder musi w tym pasmie osiągnąć taką jakość. FDK wyprowadza
+je ze swoich tabel strojenia i jest to najbliższy odpowiednik stałych tone masking noise i
+noise masking tone, które MusePack udostępnia bezpośrednio.
+
+Poniżej 256 żąda wyższego SNR niż stock, czyli więcej szczegółu i więcej bitów na pasmo.
+Powyżej 256 żąda mniej i wynik jest grubszy. Zwróć uwagę na odwrócenie wbrew intuicji:
+skalujesz dozwolony szum, nie żądaną jakość, więc mniej znaczy czyściej.
+
+Od `--ath-scale` różni się miejscem, w które trafia zmiana. Logika unikania dziur przyciąga
+progi z powrotem do linii minimalnego SNR, więc wymagany SNR jest podłogą, której pętla
+dopasowania nie może przebić, a przesunięty próg może zostać cofnięty. W pomiarze przy VBR
+oba kosztują mniej więcej tyle samo za każdy zyskany decybel; `--minsnr-scale` kieruje
+więcej zysku w dolne pasmo, `--ath-scale` rozkłada go równiej.
+
+Przykłady:
+- Łagodnie, więcej szczegółu: `--minsnr-scale 220`. Skromne podniesienie wymaganej jakości
+  na pasmo. Widoczne przy średnim bitrate jako mniej wypadających pasm.
+- Mocno, więcej szczegółu: `--minsnr-scale 150`. Wyraźnie wyższe żądanie. W połączeniu z
+  hojnym bitrate to właśnie to pokrętło zamienia nadwyżkę bitów w zachowany szczegół; przy
+  napiętym bitrate zmusza pętlę dopasowania bitrate'u, żeby cięła w innym miejscu.
+- Przesadnie, więcej szczegółu: `--minsnr-scale 16`. Żądanie szesnastokrotne. Ramka nigdy go
+  nie zaspokoi, a pętla dopasowania bitrate'u spędza całą ramkę w trybie ratunkowym, więc
+  wynik jest gorszy niż stock; pouczające raz, ale to nie ustawienie do pracy.
+- Łagodnie, grubiej: `--minsnr-scale 300`. Trochę mniej wymagane na pasmo, mała oszczędność.
+- Mocno, grubiej: `--minsnr-scale 512`. Połowa żądanej jakości. Słyszalnie bardziej
+  ziarniste, z realną oszczędnością bitów, którą można przekierować innymi przełącznikami.
+- Przesadnie, grubiej: `--minsnr-scale 4096`. Żądanie jest praktycznie usunięte, podłoga
+  pod jakością znika, a pasma swobodnie się zapadają. Karykatura pokazująca, czego to żądanie
+  SNR broniło.
+
+Współpraca i konflikty: wynik jest trzymany w oknie, które wyznaczają `--minsnr-clamp-lo`
+(najwyższe wymaganie, w FDK około 25 dB) i `--minsnr-clamp-hi` (najniższe, około 1 dB).
+Schodząc daleko poniżej 256, wymaganie dochodzi do górnej granicy, którą `--minsnr-clamp-lo`
+poniżej 256 odsuwa dalej. `--reduce-clamp 0` zdejmuje sufit redukcji 29 dB w pętli CBR.
+
+Zmierzone: przy CBR pętla dopasowania odbiera większość efektu: przy 96 kbps na muzyce
+akustycznej `150` daje dolne pasmo czystsze o 0,8 dB i górę zgrubniejszą o 0,05 dB, a
+łączny wynik zmienia się o setne części decybela. Przy VBR `-m 3` działa jak ustawienie
+jakości: `150` daje plik większy o 1,3% i błąd niższy o 0,3 dB, `64` plik większy o 7,2% i
+błąd niższy o 1,1 dB, `512` plik mniejszy o 0,7% i błąd wyższy o 0,3 dB.
+
+#### `--spread-mask <n>`
+
+**Skaluje, jak daleko maskowanie przecieka z jednego pasma do sąsiadów, co decyduje, ile
+cichych pasm obok głośnych przeżyje.**
+
+- Dotyczy: każdego profilu z rdzeniem AAC. W naszych pomiarach efekt był mały przy każdym
+  sprawdzonym bitrate'ie, przy CBR i przy VBR.
+- Wartości: Q8, `0` i wyżej, gdzie `256` to x1,0; domyślnie: `-1`, wyłączone
+- Wpisywanie: liczba całkowita
+
+Głośny ton maskuje szum nie tylko we własnym pasmie, maskuje też skraj pasm wokół siebie,
+bardziej w górę niż w dół. Model symuluje to funkcją rozmycia. To właśnie rozmycie jest
+powodem, dla którego ciche pasmo stojące obok głośnego dostaje prawie zero bitów: model
+mówi, że jego treść jest przykryta przez sąsiada.
+
+Ten przełącznik skaluje rozmycie. Poniżej 256 oznacza mniej rozmycia maskowania, więc skraj
+się zwęża, mniej pasm liczy się jako przykryte i więcej z nich zostaje zakodowanych. To ta
+sama idea, co rozluźnienie założenia "ton maskuje szum" w innych koderach. Powyżej 256 skraj
+się rozszerza i więcej pasm zostaje spisanych na straty jako przykryte przez sąsiadów, co
+jest tańsze i bardziej płaskie.
+
+W teorii rozlewanie decyduje najwięcej tam, gdzie bitów jest mało, ale jeszcze nie
+rozpaczliwie: znacznie niżej głodzi się cała ramka i pętla dopasowania tnie wszędzie,
+znacznie wyżej bitów starcza na wszystko. Na naszym materiale rozlewanie decydowało jednak
+o bardzo niewielu pasmach przy każdym bitrate'ie, zobacz Zmierzone.
+
+Przykłady:
+- Łagodnie, mniej maskowania: `--spread-mask 230`. Nieco węższy skraj. Kilka pasm więcej
+  przeżywa obok głośnej treści; więcej szczegółu wokół mocnych składowych.
+- Mocno, mniej maskowania: `--spread-mask 180`. Wyraźnie więcej pasm zakodowanych obok
+  głośnych. Na gęstym materiale to właśnie tutaj odzyskuje się szczegół wokół energii
+  transjentów, realnym kosztem bitów.
+- Przesadnie, mniej maskowania: `--spread-mask 32`. Rozmycie prawie usunięte. Model traci
+  większość zdolności do decydowania, co jest przykryte, więc bity rozsypują się po pasmach,
+  które naprawdę są niesłyszalne; karykatura pokazująca, co daje funkcja rozmycia.
+- Łagodnie, więcej maskowania: `--spread-mask 300`. Odrobinę szerszy skraj, mała oszczędność.
+- Mocno, więcej maskowania: `--spread-mask 512`. Rozmycie podwojone. Zauważalnie bardziej
+  płaskie widmo obok głośnej treści, tanio, z cichym szczegółem spisanym na straty.
+- Przesadnie, więcej maskowania: `--spread-mask 1536`. Prawie wszystko blisko czegokolwiek
+  głośnego liczy się jako zamaskowane. Wynik jest wydrążony i rozmazany, przydatny głównie
+  jako przeciwny koniec pokazu.
+
+Współpraca i konflikty: łącz z `--ath-scale` poniżej 256, kiedy chcesz maski zarazem
+niższej i węższej; oba są niezależne i efekty się dodają. `--minsnr-scale` nadal ogranicza
+wynik od dołu, więc bardzo niskie rozmycie nie zepchnie żadnego pasma poniżej jego żądania
+SNR.
+
+Zmierzone (akustyczna muzyka stereo): CBR 96 kbps, `128` i `384` w granicach 0,01 dB od
+ustawień domyślnych; na `dense48` przy 40 kbps w granicach 0,05 dB. VBR `-m 3`: `128` daje
+plik większy o 0,4%, `64` o 0,6%, a błąd zmienia się o mniej niż 0,01 dB. Na naszym
+materiale rozlewanie maskowania decyduje o bardzo niewielu pasmach; karta opisuje
+mechanizm, pomiar jego skalę.
+
+#### `--minsnr-clamp-hi <n>`
+
+**Przesuwa najgrubszy SNR, jaki koder musi zachować w każdym paśmie: gwarancję, że nawet
+najmniej ważne pasmo zachowa trochę szczegółu.**
+
+- Dotyczy: każdego profilu z rdzeniem AAC. Najwięcej znaczy przy VBR.
+- Wartości: Q8, `1..320`, gdzie `256` to x1,0 (domyślnie w FDK); `-1` wyłączone (domyślnie).
+  `320` to najluźniejsza możliwa granica, 0 dB.
+- Wpisywanie: liczba całkowita
+
+Każde pasmo ma wymagany SNR z tabel strojenia (zobacz *Wymagany SNR* wyżej), a FDK trzyma
+to wymaganie w oknie. Ten przełącznik przesuwa zgrubny koniec okna, który w FDK oznacza, że
+żadne pasmo nie może mieć więcej szumu niż około 1 dB pod własną energią. Ma to znaczenie
+dla pasm, które tabele uznają za mało ważne: bez tej granicy zostałyby niemal całkiem
+odpuszczone.
+
+Poniżej 256 granica się zacieśnia, więc każde pasmo ma zagwarantowany wyższy SNR, a pasma
+najmniej wymagające dostają więcej bitów. Powyżej 256 granica luzuje się, aż do 0 dB przy
+`320`, gdzie pasmo może mieć tyle szumu, ile sygnału. Przy CBR pętla dopasowania odkręca
+większość efektu w obu kierunkach; mierzalny skutek jest przy VBR, gdzie liczba bitów idzie
+za wymaganiem.
+
+Przykłady (VBR `-m 3`, akustyczna muzyka stereo, bez przełącznika około 108 kbps):
+- Łagodnie, ciaśniej: `--minsnr-clamp-hi 192`. Plik większy o 0,3%, łączny błąd niższy o
+  0,06 dB.
+- Mocno, ciaśniej: `--minsnr-clamp-hi 128`. Plik większy o 1,4%, łączny błąd niższy o
+  0,2 dB, głównie powyżej 4 kHz.
+- Przesadnie, ciaśniej: `--minsnr-clamp-hi 64`. Plik większy o 5,9%, błąd niższy o 0,5 dB:
+  ciche pasma odkupione wyższym bitrate'em.
+- Luźniej: `--minsnr-clamp-hi 320`. Najluźniejsza granica; na naszym materiale nie zmieniła
+  niczego mierzalnego, bo tabele rzadko żądają tak mało.
+
+Współpraca i konflikty: `--minsnr-scale` przesuwa wymaganie wewnątrz okna, a ten przełącznik
+i `--minsnr-clamp-lo` przesuwają końce okna. Przy CBR spodziewaj się różnic rzędu setnych
+części decybela.
+
+Zmierzone: CBR 96 kbps, akustyczna muzyka stereo: `128` zmienia łączny błąd o 0,06 dB w
+złą stronę, bo pętla dopasowania płaci za ciche pasma gdzie indziej. Wartości powyżej 320
+są odrzucane: za 0 dB wewnętrzna liczba stałoprzecinkowa się przepełniała i koder
+wyliczał bezsensowne wymagania.
+
+#### `--minsnr-clamp-lo <n>`
+
+**Przesuwa najwyższy SNR, jakiego pasmo może zażądać: granicę, w którą uderza
+`--minsnr-scale` poniżej 256.**
+
+- Dotyczy: każdego profilu z rdzeniem AAC, gdy `--minsnr-scale` żąda więcej SNR niż FDK albo
+  gdy tabele już żądają najwięcej.
+- Wartości: Q8, `1` i wyżej, gdzie `256` to x1,0 (domyślnie w FDK); `-1` wyłączone
+  (domyślnie)
+- Wpisywanie: liczba całkowita
+
+To dokładny koniec tego samego okna: w FDK żadne pasmo nie może żądać więcej niż około
+25 dB SNR, choćby tabele uważały je za bardzo ważne. Dzięki temu jedno pasmo nie zabiera
+całej ramki.
+
+Poniżej 256 granica odsuwa się, więc pasmo może żądać więcej niż 25 dB. Samo z siebie
+zmienia to niewiele, bo do granicy dochodzi mało pasm; przydaje się razem z `--minsnr-scale`
+dobrze poniżej 256, które dopycha wymagające pasma do tej granicy. Powyżej 256 granica się
+przybliża, najbardziej wymagające pasma są ograniczane wcześniej, a ich bity idą do
+pozostałych. Bardzo duże wartości zsuwają oba końce okna i każde pasmo żąda tego samego, a
+to już nie jest model psychoakustyczny.
+
+Przykłady (VBR `-m 3`, akustyczna muzyka stereo):
+- Łagodnie, dokładniej: `--minsnr-clamp-lo 64`. Bez `--minsnr-scale` bez mierzalnej zmiany.
+- Mocno, dokładniej: `--minsnr-scale 64 --minsnr-clamp-lo 64`. Dolne pasmo (100 Hz..1 kHz)
+  czystsze o 0,4 dB niż z samym `--minsnr-scale 64`.
+- Łagodnie, zgrubniej: `--minsnr-clamp-lo 1024`. Plik mniejszy o 0,2%, błąd w dolnym
+  paśmie wyższy o 0,3 dB.
+- Przesadnie, zgrubniej: `--minsnr-clamp-lo 4096`. Plik mniejszy o 0,8%, dolne pasmo gorsze o
+  1,4 dB: tracą właśnie pasma, na których tabelom najbardziej zależy.
+
+Współpraca i konflikty: partner `--minsnr-scale` poniżej 256. Przełączniki dziur z grupy E
+zajmują się tym samym problemem z drugiej strony, decydując, które pasma wolno wyzerować.
+
+Zmierzone: CBR 96 kbps, akustyczna muzyka stereo: `4096` podnosi błąd w dolnym paśmie o
+1,1 dB, a łączny błąd o 0,03 dB; samo `64` nie zmienia niczego mierzalnego.
+
+#### `--reduce-clamp <0|1>`
+
+**Usuwa sufit 29 dB na to, jak daleko kwantyzator CBR może pchać progi w dół, pozwalając
+innym przełącznikom od szczegółu działać bez uderzania w ścianę.**
+
+- Dotyczy: CBR, czyli domyślnej ścieżki `-m 0`. VBR używa innej ścieżki kodu i nie jest tym
+  dotknięte.
+- Wartości: `0` albo `1`; domyślnie: `1`, sufit obowiązuje, jak w stocku
+- Wpisywanie: liczba całkowita, włącz/wyłącz
+
+Kiedy pętla dopasowania bitrate'u CBR potrzebuje w pasmie więcej jakości, redukuje próg tego
+pasma. Na łączną redukcję jest sufit, około 29 dB, który nie pozwala pętli gonić jednego
+wymagającego pasma w nieskończoność. Przy normalnym materiale sufit nigdy nie wiąże. Jeśli
+celowo żądasz znacznie większej precyzji niż stock, przez `--minsnr-scale` dobrze poniżej 256
+albo `--ath-scale` dobrze poniżej 256, to właśnie ten sufit zatrzymuje dalszy efekt
+ustawienia.
+
+Ustawienie `0` zdejmuje sufit, więc progi mogą być pchane głębiej i do wymagających pasm
+płynie więcej bitów. Samo z siebie zmienia niewiele, bo stock rzadko dochodzi do 29 dB
+redukcji. To przełącznik towarzyszący, nie samodzielny.
+
+Wartości:
+- `1`: sufit redukcji 29 dB obowiązuje (stock, domyślnie).
+- `0`: sufit usunięty, progi mogą być pchane głębiej.
+
+Przykład w kontekście:
+
+    fdkaac -p 2 -b 256000 --minsnr-scale 150 --reduce-clamp 0 -o out.m4a in.wav
+
+Współpraca i konflikty: łącz w parę z `--minsnr-scale` poniżej 256 dla skrajnego szczegółu;
+sam jest niemal bez sensu. Bez efektu przy VBR (`-m 1..5`).
+
+#### `--mask-slope <dB>`
+
+**Przesuwa, jak głęboko pod średnią energią ramki musi leżeć pasmo, zanim koder rozluźni
+jego wymagany SNR.**
+
+- Dotyczy: każdego profilu z rdzeniem AAC, obu kanałów. Domyślnie wyłączone.
+- Wartości: `-24.0..50.0` dB, `0` = wyłączone (domyślnie); odmienne wyniki tylko w
+  przybliżeniu w zakresie -9,9..+9
+- Wpisywanie: liczba dziesiętna, do 3 miejsc, `.` albo `,`
+
+FDK ma heurystykę, która rozluźnia wymagany SNR pasma, gdy jego energia leży daleko pod
+średnią energią ramki, w FDK więcej niż około 10 dB pod nią. Prościej: koder wydaje mniej
+na bardzo ciche pasma, zakładając, że głośne je zamaskują. Ten przełącznik przesuwa tę
+granicę 10 dB: wartość dodatnia ją podnosi, więc mniej pasm uchodzi za pomijalne, a
+wartość ujemna ją obniża, więc pomijalnych jest więcej.
+
+Zmierzony na muzyce efekt jest mały. Heurystyka dotyka tylko najcichszych pasm, a pętla
+dopasowania rozdziela to, co się zaoszczędzi, więc przy CBR błąd po dekodowaniu zmienia się
+o setne części decybela. Przy VBR plik rośnie albo maleje o ułamek procenta. To przełącznik
+laboratoryjny do sprawdzenia, co ta heurystyka wnosi, a nie narzędzie do szczegółu. Do
+cichego szczegółu służą `--minsnr-scale` przy VBR i przełączniki dziur z grupy E.
+
+Przyjmowany zakres jest szerszy niż żywy. Odmienne wyniki pojawiają się mniej więcej od
+-9,9 do +9; przy -10 i niżej wynik przestaje się zmieniać, +10 do +40 daje jeden strumień,
+a 45 do 50 inny.
+
+Przykłady:
+- Łagodnie, ochrona cichych pasm: `--mask-slope 2`. Kilka cichych pasm więcej zachowuje
+  wymaganie.
+- Mocno, ochrona cichych pasm: `--mask-slope 6`. Przy VBR plik większy o 0,1% na muzyce
+  akustycznej, łączny błąd niższy o 0,03 dB.
+- Przesadnie, ochrona cichych pasm: `--mask-slope 9`. Szczyt żywego zakresu; dalej nic się
+  nie zmienia.
+- Łagodnie, mniej dla cichych pasm: `--mask-slope -2`. Kilka cichych pasm więcej
+  rozluźnionych.
+- Mocno, mniej dla cichych pasm: `--mask-slope -6`. Przy CBR w granicach 0,1 dB od ustawień
+  domyślnych.
+- Przesadnie, mniej dla cichych pasm: `--mask-slope -9,5`. Dół żywego zakresu.
+
+Współpraca i konflikty: działa jednakowo na mid i side. Nie rusza progu side, który należy
+do `--side-bias` i `--side-knee`.
+
+Zmierzone: mix48 przy 40 kbps daje odmienne strumienie tylko dla około -9,9..+9. Akustyczna
+muzyka stereo przy 96 kbps CBR (`+6`, `-6`) i `dense48` przy 40 kbps (`+9`, `-9`): mid i side
+w granicach 0,1 dB od ustawień domyślnych. VBR `-m 3`: `+9` i `-9` zmieniają plik o +0,3% i
++0,6%, błąd mid o mniej niż 0,2 dB.
 
 ## E. Transjenty rdzenia, pre-echo i dziury w widmie
 

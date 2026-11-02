@@ -27,6 +27,21 @@ Library** (per section 2 of the FDK AAC license, see `NOTICE.fdk-aac`).
 - Also lets a 44.1 kHz source go to `--dab` (`--resample 48`).
 - Fix: `--help` printed garbage instead of "~50% at 192" in the `--block-bias` text
   (an unescaped `%` in the printf format).
+- Fix: `--minsnr-clamp-hi` above 320 overflowed the internal Q30 value (0.8 x n/256 above
+  1.0, then shifted left): every band got a garbage SNR requirement (CBR 96 kbps: error
+  2.4 dB higher; VBR 64 kbps: file 2.8 times larger). The value is now limited to
+  `1..320` (320 = 0 dB) and both SNR limits are capped inside the representable range.
+  The help and the documentation had the direction of both clamps reversed: `-hi`
+  moves the coarsest SNR a band is held to, `-lo` the finest it may demand.
+- Docs: the MS section ordered by use. `--side-bias` and `--side-knee` are the two
+  levers, `--side-cutoff` the low bitrate trade, the rest (`--msmask`, `--msbands*`,
+  `--ms-bias`, `--ms-precision`, `--mid-bias`) a laboratory, with measured mid/side
+  error for each. `--is-admit` moved to the IS cards, `--mask-slope` to group D. The
+  masking threshold switches of group D (`--ath-scale`, `--minsnr-*`, `--spread-mask`,
+  `--reduce-clamp`, `--mask-slope`) moved to an advanced subsection, with CBR and VBR
+  measurements. Corrected: `--ms-bias` saturates from about 8, not 1;
+  `--side-knee` has no step, but in starved frames a small negative value already
+  removes most of the side.
 
 
 #### Short blocks: band switches follow the frequency
