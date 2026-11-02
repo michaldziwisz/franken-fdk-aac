@@ -157,7 +157,7 @@ test_exe(){
  "mask-slope-pos:-b96000 --mask-slope 12"
  "mask-slope-neg:-b96000 --mask-slope -12"
  "minsnr-scale:-b128000 --minsnr-scale 128"
- "minsnr-clamp-hi:-b128000 --minsnr-clamp-hi 512"
+ "minsnr-clamp-hi:-b128000 --minsnr-clamp-hi 128"
  "minsnr-clamp-lo:-b128000 --minsnr-clamp-lo 64"
  "reduce-clamp:-b128000 --reduce-clamp 0"
  "pns-gain:-b64000 --pns 1 --force-pns --pns-gain 2.0"
@@ -646,6 +646,20 @@ else
   bad "--msmask -1 @ short: ZMIENIA wyjscie lub brak pliku"
 fi
 rm -f "$MSS" "$ISALT"
+
+# --- --minsnr-clamp-hi: powyzej 320 przepelnienie Q30 (bug naprawiony 02.11.2026) ---
+# MAX_SNR 0.8 razy n/256 przekraczalo 1.0 w q30, a snr << 1 dawalo wartosc ujemna:
+# wymaganie SNR wszystkich pasm stawalo sie smieciem (VBR 64k: plik 2.8x wiekszy).
+for v in 321 512; do
+  rm -f "${OUT}_ch${v}.aac"
+  "$X64" -f2 -p2 -b96000 --minsnr-clamp-hi $v -o "${OUT}_ch${v}.aac" "$WAV" >/dev/null 2>&1; rc=$?
+  if [ "$rc" != "0" ] && [ ! -s "${OUT}_ch${v}.aac" ]; then ok "--minsnr-clamp-hi $v odrzucone (powyzej 0 dB)"
+  else bad "--minsnr-clamp-hi $v przyjete (rc=$rc)"; fi
+done
+# --minsnr-clamp-lo bardzo duze: zostaje w q30 (cap 1.0), strumien dekodowalny
+enc "$X64" -f2 -p2 -b96000 --minsnr-clamp-lo 100000 -o "${OUT}_cl.aac" "$WAV"
+if [ -s "${OUT}_cl.aac" ] && [ "$(derr ${OUT}_cl.aac)" = "0" ]; then ok "--minsnr-clamp-lo 100000 dekodowalne"
+else bad "--minsnr-clamp-lo 100000"; fi
 
 # --- --sbr-noise-bands: pole bs_noise_bands ma 2 bity (bug naprawiony 21.10.2026) ---
 # Wartosci 4 i 5 byly przyjmowane: naglowek zapisywal je obciete do 2 bitow

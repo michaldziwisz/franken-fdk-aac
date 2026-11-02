@@ -602,19 +602,22 @@ static void FDKaacEnc_initMinSnr(const LONG bitrate, const LONG samplerate,
   FIXP_DBL MAX_SNR = (FIXP_DBL)0x33333333;    /* 0.8 in q30 */
   FIXP_DBL MIN_SNR = (FIXP_DBL)0x003126e9;    /* 0.003 in q30 */
 
-  /* Frankenstein: optionally loosen FDK's hard SNR window. MAX_SNR is the upper
-   * limit (~-1 dB) and MIN_SNR the lower (~-25 dB). Scaling them in Q8 lets the
-   * per-band min-SNR reach beyond the stock window (MusePack-style control).
-   * Values are clamped to the representable q30 range. */
+  /* Frankenstein: optionally move FDK's hard SNR window. 'snr' below is the
+   * allowed noise as a threshold/energy ratio, so MAX_SNR (0.8, ~-1 dB) is the
+   * COARSEST a band may be coded and MIN_SNR (0.003, ~-25 dB) the FINEST it may
+   * demand. Scaling them in Q8 moves those two limits. The result is shifted
+   * left by one below (snr << 1), so both are capped at 0x3FFFFFFF (ratio 1.0,
+   * 0 dB): beyond that the shift overflowed into a negative value and the
+   * per-band demand became garbage (--minsnr-clamp-hi above 320). */
   if (g_franken.minSnrClampHiQ8 > 0 && g_franken.minSnrClampHiQ8 != 256) {
     INT64 v = ((INT64)MAX_SNR * g_franken.minSnrClampHiQ8) >> 8;
-    if (v > (INT64)0x7FFFFFFF) v = (INT64)0x7FFFFFFF;
+    if (v > (INT64)0x3FFFFFFF) v = (INT64)0x3FFFFFFF;
     if (v < 1) v = 1;
     MAX_SNR = (FIXP_DBL)(INT)v;
   }
   if (g_franken.minSnrClampLoQ8 > 0 && g_franken.minSnrClampLoQ8 != 256) {
     INT64 v = ((INT64)MIN_SNR * g_franken.minSnrClampLoQ8) >> 8;
-    if (v > (INT64)0x7FFFFFFF) v = (INT64)0x7FFFFFFF;
+    if (v > (INT64)0x3FFFFFFF) v = (INT64)0x3FFFFFFF;
     if (v < 1) v = 1;
     MIN_SNR = (FIXP_DBL)(INT)v;
   }

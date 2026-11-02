@@ -48,7 +48,7 @@ test_is "is-force"    --is-force-lo 25 --is-force-hi 45
 # --- masking MusePack-style ---
 test_switch "minsnr-scale-lo"   --minsnr-scale 128
 test_switch "minsnr-scale-hi"   --minsnr-scale 512
-test_switch "minsnr-clamp-hi"   --minsnr-clamp-hi 512
+test_switch "minsnr-clamp-hi"   --minsnr-clamp-hi 128
 test_switch "minsnr-clamp-lo"   --minsnr-clamp-lo 64
 test_switch "reduce-clamp-off"  --reduce-clamp 0
 # --- stereo bit-split ---
