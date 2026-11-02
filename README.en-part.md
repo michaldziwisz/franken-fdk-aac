@@ -62,8 +62,8 @@ Each of these is a tested starting point, not a preset to apply blindly.
     # HE-AAC with a softer, less metallic high band
     fdkaac-franken-x64.exe -p 5 -b 32000 --sbr-softness 4 -o out.m4a in.wav
 
-    # HE-AAC v2 with a wider core than FDK picks
-    fdkaac-franken-x64.exe -p 29 -b 48000 --core-cutoff 7500 -o out.m4a in.wav
+    # HE-AAC v2 with a wider core than FDK picks (9 kHz -> 10.5 kHz)
+    fdkaac-franken-x64.exe -p 29 -b 48000 --sbr-start 14 -o out.m4a in.wav
 
     # Stream that a listener tuning in decodes with SBR at once
     fdkaac-franken-x64.exe -p 5 -b 48000 --sbr-header-period 1 -f 2 -o out.aac in.wav
@@ -174,11 +174,12 @@ it is a self contained byte stream the way ADTS is for LC and HE-AAC.
 The switches are grouped in `--help` roughly from easy to geeky, and this reference
 follows the same order.
 
-- **A. Start here**: the consumer knobs. Diagnostics, intensity stereo in one slider,
-  speech tuning, the two opt-in flags that remove built-in limits, and input sample
-  rate conversion.
+- **A. Start here**: the consumer knobs. Diagnostics, input sample rate conversion,
+  speech tuning, intensity stereo in one slider, and the two opt-in flags that remove
+  built-in limits.
 - **B. Stereo coding**: mid/side, intensity stereo in detail, parametric stereo.
-- **C. Bandwidth and SBR**: the high band, its detectors, estimators and grid.
+- **C. Bandwidth and SBR**: where the core ends and SBR begins, then the high band's
+  grid, detectors and estimators; `--core-cutoff` closes the group.
 - **D. Masking, noise shaping and detail**: the psychoacoustic thresholds, the SNR
   the encoder demands per band, TNS and PNS.
 - **E. Core transients, pre-echo and spectral holes**: the LC, LD and ELD core under
@@ -189,9 +190,12 @@ follows the same order.
 
 ## A. Start here
 
-Six switches. One of them only looks at the encoder, two of them tune it, two
-remove limits that stock FDK enforces, and one converts the input sample rate. If you are new to this build, read `--verbose`
-first and use it after every other switch you try.
+Six switches, in the order most people need them: `--verbose` shows what the encoder
+really did, `--resample` picks the sample rate the whole encoder runs at, `--speech` and
+`--is-aggression` tune it, and `--unlock-bitrate` and `--uncap-bandwidth` remove limits
+that stock FDK enforces. If you are new to this build, read `--verbose` first and use it
+after every other switch you try. `--bit-stats` (group E) is its companion when the
+question is where the bits went.
 
 ### `--verbose`
 
@@ -223,8 +227,8 @@ really deviate from stock in this run.
 
 Three readings repay attention. The core bandwidth is SFB anchored, so a typed
 `-w 17300` can come back as `17915 Hz`: the encoder cannot cut inside a band. Under SBR
-the `-w` value is ignored but still labelled `[from -w]`, which is confusing until you
-remember that `--core-cutoff` is the switch that works there. And `active SFBs (long)`
+the `-w` value is ignored but still labelled `[from -w]`; there the core follows
+`--sbr-start`. And `active SFBs (long)`
 is the ceiling for `--msbands`, `--isbands` and every `<sfb>` argument: asking for band
 48 when only 40 are coded is not an error, it simply does nothing.
 
@@ -239,7 +243,124 @@ Works with / against: nothing. It is the diagnostic for everything else in this
 reference, and the fastest answer to "did my switch do anything at all".
 
 Measured: at AAC-LC 48 kHz stereo it reports `active SFBs (long): 49`. At HE-AAC v2
-48 kHz the default core cutoff comes out at 8613 Hz.
+48 kbps, 48 kHz input, the core comes out at 9000 Hz with SBR start index 13.
+
+### `--resample <rate>`
+
+**Converts the input to another sample rate before anything else sees it, so the
+whole encoder runs at the new rate.**
+
+- Applies to: every profile and transport, `--dab` included. Works on files, pipes
+  (`-` as input) and `--raw` input the same way.
+- Values: an AAC sample rate, in Hz (`44100`) or in kHz (`44`, `44.1`, `44,1`,
+  `22`, `22.05`, `32`, `48`, `96` ...). 8000..96000. `-1` = off; default: off.
+- Input: rate
+
+The converter sits at the very start of the PCM chain, right after the WAV/CAF/raw
+reader and before the limiter, the edge extrapolator and the encoder. Nothing
+downstream knows the original rate: the encoder picks its tables, bandwidth, SBR
+layout and bit budget for the new rate, the M4A timescale and the gapless length are
+counted in the new rate, and `--verbose` prints the new `samplerate`. A source already
+at the requested rate goes through the untouched chain, byte for byte the stream you
+get without the switch.
+
+How it converts: an exact rational ratio (48000 to 44100 is 147/160, so there is no
+drift over hours of audio), a windowed sinc (Kaiser) kernel computed at start, float
+arithmetic. The passband is flat up to 95 percent of the lower Nyquist, the stopband
+starts at that Nyquist with 120 dB attenuation, so nothing folds back into the audible
+band. The kernel is symmetric and the output instants are aligned with the input, so
+the conversion adds no delay: the encoder delay and the gapless priming stay what they
+are at the new rate. The kernel needs a few milliseconds of look-ahead inside the
+converter, which is invisible from the outside. No external library, no DLL.
+
+Why you would use it: below about 48 kbps stereo with a narrow `-w`, a 48 kHz core
+spends bits on scalefactor bands and a frame grid made for 20 kHz audio. A lower rate
+gives finer bands below the cutoff and a longer frame. Long frames are also the price:
+at 24 kHz one long block is 85 ms, so pre-echo before sharp attacks grows. A higher
+rate is useful too: `--dab` accepts only 32 and 48 kHz, so a 44.1 kHz source needs
+`--resample 48`.
+
+Values:
+- omitted or `-1`: no conversion (stock).
+- `--resample 32`: 48 or 44.1 kHz source coded at 32 kHz. With `-w 9500` and 32 kbps
+  stereo, the usual sweet spot (see Measured).
+- `--resample 24`: more of the same, with longer blocks; worth it only for material
+  without sharp attacks.
+- `--resample 48`: 44.1 kHz source for `--dab`, or for HE-AAC at 48 kHz.
+
+Example in context:
+
+    fdkaac -p 2 -b 32000 -w 9500 --resample 32 -o out.m4a in48k.wav
+    ffmpeg -i in.flac -f wav - | fdkaac --dab -b 64 --resample 48 -o out.dabp -
+
+Works with / against: `-w` and `--core-cutoff` are in Hz, so they mean the same
+frequency at any rate, but they cannot exceed the new Nyquist. `--raw-rate` gives the
+rate of raw input; `--resample` then converts from it. Band-number switches
+(`--msbands`, `--is-lo` ...) count bands of the new rate's table, check them with
+`--verbose`.
+
+Measured: the converter alone (harness `tools/resample/rs_test.c`,
+`tools/resample/rs_quality.py`) for 48 to 32, 48 to 24, 44.1 to 32, 48 to 44.1, 44.1
+to 22.05, 32 to 48, 44.1 to 48 and 48 to 16 kHz: passband deviation below 0.0001 dB up
+to 95 percent of Nyquist, aliases of tones between the new and the old Nyquist at
+-120 to -132 dB, THD+N of a 1 kHz tone -135 to -141 dB, phase shift 0, output length
+exactly `ceil(n * new / old)`, the same samples whatever the read size. Speed: 37 to
+106 times real time for stereo on one core (the 48 to 32 kHz case: an encode of 30 s
+took 0.94 s against 0.62 s without the switch). After encoding (AAC-LC 32 kbps stereo,
+`-w 9500`, error measured 200..9000 Hz against the 48 kHz original): the same within
+0.03 dB as converting first with SoX at its highest precision. Against coding at 48 kHz,
+noise-to-signal on four music samples 48 / 32 / 24 kHz: -7.3 / -8.2 / -9.0 dB,
+-11.1 / -14.8 / -16.8 dB, -7.6 / -8.4 / -9.1 dB, -8.3 / -7.7 / -8.6 dB; spectral holes
+5.6 / 0.1 / 0 percent on the first sample. Pre-echo on a test signal with attacks:
+-33.9 dB at 48 kHz, -28.4 dB at 32 kHz, -28.1 dB at 24 kHz.
+
+### `--speech`
+
+**Switches the SBR layer to its speech tuning: different inverse filtering, a different
+noise floor, and no parametric coding of the high band.**
+
+- Applies to: HE-AAC and HE-AAC v2, that is wherever SBR is running, including ELD with
+  SBR. No effect on AAC-LC, which has no separate speech mode anywhere in FDK.
+- Values: flag; default: off (music tuning)
+- Input: flag
+
+SBR rebuilds the high band from the coded low band, and it needs to know how tonal the
+source is to decide how much to whiten the patched band and how much noise to fill in.
+Music and speech have very different answers. Speech at low bitrate suffers a specific
+artifact when the music tuning is used: the reconstructed top gurgles, because the
+estimator keeps deciding the patch is tonal when it is really a moving formant plus
+breath.
+
+The flag changes several things at once: the inverse filtering decision table switches
+to the speech table, the noise floor weighting goes to the speech value, and parametric
+coding of the high band is disabled. For a podcast, an audiobook or dialogue at 24..48
+kbps the result is a more natural top with less gurgling.
+
+If you want only part of what the flag does, the pieces are available separately:
+`--sbr-invf-table 1` gives just the speech decision table, `--sbr-nf-weight 1.0` just
+the speech noise weight, and `--sbr-softness 4` both of them, in each case without
+touching the crossover and without disabling parametric coding.
+
+For speech in plain AAC-LC there is no equivalent, and this reference will not pretend
+otherwise. The LC psychoacoustic model is the same for speech and music. What helps
+there instead is narrowing the band, since speech has little content high up, with
+`--core-cutoff 12000` to `14000`, and at very low bitrate turning on noise substitution
+with `--pns 1 --force-pns`.
+
+Values:
+- omitted: music tuning (stock).
+- `--speech`: speech tuning.
+
+Example in context:
+
+    fdkaac -p 5 -b 32000 --speech -o speech.m4a podcast.wav
+
+Works with / against: the explicit SBR estimator switches in group C win over it, so
+`--sbr-invf` forces a fixed inverse filtering level regardless. `--sbr-invf-table` and
+`--sbr-nf-weight` follow `--speech` when left at `-1`, which is how a single flag can
+move both.
+
+Measured: no effect at all on AAC-LC; changes the HE-AAC stream.
 
 ### `--is-aggression <0..100>`
 
@@ -296,103 +417,6 @@ slider landed.
 
 Measured: on mix48 at AAC-LC 64 kbps, `1` produced no stream change, while `30`, `50`
 and `100` each changed the stream.
-
-### `--speech`
-
-**Switches the SBR layer to its speech tuning: different inverse filtering, a different
-noise floor, and no parametric coding of the high band.**
-
-- Applies to: HE-AAC and HE-AAC v2, that is wherever SBR is running, including ELD with
-  SBR. No effect on AAC-LC, which has no separate speech mode anywhere in FDK.
-- Values: flag; default: off (music tuning)
-- Input: flag
-
-SBR rebuilds the high band from the coded low band, and it needs to know how tonal the
-source is to decide how much to whiten the patched band and how much noise to fill in.
-Music and speech have very different answers. Speech at low bitrate suffers a specific
-artifact when the music tuning is used: the reconstructed top gurgles, because the
-estimator keeps deciding the patch is tonal when it is really a moving formant plus
-breath.
-
-The flag changes several things at once: the inverse filtering decision table switches
-to the speech table, the noise floor weighting goes to the speech value, and parametric
-coding of the high band is disabled. For a podcast, an audiobook or dialogue at 24..48
-kbps the result is a more natural top with less gurgling.
-
-If you want only part of what the flag does, the pieces are available separately:
-`--sbr-invf-table 1` gives just the speech decision table, `--sbr-nf-weight 1.0` just
-the speech noise weight, and `--sbr-softness 4` both of them, in each case without
-touching the crossover and without disabling parametric coding.
-
-For speech in plain AAC-LC there is no equivalent, and this reference will not pretend
-otherwise. The LC psychoacoustic model is the same for speech and music. What helps
-there instead is narrowing the band, since speech has little content high up, with
-`--core-cutoff 12000` to `14000`, and at very low bitrate turning on noise substitution
-with `--pns 1 --force-pns`.
-
-Values:
-- omitted: music tuning (stock).
-- `--speech`: speech tuning.
-
-Example in context:
-
-    fdkaac -p 5 -b 32000 --speech -o speech.m4a podcast.wav
-
-Works with / against: the explicit SBR estimator switches in group C win over it, so
-`--sbr-invf` forces a fixed inverse filtering level regardless. `--sbr-invf-table` and
-`--sbr-nf-weight` follow `--speech` when left at `-1`, which is how a single flag can
-move both.
-
-Measured: no effect at all on AAC-LC; changes the HE-AAC stream.
-
-### `--uncap-bandwidth`
-
-**Removes FDK's hard 20 kHz limit on core bandwidth so `--core-cutoff` can reach up to
-Nyquist.**
-
-- Applies to: any profile with a core you can widen, in practice AAC-LC at high bitrate
-  from a high sample rate source. Meaningless without `--core-cutoff`.
-- Values: flag; default: off (the 20 kHz cap applies)
-- Input: flag
-
-FDK clamps core bandwidth to `min(20000, sr/2)`. The reasoning is sound for normal
-material: almost nobody hears above 20 kHz, and the bits are better spent lower. The
-consequence is that a 96 kHz source encoded at a generous bitrate still codes nothing
-above 20 kHz, no matter what you ask for, and the extra sample rate buys you only a
-gentler antialiasing slope.
-
-This flag lifts the clamp. On its own it does nothing at all: it only raises the
-ceiling, it does not move the bandwidth. The switch that moves the bandwidth is
-`--core-cutoff <hz>`, and with the cap lifted that switch can go up to half the sample
-rate.
-
-Be clear about what you are buying. Content above 20 kHz costs bits that come out of
-the audible band unless your bitrate has real headroom, and streams with bandwidth
-beyond the usual range sit outside typical practice, so some decoders may balk. This is
-a deliberate opt-in, which is why it is a separate flag rather than a side effect of
-`--core-cutoff`.
-
-Values:
-- omitted: core bandwidth clamped at 20 kHz (stock).
-- `--uncap-bandwidth`: clamp lifted, `--core-cutoff` free up to `sr/2`.
-
-Example in context:
-
-    fdkaac -p 2 -b 320000 --uncap-bandwidth --core-cutoff 40000 --ath-scale 200 \
-        -o out.m4a in96k.wav
-
-Works with / against: requires `--core-cutoff`. Under SBR, `-w` is ignored and
-`--core-cutoff` is the switch that works, so the pair is also the way to widen a core
-sitting under SBR. Pairs naturally with `--ath-scale` below 256 when you have bitrate
-to spare, since there is no point coding 40 kHz of band at thresholds tuned for
-scarcity.
-
-Measured: 96 kHz input, AAC-LC 400 kbps, broadband noise. Without the flag,
-`--core-cutoff 40000` gives `20000 Hz` in `--verbose` and essentially zero energy above
-20 kHz. With the flag, `--verbose` reports `40000 Hz` and the decoded file carries about
-10 percent of its energy in 20..24 kHz, about 20 percent in 24..32 kHz and about 20
-percent in 32..44 kHz. This encoder has no 96 kHz test signal checked in, so treat that
-as a prior measurement rather than one you can reproduce from the shipped material.
 
 ### `--unlock-bitrate`
 
@@ -472,74 +496,54 @@ HE-AAC v2 at 12..14 kbps, which is inside the stock tables, and many errors on e
 ELD or LD LOAS stream at any bitrate. ffmpeg does not implement LD and ELD fully, so
 judge those streams with the Fraunhofer decoder.
 
-### `--resample <rate>`
+### `--uncap-bandwidth`
 
-**Converts the input to another sample rate before anything else sees it, so the
-whole encoder runs at the new rate.**
+**Removes FDK's hard 20 kHz limit on core bandwidth so `--core-cutoff` can reach up to
+Nyquist.**
 
-- Applies to: every profile and transport, `--dab` included. Works on files, pipes
-  (`-` as input) and `--raw` input the same way.
-- Values: an AAC sample rate, in Hz (`44100`) or in kHz (`44`, `44.1`, `44,1`,
-  `22`, `22.05`, `32`, `48`, `96` ...). 8000..96000. `-1` = off; default: off.
-- Input: rate
+- Applies to: any profile with a core you can widen, in practice AAC-LC at high bitrate
+  from a high sample rate source. Meaningless without `-w` or `--core-cutoff`.
+- Values: flag; default: off (the 20 kHz cap applies)
+- Input: flag
 
-The converter sits at the very start of the PCM chain, right after the WAV/CAF/raw
-reader and before the limiter, the edge extrapolator and the encoder. Nothing
-downstream knows the original rate: the encoder picks its tables, bandwidth, SBR
-layout and bit budget for the new rate, the M4A timescale and the gapless length are
-counted in the new rate, and `--verbose` prints the new `samplerate`. A source already
-at the requested rate goes through the untouched chain, byte for byte the stream you
-get without the switch.
+FDK clamps core bandwidth to `min(20000, sr/2)`. The reasoning is sound for normal
+material: almost nobody hears above 20 kHz, and the bits are better spent lower. The
+consequence is that a 96 kHz source encoded at a generous bitrate still codes nothing
+above 20 kHz, no matter what you ask for, and the extra sample rate buys you only a
+gentler antialiasing slope.
 
-How it converts: an exact rational ratio (48000 to 44100 is 147/160, so there is no
-drift over hours of audio), a windowed sinc (Kaiser) kernel computed at start, float
-arithmetic. The passband is flat up to 95 percent of the lower Nyquist, the stopband
-starts at that Nyquist with 120 dB attenuation, so nothing folds back into the audible
-band. The kernel is symmetric and the output instants are aligned with the input, so
-the conversion adds no delay: the encoder delay and the gapless priming stay what they
-are at the new rate. The kernel needs a few milliseconds of look-ahead inside the
-converter, which is invisible from the outside. No external library, no DLL.
+This flag lifts the clamp. On its own it does nothing at all: it only raises the
+ceiling, it does not move the bandwidth. The switches that move the bandwidth are
+`-w` and `--core-cutoff <hz>` (identical without SBR), and with the cap lifted they can
+go up to half the sample rate.
 
-Why you would use it: below about 48 kbps stereo with a narrow `-w`, a 48 kHz core
-spends bits on scalefactor bands and a frame grid made for 20 kHz audio. A lower rate
-gives finer bands below the cutoff and a longer frame. Long frames are also the price:
-at 24 kHz one long block is 85 ms, so pre-echo before sharp attacks grows. A higher
-rate is useful too: `--dab` accepts only 32 and 48 kHz, so a 44.1 kHz source needs
-`--resample 48`.
+Be clear about what you are buying. Content above 20 kHz costs bits that come out of
+the audible band unless your bitrate has real headroom, and streams with bandwidth
+beyond the usual range sit outside typical practice, so some decoders may balk. This is
+a deliberate opt-in, which is why it is a separate flag rather than a side effect of
+`-w`.
 
 Values:
-- omitted or `-1`: no conversion (stock).
-- `--resample 32`: 48 or 44.1 kHz source coded at 32 kHz. With `-w 9500` and 32 kbps
-  stereo, the usual sweet spot (see Measured).
-- `--resample 24`: more of the same, with longer blocks; worth it only for material
-  without sharp attacks.
-- `--resample 48`: 44.1 kHz source for `--dab`, or for HE-AAC at 48 kHz.
+- omitted: core bandwidth clamped at 20 kHz (stock).
+- `--uncap-bandwidth`: clamp lifted, `-w` and `--core-cutoff` free up to `sr/2`.
 
 Example in context:
 
-    fdkaac -p 2 -b 32000 -w 9500 --resample 32 -o out.m4a in48k.wav
-    ffmpeg -i in.flac -f wav - | fdkaac --dab -b 64 --resample 48 -o out.dabp -
+    fdkaac -p 2 -b 320000 --uncap-bandwidth --core-cutoff 40000 --ath-scale 200 \
+        -o out.m4a in96k.wav
 
-Works with / against: `-w` and `--core-cutoff` are in Hz, so they mean the same
-frequency at any rate, but they cannot exceed the new Nyquist. `--raw-rate` gives the
-rate of raw input; `--resample` then converts from it. Band-number switches
-(`--msbands`, `--is-lo` ...) count bands of the new rate's table, check them with
-`--verbose`.
+Works with / against: requires `-w` or `--core-cutoff`; without SBR the two give the
+same stream. Under SBR the 20 kHz cap does not apply, because the core stops at the SBR
+start, far lower. Pairs naturally with `--ath-scale` below 256 when you have bitrate
+to spare, since there is no point coding 40 kHz of band at thresholds tuned for
+scarcity.
 
-Measured: the converter alone (harness `tools/resample/rs_test.c`,
-`tools/resample/rs_quality.py`) for 48 to 32, 48 to 24, 44.1 to 32, 48 to 44.1, 44.1
-to 22.05, 32 to 48, 44.1 to 48 and 48 to 16 kHz: passband deviation below 0.0001 dB up
-to 95 percent of Nyquist, aliases of tones between the new and the old Nyquist at
--120 to -132 dB, THD+N of a 1 kHz tone -135 to -141 dB, phase shift 0, output length
-exactly `ceil(n * new / old)`, the same samples whatever the read size. Speed: 37 to
-106 times real time for stereo on one core (the 48 to 32 kHz case: an encode of 30 s
-took 0.94 s against 0.62 s without the switch). After encoding (AAC-LC 32 kbps stereo,
-`-w 9500`, error measured 200..9000 Hz against the 48 kHz original): the same within
-0.03 dB as converting first with SoX at its highest precision. Against coding at 48 kHz,
-noise-to-signal on four music samples 48 / 32 / 24 kHz: -7.3 / -8.2 / -9.0 dB,
--11.1 / -14.8 / -16.8 dB, -7.6 / -8.4 / -9.1 dB, -8.3 / -7.7 / -8.6 dB; spectral holes
-5.6 / 0.1 / 0 percent on the first sample. Pre-echo on a test signal with attacks:
--33.9 dB at 48 kHz, -28.4 dB at 32 kHz, -28.1 dB at 24 kHz.
+Measured: 96 kHz input, AAC-LC 400 kbps, broadband noise. Without the flag,
+`--core-cutoff 40000` gives `20000 Hz` in `--verbose` and essentially zero energy above
+20 kHz. With the flag, `--verbose` reports `40000 Hz` and the decoded file carries about
+10 percent of its energy in 20..24 kHz, about 20 percent in 24..32 kHz and about 20
+percent in 32..44 kHz. This encoder has no 96 kHz test signal checked in, so treat that
+as a prior measurement rather than one you can reproduce from the shipped material.
 
 ## B. Stereo coding
 
@@ -1905,7 +1909,8 @@ SBR is active in these profiles:
 - `-p 39 -L 1` AAC-ELD with SBR
 
 In `-p 2` (AAC-LC), `-p 23` (AAC-LD) and `-p 39` without `-L 1` there is no SBR, and
-every `--sbr-*` switch in this group does nothing. `--core-cutoff` works everywhere.
+every `--sbr-*` switch in this group does nothing. `--core-cutoff`, at the end of the
+group, works everywhere, but without SBR it is the same as `-w`.
 
 Two conventions used throughout this group:
 
@@ -1917,74 +1922,6 @@ Two conventions used throughout this group:
   header period. Under SBR it is the only reliable way to see what you actually got, and
   several switches in this group are validated by FDK only at initialisation time, so
   checking is not optional.
-
-### Core bandwidth: `--core-cutoff`
-
-#### `--core-cutoff <hz>`
-
-**Forces the upper limit of the band the AAC core codes, in Hz, and it keeps working under
-SBR where `-w` does not.**
-
-- Applies to: every profile. This is the one switch in group C that is useful without SBR.
-- Values: `0..48000` Hz (out of range is rejected); the encoder stops at the core Nyquist
-  (half the core sample rate); default `0` = leave FDK's own decision
-- Input: whole number
-
-The standard `-w/--bandwidth` is overridden when SBR initialises: the SBR tuning table
-decides the core bandwidth, so that the core stops exactly where the crossover begins, and
-whatever you asked for with `-w` is discarded. `--core-cutoff` is applied after that and
-survives it.
-
-Two situations make this worth reaching for. The first is SBR material where you want more
-real coded spectrum under the crossover than the table gives you, typically because the
-patched band sounds synthetic and you would rather spend bits on genuine mid treble. The
-second has nothing to do with SBR: AAC-LD and AAC-ELD pick their core bandwidth from a
-table that is very conservative, about 2 kHz at 48 kbps and about 5.8 kHz at 64 kbps.
-Those profiles sound muffled for that reason alone, and `--core-cutoff` is the fix.
-
-The encoder cannot cut at an arbitrary Hz value. The spectrum is divided into scalefactor
-bands, so the cutoff snaps to the nearest SFB boundary, and `--verbose` reports the real,
-SFB anchored result. Asking for 17300 Hz and being told 17915 Hz is not an error; 17915 Hz
-is what is in the stream.
-
-Mind the ceiling. The maximum is half the *core* sample rate, and with dual rate SBR the
-core runs at half the input rate: for 48 kHz input under HE-AAC the core runs at 24 kHz,
-so the hard ceiling is 12 kHz. There is also a separate 20 kHz cap that applies without
-SBR; `--uncap-bandwidth` (group A) lifts it so that `--core-cutoff` can reach up to half
-the sample rate on high rate material, and that flag does nothing on its own.
-
-You police the result yourself. Pushing the core cutoff far *below* the crossover leaves
-everything between the core top and the SBR start with nothing in it, which is audible as
-a gap in the mid treble rather than as a gentle rolloff. If you want a genuinely low core,
-move the crossover down with `--sbr-start` so that the two meet again.
-
-Examples, narrowing the core (HE-AAC `-p 5`, 64 kbps stereo, 48 kHz input, where the
-table gives about 10500 Hz of core):
-- Mild: `--core-cutoff 9000`. A slightly cheaper core, a slightly wider SBR region. Bits
-  freed up in the core go to the lower spectrum.
-- Strong: `--core-cutoff 7500`. Clearly more of the spectrum is now replicated rather than
-  coded. Expect a thinner, more synthetic 8..10 kHz region, with a cleaner low mid.
-- Exaggerated: `--core-cutoff 2000`. The core ends at the top of the vocal fundamentals.
-  Everything from 2 kHz to the crossover is a hole. A caricature unless you also pull
-  `--sbr-start` right down.
-
-Examples, widening the core (same conditions):
-- Mild: `--core-cutoff 11500`. A little real spectrum above the usual crossover.
-- Strong: `--core-cutoff 12000` at 48 kHz input under HE-AAC. The core now runs to its
-  Nyquist. Real coded treble, but the core pays full price for a band SBR was already
-  covering for free, so at 64 kbps the rest of the spectrum gets coarser.
-- Exaggerated: `--core-cutoff 20000` on AAC-LC at 320 kbps, with `-p 2` and no SBR at all.
-  Legal and sometimes genuinely wanted, but at low bitrate the same request would drain
-  the bit budget into inaudible treble.
-
-Works with / against: under SBR, `-w` is ignored, and `--verbose` still labels the
-automatic value "[from -w]" even though `--core-cutoff` is what set it. Checking the
-reported number rather than the label is the habit to build. Pair with `--sbr-start` when
-you move the cutoff far, so the core and the crossover still meet. `--uncap-bandwidth` is
-needed only to go past 20 kHz without SBR.
-
-Measured: `--core-cutoff 7500` under HE-AAC v2 at 48 kbps gives an effective 7500 Hz core,
-where stock `-w 7500` leaves 8613 Hz because it is ignored.
 
 ### SBR frequency layout: `--sbr-start` `--sbr-stop` `--sbr-freqscale` `--sbr-alterscale` `--sbr-noise-bands` `--sbr-amp-res` `--sbr-data-extra`
 
@@ -2072,9 +2009,10 @@ Examples, raising the crossover:
   copy, and at 64 kbps stereo a core that is clearly short of bits for a 16 kHz band.
   Instructive to compare against HE-AAC on the same material.
 
-Works with / against: must form a legal pair with `--sbr-stop`. `--core-cutoff` can move
-the core bandwidth independently of the crossover, which is how you create a gap if you
-are not careful. Lowering the start widens the band that `--sbr-noise-bands`,
+Works with / against: must form a legal pair with `--sbr-stop`. The core follows the
+start by itself; `--core-cutoff` can pull it below the start, which opens a gap, and
+cannot usefully push it above. Raise the start in single steps and listen: each step
+moves real coded spectrum up and costs the core bits. Lowering the start widens the band that `--sbr-noise-bands`,
 `--sbr-invf*` and the missing harmonics detector are responsible for, so their settings
 matter more the lower you go.
 
@@ -2365,13 +2303,14 @@ multiply into the same envelope data budget, and `--sbr-amp-res` sets the price 
 It applies only to transient free frames, so on heavily percussive material its share of
 the file is smaller.
 
-#### `--sbr-stereo-mode <0..3>`
+#### `--sbr-stereo-mode <1..3>`
 
 **Chooses how the SBR high band is shared between the two channels, independently of the
 core's stereo coding.**
 
 - Applies to: SBR profiles only, stereo input
-- Values: `0` mono, `1` LR, `2` coupling, `3` switch-LRC; default `-1` = off
+- Values: `1` LR, `2` coupling, `3` switch-LRC; default `-1` = off (the tuning table
+  decides: `3` below 60 kbps stereo, `1` from 60 kbps)
 - Input: whole number
 
 The core and SBR make separate stereo decisions. The core may be coding mid/side while SBR
@@ -2379,28 +2318,32 @@ is coupling, or the reverse. This switch addresses only the high band.
 
 Full left/right separation sends an independent set of SBR parameters per channel: the
 widest, most faithful top end, at roughly double the SBR side information. Coupling sends
-one shared envelope plus level information, which is much cheaper and collapses the stereo
-image up top towards the centre. On most material that collapse is less audible than you
-would expect, which is why it is the normal choice at low bitrate; on wide, hard panned
-cymbals and on recordings with real room difference between channels, it is clearly
-audible.
+one shared envelope plus level and balance information, which is much cheaper and pulls
+the image up top towards the centre. On most material that is less audible than one would
+expect, which is why it is the normal choice at low bitrate; on wide, hard panned cymbals
+and on recordings with real room difference between channels it is clearly audible.
 
 Values:
-- `0` mono. One high band for both channels. Only sensible on genuinely mono content, or
-  as a deliberate caricature to hear what the other modes buy you.
-- `1` LR, full separation. Independent high band per channel. The audiophile setting at
-  higher bitrate; the expensive one at 32 kbps.
-- `2` coupling. Shared envelope plus level and balance. Cheap, slightly narrower top.
-- `3` switch-LRC. The encoder decides per frame, which is the sensible general case and
-  what the default behaviour amounts to.
-- `-1` off: the encoder decides, as in `3`.
+- `1` LR, full separation. Independent high band per channel. What FDK uses from 60 kbps
+  stereo; at 32 kbps it is expensive.
+- `2` coupling. Shared envelope plus level and balance, every frame. Cheap, narrower top.
+- `3` switch-LRC. The encoder chooses between LR and coupling per frame. What FDK uses
+  below 60 kbps stereo.
+- `-1` off: the tuning table decides, as listed above.
 
-Example in context: `fdkaac -p 5 -b 96000 --sbr-stereo-mode 1 -o out.m4a in.wav`
+Mono input needs no switch: FDK codes a single channel high band by itself. A mono mode
+for stereo input does not exist; `0` is rejected.
 
-Works with / against: in `-p 29` (HE-AAC v2) parametric stereo is also describing the
-image, so forcing LR here fights the premise of that profile; at HE-AAC v2 bitrates the
-bits are better spent elsewhere. Core stereo switches in group B are a separate decision
-and do not override this one.
+Example in context: `fdkaac -p 5 -b 48000 --sbr-stereo-mode 1 -o out.m4a in.wav`, full
+separation below the 60 kbps line.
+
+Works with / against: in `-p 29` (HE-AAC v2) parametric stereo is describing the image
+and the SBR part is mono, so this switch has nothing to separate there. Core stereo
+switches in group B are a separate decision and do not override this one.
+
+Measured: HE-AAC 48 kHz stereo, the stream without the switch is byte identical to `3` at
+24, 32, 40, 48, 56 and 59 kbps and to `1` at 60, 64 and 96 kbps. Before beta.2 `0` was
+accepted and crashed the encoder on stereo input, with no message and an empty file.
 
 #### `--sbr-header-period <n>`
 
@@ -3697,6 +3640,68 @@ which makes it the right choice when you want a global change and the wrong one 
 want the encoder to decide where noise belongs. Against low `--sbr-invf` levels it is
 fighting a different artefact with the wrong tool: metallic ringing from un whitened
 structure is better fixed with whitening than masked with noise.
+
+### Core bandwidth: `--core-cutoff`
+
+#### `--core-cutoff <hz>`
+
+**Forces the upper edge of the band the AAC core codes, in Hz. Without SBR it does exactly
+what `-w` does; under SBR it can only narrow the core, and that is an experiment.**
+
+- Applies to: every profile
+- Values: `0..48000` Hz (out of range is rejected); the encoder stops at the core Nyquist
+  (half the core sample rate); default `0` = leave FDK's own decision
+- Input: whole number
+
+Without SBR (`-p 2`, `-p 23`, `-p 39` without `-L 1`, DAB+ LC) this switch and `-w` are the
+same thing: in AAC-LC CBR and VBR, AAC-LD, AAC-ELD, DAB+ and 96 kHz material with
+`--uncap-bandwidth`, `-w N` and `--core-cutoff N` gave bit identical streams. Use whichever
+reads better in your scripts. The full band case at 96 kHz is a typical one:
+`--uncap-bandwidth --core-cutoff 40000` or `--uncap-bandwidth -w 40000`.
+
+Under SBR the situation is different, and it is the reason this card sits at the end of
+the group. When SBR initialises, its tuning table sets the core bandwidth so that the core
+stops where the SBR start begins, and `-w` is discarded. `--core-cutoff` is applied after
+that and survives, but only one direction of it is useful:
+
+- **Raising it above the SBR start does nothing audible.** The decoder rebuilds everything
+  above the SBR start from its own SBR data and writes over whatever the core sent there.
+  Measured at HE-AAC 64 kbps stereo, 48 kHz input: with `--core-cutoff 12000` the decoded
+  signal above 10.5 kHz has a coherence of 0.03 with the original, the same as stock, with
+  both the FDK decoder and ffmpeg. The core still pays for those lines, and it shows lower
+  down: coherence at 7..9.5 kHz drops from 0.95 to 0.92.
+- **Lowering it below the SBR start opens a hole.** Nothing is coded between the new core
+  edge and the SBR start, so that band is missing rather than gently rolled off. At the
+  same setting `--core-cutoff 9000` leaves 9..10 kHz at -15 to -33 dB.
+
+To give the core more real spectrum under SBR, move the SBR start up with `--sbr-start`;
+to give it less, move the start down. The core follows the start by itself and the two
+stay joined. At HE-AAC 64 kbps `--sbr-start 15` takes the core from 10.5 to 12 kHz with
+coherence 0.93 up to 11.5 kHz. What is left for `--core-cutoff` under SBR is the
+deliberate experiment: hearing what a gap between core and SBR sounds like.
+
+The cutoff snaps to a scalefactor band edge, so `--verbose` reports the real value: asking
+for 17300 Hz and being told 17915 Hz is not an error. The ceiling is half the core sample
+rate (12 kHz for 48 kHz input under dual rate SBR). Without SBR there is also a 20 kHz cap,
+which `--uncap-bandwidth` (group A) lifts.
+
+Examples, without SBR:
+- Mild: `-p 2 -b 128000 --core-cutoff 16000`. Same stream as `-w 16000`.
+- Strong: `-p 23 -b 64000 --core-cutoff 12000 -f 10`. AAC-LD picks a very narrow core on
+  its own (about 5.8 kHz at 64 kbps); this widens it, as `-w 12000` would.
+- Exaggerated: `-p 2 -b 320000 --uncap-bandwidth --core-cutoff 40000` on 96 kHz input.
+  Legal; at lower bitrates the same request drains the budget into inaudible treble.
+
+Examples, under SBR (HE-AAC 64 kbps stereo, 48 kHz input, core 10.5 kHz):
+- Raising: `--core-cutoff 11500` or `12000`. Bits spent on lines the decoder writes over;
+  nothing new is heard above 10.5 kHz.
+- Lowering: `--core-cutoff 9000`. The 9..10 kHz hole described above.
+- Lowering, exaggerated: `--core-cutoff 2000`. Everything from 2 kHz to the SBR start is
+  missing; only useful to hear what the core alone carries.
+
+Works with / against: under SBR `--sbr-start` decides the core, and `--verbose` labels the
+source of the core bandwidth, `[from --core-cutoff]` or `auto`. `--uncap-bandwidth` is
+needed only to go past 20 kHz without SBR.
 
 ## D. Masking, noise shaping and detail
 

@@ -33,6 +33,20 @@ Library** (per section 2 of the FDK AAC license, see `NOTICE.fdk-aac`).
   `1..320` (320 = 0 dB) and both SNR limits are capped inside the representable range.
   The help and the documentation had the direction of both clamps reversed: `-hi`
   moves the coarsest SNR a band is held to, `-lo` the finest it may demand.
+- Fix: `--sbr-stereo-mode 0` on stereo input crashed the encoder (access violation, no
+  message, empty output file): SBR_MONO is not a mode of a two channel SBR element. The
+  switch now takes `1..3`; mono input gets a mono high band from FDK by itself.
+- Docs: group A reordered by use (`--verbose`, `--resample`, `--speech`,
+  `--is-aggression`, `--unlock-bitrate`, `--uncap-bandwidth`). Group C now opens with the
+  SBR layout and closes with `--core-cutoff`, rewritten from measurement: without SBR it
+  is bit identical to `-w`; under SBR raising it is overwritten by the decoder's SBR and
+  lowering it opens a hole, so the core is widened with `--sbr-start`. The recipe "HE-AAC
+  v2 with a wider core" used `--core-cutoff 7500`, which narrowed the core and left a
+  -34 dB hole at 7.7..8.9 kHz; it now uses `--sbr-start 14`. `--sbr-stereo-mode`: the
+  default is 3 below 60 kbps stereo and 1 from 60 kbps, not always 3. Manual: section 14
+  rewritten, Table 2 replaced with measured core bandwidths per start index at 32, 44.1
+  and 48 kHz, IPD/OPD no longer described as unsupported, recipes and the symptom list
+  updated (`--sbr-start` for a narrow core, `--sbr-softness` for a metallic top).
 - Docs: the MS section ordered by use. `--side-bias` and `--side-knee` are the two
   levers, `--side-cutoff` the low bitrate trade, the rest (`--msmask`, `--msbands*`,
   `--ms-bias`, `--ms-precision`, `--mid-bias`) a laboratory, with measured mid/side

@@ -110,8 +110,8 @@ parametry opisujące różnice między lewym a prawym:
 
 - IID (Inter-channel Intensity Difference) — różnica głośności między kanałami.
 - ICC (Inter-channel Coherence) — jak bardzo kanały są do siebie podobne/spójne.
-- IPD/OPD (różnice fazy) — te w enkoderze FDK NIE są wspierane (zawsze zero);
-  o tym uczciwie w części o opcjach PS.
+- IPD/OPD (różnice fazy): fabryczny FDK ich nie wysyła; ten build potrafi, przez
+  `--ps-ipd 1` i `--ps-opd 1` (rozdział 16).
 
 Dekoder z tego jednego kanału i tych parametrów "rozkłada" dźwięk z powrotem na
 stereo. Przy 24 kbps to jedyny sposób, żeby stereo w ogóle miało sens. Przy
@@ -288,9 +288,8 @@ w FDK słaby; do poważnej pracy użyj CBR + rozdział 8.
 `-o <plik>` — plik wyjściowy. Rozszerzenie `.m4a` daje kontener MP4;
 `-f 2` przełącza na surowy strumień ADTS (`.aac`).
 
-`-w <n>` — szerokość pasma (bandwidth) rdzenia w Hz. Uwaga: pod SBR to nie
-działa tak, jak się spodziewasz — do sterowania pasmem rdzenia pod HE-AAC użyj
-`--core-cutoff` (część IV).
+`-w <n>`: szerokość pasma rdzenia w Hz. Pod SBR jest ignorowane: rdzeń kończy się
+wtedy tam, gdzie zaczyna się SBR, a przesuwa go `--sbr-start` (rozdział 15).
 
 ## 11. Afterburner i sygnalizacja
 
@@ -394,41 +393,48 @@ laboratoryjny: ponieważ IS jest stratne i kierunkowe (prawy kanał zostaje
 wyzerowany, zostaje tylko współczynnik panoramy), wymuszenie może celowo rozbić
 obraz stereo. Strumień i tak pozostaje zgodny ze standardem.
 
-## 14. Pasmo i cutoff (w tym audiofilskie pełne pasmo)
+## 14. Pasmo i odcięcie (w tym audiofilskie pełne pasmo)
 
-`--core-cutoff <Hz>` — górna granica pasma kodowanego przez rdzeń, w Hz. Działa
-także pod SBR (w przeciwieństwie do `-w`). Np. `--core-cutoff 7500` pod HE-AAC v2
-oddaje rdzeniowi 7,5 kHz, resztę robi SBR.
+`-w <Hz>` ustawia górną krawędź pasma kodowanego przez rdzeń. Bez SBR `--core-cutoff <Hz>`
+robi dokładnie to samo: we wszystkich zmierzonych profilach bez SBR oba dały strumienie
+identyczne co do bitu. Pod SBR oba ustępują startowi SBR: rdzeń kończy się tam, gdzie
+zaczyna się SBR, a ten punkt przesuwa `--sbr-start` (rozdział 15). `--core-cutoff` pod SBR
+może tylko ściągnąć rdzeń poniżej startu SBR, co zostawia między nimi dziurę, albo
+przesunąć go powyżej, gdzie dekoder i tak nadpisuje to, co wysłał rdzeń, własnym SBR.
+Żadne z tych zastosowań nie jest przepisem; oba to eksperymenty.
 
-Uwaga o realnym cutoffie w `--verbose`: widmo AAC jest podzielone na granice SFB,
-więc enkoder nie potrafi uciąć pasma w dowolnym miejscu w Hz — zakotwicza cutoff
-na najbliższej granicy SFB. Dlatego `--verbose` pokazuje REALNY cutoff, który może
-różnić się od podanej wartości `-w`/`--core-cutoff` (np. `-w 17300` wyświetla się
-jako `17915 Hz (SFB-anchored)`). To nie jest błąd — to prawdziwe pasmo, które
-trafia do strumienia.
+Uwaga o rzeczywistym odcięciu w `--verbose`: widmo AAC jest podzielone na pasma
+współczynników skali (scalefactor bands, SFB), więc koder nie potrafi uciąć pasma w
+dowolnym miejscu w Hz; wyrównuje odcięcie do najbliższej granicy pasma SFB. Dlatego
+`--verbose` pokazuje rzeczywiste odcięcie, które może różnić się od wpisanej wartości
+(`-w 17300` wyświetla się jako `17915 Hz (SFB-anchored)`). To nie błąd, tylko pasmo,
+które naprawdę trafia do strumienia.
 
-`--uncap-bandwidth` — audiofilskie. FDK ma zaszyty twardy limit pasma rdzenia:
-minimum z 20 kHz i połowy częstotliwości próbkowania. Oznacza to, że NAWET przy
-źródle 96 kHz i wysokim bitrate realnie nic powyżej 20 kHz nie było kodowane.
-Ta flaga zdejmuje limit — `--core-cutoff` może wtedy sięgnąć aż do połowy
-częstotliwości próbkowania. Dla materiału 96 kHz i słuchaczy, którzy chcą pełne
-pasmo:
+`--uncap-bandwidth`, dla materiału pełnopasmowego. FDK ogranicza rdzeń do mniejszej z
+wartości: 20 kHz i połowa częstotliwości próbkowania, więc nawet przy źródle 96 kHz i
+wysokim bitrate'ie nic powyżej 20 kHz nie było kodowane. Ta flaga zdejmuje limit i `-w`
+albo `--core-cutoff` mogą wtedy sięgnąć połowy częstotliwości próbkowania:
 
     fdkaac-franken-x64.exe -p 2 -b 320000 --uncap-bandwidth --core-cutoff 40000 -o out.m4a in96k.wav
 
-Zmierzono: bez tej flagi powyżej 20 kHz jest praktycznie zero energii; z nią
-realnie kodowane jest pasmo do 40 kHz.
+Zmierzone: bez flagi powyżej 20 kHz praktycznie nie ma energii; z nią pasmo do 40 kHz
+jest naprawdę kodowane (`--verbose` podaje 42000 Hz, najbliższą granicę pasma SFB).
 
 ## 15. SBR — sterowanie górnym pasmem
 
 Nadpisuje ustawienia z wewnętrznej tabeli tuningowej SBR.
 
-`--sbr-start <n>` / `--sbr-stop <n>` — indeksy początku i końca pasma SBR.
-UWAGA: FDK waliduje kombinację — zła para da "encoder initialization failed".
-Dozwolone pary tworzą ukośny pas i zależą od bitrate'u oraz częstotliwości próbkowania.
-Na przykład przy HE-AAC 64 kbps stereo z 48 kHz start 0..4 jest niedozwolony z każdym
-stopem, a 8/9, 8/14 i 14/12 działają. Zmieniaj jedną rzecz naraz i czytaj `--verbose`;
-karta w opisie przełączników podaje zmierzone wartości.
+`--sbr-start <n>` / `--sbr-stop <n>`: indeksy początku i końca pasma SBR. Start to
+najużyteczniejszy przełącznik całej grupy SBR, bo rdzeń idzie za nim: podniesienie startu
+o jeden indeks daje rdzeniowi prawdziwie kodowane widmo aż do następnego progu (przy
+HE-AAC 64 kbps z 48 kHz przejście z 14 na 15 poszerza rdzeń z 10,5 do 12 kHz), a
+obniżenie oddaje SBR większą część góry i zostawia rdzeniowi więcej bitów na to, co
+niżej. Start warto zmieniać o jeden indeks i słuchać; Tabela 2 pokazuje, gdzie wypada
+każdy indeks. Stop przesuwa tylko górną krawędź pliku i nie rusza rdzenia.
+FDK sprawdza parę: zła daje "encoder initialization failed". Dozwolone pary tworzą ukośny
+pas i zależą od bitrate'u oraz częstotliwości próbkowania. Na przykład przy HE-AAC
+64 kbps stereo z 48 kHz start 0..4 jest niedozwolony z każdym stopem, a 8/9, 8/14 i 14/12
+działają. Po każdej zmianie warto przeczytać `--verbose`.
 
 `--sbr-freqscale <n>` — grupowanie częstotliwości (0 liniowe, wyżej = drobniejsze
 logarytmiczne). `--sbr-noise-bands <0..3>` — gęstość opisu szumu SBR:
@@ -445,11 +451,12 @@ odrzucana.)
 
 `--sbr-freqres-fixfix <0|1>` — rozdzielczość częstotliwości obwiedni.
 
-`--sbr-stereo-mode <0..3>` — tryb stereo w warstwie SBR (osobny od MS rdzenia!):
-0 = mono, 1 = LR (pełna, niezależna separacja lewego i prawego w górnym paśmie),
-2 = coupling (oszczędny: wspólna obwiednia + poziom/balans), 3 = switch (domyślnie
-enkoder wybiera per ramkę). Wymuś 1 dla maksymalnej separacji stereo w górze
-(audiofilsko), 2 dla oszczędności bitów przy niskim bitrate.
+`--sbr-stereo-mode <1..3>`: tryb stereo warstwy SBR, niezależny od MS rdzenia.
+1 = LR (niezależne górne pasmo dla każdego kanału), 2 = coupling (wspólna obwiednia oraz
+poziom i balans), 3 = switch (LR albo coupling w każdej ramce). Bez przełącznika FDK
+używa 3 poniżej 60 kbps stereo i 1 od 60 kbps. Wymuszenie 1 poniżej 60 kbps daje pełną
+separację na górze, 2 oszczędza bity przy niskim bitrate'ie. Wejście mono nie wymaga
+przełącznika.
 
 `--sbr-invf <0..3>` — filtrowanie odwrotne (inverse filtering). To mechanizm
 sterowany przez ESTYMATOR TONALNOŚCI: SBR analizuje, czy górne pasmo powinno być
@@ -934,10 +941,9 @@ zmiany crossovera i bez wyłączania kodowania parametrycznego.
 
 Uczciwie o LC: czysty AAC-LC (bez SBR) NIE ma osobnego, oddzielnego "trybu mowy"
 w FDK. Model psychoakustyczny LC jest ten sam dla mowy i muzyki. Dla mowy w LC
-najlepiej po prostu zejść z pasmem (`--core-cutoff` np. 12000–14000 Hz, bo mowa
-nie ma dużo powyżej) i ewentualnie włączyć `--pns` z `--force-pns` przy bardzo
-niskich bitrate'ach. Ale dedykowanego przełącznika "speech" dla LC nie ma, bo
-nie ma go w samym kodeku — i nie chcę udawać, że jest.
+zwykle pomaga węższe pasmo (`-w 12000` do `14000`, bo mowa ma niewiele powyżej), a
+przy bardzo niskim bitrate'ie `--pns 1` z `--force-pns`. Osobnego przełącznika mowy dla
+LC nie ma, bo nie ma go w samym kodeku.
 
 ---
 
@@ -957,13 +963,13 @@ AUDIOFIL, PEŁNE PASMO 96 kHz + maksimum detalu:
 
     fdkaac-franken-x64.exe -p 2 -b 400000 --uncap-bandwidth --core-cutoff 40000 --ath-scale 190 --spread-mask 128 -o out.m4a in96k.wav
 
-STREAMING MUZYKI, ŚREDNI BITRATE:
+STREAMING MUZYKI, ŚREDNI BITRATE (prawdziwie kodowany rdzeń do 12 kHz zamiast 10,5):
 
-    fdkaac-franken-x64.exe -p 5 -b 64000 --sbr-stereo-mode 3 -o out.m4a in.wav
+    fdkaac-franken-x64.exe -p 5 -b 64000 --sbr-start 15 -o out.m4a in.wav
 
-PODCAST / MOWA, NISKI BITRATE:
+PODCAST / MOWA, NISKI BITRATE (strojenie pod mowę stawia SBR na 5,5 kHz; o indeks wyżej to 7 kHz):
 
-    fdkaac-franken-x64.exe -p 5 -b 32000 --speech --core-cutoff 12000 -o out.m4a mowa.wav
+    fdkaac-franken-x64.exe -p 5 -b 32000 --speech --sbr-start 10 -o out.m4a mowa.wav
 
 SKRAJNIE NISKO (eksperyment, 8 kbps stereo):
 
@@ -985,21 +991,25 @@ Enkoder bez żadnych flag Frankenstein zachowuje się dokładnie jak oryginalny 
 sprawdzonego zachowania.
 
 Kolejność, w jakiej warto próbować przy problemach:
-- "za mało detalu / za płasko" → `--ath-scale` w dół, potem `--spread-mask` w dół.
+- "za mało detalu / za płasko" → przy VBR `--minsnr-scale` albo `--ath-scale` poniżej
+  256 (płaci się rozmiarem pliku); przy CBR najpierw wyższy bitrate, te pokrętła ruszają
+  tam niewiele.
 - "stereo za wąskie, przestrzeń zapada się do środka" → `--side-knee 3..6` albo
   `--side-bias 3..9` (LC), `--sbr-stereo-mode 1` (górne pasmo HE-AAC), mniej agresywne IS.
-- "metaliczne wysokie" → `--sbr-invf 2` lub 3.
+- "metaliczne wysokie" → `--sbr-softness 4..6` albo `--sbr-invf-min 1`; wymuszone
+  `--sbr-invf` ustala jeden poziom dla całego pliku i służy do diagnozy.
 - "tnie po głośnych fragmentach" → `--peak-bitrate` + `--vbr-reservoir` (rozdział 8).
 - "artefakty jak MP3 przy bardzo niskim bitrate" → `--force-pns`.
-- "chcę pełne pasmo z 96 kHz" → `--uncap-bandwidth --core-cutoff 40000`.
+- "chcę pełne pasmo z 96 kHz" → `--uncap-bandwidth -w 40000` (albo `--core-cutoff`).
+- "rdzeń pod SBR brzmi wąsko" → `--sbr-start` o jeden indeks wyżej, nie `--core-cutoff`.
 
 ## 22. Uwaga końcowa o rzetelności
 
 Wszystkie opisane tu zachowania zostały sprawdzone pomiarowo (dekodowalność
 strumienia, realny rozrzut bitrate, zawartość widma), a nie tylko założone.
-Tam, gdzie coś ma ograniczenie (IPD/OPD nieobsługiwane, brak trybu mowy w LC,
-sufit 6144 bity na kanał, rezydualna podłoga bitrate ~10 kbps), jest to
-powiedziane wprost, zamiast obiecywać rzeczy, których kodek nie potrafi.
+Tam, gdzie coś ma ograniczenie (brak trybu mowy w LC, sufit 6144 bity na kanał,
+progi bitrate'u poszczególnych profili, które zdejmuje dopiero `--unlock-bitrate`), jest
+to powiedziane wprost, zamiast obiecywać rzeczy, których kodek nie potrafi.
 
 Enkoder bez flag = czysty FDK. Flagi = Twoje świadome decyzje. Miłego strojenia.
 
@@ -1039,28 +1049,38 @@ Przykład odczytu: przy 44,1 kHz pasmo nr 40 kończy się około 15,2 kHz. Jeśl
 MS ma działać tylko poniżej ~15 kHz (przypadek techniczny, zobacz rozdział 13), ustaw
 `--msbands 40`.
 
-## 24. Tabela 2 — SBR: indeks startu a częstotliwość przejścia
+## 24. Tabela 2: indeks startu SBR a pasmo rdzenia
 
-W HE-AAC dolną część pasma koduje rdzeń AAC, a górną dorabia SBR. `--sbr-start`
-(indeks 0..15) decyduje, od jakiej częstotliwości zaczyna się SBR — niższy indeks
-oznacza, że SBR wchodzi niżej, więc rdzeń jest węższy. "core" to częstotliwość
-próbkowania rdzenia; przy trybie dual-rate wyjście jest dwa razy wyższe niż rdzeń.
+W HE-AAC dolną część pasma koduje rdzeń AAC, a górną odtwarza SBR. `--sbr-start`
+(indeks 0..15) decyduje, gdzie zaczyna się SBR, a rdzeń idzie za nim: niższy indeks daje
+węższy rdzeń. Tabela podaje pasmo rdzenia, które wypisuje `--verbose` przy HE-AAC 32 kbps
+stereo dla trzech częstotliwości wejścia. "x" oznacza, że koder nie zainicjalizował się
+z domyślnym stopem. Indeks przechodzi przez tablicę, a nie wzór, więc sąsiednie indeksy
+mogą dawać tę samą wartość.
 
-| indeks startu | core 16 kHz | core 24 kHz | core 32 kHz | core 44,1 kHz | core 48 kHz |
-|----:|----:|----:|----:|----:|----:|
-| 0 | 2750 | 2250 | 2500 | 1378 | 1500 |
-| 1 | 3000 | 2625 | 3000 | 2067 | 2250 |
-| 2 | 3250 | 3000 | 3500 | 2756 | 3000 |
-| 3 | 3500 | 3375 | 4000 | 3445 | 3750 |
-| 4 | 3750 | 3750 | 4500 | 4134 | 4500 |
-| 5 | 4000 | 4125 | 5000 | 4823 | 5250 |
-| 6 | 4250 | 4500 | 5500 | 5512 | 6000 |
-| 7 | 4500 | 4875 | 6000 | 6202 | 6750 |
-| 8 | 4750 | 5250 | 6500 | 6891 | 7500 |
+| indeks startu | wejście 32 kHz | wejście 44,1 kHz | wejście 48 kHz |
+|----:|----:|----:|----:|
+| 0 | x | x | x |
+| 1 | x | x | x |
+| 2 | 3562 | 3919 | x |
+| 3 | 3843 | 4263 | 4265 |
+| 4 | 4156 | 4651 | 4640 |
+| 5 | 4468 | 5038 | 5062 |
+| 6 | 4812 | 5469 | 5484 |
+| 7 | 4812 | 5943 | 5953 |
+| 8 | 5187 | 5943 | 6468 |
+| 9 | 5593 | 6459 | 6468 |
+| 10 | 5593 | 7019 | 7031 |
+| 11 | 6031 | 7579 | 7640 |
+| 12 | 6500 | 8268 | 8250 |
+| 13 | 7000 | 8957 | 9000 |
+| 14 | 7500 | 9646 | 10500 |
+| 15 | 8000 | 11025 | 12000 |
 
-Górną granicę SBR ustawia `--sbr-stop` (0..13) — wyższy indeks to SBR sięgające
-wyżej. Domyślnie biblioteka dobiera oba indeksy pod bitrate; te wartości podawaj
-tylko, gdy świadomie chcesz przesunąć punkt przejścia.
+To, które indeksy są dozwolone, zależy też od bitrate'u: przy 64 kbps z 48 kHz
+inicjalizuje się tylko górna część zakresu (zobacz kartę `--sbr-start` w opisie
+przełączników). Górną granicę SBR ustawia `--sbr-stop` (0..13); wyższy indeks to SBR
+sięgające wyżej. Domyślnie biblioteka dobiera oba indeksy pod bitrate.
 
 ## 25. Tabela 3 — AAC-LC: automatyczne odcięcie pasma wg bitrate
 
@@ -1335,7 +1355,8 @@ Inverse filtering (filtrowanie odwrotne). Mechanizm SBR "wybielający" skopiowan
 materiał górnego pasma, sterowany estymatorem tonalności. Mocniejsze = mniej
 metaliczności. Regulowane `--sbr-invf`.
 
-IPD/OPD (różnice fazy w PS). W enkoderze FDK NIE obsługiwane (zawsze zero).
+IPD/OPD (różnice fazy w PS). Fabryczny FDK ich nie wysyła; ten build wysyła je na
+żądanie (`--ps-ipd`, `--ps-opd`).
 
 Kwantyzacja. Zaokrąglanie współczynników widma do skończonej dokładności. Im
 mniej bitów, tym większy błąd (szum/dziury). Serce stratnej kompresji.
