@@ -32,14 +32,21 @@ void seconds_to_hms(double seconds, int *h, int *m, int *s, int *millis)
 }
 
 static
-void print_seconds(FILE *fp, double seconds)
+int sprint_seconds(char *buf, size_t size, double seconds)
 {
     int h, m, s, millis;
     seconds_to_hms(seconds, &h, &m, &s, &millis);
     if (h)
-        fprintf(stderr, "%d:%02d:%02d.%03d", h, m, s, millis);
-    else
-        fprintf(stderr, "%02d:%02d.%03d", m, s, millis);
+        return snprintf(buf, size, "%d:%02d:%02d.%03d", h, m, s, millis);
+    return snprintf(buf, size, "%02d:%02d.%03d", m, s, millis);
+}
+
+static
+void print_seconds(FILE *fp, double seconds)
+{
+    char buf[32];
+    sprint_seconds(buf, sizeof buf, seconds);
+    fputs(buf, fp);
 }
 
 void aacenc_progress_init(aacenc_progress_t *progress, int64_t total,
@@ -48,36 +55,45 @@ void aacenc_progress_init(aacenc_progress_t *progress, int64_t total,
     progress->start = aacenc_timer();
     progress->timescale = timescale;
     progress->total = total;
+    progress->last_print = 0.0;
 }
 
 void aacenc_progress_update(aacenc_progress_t *progress, int64_t current,
                             int period)
 {
-    double seconds = current / progress->timescale;
-    double ellapsed = (aacenc_timer() - progress->start) / 1000.0;
-    double speed = ellapsed ? seconds / ellapsed : 1.0;
-    int percent = progress->total ? 100.0 * current / progress->total + .5
-                                  : 100;
-    double eta = current ? ellapsed * (progress->total / (double)current - 1.0)
-                         : progress->total ? DBL_MAX : 0;
+    double now, ellapsed, speed, eta, seconds;
+    int percent;
+    char a[32], b[32], c[32];
 
     if (current < progress->processed + period)
         return;
+    now = aacenc_timer();
+    /* Jedna linia jednym zapisem i nie czesciej niz co 100 ms (konsola
+       Windows placi za kazde wywolanie zapisu). period == 0 to wymuszony
+       stan koncowy z aacenc_progress_finish: wtedy throttle nie obowiazuje. */
+    if (period > 0 && now - progress->last_print < 100.0)
+        return;
+
+    seconds = current / progress->timescale;
+    ellapsed = (now - progress->start) / 1000.0;
+    speed = ellapsed ? seconds / ellapsed : 1.0;
+    percent = progress->total ? 100.0 * current / progress->total + .5
+                              : 100;
+    eta = current ? ellapsed * (progress->total / (double)current - 1.0)
+                  : progress->total ? DBL_MAX : 0;
 
     if (progress->total == INT64_MAX) {
-        putc('\r', stderr);
-        print_seconds(stderr, seconds);
-        fprintf(stderr, " (%.0fx)   ", speed);
+        sprint_seconds(a, sizeof a, seconds);
+        fprintf(stderr, "\r%s (%.0fx)   ", a, speed);
     } else {
-        fprintf(stderr, "\r[%d%%] ", percent);
-        print_seconds(stderr, seconds);
-        putc('/', stderr);
-        print_seconds(stderr, progress->total / progress->timescale);
-        fprintf(stderr, " (%.0fx), ETA ", speed);
-        print_seconds(stderr, eta);
-        fputs("   ", stderr);
+        sprint_seconds(a, sizeof a, seconds);
+        sprint_seconds(b, sizeof b, progress->total / progress->timescale);
+        sprint_seconds(c, sizeof c, eta);
+        fprintf(stderr, "\r[%d%%] %s/%s (%.0fx), ETA %s   ",
+                percent, a, b, speed, c);
     }
     progress->processed = current;
+    progress->last_print = now;
 }
 
 void aacenc_progress_finish(aacenc_progress_t *progress, int64_t current)

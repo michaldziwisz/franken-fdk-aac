@@ -10,6 +10,7 @@ typedef struct aacenc_progress_t {
     double timescale;
     int64_t total;
     int64_t processed;
+    double last_print; /* czas ostatniego zapisu paska (throttling) */
 } aacenc_progress_t;
 
 void aacenc_progress_init(aacenc_progress_t *progress, int64_t total,

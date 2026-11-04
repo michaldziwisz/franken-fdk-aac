@@ -2229,6 +2229,13 @@ pcm_reader_t *open_input(aacenc_param_ex_t *params)
                        strerror(errno));
         goto FAIL;
     }
+    /* Wiekszy bufor odczytu tylko dla zwyklych plikow; stdin (fileno 0)
+       zostaje nietkniety, bo streaming przez potok to docelowe uzycie.
+       UWAGA: setvbuf zaraz po otwarciu, przed PIERWSZYM odczytem —
+       setvbuf po juz wykonanym freadzie to zachowanie niezdefiniowane
+       (na MSVCRT/mingw przesuwa pozycje strumienia i psuje dane wejscia). */
+    if (fileno(params->input_fp) > 2)
+        setvbuf(params->input_fp, NULL, _IOFBF, 1 << 20);
     io.cookie = params->input_fp;
     if (aacenc_seekable(params->input_fp))
         io.vtbl = &pcm_io_vtbl;
@@ -2417,6 +2424,9 @@ int main(int argc, char **argv)
                        strerror(errno));
         goto END;
     }
+    /* Analogicznie zapis: tylko zwykle pliki, stdout (fileno 1) nietkniety. */
+    if (params.output_fp && fileno(params.output_fp) > 2)
+        setvbuf(params.output_fp, NULL, _IOFBF, 1 << 20);
     handle_signals();
 
     if (!params.transport_format) {
