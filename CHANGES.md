@@ -5,7 +5,7 @@ Library** (per section 2 of the FDK AAC license, see `NOTICE.fdk-aac`).
 
 ## Releases
 
-### v1.4.0-beta.2 (in progress) — band switches in short blocks, input resampling
+### v1.4.0-beta.2 — faster Windows builds (same bits), input resampling, crash and overflow fixes, short-block band switches, documentation
 
 #### Faster encoding, unchanged bits
 
