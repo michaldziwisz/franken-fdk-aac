@@ -7,6 +7,24 @@ Library** (per section 2 of the FDK AAC license, see `NOTICE.fdk-aac`).
 
 ### v1.4.0-beta.2 (in progress) — band switches in short blocks, input resampling
 
+#### Faster encoding, unchanged bits
+
+- Windows builds (local `tools/build_win.sh` and CI) compile with
+  `-O3 -DNDEBUG -flto` plus PGO: the instrumented exe trains on a fixed set of
+  encodes, then the library and the frontend are rebuilt with the collected
+  profiles. Native measurements (5 min stereo 48 kHz, interleaved medians):
+  +13% over the old plain `-O2` (LC 82.6 → 93.3x, HE 66.2 → 74.5x,
+  HEv2 121.8 → 137.7x real time). Every output stays bit for bit identical
+  to the previous build: verified on ADTS for LC 128k, HE 48k, HEv2 32k
+  (30 s and 5 min), `--resample 44100` and `--dab 96`. `FRANKEN_NO_PGO=1`
+  skips the training phase.
+- The progress bar now writes each refresh as a single stderr write and at
+  most 10 times per second (the console write cost is real on Windows).
+  The line format is unchanged. Long files encode measurably faster.
+- Regular input and output files get a 1 MiB stdio buffer. Streams are not
+  touched: when the input comes from stdin or the output goes to stdout
+  (pipe use), buffering and block behavior stay exactly as before.
+
 #### New: `--resample <rate>`
 
 - Converts the input to another AAC sample rate before encoding. Hz (`44100`) or kHz

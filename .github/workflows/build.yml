@@ -57,41 +57,104 @@ jobs:
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Install mingw-w64 toolchain
+      - name: Install mingw-w64 toolchain (+ wine for PGO training)
         if: steps.gate.outputs.skip == 'false'
         run: |
           sudo apt-get update
-          sudo apt-get install -y mingw-w64 autoconf automake libtool pkg-config make
+          sudo apt-get install -y mingw-w64 autoconf automake libtool pkg-config make wine
+          # x86 training needs the 32-bit wine; if unavailable, the build
+          # step detects it and falls back to -O3 -flto without PGO.
+          sudo dpkg --add-architecture i386 || true
+          sudo apt-get update >/dev/null 2>&1 || true
+          sudo apt-get install -y wine32 || true
 
-      - name: Build libfdk-aac (static) + frontend for ${{ matrix.arch }}
+      - name: Build libfdk-aac (static) + frontend for ${{ matrix.arch }} (-O3 -flto + PGO)
         if: steps.gate.outputs.skip == 'false'
         run: |
           set -euo pipefail
           HOST='${{ matrix.host }}'
+          GAR="$HOST-gcc-ar"
+          GRANLIB="$HOST-gcc-ranlib"
           ROOT="$PWD"
           BUILD="$HOME/build-${{ matrix.arch }}"
           PREFIX="$BUILD/inst"
+          BASE="-O3 -DNDEBUG -flto"
+          GEN="$BASE -fprofile-generate"
           rm -rf "$BUILD"; mkdir -p "$BUILD"
           # Fresh trees per arch (avoids cross-arch leftovers).
           cp -r "$ROOT/src-fdk-aac" "$BUILD/fdk-aac"
           cp -r "$ROOT/src-fdkaac"  "$BUILD/fdkaac"
 
-          # --- libfdk-aac ---
+          # --- phase 1: instrumented build (-fprofile-generate) ---
           cd "$BUILD/fdk-aac"
           # Makefile.am carries the added franken.cpp, so regenerate the build system.
           autoreconf -fi
           ./configure --host="$HOST" --prefix="$PREFIX" \
-            --enable-static --disable-shared CFLAGS=-O2 CXXFLAGS=-O2
+            --enable-static --disable-shared AR="$GAR" RANLIB="$GRANLIB" \
+            CFLAGS="$GEN" CXXFLAGS="$GEN"
           make -j"$(nproc)"
           make install
 
-          # --- frontend (nu774 fdkaac) ---
           cd "$BUILD/fdkaac"
           autoreconf -fi || ./bootstrap || true
           PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig" ./configure \
-            --host="$HOST" CFLAGS="-O2 -I$PREFIX/include" \
-            LDFLAGS="-static -static-libgcc -L$PREFIX/lib"
+            --host="$HOST" CFLAGS="$GEN -I$PREFIX/include" \
+            LDFLAGS="-static -static-libgcc -flto -O3 -fprofile-generate -L$PREFIX/lib"
           make -j"$(nproc)"
+
+          # --- phase 2: PGO training under wine ---
+          # Deterministic synthetic stereo 48 kHz (noise + tones); the profiles
+          # only need realistic branch statistics, not real music.
+          PGO=1
+          if ! (
+            mkdir -p "$HOME/pgo-train"
+            python3 - "$HOME/pgo-train" <<'PYEOF'
+          import sys, wave, struct, math, random
+          t = sys.argv[1]
+          random.seed(20261103)
+          for fn, secs in [('dance.wav', 30), ('ld.wav', 30), ('long.wav', 120)]:
+              o = wave.open(t + '/' + fn, 'wb'); o.setnchannels(2); o.setsampwidth(2); o.setframerate(48000)
+              for i in range(secs * 48000):
+                  env = 0.5 + 0.5 * math.sin(2 * math.pi * 0.5 * i / 48000)
+                  l = int(12000 * env * math.sin(2 * math.pi * (220 + 880 * (i % 48000) / 48000) * i / 48000))
+                  r = int(10000 * (2 * random.random() - 1))
+                  o.writeframes(struct.pack('<hh', l, r))
+              o.close()
+          PYEOF
+            export WINEDEBUG=-all
+            T="$HOME/pgo-train"; E="$BUILD/fdkaac/fdkaac.exe"
+            wine "$E" -S -f 2 -b 128000      -o "$T/t1.aac" "$T/dance.wav" &&
+            wine "$E" -S -f 2 -p 5 -b 48000  -o "$T/t2.aac" "$T/dance.wav" &&
+            wine "$E" -S -f 2 -p 29 -b 32000 -o "$T/t3.aac" "$T/dance.wav" &&
+            wine "$E" -S -f 2 -b 64000       -o "$T/t4.aac" "$T/ld.wav" &&
+            wine "$E" -S -f 2 -b 128000      -o "$T/t6.aac" "$T/long.wav" &&
+            wine "$E" -S -f 2 --resample 44100 -b 96000 -o "$T/t7.aac" "$T/dance.wav" &&
+            wine "$E" -S --dab -b 96         -o "$T/t8.dab" "$T/dance.wav"
+          ) >"$HOME/pgo-train.log" 2>&1; then
+            echo "wine PGO training failed; falling back to -O3 -flto without PGO"
+            PGO=0
+          fi
+          GCDA=$(find "$BUILD" -name '*.gcda' | wc -l)
+          echo "gcda collected: $GCDA (PGO=$PGO)"
+
+          # --- phase 3: final build with the collected profiles ---
+          USE="$BASE"
+          if [ "$PGO" = 1 ] && [ "$GCDA" -gt 0 ]; then
+            USE="$BASE -fprofile-use -fprofile-correction"
+          else
+            PGO=0
+          fi
+
+          cd "$BUILD/fdk-aac"
+          make clean
+          make -j"$(nproc)" CFLAGS="$USE" CXXFLAGS="$USE"
+          make install
+
+          cd "$BUILD/fdkaac"
+          make clean
+          make -j"$(nproc)" CFLAGS="$USE -I$PREFIX/include" \
+            LDFLAGS="-static -static-libgcc -flto -O3 $([ "$PGO" = 1 ] && echo '-fprofile-use -fprofile-correction') -L$PREFIX/lib"
+          echo "built with: $USE (PGO=$PGO)"
 
           mkdir -p "$ROOT/out"
           PKGDIR="$ROOT/out/franken-fdk-aac-${{ matrix.arch }}"
